@@ -8,7 +8,7 @@
 #include <leveldb/c.h>
 #include "db.h"
 
-int cmpp_db_init(CMPP_DB_T *db, const char *name) {
+int lamb_cache_init(CMPP_DB_T *db, const char *name) {
     db->options = leveldb_options_create();
     leveldb_options_set_create_if_missing(db->options, 1);
 
@@ -22,7 +22,7 @@ int cmpp_db_init(CMPP_DB_T *db, const char *name) {
     return 0;
 }
 
-int cmpp_db_open(CMPP_DB_T *db, const char *name) {
+int lamb_cache_open(CMPP_DB_T *db, const char *name) {
     char *err = NULL;
 
     db->handle = leveldb_open(db->options, name, &err);
@@ -37,7 +37,7 @@ int cmpp_db_open(CMPP_DB_T *db, const char *name) {
     return 0;
 }
 
-int cmpp_db_put(CMPP_DB_T *db, const char* key, size_t keylen, const char* val, size_t vallen) {
+int lamb_cache_put(CMPP_DB_T *db, const char* key, size_t keylen, const char* val, size_t vallen) {
     char *err = NULL;
 
     leveldb_put(db->handle, db->woptions, key, keylen, val, vallen, &err);
@@ -51,7 +51,7 @@ int cmpp_db_put(CMPP_DB_T *db, const char* key, size_t keylen, const char* val, 
     return 0;
 }
 
-int cmpp_db_get(CMPP_DB_T *db, const char *key, size_t keylen) {
+int lamb_cache_get(CMPP_DB_T *db, const char *key, size_t keylen) {
     size_t len;
     char *val;
     char *err = NULL;
@@ -68,7 +68,7 @@ int cmpp_db_get(CMPP_DB_T *db, const char *key, size_t keylen) {
     return val;
 }
 
-int cmpp_db_delete(CMPP_DB_T *db, const char *key, size_t keylen) {
+int lamb_cache_delete(CMPP_DB_T *db, const char *key, size_t keylen) {
     char *err = NULL;
     
     leveldb_delete(db->handle, db->woptions, key, keylen, &err);
@@ -83,7 +83,7 @@ int cmpp_db_delete(CMPP_DB_T *db, const char *key, size_t keylen) {
     return 0;
 }
 
-int cmpp_db_close(CMPP_DB_T *db) {
+int lamb_cache_close(CMPP_DB_T *db) {
     char *err = NULL;
     
     leveldb_close(db->handle);
