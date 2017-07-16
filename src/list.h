@@ -1,14 +1,25 @@
 
 /* 
- * China Mobile CMPP 2.0 protocol library
+ * Lamb Gateway Platform
  * By typefo <typefo@qq.com>
- * Update: 2017-07-10
+ * Copyright (c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+ * Update: 2017-07-14
  */
 
-#ifndef _LIST_H
-#define _LIST_H
+#ifndef _LAMB_LIST_H
+#define _LAMB_LIST_H
 
 #include <stdlib.h>
+
+// Memory management macros
+
+#ifndef LIST_MALLOC
+#define LIST_MALLOC malloc
+#endif
+
+#ifndef LIST_FREE
+#define LIST_FREE free
+#endif
 
 /* list iterator direction */
 typedef enum {

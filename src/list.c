@@ -1,8 +1,9 @@
 
 /* 
- * China Mobile CMPP 2.0 protocol library
+ * Lamb Gateway Platform
  * By typefo <typefo@qq.com>
- * Update: 2017-07-10
+ * Copyright (c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+ * Update: 2017-07-14
  */
 
 /* Allocates a new list_node_t. NULL on failure */

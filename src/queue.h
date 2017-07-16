@@ -16,4 +16,6 @@ typedef struct {
     pthread_mutex_t lock;
 } lamb_queue_t;
 
+void lamb_queue_init(lamb_queue_t *queue);
+
 #endif

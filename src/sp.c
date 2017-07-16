@@ -7,14 +7,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <libconfig.h>
-#include <leveldb/c.h>
 #include <cmpp2.h>
 #include "sp.h"
+#include "config.h"
+#include "common.h"
+#include "queue.h"
 
+cmpp_sp_t cmpp;
+lamb_queue_t *send;
+lamb_queue_t *recv;
 lamb_config_t config;
-lamb_cache_t cache;
-lamb_queue_t queue;
+static int unconfirmed = 0;
 
 int main(int argc, char *argv[]) {
     char *file = "/etc/lamb.conf";
@@ -33,26 +36,117 @@ int main(int argc, char *argv[]) {
     }
 
     /* read lamb configuration file */
-    lamb_read_config(&config, file);
+    if (!lamb_read_config(&config, file)) {
+        return -1;
+    }
 
     /* daemon mode */
     if (conifg.daemon) {
-        signal(SIGCHLD, SIG_IGN);
-        daemon(0, 0);
+        lamb_daemon();
     }
 
-    lamb_queue_t send;
-    lamb_queue_t recv;
+    lamb_signal();
 
-    lamb_fetch_loop(&send);
-    lamb_update_loop(&recv);
+    lamb_queue_init(send);
+    lamb_queue_init(recv);
 
-    lamb_send_loop(&send);
-    lamb_recv_loop(&recv);
+    lamb_fetch_loop();
+    lamb_update_loop();
+
+    lamb_send_loop();
+    lamb_recv_loop();
 
     lamb_event_loop();
 
     return 0;
+}
+
+void lamb_fetch_loop(void) {
+    lamb_rabbit_t conn;
+    lamb_rabbit_data_t *data;
+    lamb_rabbit_connect(conn, "user", "password");
+
+    while (true) {
+        if (send->list->len < config.queue) {
+            data = lamb_rabbit_get(conn);
+            lamb_queue_rpush(send, (void *)data);
+        }
+
+        lamb_sleep(10);
+    }
+
+    return;
+}
+
+void lamb_send_loop(void) {
+    int err;
+    list_node_t *node;
+    CMPP_SUBMIT_T *pack;
+
+    cmpp_init_sp(&cmpp, "ip", "port");
+    cmpp_connect(&cmpp, "901234", "123456");
+
+    while (true) {
+        node = lamb_queue_lpop(send);
+        if (node != NULL) {
+            pack = (CMPP_SUBMIT_T *)node->val;
+            if (cmpp_submit(&cmpp, pack->phone, pack->message, pack->delivery, pack->serviceId, pack->msgFmt, pack->msgSrc)) {
+                free(node);
+                continue;
+            }
+
+            if (!cmpp_check_connnect(&cmpp)) {
+                while (!cmpp_reconnect()) {
+                    errlog("cmpp server connection failed");
+                    lamb_sleep(3000);
+                }
+            }
+
+            free(node);
+        }
+
+        lamb_sleep(10);
+    }
+}
+
+void lamb_recv_loop(void) {
+    CMPP_PACK_T pack;
+    CMPP_HEAD_T *head;
+    CMPP_SUBMIT_RESP_T *resp;
+
+    while (true) {
+        if (cmpp_recv(&cmpp, &pack, sizeof(pack))) {
+            head = (CMPP_HEAD_T *)pack;
+            if (head->commandId == CMPP_SUBMIT_RESP) {
+                resp = (CMPP_SUBMIT_RESP_T *)pack;
+                lamb_queue_rpush(recv, (void *)resp->msgId);
+            }
+            continue;
+        }
+
+        if (!cmpp_check_connnect(&cmpp)) {
+            while (!cmpp_reconnect()) {
+                errlog("cmpp server connection failed");
+                lamb_sleep(3000);
+            }
+        }
+    }
+}
+
+void lamb_update_loop(void) {
+    list_node_t *node;
+    lamb_pgsql_t conn;
+    lamb_pgsql_connect(conn, "user", "password", "dbname");
+
+    while (true) {
+        node = lamb_queue_lpop(recv);
+        if (node != NULL) {
+            lamb_report_update(conn, node->val);
+            free(noede)
+        }
+
+        lamb_sleep(10);
+    }
 }
 
 int lamb_read_config(lamb_config_t *config, const char *file) {
@@ -61,137 +155,94 @@ int lamb_read_config(lamb_config_t *config, const char *file) {
     }
 
     config_t cfg;
-    config_init(&cfg);
-
-    if (!config_read_file(&cfg, file)) {
-        fprintf(stderr, "ERROR: Can't open %s configuration file\n", file);
-        config_destroy(&cfg);
-        return -1;
+    if (!lamb_read_config(&cfg, file)) {
+        fprintf(stderr, "ERROR: Can't open the %s configuration file\n", file);
+        goto error;
     }
 
-    const char *host;
-    if (!config_lookup_string(&cfg, "host", &host)) {
+    if (!lamb_get_string(&cfg, "host", config->host, 16)) {
         fprintf(stderr, "ERROR: Invalid host IP address\n");
-        config_destroy(&cfg);
-        return -1;
-    }
-    strncpy(config->host, host, 16);
-
-    int port;
-    if (config_lookup_int(&cfg, "port", &port)) {
-        if (port > 0 && port < 65535) {
-            config->port = (unsigned short)port;
-        } else {
-            fprintf(stderr, "ERROR: Invalid host port number\n");
-            config_destroy(&cfg);
-            return -1;
-        }
+        goto error;
     }
 
-    const char *user;
-    if (!config_lookup_string(&cfg, "user", &user)) {
+    if (!lamb_get_int(&cfg, "port", &config->port)) {
+        fprintf(stderr, "ERROR: Can't read port parameter\n");
+        goto error;
+    }
+
+    if (config->port < 1 || config->port > 65535) {
+        fprintf(stderr, "ERROR: Invalid host port number\n");
+        goto error;
+    }
+
+    if (!lamb_get_string(&cfg, "user", config->user, 64)) {
         fprintf(stderr, "ERROR: Can't read user parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    strncpy(config->user, user, 64);
 
-    const char *password;
-    if (!config_lookup_string(&cfg, "password", &password)) {
+    if (!lamb_get_string(&cfg, "password", config->password, 128)) {
         fprintf(stderr, "ERROR: Can't read password parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    strncpy(config->password, password, 128);
 
-    const char *spid;
-    if (!config_lookup_string(&cfg, "spid", &spid)) {
+    if (!lamb_get_string(&cfg, "spid", config->spid, 8)) {
         fprintf(stderr, "ERROR: Can't read spid parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    strncpy(config->spid, spid, 8);
 
-    const char *spcode;
-    if (!config_lookup_string(&cfg, "spcode", &spcode)) {
+    if (!lamb_get_string(&cfg, "spcode", config->spcode, 16)) {
         fprintf(stderr, "ERROR: Can't read spcode parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    strncpy(config->spcode, spcode, 16);
 
-    int queue;
-    if (!config_lookup_int(&cfg, "queue", &queue)) {
+    if (!lamb_get_int(&cfg, "queue", &config->queue)) {
         fprintf(stderr, "ERROR: Can't read queue parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    config->queue = queue;
 
-    int confirmed;
-    if (!config_lookup_int(&cfg, "confirmed", &confirmed)) {
-        fprintf(stderr, "ERROR: Can't read confirmed parameter\n");tu
-        config_destroy(&cfg);
-        return -1;
+    if (!lamb_get_int(&cfg, "confirmed", &config->confirmed)) {
+        fprintf(stderr, "ERROR: Can't read confirmed parameter\n");
+        goto error;
     }
-    config->confirmed = confirmed;
 
-    long long contimeout;
-    if (!config_lookup_int64(&cfg, "contimeout", &contimeout)) {
+    if (!lamb_get_int64(&cfg, "contimeout", &config->contimeout)) {
         fprintf(stderr, "ERROR: Can't read contimeout parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    config->contimeout = contimeout;
 
-    long long sendtimeout;
-    if (!config_lookup_int64(&cfg, "sendtimeout", &sendtimeout)) {
+    if (!lamb_get_int64(&cfg, "sendtimeout", &config->sendtimeout)) {
         fprintf(stderr, "ERROR: Can't read sendtimeout parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    config->sendtimeout = sendtimeout;
 
-    long long recvtimeout;
-    if (!config_lookup_int64(&cfg, "recvtimeout", &recvtimeout)) {
+    if (!lamb_get_int64(&cfg, "recvtimeout", &config->recvtimeout)) {
         fprintf(stderr, "ERROR: Can't read recvtimeout parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    config->recvtimeout = recvtimeout;
 
-    const char *logfile;
-    if (!config_lookup_string(&cfg, "logfile", &logfile)) {
+    if (!lamb_get_string(&cfg, "logfile", config->logfile, 128)) {
         fprintf(stderr, "ERROR: Can't read logfile parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    strncpy(config->logfile, logfile, 128);
 
-    const char *cache;
-    if (!config_lookup_string(&cfg, "cache", &cache)) {
+    if (!lamb_get_string(&cfg, "cache", config->cache, 128)) {
         fprintf(stderr, "ERROR: Can't read cache parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    strncpy(config->cache, cache, 128);
 
-    int debug;
-    if (!config_lookup_bool(&cfg, "debug", &debug)) {
+    if (!lamb_get_bool(&cfg, "debug", &config->debug)) {
         fprintf(stderr, "ERROR: Can't read debug parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    config->debug = debug ? true : false;
 
-    int daemon;
-    if (!config_lookup_bool(&cfg, "daemon", &daemon)) {
+    if (!lamb_get_bool(&cfg, "daemon", &config->daemon)) {
         fprintf(stderr, "ERROR: Can't read daemon parameter\n");
-        config_destroy(&cfg);
-        return -1;
+        goto error;
     }
-    config->daemon = daemon ? true : false;
 
-    config_destroy(&cfg);
+    lamb_config_destroy(&cfg);
     return 0;
+error:
+    lamb_config_destroy(&cfg);
+    return -1;
 }
