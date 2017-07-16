@@ -12,7 +12,9 @@
 #include "config.h"
 #include "common.h"
 #include "queue.h"
+#include "db.h"
 
+lamb_db_t db;
 cmpp_sp_t cmpp;
 lamb_queue_t *send;
 lamb_queue_t *recv;
@@ -46,6 +48,14 @@ int main(int argc, char *argv[]) {
     }
 
     lamb_signal();
+
+    /* initialization for databses */
+    int err;
+    err = lamb_db_connect(db, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to postgresql database");
+        return EXIT_FAILURE;
+    }
 
     lamb_queue_init(send);
     lamb_queue_init(recv);
@@ -97,7 +107,7 @@ void lamb_send_loop(void) {
 
             if (!cmpp_check_connnect(&cmpp)) {
                 while (!cmpp_reconnect()) {
-                    errlog("cmpp server connection failed");
+                    lamb_errlog(config.logfile, "cmpp server connection failed");
                     lamb_sleep(3000);
                 }
             }
@@ -126,7 +136,7 @@ void lamb_recv_loop(void) {
 
         if (!cmpp_check_connnect(&cmpp)) {
             while (!cmpp_reconnect()) {
-                errlog("cmpp server connection failed");
+                 lamb_errlog(config.logfile, "cmpp server connection failed");
                 lamb_sleep(3000);
             }
         }
@@ -134,19 +144,38 @@ void lamb_recv_loop(void) {
 }
 
 void lamb_update_loop(void) {
+    int err;
     list_node_t *node;
-    lamb_pgsql_t conn;
-    lamb_pgsql_connect(conn, "user", "password", "dbname");
-
     while (true) {
         node = lamb_queue_lpop(recv);
-        if (node != NULL) {
-            lamb_report_update(conn, node->val);
-            free(noede)
+        if (!node) {
+            lamb_sleep(10);
+            continue;
+        }
+        
+        err = lamb_report_update(&db, node->val);
+        if (err) {
+            if (lamb_db_status(&db) != CONNECTION_OK) {
+                lamb_errlog(config.logfile, "postgresql database connection error");
+                lamb_sleep(1000);
+                lamb_db_reset(&db);
+            } else {
+                lamb_errlog(config.logfile, "update message report to database error");
+                lamb_sleep(100);
+            }
         }
 
-        lamb_sleep(10);
+        free(noede);
     }
+}
+
+int lamb_report_update(lamb_db_t *db, void *val) {
+    char sql[512];
+    sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld", val->status, val->id);
+    if (lamb_db_exec(&db, sql)) {
+        return 0;
+    }
+    return -1;
 }
 
 int lamb_read_config(lamb_config_t *config, const char *file) {
