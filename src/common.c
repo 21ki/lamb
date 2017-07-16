@@ -5,8 +5,12 @@
  * Update: 2017-07-14
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
 
@@ -74,6 +78,29 @@ void lamb_sleep(unsigned long long milliseconds) {
     timeout.tv_sec = milliseconds / 1000;
     timeout.tv_usec = (milliseconds % 1000) * 1000000;
     select(0, NULL, NULL, NULL, &timeout);
+
+    return;
+}
+
+void lamb_errlog(const char *logfile, const char *fmt, ...) {
+    char buff[512];
+    time_t rawtime;
+    struct tm *t;
+
+    time(&rawtime);
+    t = localtime(&rawtime);
+    sprintf(buff, "[%4d-%02d-%02d %02d:%02d:%02d] %s\n", t->tm_year + 1900,
+            t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, fmt);
+
+    FILE *fp = NULL;
+    fp = fopen(logfile, "a");
+    if (fp != NULL) {
+        va_list ap;
+        va_start(ap, fmt);
+        vfprintf(fp, buff, ap);
+        va_end(ap);
+        fclose(fp);
+    }
 
     return;
 }

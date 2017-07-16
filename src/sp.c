@@ -19,7 +19,7 @@ cmpp_sp_t cmpp;
 lamb_queue_t *send;
 lamb_queue_t *recv;
 lamb_config_t config;
-static int unconfirmed = 0;
+int unconfirmed = 0;
 
 int main(int argc, char *argv[]) {
     char *file = "/etc/lamb.conf";
@@ -37,35 +37,39 @@ int main(int argc, char *argv[]) {
         opt = getopt(argc, argv, optstring);
     }
 
-    /* read lamb configuration file */
+    /* Read lamb configuration file */
     if (!lamb_read_config(&config, file)) {
         return -1;
     }
 
-    /* daemon mode */
+    /* Daemon mode */
     if (conifg.daemon) {
         lamb_daemon();
     }
 
+    /* Signal event processing */
     lamb_signal();
 
-    /* initialization for databses */
+    /* Initialization for databses */
     int err;
-    err = lamb_db_connect(db, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name);
+    err = lamb_db_connect(db, config.db_host, config.db_port, config.db_user,
+                          config.db_password, config.db_name);
     if (err) {
         lamb_errlog(config.logfile, "Can't connect to postgresql database");
         return EXIT_FAILURE;
     }
 
+    /* Initialization message queue */
     lamb_queue_init(send);
     lamb_queue_init(recv);
 
+    /* Start worker thread */
     lamb_fetch_loop();
     lamb_update_loop();
-
     lamb_send_loop();
     lamb_recv_loop();
 
+    /* Master worker thread */
     lamb_event_loop();
 
     return 0;
@@ -80,6 +84,7 @@ void lamb_fetch_loop(void) {
         if (send->list->len < config.queue) {
             data = lamb_rabbit_get(conn);
             lamb_queue_rpush(send, (void *)data);
+            continue;
         }
 
         lamb_sleep(10);
@@ -100,7 +105,8 @@ void lamb_send_loop(void) {
         node = lamb_queue_lpop(send);
         if (node != NULL) {
             pack = (CMPP_SUBMIT_T *)node->val;
-            if (cmpp_submit(&cmpp, pack->phone, pack->message, pack->delivery, pack->serviceId, pack->msgFmt, pack->msgSrc)) {
+            if (cmpp_submit(&cmpp, pack->phone, pack->message, pack->delivery,
+                            pack->serviceId, pack->msgFmt, pack->msgSrc)) {
                 free(node);
                 continue;
             }
@@ -125,20 +131,21 @@ void lamb_recv_loop(void) {
     CMPP_SUBMIT_RESP_T *resp;
 
     while (true) {
-        if (cmpp_recv(&cmpp, &pack, sizeof(pack))) {
-            head = (CMPP_HEAD_T *)pack;
-            if (head->commandId == CMPP_SUBMIT_RESP) {
-                resp = (CMPP_SUBMIT_RESP_T *)pack;
-                lamb_queue_rpush(recv, (void *)resp->msgId);
+        if (!cmpp_recv(&cmpp, &pack, sizeof(pack))) {
+            if (cmpp_check_connnect(&cmpp)) {
+                continue;
             }
-            continue;
-        }
 
-        if (!cmpp_check_connnect(&cmpp)) {
             while (!cmpp_reconnect()) {
-                 lamb_errlog(config.logfile, "cmpp server connection failed");
+                lamb_errlog(config.logfile, "cmpp server connection failed");
                 lamb_sleep(3000);
             }
+        }
+
+        head = (CMPP_HEAD_T *)pack;
+        if (head->commandId == CMPP_SUBMIT_RESP) {
+            resp = (CMPP_SUBMIT_RESP_T *)pack;
+            lamb_queue_rpush(recv, (void *)resp->msgId);
         }
     }
 }
@@ -165,7 +172,7 @@ void lamb_update_loop(void) {
             }
         }
 
-        free(noede);
+        free(node);
     }
 }
 
