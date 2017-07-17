@@ -11,21 +11,26 @@
 #include <stdbool.h>
 
 typedef struct {
+    bool debug;
+    bool daemon;
     char host[16];
-    unsigned short port;
+    int port;
     char user[64];
     char password[128];
     char spid[8];
     char spcode[16];
-    int queue;
+    int send_queue;
+    int recv_queue;
     int confirmed;
-    long long contimeout;
-    long long sendtimeout;
-    long long recvtimeout;
+    long long connect_timeout;
+    long long send_timeout;
+    long long recv_timeout;
     char logfile[128];
-    char cache[128];
-    bool debug;
-    bool daemon;
+    char db_host[16];
+    int db_port;
+    char db_user[64];
+    char db_password[128];
+    char db_name[64];
 } lamb_config_t;
 
 int lamb_read_config(lamb_config_t *config, const char *file);

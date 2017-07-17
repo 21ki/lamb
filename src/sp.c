@@ -196,6 +196,16 @@ int lamb_read_config(lamb_config_t *config, const char *file) {
         goto error;
     }
 
+    if (!lamb_get_bool(&cfg, "debug", &config->debug)) {
+        fprintf(stderr, "ERROR: Can't read debug parameter\n");
+        goto error;
+    }
+
+    if (!lamb_get_bool(&cfg, "daemon", &config->daemon)) {
+        fprintf(stderr, "ERROR: Can't read daemon parameter\n");
+        goto error;
+    }
+        
     if (!lamb_get_string(&cfg, "host", config->host, 16)) {
         fprintf(stderr, "ERROR: Invalid host IP address\n");
         goto error;
@@ -231,28 +241,33 @@ int lamb_read_config(lamb_config_t *config, const char *file) {
         goto error;
     }
 
-    if (!lamb_get_int(&cfg, "queue", &config->queue)) {
-        fprintf(stderr, "ERROR: Can't read queue parameter\n");
+    if (!lamb_get_int(&cfg, "send_queue", &config->send_queue)) {
+        fprintf(stderr, "ERROR: Can't read send_queue parameter\n");
         goto error;
     }
 
+    if (!lamb_get_int(&cfg, "recv_queue", &config->recv_queue)) {
+        fprintf(stderr, "ERROR: Can't read recv_queue parameter\n");
+        goto error;
+    }
+    
     if (!lamb_get_int(&cfg, "confirmed", &config->confirmed)) {
         fprintf(stderr, "ERROR: Can't read confirmed parameter\n");
         goto error;
     }
 
-    if (!lamb_get_int64(&cfg, "contimeout", &config->contimeout)) {
-        fprintf(stderr, "ERROR: Can't read contimeout parameter\n");
+    if (!lamb_get_int64(&cfg, "connect_timeout", &config->connect_timeout)) {
+        fprintf(stderr, "ERROR: Can't read connect_timeout parameter\n");
         goto error;
     }
 
-    if (!lamb_get_int64(&cfg, "sendtimeout", &config->sendtimeout)) {
-        fprintf(stderr, "ERROR: Can't read sendtimeout parameter\n");
+    if (!lamb_get_int64(&cfg, "send_timeout", &config->send_timeout)) {
+        fprintf(stderr, "ERROR: Can't read send_timeout parameter\n");
         goto error;
     }
 
-    if (!lamb_get_int64(&cfg, "recvtimeout", &config->recvtimeout)) {
-        fprintf(stderr, "ERROR: Can't read recvtimeout parameter\n");
+    if (!lamb_get_int64(&cfg, "recv_timeout", &config->recv_timeout)) {
+        fprintf(stderr, "ERROR: Can't read recv_timeout parameter\n");
         goto error;
     }
 
@@ -261,21 +276,36 @@ int lamb_read_config(lamb_config_t *config, const char *file) {
         goto error;
     }
 
-    if (!lamb_get_string(&cfg, "cache", config->cache, 128)) {
-        fprintf(stderr, "ERROR: Can't read cache parameter\n");
+    if (!lamb_get_string(&cfg, "db_host", config->db_host, 16)) {
+        fprintf(stderr, "ERROR: Can't read db_host parameter\n");
         goto error;
     }
 
-    if (!lamb_get_bool(&cfg, "debug", &config->debug)) {
-        fprintf(stderr, "ERROR: Can't read debug parameter\n");
+    if (!lamb_get_int(&cfg, "db_port", &config->db_port)) {
+        fprintf(stderr, "ERROR: Can't read db_port parameter\n");
         goto error;
     }
 
-    if (!lamb_get_bool(&cfg, "daemon", &config->daemon)) {
-        fprintf(stderr, "ERROR: Can't read daemon parameter\n");
+    if (!lamb_get_string(&cfg, "db_user", config->db_user, 64)) {
+        fprintf(stderr, "ERROR: Can't read db_user parameter\n");
         goto error;
     }
 
+    if (config->db_port < 1 || config->db_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid db_port number parameter\n");
+        goto error;
+    }
+        
+    if (!lamb_get_string(&cfg, "db_password", config->db_password, 128)) {
+        fprintf(stderr, "ERROR: Can't read db_password parameter\n");
+        goto error;
+    }
+
+    if (!lamb_get_string(&cfg, "db_name", config->db_name, 64)) {
+        fprintf(stderr, "ERROR: Can't read db_name parameter\n");
+        goto error;
+    }
+    
     lamb_config_destroy(&cfg);
     return 0;
 error:
