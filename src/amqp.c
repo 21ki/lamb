@@ -112,11 +112,8 @@ int lamb_amqp_consume_message(lamb_amqp_t *amqp, void *buff, size_t len, long lo
         return -1;
     }
 
-    if (envelope.message.body.len > len) {
-        memcpy(buff, envelope.message.body.bytes, len);
-    } else {
-        memcpy(buff, envelope.message.body.bytes, envelope.message.body.len);
-    }
+    len = (envelope.message.body.len > len) ? len : envelope.message.body.len;
+    memcpy(buff, envelope.message.body.bytes, len);
 
     amqp_destroy_envelope(&envelope);
 
