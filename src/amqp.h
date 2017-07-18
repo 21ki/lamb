@@ -13,19 +13,13 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 
-/* Maximum message body length */
-#define LAMB_MESSAGE_LEN 512
-
 typedef struct {
     amqp_socket_t *scoket;
     amqp_connection_state_t conn;
+    char *exchange;
+    char *key;
     amqp_bytes_t queue;
     pthread_mutex_t lock;
 } lamb_amqp_t;
-
-typedef struct {
-    amqp_message_t message;
-} lamb_amqp_message_t;
-
 
 #endif
