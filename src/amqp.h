@@ -13,6 +13,9 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 
+/* Maximum message body length */
+#define LAMB_MESSAGE_LEN 512
+
 typedef struct {
     amqp_socket_t *scoket;
     amqp_connection_state_t conn;

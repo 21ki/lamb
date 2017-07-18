@@ -27,7 +27,14 @@ int lamb_amqp_connect(lamb_amqp_t *amqp, const char *host, int port) {
 
 int lamb_amqp_login(lamb_amqp_t *amqp, const char *user, const char *password) {
     amqp_rpc_reply_t rep;
-    rep = amqp_login(amqp->conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, user, password);
+    rep = amqp_login(amqp->conn, "/", 0, AMQP_DEFAULT_FRAME_SIZE, 0, AMQP_SASL_METHOD_PLAIN, user, password);
+    if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
+        return -1;
+    }
+
+    amqp_channel_open(conn, 1);
+
+    rep = amqp_get_rpc_reply(conn);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
         return -1;
     }
@@ -76,18 +83,43 @@ int lamb_amqp_basic_consume(lamb_amqp_t *amqp) {
     return 0;
 }
 
-int lamb_amqp_pull_message(lamb_amqp_t *amqp, lamb_amqp_message_t *message) {
-    amqp_frame_t frame;
+int lamb_amqp_basic_publish(lamb_amqp_t *amqp, const char *exchange, const char *key, void *data, size_t len) {
     amqp_rpc_reply_t rep;
-    amqp_envelope_t envelope;
+    amqp_bytes_t message;
 
-    amqp_maybe_release_buffers(amqp->conn);
-    rep = amqp_consume_message(amqp->conn, &envelope, NULL, 0);
+    message.len = len;
+    message.bytes = data;
+
+    rep = amqp_basic_publish(amqp->conn, 1, amqp_cstring_bytes(exchange), amqp_cstring_bytes(key), 0, 0, NULL, message);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
         return -1;
     }
-    
+
+    return 0;
+}
+
+int lamb_amqp_consume_message(lamb_amqp_t *amqp, void *buff, size_t len, long long milliseconds) {
+    amqp_rpc_reply_t rep;
+    amqp_envelope_t envelope;
+    struct timeval timeout;
+
+    timeout.tv_sec = milliseconds / 1000;
+    timeout.tv_usec = (milliseconds % 1000) * 1000000;
+
+    amqp_maybe_release_buffers(amqp->conn);
+    rep = amqp_consume_message(amqp->conn, &envelope, ((milliseconds > 0) ? &timeout : NULL), 0);
+    if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
+        return -1;
+    }
+
+    if (envelope.message.body.len > len) {
+        memcpy(buff, envelope.message.body.bytes, len);
+    } else {
+        memcpy(buff, envelope.message.body.bytes, envelope.message.body.len);
+    }
+
     amqp_destroy_envelope(&envelope);
+
     return 0;
 }
 
