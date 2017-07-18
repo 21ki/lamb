@@ -42,6 +42,12 @@ int lamb_amqp_login(lamb_amqp_t *amqp, const char *user, const char *password) {
     return 0;
 }
 
+int lamb_amqp_setting(lamb_amqp_t *amqp, const char *exchange, const char *key) {
+    amqp->exchange = exchange;
+    amqp->key = key;
+    return 0;
+}
+
 int lamb_amqp_bind(lamb_amqp_t *amqp, char const *queue, char const *exchange, char const *key) {
     amqp_rpc_reply_t rep;
     amqp_queue_declare_ok_t *r; 
@@ -83,14 +89,14 @@ int lamb_amqp_basic_consume(lamb_amqp_t *amqp) {
     return 0;
 }
 
-int lamb_amqp_basic_publish(lamb_amqp_t *amqp, const char *exchange, const char *key, void *data, size_t len) {
+int lamb_amqp_push_message(lamb_amqp_t *amqp, void *data, size_t len) {
     amqp_rpc_reply_t rep;
     amqp_bytes_t message;
 
     message.len = len;
     message.bytes = data;
 
-    rep = amqp_basic_publish(amqp->conn, 1, amqp_cstring_bytes(exchange), amqp_cstring_bytes(key), 0, 0, NULL, message);
+    rep = amqp_basic_publish(amqp->conn, 1, amqp_cstring_bytes(amqp->exchange), amqp_cstring_bytes(amqp->key), 0, 0, NULL, message);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
         return -1;
     }
@@ -98,7 +104,7 @@ int lamb_amqp_basic_publish(lamb_amqp_t *amqp, const char *exchange, const char 
     return 0;
 }
 
-int lamb_amqp_consume_message(lamb_amqp_t *amqp, void *buff, size_t len, long long milliseconds) {
+int lamb_amqp_pull_message(lamb_amqp_t *amqp, void *buff, size_t len, long long milliseconds) {
     amqp_rpc_reply_t rep;
     amqp_envelope_t envelope;
     struct timeval timeout;

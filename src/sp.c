@@ -76,14 +76,35 @@ int main(int argc, char *argv[]) {
 }
 
 void lamb_fetch_loop(void) {
-    lamb_rabbit_t conn;
-    lamb_rabbit_data_t *data;
-    lamb_rabbit_connect(conn, "user", "password");
+    int err;
+    lamb_amqp_t amqp;
+    err = lamb_connect(&amqp, config.amqp_host, config.amqp_port);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connection to amqp server");
+        lamb_amqp_reconnect(&amqp);
+    }
 
+    err = lamb_amqp_login(&amqp, config.amqp_user, config.amqp_password);
+    if (err) {
+        lamb_errlog(config.logfile, "can't login amqp server");
+    }
+
+    err = lamb_amqp_basic_consume(&amqp);
+    if (err) {
+        lamb_errlog(config.logfile, "amqp consume message failed");
+    }
+
+    lamb_amqp_setting(&amqp, "test", "test");
+    
     while (true) {
-        if (send->list->len < config.queue) {
-            data = lamb_rabbit_get(conn);
-            lamb_queue_rpush(send, (void *)data);
+        char buff[512];
+        if (send->list->len < config.send_queue) {
+            err = lamb_amqp_pull_message(&amqp, (void *)buff, sizeof(buff), 0);
+            if (err) {
+                lamb_errlog(config.logfile, "receive amqp message error");
+            }
+            
+            lamb_queue_rpush(send, (void *)buff);
             continue;
         }
 
