@@ -23,8 +23,8 @@
 
 /* list iterator direction */
 typedef enum {
-    LIST_HEAD
-    LIST_TAIL
+    LIST_HEAD,
+    LIST_TAIL,
 } list_direction_t;
 
 /*  list node struct */

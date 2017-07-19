@@ -5,17 +5,19 @@
  * Update: 2017-07-10
  */
 
+#include <string.h>
+#include <stdbool.h>
 #include <libconfig.h>
 
-int lamb_read_config(config_t *cfg, const char *file) {
+int lamb_read_file(config_t *cfg, const char *file) {
     if (!cfg || !file) {
         return -1;
     }
 
-    config_init(&cfg);
+    config_init(cfg);
 
-    if (!config_read_file(&cfg, file)) {
-        config_destroy(&cfg);
+    if (!config_read_file(cfg, file)) {
+        config_destroy(cfg);
         return -1;
     }
 
@@ -35,7 +37,7 @@ int lamb_get_string(const config_t *cfg, const char *key, char *val, size_t len)
 }
 
 int lamb_get_int(const config_t *cfg, const char *key, int *val) {
-    if (!config_lookup_int(&cfg, key, val)) {
+    if (!config_lookup_int(cfg, key, val)) {
         return -1;
     }
 
@@ -43,7 +45,7 @@ int lamb_get_int(const config_t *cfg, const char *key, int *val) {
 }
 
 int lamb_get_int64(const config_t *cfg, const char *key, long long *val) {
-    if (!config_lookup_int64(&cfg, key, val)) {
+    if (!config_lookup_int64(cfg, key, val)) {
         return -1;
     }
 
@@ -52,7 +54,7 @@ int lamb_get_int64(const config_t *cfg, const char *key, long long *val) {
 
 int lamb_get_bool(const config_t *cfg, const char *key, bool *val) {
     int buff;
-    if (!config_lookup_bool(&cfg, key, &buff)) {
+    if (!config_lookup_bool(cfg, key, &buff)) {
         return -1;
     }
 

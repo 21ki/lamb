@@ -6,6 +6,9 @@
  */
 
 #include <stdio.h>
+#include <string.h>
+#include <time.h>
+#include <sys/time.h>
 #include "amqp.h"
 
 int lamb_amqp_connect(lamb_amqp_t *amqp, const char *host, int port) {
@@ -32,9 +35,9 @@ int lamb_amqp_login(lamb_amqp_t *amqp, const char *user, const char *password) {
         return -1;
     }
 
-    amqp_channel_open(conn, 1);
+    amqp_channel_open(amqp->conn, 1);
 
-    rep = amqp_get_rpc_reply(conn);
+    rep = amqp_get_rpc_reply(amqp->conn);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
         return -1;
     }
@@ -42,7 +45,7 @@ int lamb_amqp_login(lamb_amqp_t *amqp, const char *user, const char *password) {
     return 0;
 }
 
-int lamb_amqp_setting(lamb_amqp_t *amqp, const char *exchange, const char *key) {
+int lamb_amqp_setting(lamb_amqp_t *amqp, char *exchange, char *key) {
     amqp->exchange = exchange;
     amqp->key = key;
     return 0;
@@ -50,7 +53,7 @@ int lamb_amqp_setting(lamb_amqp_t *amqp, const char *exchange, const char *key) 
 
 int lamb_amqp_basic_consume(lamb_amqp_t *amqp, char const *queue) {
     amqp_rpc_reply_t rep;
-    amqp_basic_consume(amqp->conn, 1, queue, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
+    amqp_basic_consume(amqp->conn, 1, amqp_cstring_bytes(queue), amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
         return -1;
     }
@@ -59,14 +62,15 @@ int lamb_amqp_basic_consume(lamb_amqp_t *amqp, char const *queue) {
 }
 
 int lamb_amqp_push_message(lamb_amqp_t *amqp, void *data, size_t len) {
+    int status;
     amqp_rpc_reply_t rep;
     amqp_bytes_t message;
 
     message.len = len;
     message.bytes = data;
 
-    rep = amqp_basic_publish(amqp->conn, 1, amqp_cstring_bytes(amqp->exchange), amqp_cstring_bytes(amqp->key), 0, 0, NULL, message);
-    if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
+    status = amqp_basic_publish(amqp->conn, 1, amqp_cstring_bytes(amqp->exchange), amqp_cstring_bytes(amqp->key), 0, 0, NULL, message);
+    if (!status) {
         return -1;
     }
 

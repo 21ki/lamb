@@ -10,7 +10,7 @@
 
 void lamb_queue_init(lamb_queue_t *queue) {
     queue->list = list_new();
-    pthread_mutex_init(queue->lock, NULL);
+    pthread_mutex_init(&queue->lock, NULL);
     return;
 }
 

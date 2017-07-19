@@ -8,11 +8,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
+#include <signal.h>
 
 void lamb_signal(void) {
     signal(SIGCHLD, SIG_IGN);
@@ -24,7 +26,7 @@ void lamb_daemon(void) {
     int fd, maxfd;
     switch (fork()) {
         case -1:
-            return -1;
+            return;
         case 0:
             break;
         default:
@@ -32,12 +34,12 @@ void lamb_daemon(void) {
     }
 
     if (setsid() == -1) {
-        return -1;
+        return;
     }
 
     switch (fork()) {
         case -1:
-            return -1;
+            return;
         case 0:
             break;
         default:
@@ -58,18 +60,18 @@ void lamb_daemon(void) {
     close(STDIN_FILENO);
     fd = open("/dev/null", O_RDWR);
     if (fd != STDIN_FILENO) {
-        return -1;
+        return;
     }
 
     if (dup2(STDIN_FILENO, STDOUT_FILENO) != STDOUT_FILENO) {
-        return -1;
+        return;
     }
 
     if (dup2(STDIN_FILENO, STDERR_FILENO) != STDERR_FILENO) {
-        return -1;
+        return;
     }
 
-    return 0;    
+    return;
 }
 
 void lamb_sleep(unsigned long long milliseconds) {
