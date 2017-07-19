@@ -11,5 +11,7 @@
 void lamb_signal(void);
 void lamb_daemon(void);
 void lamb_sleep(unsigned long long milliseconds);
+void lamb_errlog(const char *logfile, const char *fmt, ...);
+int lamb_str2list(char *string, char *list[], int len);
 
 #endif

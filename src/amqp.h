@@ -22,4 +22,12 @@ typedef struct {
     pthread_mutex_t lock;
 } lamb_amqp_t;
 
+int lamb_amqp_connect(lamb_amqp_t *amqp, const char *host, int port);
+int lamb_amqp_login(lamb_amqp_t *amqp, const char *user, const char *password);
+int lamb_amqp_setting(lamb_amqp_t *amqp, const char *exchange, const char *key);
+int lamb_amqp_basic_consume(lamb_amqp_t *amqp, char const *queue);
+int lamb_amqp_push_message(lamb_amqp_t *amqp, void *data, size_t len);
+int lamb_amqp_pull_message(lamb_amqp_t *amqp, void *buff, size_t len, long long milliseconds);
+int lamb_amqp_destroy_connection(lamb_amqp_t *amqp);
+
 #endif

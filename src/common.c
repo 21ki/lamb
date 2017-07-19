@@ -104,3 +104,21 @@ void lamb_errlog(const char *logfile, const char *fmt, ...) {
 
     return;
 }
+
+int lamb_str2list(char *string, char *list[], int len) {
+    if (!string) {
+        return 0;
+    }
+
+    int i = 0;
+    char *val = NULL;
+
+    val = strtok(string, ",");    
+    while (val) {
+        list[i] = val;
+        val = strtok(NULL, ",");
+        i++;
+    }
+
+    return i;
+}

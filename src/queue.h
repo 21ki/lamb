@@ -17,5 +17,9 @@ typedef struct {
 } lamb_queue_t;
 
 void lamb_queue_init(lamb_queue_t *queue);
+list_node_t *lamb_queue_rpush(lamb_queue_t *queue, void *data);
+list_node_t *lamb_queue_lpop(lamb_queue_t *queue);
+void lamb_queue_remove(lamb_queue_t *queue, list_node_t *node);
+void lamb_queue_destroy(lamb_queue_t *queue);
 
 #endif

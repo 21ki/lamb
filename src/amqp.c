@@ -48,40 +48,9 @@ int lamb_amqp_setting(lamb_amqp_t *amqp, const char *exchange, const char *key) 
     return 0;
 }
 
-int lamb_amqp_bind(lamb_amqp_t *amqp, char const *queue, char const *exchange, char const *key) {
+int lamb_amqp_basic_consume(lamb_amqp_t *amqp, char const *queue) {
     amqp_rpc_reply_t rep;
-    amqp_queue_declare_ok_t *r; 
-
-    amqp_channel_open(amqp->conn, 1);
-    rep = amqp_get_rpc_reply(amqp->conn);
-    if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
-        return -1;
-    }
-    
-    r = amqp_queue_declare(amqp->conn, 1, amqp_empty_bytes, 0, 0, 0, 1, amqp_empty_table);
-    rep = amqp_get_rpc_reply(conn);
-    if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
-        return 0;
-    }
-    
-    amqp->queue = amqp_bytes_malloc_dup(r->queue);
-    
-    if (amqp->queue.bytes == NULL) {
-        return -1;
-    }
-
-    amqp_queue_bind(amqp->conn, 1, amqp->queue, amqp_cstring_bytes(exchange), amqp_cstring_bytes(key), amqp_empty_table);
-    rep = amqp_get_rpc_reply(conn);
-    if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
-        return -1;
-    }
-
-    return 0;
-}
-
-int lamb_amqp_basic_consume(lamb_amqp_t *amqp) {
-    amqp_rpc_reply_t rep;
-    amqp_basic_consume(amqp->conn, 1, amqp->queue, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
+    amqp_basic_consume(amqp->conn, 1, queue, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
         return -1;
     }
@@ -123,11 +92,6 @@ int lamb_amqp_pull_message(lamb_amqp_t *amqp, void *buff, size_t len, long long 
 
     amqp_destroy_envelope(&envelope);
 
-    return 0;
-}
-
-int lamb_amqp_destroy_message(lamb_amqp_message_t *message) {
-    amqp_destroy_message(&message->message);
     return 0;
 }
 
