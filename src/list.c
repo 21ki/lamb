@@ -267,3 +267,4 @@ void list_remove(list_t *self, list_node_t *node) {
     --self->len;
     return;
 }
+

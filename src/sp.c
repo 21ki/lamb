@@ -7,8 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 #include <cmpp.h>
 #include "sp.h"
 #include "config.h"
@@ -37,9 +37,6 @@ int main(int argc, char *argv[]) {
         case 'c':
             file = optarg;
             break;
-        default:
-            printf("usage: %s -c config file\n", argv[0]);
-            return 0;
         }
         opt = getopt(argc, argv, optstring);
     }
@@ -125,15 +122,16 @@ void *lamb_fetch_work(void *data) {
 
     while (true) {
         if (send.list->len < config.send) {
-            void *buff = malloc(512);
-            err = lamb_amqp_pull_message(&amqp, buff, 512, 0);
+	  //void *buff = malloc(512);
+	    lamb_message_t *message = malloc(sizeof(lamb_message_t));
+            err = lamb_amqp_pull_message(&amqp, message, 0);
             if (err) {
-                free(buff);
+	        lamb_free_message(message);
                 lamb_errlog(config.logfile, "pull amqp message error");
                 continue;
             }
             
-            if (lamb_queue_rpush(&send, buff) == NULL) {
+            if (lamb_queue_rpush(&send, (void *)message) == NULL) {
                 lamb_errlog(config.logfile, "push queue message error");
             }
             continue;
@@ -150,16 +148,19 @@ void *lamb_fetch_work(void *data) {
 
 void lamb_send_loop(void) {
     list_node_t *node;
+    lamb_message_t *message;
 
     while (true) {
         node = lamb_queue_lpop(&send);
         if (node != NULL) {
-            printf("%s\n", (char *)node->val);
+	    message = (lamb_message_t *)node->val;
+            //printf("%s\n", (char *)message->data);
             free(node);
-            continue;
+	    lamb_free_message(message);
+	    continue;
         }
 
-        lamb_sleep(50);
+        lamb_sleep(10);
     }
 
     /* 
@@ -329,12 +330,12 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     }
 
     if (lamb_get_int(&cfg, "send", &conf->send) != 0) {
-        fprintf(stderr, "ERROR: Can't read send queue parameter\n");
+        fprintf(stderr, "ERROR: Can't read send parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "recv", &conf->recv) != 0) {
-        fprintf(stderr, "ERROR: Can't read recv queue parameter\n");
+        fprintf(stderr, "ERROR: Can't read recv parameter\n");
         goto error;
     }
     

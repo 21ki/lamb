@@ -5,4 +5,4 @@ obj=src/amqp.c src/common.c src/config.c src/list.c src/queue.c
 all: sp
 
 sp: src/sp.c src/sp.h $(dep)
-	gcc src/sp.c $(obj) -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lrabbitmq -o client
+	gcc -g src/sp.c $(obj) -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lrabbitmq -o client
