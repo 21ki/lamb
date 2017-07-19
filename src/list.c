@@ -6,7 +6,7 @@
  * Update: 2017-07-14
  */
 
-
+#include <stdlib.h>
 #include "list.h"
 
 /* Allocates a new list_node_t. NULL on failure */

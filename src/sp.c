@@ -37,6 +37,9 @@ int main(int argc, char *argv[]) {
         case 'c':
             file = optarg;
             break;
+        default:
+            printf("usage: %s -c config file\n", argv[0]);
+            return 0;
         }
         opt = getopt(argc, argv, optstring);
     }
@@ -274,7 +277,7 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     }
 
     config_t cfg;
-    if (!lamb_read_file(&cfg, file)) {
+    if (lamb_read_file(&cfg, file) != 0) {
         fprintf(stderr, "ERROR: Can't open the %s configuration file\n", file);
         goto error;
     }
