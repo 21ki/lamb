@@ -54,6 +54,7 @@ int lamb_amqp_setting(lamb_amqp_t *amqp, char *exchange, char *key) {
 int lamb_amqp_basic_consume(lamb_amqp_t *amqp, char const *queue) {
     amqp_rpc_reply_t rep;
     amqp_basic_consume(amqp->conn, 1, amqp_cstring_bytes(queue), amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
+    rep = amqp_get_rpc_reply(amqp->conn);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
         return -1;
     }
