@@ -22,8 +22,10 @@ cmpp_sp_t cmpp;
 lamb_queue_t send;
 lamb_queue_t recv;
 lamb_config_t config;
+lamb_db_t cache;
 int unconfirmed = 0;
 pthread_t fetch_pool[MAX_LIST];
+
 
 int main(int argc, char *argv[]) {
     char *file = "lamb.conf";
@@ -54,7 +56,8 @@ int main(int argc, char *argv[]) {
     /* Signal event processing */
     lamb_signal();
 
-    /* Initialization message queue */
+    /* Initialization working */
+    lamb_db_init(&cache, "cache");
     lamb_queue_init(&send);
     lamb_queue_init(&recv);
 
@@ -64,12 +67,12 @@ int main(int argc, char *argv[]) {
     /* Start worker thread */
 
     /* 
-    if(lamb_cmpp_init()) {
-        lamb_fetch_loop();
-        lamb_update_loop();
-        lamb_send_loop();
-        lamb_recv_loop();
-    }
+       if(lamb_cmpp_init()) {
+       lamb_fetch_loop();
+       lamb_update_loop();
+       lamb_send_loop();
+       lamb_recv_loop();
+       }
     */
     
     /* Master worker thread */
@@ -122,15 +125,14 @@ void *lamb_fetch_work(void *data) {
 
     while (true) {
         if (send.list->len < config.send) {
-	  //void *buff = malloc(512);
-	    lamb_message_t *message = malloc(sizeof(lamb_message_t));
+            lamb_message_t *message = malloc(sizeof(lamb_message_t));
             err = lamb_amqp_pull_message(&amqp, message, 0);
             if (err) {
-	        lamb_free_message(message);
+                lamb_free_message(message);
                 lamb_errlog(config.logfile, "pull amqp message error");
                 continue;
             }
-            
+
             if (lamb_queue_rpush(&send, (void *)message) == NULL) {
                 lamb_errlog(config.logfile, "push queue message error");
             }
@@ -151,115 +153,177 @@ void lamb_send_loop(void) {
     lamb_message_t *message;
 
     while (true) {
+        if (unconfirmed >= config.unconfirmed) {
+            lamb_sleep(10);
+            continue;
+        }
+        
         node = lamb_queue_lpop(&send);
         if (node != NULL) {
-	    message = (lamb_message_t *)node->val;
-            //printf("%s\n", (char *)message->data);
+            message = (lamb_message_t *)node->val;
+
+            /* code */
+            long seqid;
+            char *phone = message.phone;
+            char *content = message.content;
+
+            seqid = cmpp_submit(&cmpp, phone, content, true, config.spcode, "UCS-2", config.spid);
+            if (seqid > 0) {
+                unconfirmed++;
+                lamb_db_put(&cache, message.seqid, strlen(message.seqid), message.id, strlen(message.id));
+            }
+            
             free(node);
-	    lamb_free_message(message);
-	    continue;
+            lamb_free_message(message);
+            continue;
         }
 
         lamb_sleep(10);
     }
 
-    /* 
-       int err;
-       list_node_t *node;
-       CMPP_SUBMIT_T *pack;
-
-       cmpp_init_sp(&cmpp, "ip", "port");
-       cmpp_connect(&cmpp, "901234", "123456");
-
-       while (true) {
-       node = lamb_queue_lpop(send);
-       if (node != NULL) {
-       pack = (CMPP_SUBMIT_T *)node->val;
-       if (cmpp_submit(&cmpp, pack->phone, pack->message, pack->delivery,
-       pack->serviceId, pack->msgFmt, pack->msgSrc)) {
-       free(node);
-       continue;
-       }
-
-       if (!cmpp_check_connnect(&cmpp)) {
-       while (!cmpp_reconnect()) {
-       lamb_errlog(config.logfile, "cmpp server connection failed");
-       lamb_sleep(3000);
-       }
-       }
-
-       free(node);
-       }
-
-       lamb_sleep(10);
-       }
-    */
+    return;
 }
 
 void lamb_recv_loop(void) {
-    /* 
-       CMPP_PACK_T pack;
-       CMPP_HEAD_T *head;
-       CMPP_SUBMIT_RESP_T *resp;
+    int err;
+    cmpp_pack_t *pack;
 
-       while (true) {
-       if (!cmpp_recv(&cmpp, &pack, sizeof(pack))) {
-       if (cmpp_check_connnect(&cmpp)) {
-       continue;
-       }
+    while (true) {
+        if (!cmpp.ok) {
+            lamb_errlog(config.logfile, "cmpp connect status error");
+            lamb_sleep(3000);
+            continue;
+        }
+        
+        pack = malloc(sizeof(cmpp_pack_t));
+        err = cmpp_recv(&cmpp, pack, sizeof(pack));
+        if (err) {
+            cmpp_free_pack(pack);
+            lamb_errlog(config.logfile, "error: %s", cmpp_get_error(err));
+            lamb_sleep(10);
+            continue;
+        }
 
-       while (!cmpp_reconnect()) {
-       lamb_errlog(config.logfile, "cmpp server connection failed");
-       lamb_sleep(3000);
-       }
-       }
+        switch (pack->commandId) {
+        case CMPP_SUBMIT_RESP:
+            size_t len;
+            char seqid[64];
+            char *id = NULL;
+            lamb_update_t *update;
+            lamb_message_t *message;
+            cmpp_submit_resp_t *csrp;
 
-       head = (CMPP_HEAD_T *)pack;
-       if (head->commandId == CMPP_SUBMIT_RESP) {
-       resp = (CMPP_SUBMIT_RESP_T *)pack;
-       lamb_queue_rpush(recv, (void *)resp->msgId);
-       }
-       }
-    
-       return;
-    */
+            unconfirmed--;
+            csrp = (cmpp_submit_resp_t *)pack;
+            if (csrp->result != 0) {
+                cmpp_free_pack(pack);
+                lamb_errlog(config.logfile, "receive cmpp_submit_resp packet error result = %d", csrp->result);
+                continue;
+            }
+            
+            update = malloc(sizeof(lamb_update_t));
+            message = malloc(sizeof(lamb_message_t));
+
+            update.type = LAMB_UPDATE;
+            update.msgId = csrp->msgId;
+            sprintf(seqid, "%ld", csrp->sequenceId);
+            id = lamb_db_get(&cache, seqid, strlen(seqid), &len);
+            if (id > 0) {
+                update.id = atoll(id);
+                message.len = sizeof(lamb_update_t);
+                message.data = update;
+                lamb_queue_rpush(&recv, message);
+            } else {
+                free(update);
+                free(message);
+            }
+            break;
+
+        case CMPP_DELIVER:
+            /* other */
+            break;
+        }
+    }
+
+    return;
 }
 
-void lamb_update_loop(void) {
-    /* 
-       int err;
-       list_node_t *node;
-       while (true) {
-       node = lamb_queue_lpop(recv);
-       if (!node) {
-       lamb_sleep(10);
-       continue;
-       }
-        
-       err = lamb_report_update(&db, node->val);
-       if (err) {
-       lamb_errlog(config.logfile, "update message report to database error");
-       lamb_sleep(100);
-       }
+void *lamb_update_loop(void *data) {
+    int err;
+    lamb_amqp_t amqp;
 
-       free(node);
-       }
-    */
+    err = lamb_amqp_connect(&amqp, config.db_host, config.db_port);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connection to amqp server");
+    }
+
+    err = lamb_amqp_login(&amqp, config.db_user, config.db_password);
+    if (err) {
+        lamb_errlog(config.logfile, "login amqp server failed");
+    }
+
+    err = lamb_amqp_producer(&amqp, "lamb.inbox", "direct", "inbox");
+    
+    if (err) {
+        lamb_errlog(config.logfile, "amqp set producer mode failed");
+    }
+
+    while (true) {
+        list_node_t *node;
+        lamb_message_t *message;
+
+        node = lamb_queue_lpop(&recv);
+        if (node != NULL) {
+            message = (lamb_message_t *)node->val;
+
+            /* code */
+            err = lamb_amqp_push_message(&amqp, message->data, message->len);
+            if (err) {
+                lamb_errlog(config.logfile, "amqp push message failed");
+            }
+
+            lamb_free_message(message);
+            free(node);
+            continue;
+        }
+
+        lamb_sleep(10);
+    }
+
+    lamb_amqp_destroy_connection(&amqp);
+    pthread_exit(NULL);
+
+    return NULL;
 }
 
 int lamb_cmpp_init(void) {
     int err;
 
+    /* setting cmpp socket parameter */
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_CONTIMEOUT, config.timeout);
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
+
+    /* Initialization cmpp connection */
     err = cmpp_init_sp(&cmpp, config.host, config.port);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to cmpp %s server", config.host);
+        if (config.daemon) {
+            fprintf(stderr, "can't connect to cmpp %s server", config.host);
+        } else {
+            lamb_errlog(config.logfile, "can't connect to cmpp %s server", config.host);
+        }
         return -1;
     }
 
+    /* login to cmpp gateway */
     err = cmpp_connect(&cmpp, config.user, config.password);
     if (err) {
-        lamb_errlog(config.logfile, "login cmpp %s gateway failed", config.host);
-        return 0;
+        if (config.daemon) {
+            fprintf(stderr, "login cmpp %s gateway failed", config.host);
+        } else {
+            lamb_errlog(config.logfile, "login cmpp %s gateway failed", config.host);
+        }
+        return -1;
     }
 
     return 0;

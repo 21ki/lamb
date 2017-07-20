@@ -18,12 +18,12 @@ int lamb_amqp_connect(lamb_amqp_t *amqp, const char *host, int port) {
     amqp->socket = amqp_tcp_socket_new(amqp->conn);
 
     if (!amqp->socket) {
-        return -1;
+        return 1;
     }
 
     status = amqp_socket_open(amqp->socket, host, port);
     if (status) {
-        return -1;
+        return 2;
     }
 
     return 0;
@@ -31,16 +31,17 @@ int lamb_amqp_connect(lamb_amqp_t *amqp, const char *host, int port) {
 
 int lamb_amqp_login(lamb_amqp_t *amqp, const char *user, const char *password) {
     amqp_rpc_reply_t rep;
-    rep = amqp_login(amqp->conn, "/", 0, AMQP_DEFAULT_FRAME_SIZE, 0, AMQP_SASL_METHOD_PLAIN, user, password);
+    rep = amqp_login(amqp->conn, "/", 0, AMQP_DEFAULT_FRAME_SIZE, 0,
+                     AMQP_SASL_METHOD_PLAIN, user, password);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
-        return -1;
+        return 1;
     }
 
     amqp_channel_open(amqp->conn, 1);
 
     rep = amqp_get_rpc_reply(amqp->conn);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
-        return -1;
+        return 2;
     }
     
     return 0;
@@ -52,9 +53,43 @@ int lamb_amqp_setting(lamb_amqp_t *amqp, char *exchange, char *key) {
     return 0;
 }
 
+int lamb_amqp_producer(lamb_amqp_t *amqp, char const *exchange, const char *type, char const *key) {
+    amqp_rpc_reply_t rep;
+    amqp_queue_declare_ok_t *r;
+
+    /* amqp declare exchange */
+    amqp_exchange_declare(amqp->conn, 1, amqp_cstring_bytes(exchange), amqp_cstring_bytes(type), 0, 1, 0, 0, amqp_empty_table);
+    rep = amqp_get_rpc_reply(amqp->conn);
+    if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
+        return 1;
+    }
+
+    /* amqp dcelare queue */
+    r = amqp_queue_declare(conn, 1, amqp_empty_bytes, 0, 0, 0, 1, amqp_empty_table);
+    rep = amqp_get_rpc_reply(amqp->conn);
+    if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
+        return 2;
+    }
+
+    amqp->queue = amqp_bytes_malloc_dup(r->queue);
+    if (amqp->queue.bytes == NULL) {
+        return 3;
+    }
+
+    /* amqp exchange bing queue */
+    rep = amqp_queue_bind(conn, 1, amqp->queue, amqp_cstring_bytes(exchange),
+                          amqp_cstring_bytes(key), amqp_empty_table);
+    if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
+        return 4;
+    }
+    
+    return 0;
+}
+
 int lamb_amqp_basic_consume(lamb_amqp_t *amqp, char const *queue) {
     amqp_rpc_reply_t rep;
-    amqp_basic_consume(amqp->conn, 1, amqp_cstring_bytes(queue), amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
+    amqp_basic_consume(amqp->conn, 1, amqp_cstring_bytes(queue), amqp_empty_bytes,
+                       0, 1, 0, amqp_empty_table);
     rep = amqp_get_rpc_reply(amqp->conn);
     if (rep.reply_type != AMQP_RESPONSE_NORMAL) {
         return -1;
@@ -71,7 +106,8 @@ int lamb_amqp_push_message(lamb_amqp_t *amqp, void *data, size_t len) {
     message.len = len;
     message.bytes = data;
 
-    status = amqp_basic_publish(amqp->conn, 1, amqp_cstring_bytes(amqp->exchange), amqp_cstring_bytes(amqp->key), 0, 0, NULL, message);
+    status = amqp_basic_publish(amqp->conn, 1, amqp_cstring_bytes(amqp->exchange),
+                                amqp_cstring_bytes(amqp->key), 0, 0, NULL, message);
     if (!status) {
         return -1;
     }
@@ -112,12 +148,12 @@ int lamb_amqp_destroy_connection(lamb_amqp_t *amqp) {
 
 
 int lamb_free_message(lamb_message_t *message) {
-  if (message && message->data) {
-    message->len = 0;
-    free(message->data);
-    free(message);
-    return 0;
-  }
+    if (message && message->data) {
+        message->len = 0;
+        free(message->data);
+        free(message);
+        return 0;
+    }
 
-  return -1;
+    return -1;
 }

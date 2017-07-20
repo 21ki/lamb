@@ -10,6 +10,9 @@
 
 #include <stdbool.h>
 
+#define LAMB_UPDATE 1
+#define LAMB_DELIVER 2
+
 typedef struct {
     bool debug;
     bool daemon;
@@ -32,6 +35,23 @@ typedef struct {
     char db_password[128];
     char queue[128];
 } lamb_config_t;
+
+
+typedef struct {
+    int type;
+    unsigned long long id;
+    unsigned long long msgId;
+} lamb_update_t;
+
+typedef struct {
+    int type;
+    unsigned long long msgId;
+    int status;
+} lamb_report_t;
+
+typedef struct {
+    int type;
+} lamb_deliver_t;
 
 int lamb_read_config(lamb_config_t *conf, const char *file);
 void lamb_fetch_loop(void);
