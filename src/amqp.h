@@ -30,7 +30,8 @@ typedef struct {
 int lamb_amqp_connect(lamb_amqp_t *amqp, const char *host, int port);
 int lamb_amqp_login(lamb_amqp_t *amqp, const char *user, const char *password);
 int lamb_amqp_setting(lamb_amqp_t *amqp, char *exchange, char *key);
-int lamb_amqp_basic_consume(lamb_amqp_t *amqp, char const *queue);
+int lamb_amqp_producer(lamb_amqp_t *amqp, char const *exchange, const char *type, char const *key);
+int lamb_amqp_consume(lamb_amqp_t *amqp, char const *queue);
 int lamb_amqp_push_message(lamb_amqp_t *amqp, void *data, size_t len);
 int lamb_amqp_pull_message(lamb_amqp_t *amqp, lamb_message_t *message, long long milliseconds);
 int lamb_amqp_destroy_connection(lamb_amqp_t *amqp);

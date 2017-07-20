@@ -18,4 +18,11 @@ typedef struct {
     leveldb_writeoptions_t *woptions;
 } lamb_db_t;
 
+int lamb_db_init(lamb_db_t *db, const char *name);
+int lamb_db_open(lamb_db_t *db, const char *name);
+int lamb_db_put(lamb_db_t *db, const char *key, size_t keylen, const char *val, size_t vallen);
+char *lamb_db_get(lamb_db_t *db, const char *key, size_t keylen, size_t *len);
+int lamb_db_delete(lamb_db_t *db, const char *key, size_t keylen);
+int lamb_db_close(lamb_db_t *db);
+
 #endif

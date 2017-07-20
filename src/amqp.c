@@ -86,7 +86,7 @@ int lamb_amqp_producer(lamb_amqp_t *amqp, char const *exchange, const char *type
     return 0;
 }
 
-int lamb_amqp_basic_consume(lamb_amqp_t *amqp, char const *queue) {
+int lamb_amqp_consume(lamb_amqp_t *amqp, char const *queue) {
     amqp_rpc_reply_t rep;
     amqp_basic_consume(amqp->conn, 1, amqp_cstring_bytes(queue), amqp_empty_bytes,
                        0, 1, 0, amqp_empty_table);

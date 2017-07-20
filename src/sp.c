@@ -105,7 +105,7 @@ void lamb_fetch_loop(void) {
     return;
 }
 
-void *lamb_fetch_work(void *data) {
+void *lamb_fetch_work(void *queue) {
     int err;
     lamb_amqp_t amqp;
     err = lamb_amqp_connect(&amqp, config.db_host, config.db_port);
@@ -118,7 +118,7 @@ void *lamb_fetch_work(void *data) {
         lamb_errlog(config.logfile, "login amqp server failed");
     }
 
-    err = lamb_amqp_basic_consume(&amqp, (char const *)data);
+    err = lamb_amqp_consume(&amqp, (char const *)queue);
     if (err) {
         lamb_errlog(config.logfile, "set consume mode failed");
     }

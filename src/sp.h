@@ -55,10 +55,10 @@ typedef struct {
 
 int lamb_read_config(lamb_config_t *conf, const char *file);
 void lamb_fetch_loop(void);
-void *lamb_fetch_work(void *data);
+void *lamb_fetch_work(void *queue);
 void lamb_send_loop(void);
 void lamb_recv_loop(void);
-void lamb_update_loop(void);
+void *lamb_update_loop(void *data);
 int lamb_cmpp_init(void);
 void lamb_event_loop(void);
 
