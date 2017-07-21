@@ -110,7 +110,7 @@ void lamb_list_destroy(lamb_list_t *self) {
         curr = next;
     }
 
-    pthread_mutex_destroy(self);
+    pthread_mutex_destroy(&self->lock);
     free(self);
 
     return;
