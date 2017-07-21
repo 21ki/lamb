@@ -150,7 +150,7 @@ void *lamb_fetch_work(void *queue) {
     
     lamb_amqp_destroy_connection(&amqp);
     pthread_exit(NULL);
-    
+
     return NULL;
 }
 

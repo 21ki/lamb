@@ -44,6 +44,12 @@ typedef struct {
 } lamb_update_t;
 
 typedef struct {
+    unsigned long long id;
+    char phone[16];
+    char content[256];
+} lamb_message_t;
+
+typedef struct {
     int type;
     unsigned long long msgId;
     int status;
