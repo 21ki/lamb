@@ -80,7 +80,7 @@ int lamb_db_delete(lamb_db_t *db, const char *key, size_t keylen) {
 }
 
 int lamb_db_close(lamb_db_t *db) {
-    cahr *err = NULL;
+    char *err = NULL;
 
     leveldb_close(db->handle);
     leveldb_destroy_db(db->options, db->name, &err);
@@ -94,5 +94,3 @@ int lamb_db_close(lamb_db_t *db) {
 
     return 0;
 }
-
-#endif
