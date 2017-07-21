@@ -136,9 +136,12 @@ void *lamb_fetch_work(void *queue) {
                 continue;
             }
 
-            if (lamb_list_rpush(send, (void *)message) == NULL) {
+            pthread_mutex_lock(&send->lock);
+            if (lamb_list_rpush(send, lamb_list_node_new(message)) == NULL) {
                 lamb_errlog(config.logfile, "push queue message error");
             }
+            pthread_mutex_unlock(&send->lock);
+            
             continue;
         }
         
@@ -175,9 +178,9 @@ void lamb_send_loop(void) {
                 unconfirmed++;
                 lamb_db_put(&cache, message.seqid, strlen(message.seqid), message.id, strlen(message.id));
             }
-            
-            free(node);
+
             lamb_free_message(message);
+            free(node);
             continue;
         }
 
@@ -197,7 +200,7 @@ void lamb_recv_loop(void) {
             lamb_sleep(3000);
             continue;
         }
-        
+
         pack = malloc(sizeof(cmpp_pack_t));
         err = cmpp_recv(&cmpp, pack, sizeof(pack));
         if (err) {
@@ -303,9 +306,9 @@ int lamb_cmpp_init(void) {
     int err;
 
     /* setting cmpp socket parameter */
-    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_CONTIMEOUT, config.timeout);
-    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
-    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
+    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_CONTIMEOUT, config.timeout);
+    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
+    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
 
     /* Initialization cmpp connection */
     err = cmpp_init_sp(&cmpp, config.host, config.port);
