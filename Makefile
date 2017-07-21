@@ -13,7 +13,7 @@ src/amqp.o: src/amqp.c src/amqp.h
 	$(CC) $(CFLAGS) -c src/amqp.c -o src/amqp.o
 
 src/utils.o: src/utils.c src/utils.h
-	$(CC) $(CFLAGS) -c src/common.c -o src/common.o
+	$(CC) $(CFLAGS) -c src/utils.c -o src/utils.o
 
 src/config.o: src/config.c src/config.h
 	$(CC) $(CFLAGS) -c src/config.c -o src/config.o
