@@ -173,7 +173,7 @@ void lamb_send_loop(void) {
             char *phone = message.phone;
             char *content = message.content;
 
-            seqid = cmpp_submit(&cmpp, phone, content, true, config.spcode, "UCS-2", config.spid);
+            seqid = cmpp_submit(&cmpp, phone, content, true, config.spcode, config.encoding, config.spid);
             if (seqid > 0) {
                 unconfirmed++;
                 lamb_db_put(&cache, message.seqid, strlen(message.seqid), message.id, strlen(message.id));
@@ -396,6 +396,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_string(&cfg, "spcode", conf->spcode, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read spcode parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "encoding", conf->encoding, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read encoding parameter\n");
         goto error;
     }
 

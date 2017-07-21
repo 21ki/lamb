@@ -22,6 +22,7 @@ typedef struct {
     char password[128];
     char spid[8];
     char spcode[16];
+    char encoding[32];
     int send;
     int recv;
     int unconfirmed;
@@ -35,7 +36,6 @@ typedef struct {
     char db_password[128];
     char queue[128];
 } lamb_config_t;
-
 
 typedef struct {
     int type;
