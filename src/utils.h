@@ -5,8 +5,8 @@
  * Update: 2017-07-14
  */
 
-#ifndef _LAMB_COMMON_H
-#define _LAMB_COMMON_H
+#ifndef _LAMB_UTILS_H
+#define _LAMB_UTILS_H
 
 void lamb_signal(void);
 void lamb_daemon(void);

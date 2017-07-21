@@ -9,18 +9,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <cmpp.h>
 #include "sp.h"
+#include "utils.h"
 #include "config.h"
-#include "common.h"
-#include "queue.h"
+#include "list.h"
 #include "amqp.h"
+#include "cache.h"
 
 #define MAX_LIST 16
 
 cmpp_sp_t cmpp;
-lamb_queue_t send;
-lamb_queue_t recv;
+lamb_list_t *send;
+lamb_list_t *recv;
 lamb_config_t config;
 lamb_db_t cache;
 int unconfirmed = 0;
@@ -57,9 +59,10 @@ int main(int argc, char *argv[]) {
     lamb_signal();
 
     /* Initialization working */
+
+    send = lamb_list_new();
+    recv = lamb_list_new();
     lamb_db_init(&cache, "cache");
-    lamb_queue_init(&send);
-    lamb_queue_init(&recv);
 
     lamb_fetch_loop();
     lamb_send_loop();
@@ -124,7 +127,7 @@ void *lamb_fetch_work(void *queue) {
     }
 
     while (true) {
-        if (send.list->len < config.send) {
+        if (send->len < config.send) {
             lamb_message_t *message = malloc(sizeof(lamb_message_t));
             err = lamb_amqp_pull_message(&amqp, message, 0);
             if (err) {
@@ -133,7 +136,7 @@ void *lamb_fetch_work(void *queue) {
                 continue;
             }
 
-            if (lamb_queue_rpush(&send, (void *)message) == NULL) {
+            if (lamb_list_rpush(send, (void *)message) == NULL) {
                 lamb_errlog(config.logfile, "push queue message error");
             }
             continue;
@@ -145,11 +148,11 @@ void *lamb_fetch_work(void *queue) {
     lamb_amqp_destroy_connection(&amqp);
     pthread_exit(NULL);
     
-    return;
+    return NULL;
 }
 
 void lamb_send_loop(void) {
-    list_node_t *node;
+    lamb_list_node_t *node;
     lamb_message_t *message;
 
     while (true) {
@@ -158,7 +161,7 @@ void lamb_send_loop(void) {
             continue;
         }
         
-        node = lamb_queue_lpop(&send);
+        node = lamb_list_lpop(send);
         if (node != NULL) {
             message = (lamb_message_t *)node->val;
 
@@ -232,7 +235,7 @@ void lamb_recv_loop(void) {
                 update.id = atoll(id);
                 message.len = sizeof(lamb_update_t);
                 message.data = update;
-                lamb_queue_rpush(&recv, message);
+                lamb_list_rpush(recv, message);
             } else {
                 free(update);
                 free(message);
@@ -269,10 +272,10 @@ void *lamb_update_loop(void *data) {
     }
 
     while (true) {
-        list_node_t *node;
+        lamb_list_node_t *node;
         lamb_message_t *message;
 
-        node = lamb_queue_lpop(&recv);
+        node = lamb_list_lpop(recv);
         if (node != NULL) {
             message = (lamb_message_t *)node->val;
 

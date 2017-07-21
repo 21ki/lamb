@@ -10,63 +10,55 @@
 #define _LAMB_LIST_H
 
 #include <stdlib.h>
-
-// Memory management macros
-
-#ifndef LIST_MALLOC
-#define LIST_MALLOC malloc
-#endif
-
-#ifndef LIST_FREE
-#define LIST_FREE free
-#endif
+#include <pthread.h>
 
 /* list iterator direction */
 typedef enum {
-  LIST_HEAD,
-  LIST_TAIL,
-} list_direction_t;
+    LIST_HEAD,
+    LIST_TAIL,
+} lamb_list_direction_t;
 
 /*  list node struct */
-typedef struct list_node {
-  struct list_node *prev;
-  struct list_node *next;
-  void *val;
-} list_node_t;
+typedef struct lamb_list_node {
+    struct lamb_list_node *prev;
+    struct lamb_list_node *next;
+    void *val;
+} lamb_list_node_t;
 
 /* list struct */
 typedef struct {
-  list_node_t *head;
-  list_node_t *tail;
-  unsigned int len;
-  void (*free)(void *val);
-  int (*match)(void *a, void *b);
-} list_t;
+    lamb_list_node_t *head;
+    lamb_list_node_t *tail;
+    unsigned int len;
+    void (*free)(void *val);
+    int (*match)(void *a, void *b);
+    pthread_mutex_t lock;
+} lamb_list_t;
 
 /* list iterator struct */
 typedef struct {
-  list_node_t *next;
-  list_direction_t direction;
-} list_iterator_t;
+    lamb_list_node_t *next;
+    lamb_list_direction_t direction;
+} lamb_list_iterator_t;
 
 /* node prototypes */
-list_node_t *list_node_new(void *val);
+lamb_list_node_t *lamb_list_node_new(void *val);
 
-/* list_t prototypes */
-list_t *list_new(void);
-list_node_t *list_rpush(list_t *self, list_node_t *node);
-list_node_t *list_lpush(list_t *self, list_node_t *node);
-list_node_t *list_find(list_t *self, void *val);
-list_node_t *list_at(list_t *self, int index);
-list_node_t *list_rpop(list_t *self);
-list_node_t *list_lpop(list_t *self);
-void list_remove(list_t *self, list_node_t *node);
-void list_destroy(list_t *self);
+/* lamb_list_t prototypes */
+lamb_list_t *lamb_list_new(void);
+lamb_list_node_t *lamb_list_rpush(lamb_list_t *self, lamb_list_node_t *node);
+lamb_list_node_t *lamb_list_lpush(lamb_list_t *self, lamb_list_node_t *node);
+lamb_list_node_t *lamb_list_find(lamb_list_t *self, void *val);
+lamb_list_node_t *lamb_list_at(lamb_list_t *self, int index);
+lamb_list_node_t *lamb_list_rpop(lamb_list_t *self);
+lamb_list_node_t *lamb_list_lpop(lamb_list_t *self);
+void lamb_list_remove(lamb_list_t *self, lamb_list_node_t *node);
+void lamb_list_destroy(lamb_list_t *self);
 
-/* list_t iterator prototypes */
-list_iterator_t *list_iterator_new(list_t *list, list_direction_t direction);
-list_iterator_t *list_iterator_new_from_node(list_node_t *node, list_direction_t direction);
-list_node_t *list_iterator_next(list_iterator_t *self);
-void list_iterator_destroy(list_iterator_t *self);
+/* lamb_list_t iterator prototypes */
+lamb_list_iterator_t *lamb_list_iterator_new(lamb_list_t *list, lamb_list_direction_t direction);
+lamb_list_iterator_t *lamb_list_iterator_new_from_node(lamb_list_node_t *node, lamb_list_direction_t direction);
+lamb_list_node_t *lamb_list_iterator_next(lamb_list_iterator_t *self);
+void lamb_list_iterator_destroy(lamb_list_iterator_t *self);
 
 #endif

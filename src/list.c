@@ -9,73 +9,86 @@
 #include <stdlib.h>
 #include "list.h"
 
-/* Allocates a new list_node_t. NULL on failure */
-list_node_t *list_node_new(void *val) {
-    list_node_t *self;
-    if (!(self = LIST_MALLOC(sizeof(list_node_t)))) {
+/* Allocates a new lamb_list_node_t. NULL on failure */
+lamb_list_node_t *lamb_list_node_new(void *val) {
+    lamb_list_node_t *self;
+
+    if (!(self = malloc(sizeof(lamb_list_node_t)))) {
         return NULL;
     }
+
     self->prev = NULL;
     self->next = NULL;
     self->val = val;
+    
     return self;
 }
 
 /*
- * Allocate a new list_iterator_t. NULL on failure.
+ * Allocate a new lamb_list_iterator_t. NULL on failure.
  * Accepts a direction, which may be LIST_HEAD or LIST_TAIL.
  */
 
-list_iterator_t *list_iterator_new(list_t *list, list_direction_t direction) {
-    list_node_t *node = direction == LIST_HEAD ? list->head : list->tail;
-    return list_iterator_new_from_node(node, direction);
+lamb_list_iterator_t *lamb_list_iterator_new(lamb_list_t *list, lamb_list_direction_t direction) {
+    lamb_list_node_t *node = direction == LIST_HEAD ? list->head : list->tail;
+    return lamb_list_iterator_new_from_node(node, direction);
 }
 
 /*
- * Allocate a new list_iterator_t with the given start
+ * Allocate a new lamb_list_iterator_t with the given start
  * node. NULL on failure.
  */
 
-list_iterator_t *list_iterator_new_from_node(list_node_t *node, list_direction_t direction) {
-    list_iterator_t *self;
-    if (!(self = LIST_MALLOC(sizeof(list_iterator_t)))) {
+lamb_list_iterator_t *lamb_list_iterator_new_from_node(lamb_list_node_t *node, lamb_list_direction_t direction) {
+    lamb_list_iterator_t *self;
+    
+    if (!(self = malloc(sizeof(lamb_list_iterator_t)))) {
         return NULL;
     }
+
     self->next = node;
     self->direction = direction;
+
     return self;
 }
 
 /*
- * Return the next list_node_t or NULL when no more
+ * Return the next lamb_list_node_t or NULL when no more
  * nodes remain in the list.
  */
 
-list_node_t *list_iterator_next(list_iterator_t *self) {
-    list_node_t *curr = self->next;
+lamb_list_node_t *lamb_list_iterator_next(lamb_list_iterator_t *self) {
+    lamb_list_node_t *curr = self->next;
+    
     if (curr) {
         self->next = self->direction == LIST_HEAD ? curr->next : curr->prev;
     }
+
     return curr;
 }
 
 /* Free the list iterator */
-void list_iterator_destroy(list_iterator_t *self) {
-    LIST_FREE(self);
+void lamb_list_iterator_destroy(lamb_list_iterator_t *self) {
+    free(self);
     self = NULL;
+    return;
 }
 
-/* Allocate a new list_t. NULL on failure */
-list_t *list_new(void) {
-    list_t *self;
-    if (!(self = LIST_MALLOC(sizeof(list_t)))) {
+/* Allocate a new lamb_list_t. NULL on failure */
+lamb_list_t *lamb_list_new(void) {
+    lamb_list_t *self;
+
+    if (!(self = malloc(sizeof(lamb_list_t)))) {
         return NULL;
     }
+
     self->head = NULL;
     self->tail = NULL;
     self->free = NULL;
     self->match = NULL;
     self->len = 0;
+    pthread_mutex_init(self->lock, NULL);
+
     return self;
 }
 
@@ -83,21 +96,23 @@ list_t *list_new(void) {
  * Free the list.
  */
 
-void list_destroy(list_t *self) {
+void lamb_list_destroy(lamb_list_t *self) {
     unsigned int len = self->len;
-    list_node_t *next;
-    list_node_t *curr = self->head;
+    lamb_list_node_t *next;
+    lamb_list_node_t *curr = self->head;
 
     while (len--) {
         next = curr->next;
         if (self->free) {
             self->free(curr->val);
         }
-        LIST_FREE(curr);
+        free(curr);
         curr = next;
     }
 
-    LIST_FREE(self);
+    pthread_mutex_destroy(self);
+    free(self);
+
     return;
 }
 
@@ -106,11 +121,12 @@ void list_destroy(list_t *self) {
  * and return the node, NULL on failure.
  */
 
-list_node_t *list_rpush(list_t *self, list_node_t *node) {
+lamb_list_node_t *lamb_list_rpush(lamb_list_t *self, lamb_list_node_t *node) {
     if (!node) {
         return NULL;
     }
 
+    pthread_mutex_lock(self->lock);
     if (self->len) {
         node->prev = self->tail;
         node->next = NULL;
@@ -122,6 +138,8 @@ list_node_t *list_rpush(list_t *self, list_node_t *node) {
     }
 
     ++self->len;
+    pthread_mutex_unlock(self->lock);
+
     return node;
 }
 
@@ -129,12 +147,13 @@ list_node_t *list_rpush(list_t *self, list_node_t *node) {
  * Return / detach the last node in the list, or NULL.
  */
 
-list_node_t *list_rpop(list_t *self) {
+lamb_list_node_t *lamb_list_rpop(lamb_list_t *self) {
+    pthread_mutex_lock(self->lock);
     if (!self->len) {
         return NULL;
     }
 
-    list_node_t *node = self->tail;
+    lamb_list_node_t *node = self->tail;
 
     if (--self->len) {
         (self->tail = node->prev)->next = NULL;
@@ -143,6 +162,8 @@ list_node_t *list_rpop(list_t *self) {
     }
 
     node->next = node->prev = NULL;
+    pthread_mutex_unlock(self->lock);
+
     return node;
 }
 
@@ -150,12 +171,13 @@ list_node_t *list_rpop(list_t *self) {
  * Return / detach the first node in the list, or NULL.
  */
 
-list_node_t *list_lpop(list_t *self) {
+lamb_list_node_t *lamb_list_lpop(lamb_list_t *self) {
+    pthread_mutex_lock(self->lock);
     if (!self->len) {
         return NULL;
     }
 
-    list_node_t *node = self->head;
+    lamb_list_node_t *node = self->head;
 
     if (--self->len) {
         (self->head = node->next)->prev = NULL;
@@ -164,6 +186,8 @@ list_node_t *list_lpop(list_t *self) {
     }
 
     node->next = node->prev = NULL;
+    pthread_mutex_unlock(self->lock);
+
     return node;
 }
 
@@ -172,11 +196,12 @@ list_node_t *list_lpop(list_t *self) {
  * and return the node, NULL on failure.
  */
 
-list_node_t *list_lpush(list_t *self, list_node_t *node) {
+lamb_list_node_t *lamb_list_lpush(lamb_list_t *self, lamb_list_node_t *node) {
     if (!node) {
         return NULL;
     }
 
+    pthread_mutex_lock(self->lock);
     if (self->len) {
         node->next = self->head;
         node->prev = NULL;
@@ -188,6 +213,8 @@ list_node_t *list_lpush(list_t *self, list_node_t *node) {
     }
 
     ++self->len;
+    pthread_mutex_unlock(self->lock);
+    
     return node;
 }
 
@@ -195,25 +222,26 @@ list_node_t *list_lpush(list_t *self, list_node_t *node) {
  * Return the node associated to val or NULL.
  */
 
-list_node_t *list_find(list_t *self, void *val) {
-    list_iterator_t *it = list_iterator_new(self, LIST_HEAD);
-    list_node_t *node;
+lamb_list_node_t *lamb_list_find(lamb_list_t *self, void *val) {
+    lamb_list_iterator_t *it = lamb_list_iterator_new(self, LIST_HEAD);
+    lamb_list_node_t *node;
 
-    while ((node = list_iterator_next(it))) {
+    while ((node = lamb_list_iterator_next(it))) {
         if (self->match) {
             if (self->match(val, node->val)) {
-                list_iterator_destroy(it);
+                lamb_list_iterator_destroy(it);
                 return node;
             }
         } else {
             if (val == node->val) {
-                list_iterator_destroy(it);
+                lamb_list_iterator_destroy(it);
                 return node;
             }
         }
     }
 
-    list_iterator_destroy(it);
+    lamb_list_iterator_destroy(it);
+
     return NULL;
 }
 
@@ -221,8 +249,8 @@ list_node_t *list_find(list_t *self, void *val) {
  * Return the node at the given index or NULL.
  */
 
-list_node_t *list_at(list_t *self, int index) {
-    list_direction_t direction = LIST_HEAD;
+lamb_list_node_t *lamb_list_at(lamb_list_t *self, int index) {
+    lamb_list_direction_t direction = LIST_HEAD;
 
     if (index < 0) {
         direction = LIST_TAIL;
@@ -230,12 +258,12 @@ list_node_t *list_at(list_t *self, int index) {
     }
 
     if ((unsigned)index < self->len) {
-        list_iterator_t *it = list_iterator_new(self, direction);
-        list_node_t *node = list_iterator_next(it);
+        lamb_list_iterator_t *it = lamb_list_iterator_new(self, direction);
+        lamb_list_node_t *node = lamb_list_iterator_next(it);
         while (index--) {
-            node = list_iterator_next(it);
+            node = lamb_list_iterator_next(it);
         }
-        list_iterator_destroy(it);
+        lamb_list_iterator_destroy(it);
         return node;
     }
 
@@ -246,7 +274,8 @@ list_node_t *list_at(list_t *self, int index) {
  * Remove the given node from the list, freeing it and it's value.
  */
 
-void list_remove(list_t *self, list_node_t *node) {
+void lamb_list_remove(lamb_list_t *self, lamb_list_node_t *node) {
+    pthread_mutex_lock(self->lock);
     if (node->prev) {
         node->prev->next = node->next;
     } else {
@@ -263,8 +292,10 @@ void list_remove(list_t *self, list_node_t *node) {
         self->free(node->val);
     }
 
-    LIST_FREE(node);
+    free(node);
     --self->len;
+    pthread_mutex_unlock(self->lock);
+    
     return;
 }
 
