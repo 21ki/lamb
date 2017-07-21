@@ -128,16 +128,16 @@ void *lamb_fetch_work(void *queue) {
 
     while (true) {
         if (send->len < config.send) {
-            lamb_message_t *message = malloc(sizeof(lamb_message_t));
-            err = lamb_amqp_pull_message(&amqp, message, 0);
+            lamb_pack_t *pack = malloc(sizeof(lamb_message_t));
+            err = lamb_amqp_pull_message(&amqp, pack, 0);
             if (err) {
-                lamb_free_message(message);
+                lamb_free_pack(pack);
                 lamb_errlog(config.logfile, "pull amqp message error");
                 continue;
             }
 
             pthread_mutex_lock(&send->lock);
-            if (lamb_list_rpush(send, lamb_list_node_new(message)) == NULL) {
+            if (lamb_list_rpush(send, lamb_list_node_new(pack)) == NULL) {
                 lamb_errlog(config.logfile, "push queue message error");
             }
             pthread_mutex_unlock(&send->lock);
@@ -155,8 +155,8 @@ void *lamb_fetch_work(void *queue) {
 }
 
 void lamb_send_loop(void) {
+    lamb_pack_t *pack;
     lamb_list_node_t *node;
-    lamb_message_t *message;
 
     while (true) {
         if (unconfirmed >= config.unconfirmed) {
@@ -166,7 +166,7 @@ void lamb_send_loop(void) {
         
         node = lamb_list_lpop(send);
         if (node != NULL) {
-            message = (lamb_message_t *)node->val;
+            pack = (lamb_pack_t *)node->val;
 
             /* code */
             long seqid;
@@ -179,7 +179,7 @@ void lamb_send_loop(void) {
                 lamb_db_put(&cache, message.seqid, strlen(message.seqid), message.id, strlen(message.id));
             }
 
-            lamb_free_message(message);
+            lamb_free_pack(pack);
             free(node);
             continue;
         }
@@ -215,8 +215,8 @@ void lamb_recv_loop(void) {
             size_t len;
             char seqid[64];
             char *id = NULL;
+            lamb_pack_t *pack;
             lamb_update_t *update;
-            lamb_message_t *message;
             cmpp_submit_resp_t *csrp;
 
             unconfirmed--;
@@ -228,7 +228,7 @@ void lamb_recv_loop(void) {
             }
             
             update = malloc(sizeof(lamb_update_t));
-            message = malloc(sizeof(lamb_message_t));
+            pack = malloc(sizeof(lamb_pack_t));
 
             update.type = LAMB_UPDATE;
             update.msgId = csrp->msgId;
@@ -236,12 +236,12 @@ void lamb_recv_loop(void) {
             id = lamb_db_get(&cache, seqid, strlen(seqid), &len);
             if (id > 0) {
                 update.id = atoll(id);
-                message.len = sizeof(lamb_update_t);
-                message.data = update;
-                lamb_list_rpush(recv, message);
+                pack.len = sizeof(lamb_update_t);
+                pack.data = update;
+                lamb_list_rpush(recv, pack);
             } else {
                 free(update);
-                free(message);
+                free(pack);
             }
             break;
 
@@ -275,20 +275,20 @@ void *lamb_update_loop(void *data) {
     }
 
     while (true) {
+        lamb_pack_t *pack;
         lamb_list_node_t *node;
-        lamb_message_t *message;
 
         node = lamb_list_lpop(recv);
         if (node != NULL) {
-            message = (lamb_message_t *)node->val;
+            message = (lamb_pack_t *)node->val;
 
             /* code */
-            err = lamb_amqp_push_message(&amqp, message->data, message->len);
+            err = lamb_amqp_push_message(&amqp, pack->data, pack->len);
             if (err) {
                 lamb_errlog(config.logfile, "amqp push message failed");
             }
 
-            lamb_free_message(message);
+            lamb_free_pack(pack);
             free(node);
             continue;
         }

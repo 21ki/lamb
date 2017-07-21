@@ -115,7 +115,7 @@ int lamb_amqp_push_message(lamb_amqp_t *amqp, void *data, size_t len) {
     return 0;
 }
 
-int lamb_amqp_pull_message(lamb_amqp_t *amqp, lamb_message_t *message, long long milliseconds) {
+int lamb_amqp_pull_message(lamb_amqp_t *amqp, lamb_pack_t *pack, long long milliseconds) {
     amqp_rpc_reply_t rep;
     amqp_envelope_t envelope;
     struct timeval timeout;
@@ -131,8 +131,8 @@ int lamb_amqp_pull_message(lamb_amqp_t *amqp, lamb_message_t *message, long long
 
     void *buff = malloc(envelope.message.body.len);
     memcpy(buff, envelope.message.body.bytes, envelope.message.body.len);
-    message->len = envelope.message.body.len;
-    message->data = buff;
+    pack->len = envelope.message.body.len;
+    pack->data = buff;
 
     amqp_destroy_envelope(&envelope);
 
@@ -147,7 +147,7 @@ int lamb_amqp_destroy_connection(lamb_amqp_t *amqp) {
 }
 
 
-int lamb_free_message(lamb_message_t *message) {
+int lamb_free_message(lamb_pack_t *pack) {
     if (message && message->data) {
         message->len = 0;
         free(message->data);
