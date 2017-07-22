@@ -85,15 +85,15 @@ void lamb_sleep(unsigned long long milliseconds) {
     return;
 }
 
-void lamb_errlog(const char *logfile, const char *fmt, ...) {
+void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, ...) {
     char buff[512];
     time_t rawtime;
     struct tm *t;
 
     time(&rawtime);
     t = localtime(&rawtime);
-    sprintf(buff, "[%4d-%02d-%02d %02d:%02d:%02d] %s\n", t->tm_year + 1900,
-            t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, fmt);
+    sprintf(buff, "[%4d-%02d-%02d %02d:%02d:%02d] %s:%d %s\n", t->tm_year + 1900,
+            t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, file, line, fmt);
 
     FILE *fp = NULL;
     fp = fopen(logfile, "a");
