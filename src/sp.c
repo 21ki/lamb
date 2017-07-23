@@ -196,7 +196,7 @@ void lamb_recv_loop(void) {
 
     while (true) {
         if (!cmpp.ok) {
-            lamb_errlog(config.logfile, "cmpp connect status error");
+            lamb_errlog(config.logfile, "cmpp gateway connect error");
             lamb_sleep(3000);
             continue;
         }
@@ -205,7 +205,7 @@ void lamb_recv_loop(void) {
         err = cmpp_recv(&cmpp, pack, sizeof(pack));
         if (err) {
             cmpp_free_pack(pack);
-            lamb_errlog(config.logfile, "error: %s", cmpp_get_error(err));
+            lamb_errlog(config.logfile, "%s", cmpp_get_error(err));
             lamb_sleep(10);
             continue;
         }
@@ -246,8 +246,25 @@ void lamb_recv_loop(void) {
             break;
 
         case CMPP_DELIVER:
-            /* other */
-            break;
+            int delivery;
+            cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, (void *)&delivery, 1);
+
+            switch (delivery) {
+            case 0: /* message delivery */
+                lamb_message_t *message = malloc(lamb_message_t);
+                break;
+            case 1: /* message status report */
+                lamb_report_t *report = malloc(lamb_report_t);
+                lamb_message_t *message = malloc(lamb_message_t);
+                report->type = LAMB_REPORT;
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content , (void *)&report->msgId, 8);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content + 8, report->stat, 8, 7);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content + 35, report->destTerminalId, 24, 21);
+                message->len = sizeof(lamb_report_t);
+                message->data = report;
+                lamb_list_rpush(recv, message);
+                break;
+            }
         }
     }
 

@@ -10,8 +10,9 @@
 
 #include <stdbool.h>
 
-#define LAMB_UPDATE 1
-#define LAMB_DELIVER 2
+#define LAMB_UPDATE  1
+#define LAMB_REPORT  2
+#define LAMB_DELIVER 3
 
 typedef struct {
     bool debug;
@@ -52,11 +53,15 @@ typedef struct {
 typedef struct {
     int type;
     unsigned long long msgId;
-    int status;
+    unsigned char stat[8];
+    unsigned char destTerminalId[24];
 } lamb_report_t;
 
 typedef struct {
     int type;
+    unsigned long long msgId;
+    unsigned char stat[8];
+    unsigned char destTerminalId[24];
 } lamb_deliver_t;
 
 int lamb_read_config(lamb_config_t *conf, const char *file);
