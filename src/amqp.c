@@ -148,10 +148,12 @@ int lamb_amqp_destroy_connection(lamb_amqp_t *amqp) {
 
 
 int lamb_free_message(lamb_pack_t *pack) {
-    if (message && message->data) {
-        message->len = 0;
-        free(message->data);
-        free(message);
+    if (pack) {
+        pack->len = 0;
+        if (pack->data) {
+            free(pack->data);
+        }
+        free(pack);
         return 0;
     }
 
