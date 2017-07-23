@@ -1,7 +1,7 @@
 
 /* 
  * Lamb Gateway Platform
- * By typefo <typefo@qq.com>
+ * Copyright (C) 2017 typefo <typefo@qq.com>
  * Copyright (c) 2010 TJ Holowaychuk <tj@vision-media.ca>
  * Update: 2017-07-14
  */
