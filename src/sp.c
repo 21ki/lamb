@@ -128,7 +128,7 @@ void *lamb_fetch_work(void *queue) {
 
     while (true) {
         if (send->len < config.send) {
-            lamb_pack_t *pack = malloc(sizeof(lamb_message_t));
+            lamb_pack_t *pack = malloc(sizeof(lamb_pack_t));
             err = lamb_amqp_pull_message(&amqp, pack, 0);
             if (err) {
                 lamb_free_pack(pack);
@@ -155,7 +155,6 @@ void *lamb_fetch_work(void *queue) {
 }
 
 void lamb_send_loop(void) {
-    lamb_pack_t *pack;
     lamb_list_node_t *node;
 
     while (true) {
@@ -166,17 +165,22 @@ void lamb_send_loop(void) {
         
         node = lamb_list_lpop(send);
         if (node != NULL) {
-            pack = (lamb_pack_t *)node->val;
+            lamb_pack_t *pack = (lamb_pack_t *)node->val;
+            lamb_submit_t *message = (lamb_submit_t *)pack->data;
 
             /* code */
-            long seqid;
-            char *phone = message.phone;
-            char *content = message.content;
+            char seq[64];
+            char msgId[64];
+            unsigned int seqid;
+            char *phone = message->destTerminalId;
+            char *content = message->msgContent;
 
             seqid = cmpp_submit(&cmpp, phone, content, true, config.spcode, config.encoding, config.spid);
             if (seqid > 0) {
                 unconfirmed++;
-                lamb_db_put(&cache, message.seqid, strlen(message.seqid), message.id, strlen(message.id));
+                sprintf(seq, "%ld", seqid);
+                sprintf(msgId, "%lld", message.msgId);
+                lamb_db_put(&cache, seq, strlen(seq), msgId, strlen(msgId));
             }
 
             lamb_free_pack(pack);
@@ -230,14 +234,14 @@ void lamb_recv_loop(void) {
             update = malloc(sizeof(lamb_update_t));
             pack = malloc(sizeof(lamb_pack_t));
 
-            update.type = LAMB_UPDATE;
-            update.msgId = csrp->msgId;
+            update->type = LAMB_UPDATE;
+            update->msgId = csrp->msgId;
             sprintf(seqid, "%ld", csrp->sequenceId);
             id = lamb_db_get(&cache, seqid, strlen(seqid), &len);
             if (id > 0) {
                 update.id = atoll(id);
-                pack.len = sizeof(lamb_update_t);
-                pack.data = update;
+                pack->len = sizeof(lamb_update_t);
+                pack->data = update;
                 lamb_list_rpush(recv, pack);
             } else {
                 free(update);
@@ -294,12 +298,12 @@ void *lamb_update_loop(void *data) {
 
     err = lamb_amqp_connect(&amqp, config.db_host, config.db_port);
     if (err) {
-        lamb_errlog(config.logfile, "can't connection to %s amqp server", config.amqp_host);
+        lamb_errlog(config.logfile, "can't connection to %s amqp server", config.db_host);
     }
 
     err = lamb_amqp_login(&amqp, config.db_user, config.db_password);
     if (err) {
-        lamb_errlog(config.logfile, "login amqp server %s failed", config.amqp_host);
+        lamb_errlog(config.logfile, "login amqp server %s failed", config.db_host);
     }
 
     err = lamb_amqp_producer(&amqp, "lamb.inbox", "direct", "inbox");

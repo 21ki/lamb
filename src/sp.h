@@ -10,6 +10,8 @@
 
 #include <stdbool.h>
 
+#pragma pack(1)
+
 #define LAMB_UPDATE  1
 #define LAMB_REPORT  2
 #define LAMB_DELIVER 3
@@ -43,6 +45,16 @@ typedef struct {
     unsigned long long id;
     unsigned long long msgId;
 } lamb_update_t;
+
+typedef struct {
+    unsigned long long msgId;
+    unsigned char serviceId[16];
+    unsigned char msgSrc[8];
+    unsigned char srcId[24];
+    unsigned char destTerminalId[24];
+    unsigned int msgLength;
+    unsigned char msgContent[160];
+} lamb_submit_t;
 
 typedef struct {
     int type;
