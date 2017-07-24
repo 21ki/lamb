@@ -102,7 +102,7 @@ void lamb_fetch_loop(void) {
     }
 
     if (len < 1) {
-        lamb_errlog(config.logfile, "no queues available at the moment");
+        lamb_errlog(config.logfile, "no queues available at the moment", 0);
     }
 
     return;
@@ -113,17 +113,17 @@ void *lamb_fetch_work(void *queue) {
     lamb_amqp_t amqp;
     err = lamb_amqp_connect(&amqp, config.db_host, config.db_port);
     if (err) {
-        lamb_errlog(config.logfile, "can't connection to amqp server");
+        lamb_errlog(config.logfile, "can't connection to amqp server", 0);
     }
 
     err = lamb_amqp_login(&amqp, config.db_user, config.db_password);
     if (err) {
-        lamb_errlog(config.logfile, "login amqp server failed");
+        lamb_errlog(config.logfile, "login amqp server failed", 0);
     }
 
     err = lamb_amqp_consume(&amqp, (char const *)queue);
     if (err) {
-        lamb_errlog(config.logfile, "set consume mode failed");
+        lamb_errlog(config.logfile, "set consume mode failed", 0);
     }
 
     while (true) {
@@ -132,13 +132,13 @@ void *lamb_fetch_work(void *queue) {
             err = lamb_amqp_pull_message(&amqp, pack, 0);
             if (err) {
                 lamb_free_pack(pack);
-                lamb_errlog(config.logfile, "pull amqp message error");
+                lamb_errlog(config.logfile, "pull amqp message error", 0);
                 continue;
             }
 
             pthread_mutex_lock(&send->lock);
             if (lamb_list_rpush(send, lamb_list_node_new(pack)) == NULL) {
-                lamb_errlog(config.logfile, "push queue message error");
+                lamb_errlog(config.logfile, "push queue message error", 0);
             }
             pthread_mutex_unlock(&send->lock);
             
@@ -196,7 +196,7 @@ void lamb_recv_loop(void) {
 
     while (true) {
         if (!cmpp.ok) {
-            lamb_errlog(config.logfile, "cmpp gateway connection error");
+            lamb_errlog(config.logfile, "cmpp gateway %s connection error", config.host);
             lamb_sleep(3000);
             continue;
         }
@@ -294,18 +294,18 @@ void *lamb_update_loop(void *data) {
 
     err = lamb_amqp_connect(&amqp, config.db_host, config.db_port);
     if (err) {
-        lamb_errlog(config.logfile, "can't connection to amqp server");
+        lamb_errlog(config.logfile, "can't connection to %s amqp server", config.amqp_host);
     }
 
     err = lamb_amqp_login(&amqp, config.db_user, config.db_password);
     if (err) {
-        lamb_errlog(config.logfile, "login amqp server failed");
+        lamb_errlog(config.logfile, "login amqp server %s failed", config.amqp_host);
     }
 
     err = lamb_amqp_producer(&amqp, "lamb.inbox", "direct", "inbox");
     
     if (err) {
-        lamb_errlog(config.logfile, "amqp set producer mode failed");
+        lamb_errlog(config.logfile, "amqp set producer mode failed", 0);
     }
 
     while (true) {
@@ -319,7 +319,7 @@ void *lamb_update_loop(void *data) {
             /* code */
             err = lamb_amqp_push_message(&amqp, pack->data, pack->len);
             if (err) {
-                lamb_errlog(config.logfile, "amqp push message failed");
+                lamb_errlog(config.logfile, "amqp push message failed", 0);
             }
 
             lamb_free_pack(pack);
