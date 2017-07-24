@@ -45,12 +45,6 @@ typedef struct {
 } lamb_update_t;
 
 typedef struct {
-    unsigned long long id;
-    char phone[16];
-    char content[256];
-} lamb_message_t;
-
-typedef struct {
     int type;
     unsigned long long msgId;
     unsigned char stat[8];
@@ -60,8 +54,12 @@ typedef struct {
 typedef struct {
     int type;
     unsigned long long msgId;
-    unsigned char stat[8];
-    unsigned char destTerminalId[24];
+    unsigned char destId[24];
+    unsigned char serviceId[16];
+    unsigned int msgFmt;
+    unsigned char srcTerminalId[24];
+    unsigned int msgLength;
+    unsigned char msgContent[160];
 } lamb_deliver_t;
 
 int lamb_read_config(lamb_config_t *conf, const char *file);

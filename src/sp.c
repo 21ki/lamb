@@ -196,7 +196,7 @@ void lamb_recv_loop(void) {
 
     while (true) {
         if (!cmpp.ok) {
-            lamb_errlog(config.logfile, "cmpp gateway connect error");
+            lamb_errlog(config.logfile, "cmpp gateway connection error");
             lamb_sleep(3000);
             continue;
         }
@@ -205,7 +205,7 @@ void lamb_recv_loop(void) {
         err = cmpp_recv(&cmpp, pack, sizeof(pack));
         if (err) {
             cmpp_free_pack(pack);
-            lamb_errlog(config.logfile, "%s", cmpp_get_error(err));
+            lamb_errlog(config.logfile, "cmpp %s", cmpp_get_error(err));
             lamb_sleep(10);
             continue;
         }
@@ -251,7 +251,19 @@ void lamb_recv_loop(void) {
 
             switch (delivery) {
             case 0: /* message delivery */
+                lamb_deliver_t *deliver = malloc(lamb_deliver_t);
                 lamb_message_t *message = malloc(lamb_message_t);
+                deliver->type = LAMB_DELIVER;
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_id, (void *)&deliver->msgId, 8);
+                cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, deliver->destId, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_deliver_service_id, deliver->serviceId, 16, 10);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_fmt, (void *)&deliver->msgFmt, 1);
+                cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, deliver->srcTerminalId, 24, 21);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_length, (void *)&deliver->msgLength, 1);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->msgContent, 160, deliver->msgLength);
+                message->len = sizeof(lamb_deliver_t);
+                message->data = deliver;
+                lamb_list_rpush(recv, deliver);
                 break;
             case 1: /* message status report */
                 lamb_report_t *report = malloc(lamb_report_t);
@@ -265,6 +277,11 @@ void lamb_recv_loop(void) {
                 lamb_list_rpush(recv, message);
                 break;
             }
+        case CMPP_ACTIVE_TEST:
+            cmpp_active_test_resp(&cmpp);
+            break;
+        default:
+            break;
         }
     }
 
