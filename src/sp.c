@@ -74,7 +74,6 @@ int main(int argc, char *argv[]) {
 
 void lamb_fetch_loop(void) {
     int i, len, err;
-    pthread_t tid;
     pthread_attr_t attr;
     char *list[MAX_LIST] = {NULL};
     len = lamb_str2list(config.queue, list, MAX_LIST);
@@ -387,7 +386,7 @@ void lamb_event_loop(void) {
         lamb_errlog(config.logfile, "start lamb_recv_loop thread failed", 0);
     }
 
-    err = pthread_create(&thid, &attr, lamb_send_loop, NULL);
+    err = pthread_create(&tid, &attr, lamb_send_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_send_loop thread failed", 0);
     }
