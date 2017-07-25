@@ -64,19 +64,15 @@ int main(int argc, char *argv[]) {
     recv = lamb_list_new();
     lamb_db_init(&cache, "cache");
 
-    lamb_fetch_loop();
-    lamb_send_loop();
-    
+
     /* Start worker thread */
 
-    /* 
-       if(lamb_cmpp_init()) {
-       lamb_fetch_loop();
-       lamb_update_loop();
-       lamb_send_loop();
-       lamb_recv_loop();
-       }
-    */
+    if(lamb_cmpp_init() == 0) {
+        lamb_fetch_loop();
+        //lamb_update_loop();
+        lamb_send_loop();
+        lamb_recv_loop();
+    }
     
     /* Master worker thread */
     // lamb_event_loop();
