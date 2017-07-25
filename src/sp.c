@@ -21,8 +21,8 @@
 #define MAX_LIST 16
 
 cmpp_sp_t cmpp;
-lamb_list_t *send;
-lamb_list_t *recv;
+lamb_list_t *send_queue;
+lamb_list_t *recv_queue;
 lamb_config_t config;
 lamb_db_t cache;
 int unconfirmed = 0;
@@ -73,15 +73,19 @@ int main(int argc, char *argv[]) {
 }
 
 void lamb_fetch_loop(void) {
-    int i, len;
+    int i, len, err;
+    pthread_t tid;
+    pthread_attr_t attr;
     char *list[MAX_LIST] = {NULL};
     len = lamb_str2list(config.queue, list, MAX_LIST);
 
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    
     for (i = 0; i < MAX_LIST; i++) {
         if (list[i] != NULL) {
-            int ret;
-            ret = pthread_create(&fetch_pool[i], NULL, lamb_fetch_work, (void *)list[i]);
-            if (ret == -1) {
+            err = pthread_create(&fetch_pool[i], &attr, lamb_fetch_work, (void *)list[i]);
+            if (err == -1) {
                 lamb_errlog(config.logfile, "start %s queue work thread failed", list[i]);
             }
             continue;
@@ -115,7 +119,7 @@ void *lamb_fetch_work(void *queue) {
     }
 
     while (true) {
-        if (send->len < config.send) {
+        if (send_queue->len < config.send) {
             lamb_pack_t *pack = malloc(sizeof(lamb_pack_t));
             err = lamb_amqp_pull_message(&amqp, pack, 0);
             if (err) {
@@ -124,11 +128,11 @@ void *lamb_fetch_work(void *queue) {
                 continue;
             }
 
-            pthread_mutex_lock(&send->lock);
-            if (lamb_list_rpush(send, lamb_list_node_new(pack)) == NULL) {
+            pthread_mutex_lock(&send_queue->lock);
+            if (lamb_list_rpush(send_queue, lamb_list_node_new(pack)) == NULL) {
                 lamb_errlog(config.logfile, "push queue message error", 0);
             }
-            pthread_mutex_unlock(&send->lock);
+            pthread_mutex_unlock(&send_queue->lock);
             
             continue;
         }
@@ -142,7 +146,7 @@ void *lamb_fetch_work(void *queue) {
     return NULL;
 }
 
-void *lamb_send_loop(void *) {
+void *lamb_send_loop(void *data) {
     lamb_list_node_t *node;
 
     while (true) {
@@ -151,7 +155,7 @@ void *lamb_send_loop(void *) {
             continue;
         }
         
-        node = lamb_list_lpop(send);
+        node = lamb_list_lpop(send_queue);
         if (node != NULL) {
             lamb_pack_t *pack = (lamb_pack_t *)node->val;
             lamb_submit_t *message = (lamb_submit_t *)pack->data;
@@ -182,7 +186,7 @@ void *lamb_send_loop(void *) {
     return NULL;
 }
 
-void *lamb_recv_loop(void *) {
+void *lamb_recv_loop(void *data) {
     int err;
     cmpp_pack_t *pack;
 
@@ -194,7 +198,7 @@ void *lamb_recv_loop(void *) {
         }
 
         pack = malloc(sizeof(cmpp_pack_t));
-        err = cmpp_recv(&cmpp, pack, sizeof(pack));
+        err = cmpp_recv(&cmpp, pack, sizeof(cmpp_pack_t));
         if (err) {
             cmpp_free_pack(pack);
             lamb_errlog(config.logfile, "cmpp %s", cmpp_get_error(err));
@@ -234,32 +238,35 @@ void *lamb_recv_loop(void *) {
                 update->id =id;
                 lpack->len = sizeof(lamb_update_t);
                 lpack->data = update;
-                lamb_list_rpush(recv, lamb_list_node_new(lpack));
+                pthread_mutex_lock(&recv_queue->lock);
+                lamb_list_rpush(recv_queue, lamb_list_node_new(lpack));
+                pthread_mutex_unlock(&recv_queue->lock);
             } else {
                 free(update);
                 free(lpack);
             }
             break;
         case CMPP_DELIVER:;
-            int delivery;
-            lamb_pack_t *message = malloc(sizeof(lamb_pack_t));
-            cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, (void *)&delivery, 1);
+            unsigned char registered_delivery;
+            lamb_pack_t *delpack = malloc(sizeof(lamb_pack_t));
+            cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, (void *)&registered_delivery, 1);
 
-            switch (delivery) {
-                /* message delivery */
-            case 0:;
+            switch (registered_delivery) {
+            case 0:; /* message delivery */
                 lamb_deliver_t *deliver = malloc(sizeof(lamb_deliver_t));
                 deliver->type = LAMB_DELIVER;
-                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_id, (void *)&deliver->msgId, 8);
-                cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, deliver->destId, 24, 21);
-                cmpp_pack_get_string(&pack, cmpp_deliver_service_id, deliver->serviceId, 16, 10);
-                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_fmt, (void *)&deliver->msgFmt, 1);
-                cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, deliver->srcTerminalId, 24, 21);
-                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_length, (void *)&deliver->msgLength, 1);
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->msgContent, 160, deliver->msgLength);
-                message->len = sizeof(lamb_deliver_t);
-                message->data = deliver;
-                lamb_list_rpush(recv, lamb_list_node_new(deliver));
+                cmpp_pack_get_integer(pack, cmpp_deliver_msg_id, (void *)&deliver->msgId, 8);
+                cmpp_pack_get_string(pack, cmpp_deliver_dest_id, deliver->destId, 24, 21);
+                cmpp_pack_get_string(pack, cmpp_deliver_service_id, deliver->serviceId, 16, 10);
+                cmpp_pack_get_integer(pack, cmpp_deliver_msg_fmt, (void *)&deliver->msgFmt, 1);
+                cmpp_pack_get_string(pack, cmpp_deliver_src_terminal_id, deliver->srcTerminalId, 24, 21);
+                cmpp_pack_get_integer(pack, cmpp_deliver_msg_length, (void *)&deliver->msgLength, 1);
+                cmpp_pack_get_string(pack, cmpp_deliver_msg_content, deliver->msgContent, 160, deliver->msgLength);
+                delpack->len = sizeof(lamb_deliver_t);
+                delpack->data = deliver;
+                pthread_mutex_lock(&recv_queue->lock);
+                lamb_list_rpush(recv_queue, lamb_list_node_new(delpack));
+                pthread_mutex_unlock(&recv_queue->lock);
                 break;
             case 1:;
                 /* message status report */ 
@@ -268,9 +275,11 @@ void *lamb_recv_loop(void *) {
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content , (void *)&report->msgId, 8);
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content + 8, report->stat, 8, 7);
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content + 35, report->destTerminalId, 24, 21);
-                message->len = sizeof(lamb_report_t);
-                message->data = report;
-                lamb_list_rpush(recv, lamb_list_node_new(message));
+                delpack->len = sizeof(lamb_report_t);
+                delpack->data = report;
+                pthread_mutex_lock(&recv_queue->lock);
+                lamb_list_rpush(recv_queue, lamb_list_node_new(delpack));
+                pthread_mutex_unlock(&recv_queue->lock);
                 break;
             }
 	    case CMPP_ACTIVE_TEST:;
@@ -284,7 +293,7 @@ void *lamb_recv_loop(void *) {
     return NULL;
 }
 
-void *lamb_update_loop(void *) {
+void *lamb_update_loop(void *data) {
     int err;
     lamb_amqp_t amqp;
 
@@ -298,17 +307,15 @@ void *lamb_update_loop(void *) {
         lamb_errlog(config.logfile, "login amqp server %s failed", config.db_host);
     }
 
-    err = lamb_amqp_producer(&amqp, "lamb.inbox", "direct", "inbox");
-    
-    if (err) {
-        lamb_errlog(config.logfile, "amqp set producer mode failed", 0);
-    }
+    lamb_amqp_setting(&amqp, "lamb.inbox", "inbox");
 
     while (true) {
         lamb_pack_t *pack;
         lamb_list_node_t *node;
 
-        node = lamb_list_lpop(recv);
+        pthread_mutex_lock(&recv_queue->lock);
+        node = lamb_list_lpop(recv_queue);
+        pthread_mutex_unlock(&recv_queue->lock);
         if (node != NULL) {
             pack = (lamb_pack_t *)node->val;
 
@@ -325,9 +332,6 @@ void *lamb_update_loop(void *) {
 
         lamb_sleep(10);
     }
-
-    lamb_amqp_destroy_connection(&amqp);
-    pthread_exit(NULL);
 
     return NULL;
 }
@@ -367,19 +371,23 @@ int lamb_cmpp_init(void) {
 
 void lamb_event_loop(void) {
     int err;
-    pthread_t thread;
+    pthread_t tid;
+    pthread_attr_t attr;
 
-    err = pthread_create(&thread, NULL, lamb_update_loop, NULL);
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    
+    err = pthread_create(&thread, &attr, lamb_update_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_update_loop thread failed", 0);
     }
     
-    err = pthread_create(&thread, NULL, lamb_recv_loop, NULL);
+    err = pthread_create(&thread, &attr, lamb_recv_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_recv_loop thread failed", 0);
     }
 
-    err = pthread_create(&thread, NULL, lamb_send_loop, NULL);
+    err = pthread_create(&thread, &attr, lamb_send_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_send_loop thread failed", 0);
     }
