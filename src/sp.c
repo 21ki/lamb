@@ -153,8 +153,10 @@ void *lamb_send_loop(void *data) {
             lamb_sleep(10);
             continue;
         }
-        
+
+        pthread_mutex_lock(&send_queue->lock);
         node = lamb_list_lpop(send_queue);
+        pthread_mutex_unlock(&send_queue->lock);
         if (node != NULL) {
             lamb_pack_t *pack = (lamb_pack_t *)node->val;
             lamb_submit_t *message = (lamb_submit_t *)pack->data;
@@ -205,7 +207,7 @@ void *lamb_recv_loop(void *data) {
             continue;
         }
 
-        switch (pack->commandId) {
+        switch (ntohl(pack->commandId)) {
         case CMPP_SUBMIT_RESP:;
             unsigned char result;
             lamb_update_t *update;
@@ -248,7 +250,7 @@ void *lamb_recv_loop(void *data) {
         case CMPP_DELIVER:;
             unsigned char registered_delivery;
             lamb_pack_t *delpack = malloc(sizeof(lamb_pack_t));
-            cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, (void *)&registered_delivery, 1);
+            cmpp_pack_get_integer(pack, cmpp_deliver_registered_delivery, (void *)&registered_delivery, 1);
 
             switch (registered_delivery) {
             case 0:; /* message delivery */
@@ -271,9 +273,9 @@ void *lamb_recv_loop(void *data) {
                 /* message status report */ 
                 lamb_report_t *report = malloc(sizeof(lamb_report_t));
                 report->type = LAMB_REPORT;
-                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content , (void *)&report->msgId, 8);
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content + 8, report->stat, 8, 7);
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content + 35, report->destTerminalId, 24, 21);
+                cmpp_pack_get_integer(pack, cmpp_deliver_msg_content , (void *)&report->msgId, 8);
+                cmpp_pack_get_string(pack, cmpp_deliver_msg_content + 8, report->stat, 8, 7);
+                cmpp_pack_get_string(pack, cmpp_deliver_msg_content + 35, report->destTerminalId, 24, 21);
                 delpack->len = sizeof(lamb_report_t);
                 delpack->data = report;
                 pthread_mutex_lock(&recv_queue->lock);
@@ -281,10 +283,11 @@ void *lamb_recv_loop(void *data) {
                 pthread_mutex_unlock(&recv_queue->lock);
                 break;
             }
-	    case CMPP_ACTIVE_TEST:;
+            break;
+	    case CMPP_ACTIVE_TEST:
             //cmpp_active_test_resp(&cmpp);
             break;
-	    default:;
+	    default:
             break;
         }
     }
