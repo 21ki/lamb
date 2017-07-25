@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <arpa/inet.h>
 #include <cmpp.h>
 #include "sp.h"
 #include "utils.h"
