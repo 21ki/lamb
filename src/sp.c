@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
 
     /* Initialization working */
 
-    send = lamb_list_new();
-    recv = lamb_list_new();
+    send_queue = lamb_list_new();
+    recv_queue = lamb_list_new();
     lamb_db_init(&cache, "cache");
 
     if(lamb_cmpp_init() == 0) {
@@ -377,17 +377,17 @@ void lamb_event_loop(void) {
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
     
-    err = pthread_create(&thread, &attr, lamb_update_loop, NULL);
+    err = pthread_create(&tid, &attr, lamb_update_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_update_loop thread failed", 0);
     }
     
-    err = pthread_create(&thread, &attr, lamb_recv_loop, NULL);
+    err = pthread_create(&tid, &attr, lamb_recv_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_recv_loop thread failed", 0);
     }
 
-    err = pthread_create(&thread, &attr, lamb_send_loop, NULL);
+    err = pthread_create(&thid, &attr, lamb_send_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_send_loop thread failed", 0);
     }
