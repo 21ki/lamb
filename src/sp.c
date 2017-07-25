@@ -64,18 +64,10 @@ int main(int argc, char *argv[]) {
     recv = lamb_list_new();
     lamb_db_init(&cache, "cache");
 
-
-    /* Start worker thread */
-
     if(lamb_cmpp_init() == 0) {
-        lamb_fetch_loop();
-        //lamb_update_loop();
-        lamb_send_loop();
-        lamb_recv_loop();
+        /* Start worker thread */
+        lamb_event_loop();
     }
-    
-    /* Master worker thread */
-    // lamb_event_loop();
 
     return 0;
 }
@@ -150,7 +142,7 @@ void *lamb_fetch_work(void *queue) {
     return NULL;
 }
 
-void lamb_send_loop(void) {
+void *lamb_send_loop(void *) {
     lamb_list_node_t *node;
 
     while (true) {
@@ -187,10 +179,10 @@ void lamb_send_loop(void) {
         lamb_sleep(10);
     }
 
-    return;
+    return NULL;
 }
 
-void lamb_recv_loop(void) {
+void *lamb_recv_loop(void *) {
     int err;
     cmpp_pack_t *pack;
 
@@ -289,10 +281,10 @@ void lamb_recv_loop(void) {
         }
     }
 
-    return;
+    return NULL;
 }
 
-void *lamb_update_loop(void *data) {
+void *lamb_update_loop(void *) {
     int err;
     lamb_amqp_t amqp;
 
@@ -374,6 +366,26 @@ int lamb_cmpp_init(void) {
 }
 
 void lamb_event_loop(void) {
+    int err;
+    pthread_t thread;
+
+    err = pthread_create(&thread, NULL, lamb_update_loop, NULL);
+    if (err) {
+        lamb_errlog(config.logfile, "start lamb_update_loop thread failed", 0);
+    }
+    
+    err = pthread_create(&thread, NULL, lamb_recv_loop, NULL);
+    if (err) {
+        lamb_errlog(config.logfile, "start lamb_recv_loop thread failed", 0);
+    }
+
+    err = pthread_create(&thread, NULL, lamb_send_loop, NULL);
+    if (err) {
+        lamb_errlog(config.logfile, "start lamb_send_loop thread failed", 0);
+    }
+    
+    lamb_fetch_loop();
+
     while (true) {
         lamb_sleep(5000);
     }
