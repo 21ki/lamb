@@ -15,7 +15,5 @@ void lamb_daemon(void);
 void lamb_sleep(unsigned long long milliseconds);
 void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, ...);
 int lamb_str2list(char *string, char *list[], int len);
-bool cmpp_check_connect(cmpp_sp_t *cmpp);
-void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config);
 
 #endif

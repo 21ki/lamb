@@ -82,5 +82,6 @@ void *lamb_recv_loop(void *data);
 void *lamb_update_loop(void *data);
 int lamb_cmpp_init(void);
 void lamb_event_loop(void);
+void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config);
 
 #endif

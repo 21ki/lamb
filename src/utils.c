@@ -129,43 +129,4 @@ int lamb_str2list(char *string, char *list[], int len) {
     return i;
 }
 
-bool cmpp_check_connect(cmpp_sp_t *cmpp) {
-    cmpp_pack_t pack;
-    pthread_mutex_lock(&cmpp->sock->lock);
 
-    if (cmpp_active_test(cmpp) != 0) {
-        return false;
-    }
-
-    if (cmpp_recv(cmpp, &pack, sizeof(cmpp_pack_t)) != 0) {
-        return false;
-    }
-
-    pthread_mutex_unlock(&cmpp->sock->lock);
-
-    if (!is_cmpp_command(&pack, sizeof(cmpp_pack_t), CMPP_ACTIVE_TEST_RESP)) {
-        return false;
-    }
-
-    return true;
-}
-
-void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
-    int err;
-    pthread_mutex_lock(&cmpp->lock);
-
-    /* Initialization cmpp connection */
-    while ((err = cmpp_init_sp(&cmpp, config->host, config->port)) != 0) {
-        lamb_errlog(config->logfile, "can't connect to cmpp %s server", config->host);
-        lamb_sleep(cmpp->timeout);
-    }
-
-    /* login to cmpp gateway */
-    while ((err = cmpp_connect(&cmpp, config.user, config.password)) != 0) {
-        lamb_errlog(config->logfile, "login cmpp %s gateway failed", config->host);
-        lamb_sleep(cmpp->timeout);
-    }
-
-    pthread_mutex_unlock(&cmpp->lock);
-    return;
-}
