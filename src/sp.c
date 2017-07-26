@@ -402,9 +402,9 @@ int lamb_cmpp_init(void) {
     err = cmpp_init_sp(&cmpp, config.host, config.port);
     if (err) {
         if (config.daemon) {
-            fprintf(stderr, "can't connect to cmpp %s server\n", config.host);
-        } else {
             lamb_errlog(config.logfile, "can't connect to cmpp %s server", config.host);
+        } else {
+            fprintf(stderr, "can't connect to cmpp %s server\n", config.host);
         }
         return -1;
     }
@@ -413,9 +413,9 @@ int lamb_cmpp_init(void) {
     err = cmpp_connect(&cmpp, config.user, config.password);
     if (err) {
         if (config.daemon) {
-            fprintf(stderr, "login cmpp %s gateway failed\n", config.host);
-        } else {
             lamb_errlog(config.logfile, "login cmpp %s gateway failed", config.host);
+        } else {
+            fprintf(stderr, "login cmpp %s gateway failed\n", config.host);
         }
         return -1;
     }
