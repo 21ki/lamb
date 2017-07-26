@@ -216,6 +216,13 @@ void *lamb_recv_loop(void *data) {
             continue;
         }
 
+        if (recv_queue->len >= config.recv) {
+            cmpp_free_pack(pack);
+            lamb_errlog(config.logfile, "the receive queue is full", 0);
+            lamb_sleep(1000);
+            continue;
+        }
+
         switch (ntohl(pack->commandId)) {
         case CMPP_SUBMIT_RESP:;
             unconfirmed--;
@@ -343,6 +350,7 @@ void *lamb_update_loop(void *data) {
             err = lamb_amqp_push_message(&amqp, pack->data, pack->len);
             if (err != LAMB_AMQP_STATUS_OK) {
                 lamb_errlog(config.logfile, "amqp push message failed", 0);
+                lamb_sleep(1000);
             }
 
             lamb_free_pack(pack);
