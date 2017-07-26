@@ -328,7 +328,7 @@ void *lamb_update_loop(void *data) {
 
             /* code */
             err = lamb_amqp_push_message(&amqp, pack->data, pack->len);
-            if (err) {
+            if (err != AMQP_STATUS_OK) {
                 lamb_errlog(config.logfile, "amqp push message failed", 0);
             }
 

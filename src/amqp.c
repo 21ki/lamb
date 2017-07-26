@@ -108,11 +108,8 @@ int lamb_amqp_push_message(lamb_amqp_t *amqp, void *data, size_t len) {
 
     status = amqp_basic_publish(amqp->conn, 1, amqp_cstring_bytes(amqp->exchange),
                                 amqp_cstring_bytes(amqp->key), 0, 0, NULL, message);
-    if (!status) {
-        return -1;
-    }
-
-    return 0;
+    
+    return status;
 }
 
 int lamb_amqp_pull_message(lamb_amqp_t *amqp, lamb_pack_t *pack, long long milliseconds) {
