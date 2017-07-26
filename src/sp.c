@@ -181,6 +181,12 @@ void *lamb_send_loop(void *data) {
                 sprintf(seq, "%ld", seqid);
                 sprintf(msgId, "%lld", message->msgId);
                 lamb_db_put(&cache, seq, strlen(seq), msgId, strlen(msgId));
+            } else {
+                if (!cmpp_check_connect(&cmpp)) {
+                    cmpp.ok = false;
+                    cmpp_close(&cmpp);
+                    lamb_cmpp_reconnect(&cmpp, &config);
+                }
             }
 
             lamb_free_pack(pack);
@@ -210,9 +216,9 @@ void *lamb_recv_loop(void *data) {
         if (err) {
             cmpp_free_pack(pack);
             if (err != CMPP_ERR_NODATA) {
-                lamb_errlog(config.logfile, "cmpp %s", cmpp_get_error(err));                
+                lamb_errlog(config.logfile, "cmpp %s", cmpp_get_error(err));
             }
-            lamb_sleep(10);
+            lamb_sleep(500);
             continue;
         }
 
