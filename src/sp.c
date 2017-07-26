@@ -298,6 +298,10 @@ void *lamb_recv_loop(void *data) {
 	    default:
             break;
         }
+
+        if (pack != NULL) {
+            cmpp_free_pack(pack);
+        }
     }
 
     return NULL;
