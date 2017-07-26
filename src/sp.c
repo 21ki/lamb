@@ -310,9 +310,9 @@ void *lamb_recv_loop(void *data) {
             }
             break;
 	    case CMPP_ACTIVE_TEST:;
-            unsigned int sequenceId;
-            cmpp_pack_get_integer(pack, cmpp_sequence_id, &sequenceId, 4);
-            cmpp_active_test_resp(&cmpp, sequenceId);
+            unsigned int seq_id;
+            cmpp_pack_get_integer(pack, cmpp_sequence_id, &seq_id, 4);
+            cmpp_active_test_resp(&cmpp, seq_id);
             break;
 	    default:
             break;
@@ -375,15 +375,15 @@ void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
     pthread_mutex_lock(&cmpp->lock);
 
     /* Initialization cmpp connection */
-    while ((err = cmpp_init_sp(&cmpp, config->host, config->port)) != 0) {
+    while ((err = cmpp_init_sp(cmpp, config->host, config->port)) != 0) {
         lamb_errlog(config->logfile, "can't connect to cmpp %s server", config->host);
-        lamb_sleep(cmpp->timeout);
+        lamb_sleep(cmpp->sock.conTimeout);
     }
 
     /* login to cmpp gateway */
-    while ((err = cmpp_connect(&cmpp, config.user, config.password)) != 0) {
+    while ((err = cmpp_connect(cmpp, config->user, config->password)) != 0) {
         lamb_errlog(config->logfile, "login cmpp %s gateway failed", config->host);
-        lamb_sleep(cmpp->timeout);
+        lamb_sleep(cmpp->sock.conTimeout);
     }
 
     pthread_mutex_unlock(&cmpp->lock);
@@ -402,7 +402,7 @@ int lamb_cmpp_init(void) {
     err = cmpp_init_sp(&cmpp, config.host, config.port);
     if (err) {
         if (config.daemon) {
-            fprintf(stderr, "can't connect to cmpp %s server", config.host);
+            fprintf(stderr, "can't connect to cmpp %s server\n", config.host);
         } else {
             lamb_errlog(config.logfile, "can't connect to cmpp %s server", config.host);
         }
@@ -413,7 +413,7 @@ int lamb_cmpp_init(void) {
     err = cmpp_connect(&cmpp, config.user, config.password);
     if (err) {
         if (config.daemon) {
-            fprintf(stderr, "login cmpp %s gateway failed", config.host);
+            fprintf(stderr, "login cmpp %s gateway failed\n", config.host);
         } else {
             lamb_errlog(config.logfile, "login cmpp %s gateway failed", config.host);
         }
