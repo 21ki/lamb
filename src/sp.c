@@ -125,6 +125,7 @@ void *lamb_fetch_work(void *queue) {
 
     while (true) {
         if (send_queue->len < config.send) {
+            lamb_list_node_t *node;
             lamb_pack_t *pack = malloc(sizeof(lamb_pack_t));
             err = lamb_amqp_pull_message(&amqp, pack, 0);
             if (err) {
@@ -134,10 +135,13 @@ void *lamb_fetch_work(void *queue) {
             }
 
             pthread_mutex_lock(&send_queue->lock);
-            if (lamb_list_rpush(send_queue, lamb_list_node_new(pack)) == NULL) {
+            node = lamb_list_rpush(send_queue, lamb_list_node_new(pack));
+            pthread_mutex_unlock(&send_queue->lock);
+            
+            if (node == NULL) {
+                lamb_free_pack(pack);
                 lamb_errlog(config.logfile, "push queue message error", 0);
             }
-            pthread_mutex_unlock(&send_queue->lock);
             
             continue;
         }
@@ -214,10 +218,10 @@ void *lamb_recv_loop(void *data) {
 
         switch (ntohl(pack->commandId)) {
         case CMPP_SUBMIT_RESP:;
+            unconfirmed--;
             unsigned char result;
 
-            unconfirmed--;
-            cmpp_pack_get_integer(pack, cmpp_submit_resp_result, (void *)&result, 1);
+            cmpp_pack_get_integer(pack, cmpp_submit_resp_result, &result, 1);
             if (result != 0) {
                 cmpp_free_pack(pack);
                 lamb_errlog(config.logfile, "receive cmpp_submit_resp packet error result = %d", result);
@@ -230,11 +234,11 @@ void *lamb_recv_loop(void *data) {
             lpack = malloc(sizeof(lamb_pack_t));
 	    
             update->type = LAMB_UPDATE;
-            cmpp_pack_get_integer(pack, cmpp_submit_resp_msg_id, (void *)update->msgId, 8);
+            cmpp_pack_get_integer(pack, cmpp_submit_resp_msg_id, &update->msgId, 8);
 	    
             char seqid[64];
             unsigned long sequenceId;
-            cmpp_pack_get_integer(pack, cmpp_sequence_id , (void *)&sequenceId, 4);
+            cmpp_pack_get_integer(pack, cmpp_sequence_id , &sequenceId, 4);
             sprintf(seqid, "%ld", sequenceId);
 	    
             size_t len;
@@ -255,18 +259,18 @@ void *lamb_recv_loop(void *data) {
         case CMPP_DELIVER:;
             unsigned char registered_delivery;
             lamb_pack_t *delpack = malloc(sizeof(lamb_pack_t));
-            cmpp_pack_get_integer(pack, cmpp_deliver_registered_delivery, (void *)&registered_delivery, 1);
+            cmpp_pack_get_integer(pack, cmpp_deliver_registered_delivery, &registered_delivery, 1);
             memset(delpack, 0, sizeof(lamb_pack_t));
             switch (registered_delivery) {
             case 0:; /* message delivery */
                 lamb_deliver_t *deliver = malloc(sizeof(lamb_deliver_t));
                 deliver->type = LAMB_DELIVER;
-                cmpp_pack_get_integer(pack, cmpp_deliver_msg_id, (void *)&deliver->msgId, 8);
+                cmpp_pack_get_integer(pack, cmpp_deliver_msg_id, &deliver->msgId, 8);
                 cmpp_pack_get_string(pack, cmpp_deliver_dest_id, deliver->destId, 24, 21);
                 cmpp_pack_get_string(pack, cmpp_deliver_service_id, deliver->serviceId, 16, 10);
-                cmpp_pack_get_integer(pack, cmpp_deliver_msg_fmt, (void *)&deliver->msgFmt, 1);
+                cmpp_pack_get_integer(pack, cmpp_deliver_msg_fmt, &deliver->msgFmt, 1);
                 cmpp_pack_get_string(pack, cmpp_deliver_src_terminal_id, deliver->srcTerminalId, 24, 21);
-                cmpp_pack_get_integer(pack, cmpp_deliver_msg_length, (void *)&deliver->msgLength, 1);
+                cmpp_pack_get_integer(pack, cmpp_deliver_msg_length, &deliver->msgLength, 1);
                 cmpp_pack_get_string(pack, cmpp_deliver_msg_content, deliver->msgContent, 160, deliver->msgLength);
                 delpack->len = sizeof(lamb_deliver_t);
                 delpack->data = deliver;
@@ -278,7 +282,7 @@ void *lamb_recv_loop(void *data) {
                 /* message status report */ 
                 lamb_report_t *report = malloc(sizeof(lamb_report_t));
                 report->type = LAMB_REPORT;
-                cmpp_pack_get_integer(pack, cmpp_deliver_msg_content , (void *)&report->msgId, 8);
+                cmpp_pack_get_integer(pack, cmpp_deliver_msg_content , &report->msgId, 8);
                 cmpp_pack_get_string(pack, cmpp_deliver_msg_content + 8, report->stat, 8, 7);
                 cmpp_pack_get_string(pack, cmpp_deliver_msg_content + 35, report->destTerminalId, 24, 21);
                 delpack->len = sizeof(lamb_report_t);
@@ -292,8 +296,10 @@ void *lamb_recv_loop(void *data) {
                 break;
             }
             break;
-	    case CMPP_ACTIVE_TEST:
-            //cmpp_active_test_resp(&cmpp);
+	    case CMPP_ACTIVE_TEST:;
+            unsigned int sequenceId;
+            cmpp_pack_get_integer(pack, cmpp_sequence_id, &sequenceId, 4);
+            cmpp_active_test_resp(&cmpp, sequenceId);
             break;
 	    default:
             break;
