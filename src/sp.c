@@ -106,16 +106,21 @@ void *lamb_fetch_work(void *queue) {
     err = lamb_amqp_connect(&amqp, config.db_host, config.db_port);
     if (err) {
         lamb_errlog(config.logfile, "can't connection to amqp server", 0);
+        pthread_exit(NULL);
     }
 
     err = lamb_amqp_login(&amqp, config.db_user, config.db_password);
     if (err) {
         lamb_errlog(config.logfile, "login amqp server failed", 0);
+        lamb_amqp_destroy_connection(&amqp);
+        pthread_exit(NULL);
     }
 
     err = lamb_amqp_consume(&amqp, (char const *)queue);
     if (err) {
         lamb_errlog(config.logfile, "set consume mode failed", 0);
+        lamb_amqp_destroy_connection(&amqp);
+        pthread_exit(NULL);
     }
 
     while (true) {
@@ -124,7 +129,9 @@ void *lamb_fetch_work(void *queue) {
             err = lamb_amqp_pull_message(&amqp, pack, 0);
             if (err) {
                 lamb_free_pack(pack);
-                lamb_errlog(config.logfile, "pull amqp message error", 0);
+                if (err != CMPP_ERR_NODATA) {
+                    lamb_errlog(config.logfile, "pull amqp message error", 0);                    
+                }
                 continue;
             }
 
@@ -139,9 +146,6 @@ void *lamb_fetch_work(void *queue) {
         
         lamb_sleep(10);
     }
-    
-    lamb_amqp_destroy_connection(&amqp);
-    pthread_exit(NULL);
 
     return NULL;
 }
