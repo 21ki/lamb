@@ -215,7 +215,6 @@ void *lamb_recv_loop(void *data) {
         switch (ntohl(pack->commandId)) {
         case CMPP_SUBMIT_RESP:;
             unsigned char result;
-            lamb_update_t *update;
 
             unconfirmed--;
             cmpp_pack_get_integer(pack, cmpp_submit_resp_result, (void *)&result, 1);
@@ -226,6 +225,7 @@ void *lamb_recv_loop(void *data) {
             }
 	    
             lamb_pack_t *lpack;
+            lamb_update_t *update;
             update = malloc(sizeof(lamb_update_t));
             lpack = malloc(sizeof(lamb_pack_t));
 	    
@@ -256,7 +256,7 @@ void *lamb_recv_loop(void *data) {
             unsigned char registered_delivery;
             lamb_pack_t *delpack = malloc(sizeof(lamb_pack_t));
             cmpp_pack_get_integer(pack, cmpp_deliver_registered_delivery, (void *)&registered_delivery, 1);
-
+            memset(delpack, 0, sizeof(lamb_pack_t));
             switch (registered_delivery) {
             case 0:; /* message delivery */
                 lamb_deliver_t *deliver = malloc(sizeof(lamb_deliver_t));
@@ -286,6 +286,9 @@ void *lamb_recv_loop(void *data) {
                 pthread_mutex_lock(&recv_queue->lock);
                 lamb_list_rpush(recv_queue, lamb_list_node_new(delpack));
                 pthread_mutex_unlock(&recv_queue->lock);
+                break;
+            default:
+                free(delpack);
                 break;
             }
             break;
@@ -328,7 +331,7 @@ void *lamb_update_loop(void *data) {
 
             /* code */
             err = lamb_amqp_push_message(&amqp, pack->data, pack->len);
-            if (err != AMQP_STATUS_OK) {
+            if (err != LAMB_AMQP_STATUS_OK) {
                 lamb_errlog(config.logfile, "amqp push message failed", 0);
             }
 

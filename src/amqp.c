@@ -146,7 +146,6 @@ int lamb_amqp_destroy_connection(lamb_amqp_t *amqp) {
 
 int lamb_free_pack(lamb_pack_t *pack) {
     if (pack) {
-        pack->len = 0;
         if (pack->data) {
             free(pack->data);
         }

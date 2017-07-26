@@ -13,6 +13,8 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 
+#define LAMB_AMQP_STATUS_OK AMQP_STATUS_OK
+
 typedef struct {
     amqp_socket_t *socket;
     amqp_connection_state_t conn;
