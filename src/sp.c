@@ -129,9 +129,7 @@ void *lamb_fetch_work(void *queue) {
             err = lamb_amqp_pull_message(&amqp, pack, 0);
             if (err) {
                 lamb_free_pack(pack);
-                if (err != CMPP_ERR_NODATA) {
-                    lamb_errlog(config.logfile, "pull amqp message error", 0);                    
-                }
+                lamb_errlog(config.logfile, "pull amqp message error", 0);                    
                 continue;
             }
 
@@ -207,7 +205,9 @@ void *lamb_recv_loop(void *data) {
         err = cmpp_recv(&cmpp, pack, sizeof(cmpp_pack_t));
         if (err) {
             cmpp_free_pack(pack);
-            lamb_errlog(config.logfile, "cmpp %s", cmpp_get_error(err));
+            if (err != CMPP_ERR_NODATA) {
+                lamb_errlog(config.logfile, "cmpp %s", cmpp_get_error(err));                
+            }
             lamb_sleep(10);
             continue;
         }
