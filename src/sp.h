@@ -80,7 +80,7 @@ void *lamb_fetch_work(void *queue);
 void *lamb_send_loop(void *data);
 void *lamb_recv_loop(void *data);
 void *lamb_update_loop(void *data);
-int lamb_cmpp_init(void);
+int lamb_cmpp_init(cmpp_sp_t *cmpp);
 void lamb_event_loop(void);
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config);
 

@@ -175,16 +175,16 @@ void *lamb_send_loop(void *data) {
             char *phone = (char *)message->destTerminalId;
             char *content = (char *)message->msgContent;
 
-            seqid = cmpp_submit(&cmpp, phone, content, true, config.spcode, config.encoding, config.spid);
+            seqid = cmpp_submit(&cmpp->sock, phone, content, true, config.spcode, config.encoding, config.spid);
             if (seqid > 0) {
                 unconfirmed++;
                 sprintf(seq, "%ld", seqid);
                 sprintf(msgId, "%lld", message->msgId);
                 lamb_db_put(&cache, seq, strlen(seq), msgId, strlen(msgId));
             } else {
-                if (!cmpp_check_connect(&cmpp)) {
+                if (!cmpp_check_connect(&cmpp->sock)) {
                     cmpp.ok = false;
-                    cmpp_close(&cmpp);
+                    cmpp_sp_close(&cmpp);
                     lamb_cmpp_reconnect(&cmpp, &config);
                 }
             }
@@ -212,7 +212,7 @@ void *lamb_recv_loop(void *data) {
         }
 
         pack = malloc(sizeof(cmpp_pack_t));
-        err = cmpp_recv(&cmpp, pack, sizeof(cmpp_pack_t));
+        err = cmpp_recv(&cmpp->sock, pack, sizeof(cmpp_pack_t));
         if (err) {
             cmpp_free_pack(pack);
             if (err != CMPP_ERR_NODATA) {
@@ -312,7 +312,7 @@ void *lamb_recv_loop(void *data) {
 	    case CMPP_ACTIVE_TEST:;
             unsigned int seq_id;
             cmpp_pack_get_integer(pack, cmpp_sequence_id, &seq_id, 4);
-            cmpp_active_test_resp(&cmpp, seq_id);
+            cmpp_active_test_resp(&cmpp.sock, seq_id);
             break;
 	    default:
             break;
@@ -381,7 +381,7 @@ void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
     }
 
     /* login to cmpp gateway */
-    while ((err = cmpp_connect(cmpp, config->user, config->password)) != 0) {
+    while ((err = cmpp_connect(&cmpp->sock, config->user, config->password)) != 0) {
         lamb_errlog(config->logfile, "login cmpp %s gateway failed", config->host);
         lamb_sleep(cmpp->sock.conTimeout);
     }
