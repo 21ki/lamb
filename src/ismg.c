@@ -14,12 +14,11 @@
 #include <sys/epoll.h>
 #include <arpa/inet.h>
 #include <cmpp.h>
-#include "sp.h"
+#include "ismg.h"
 #include "utils.h"
 #include "config.h"
 #include "list.h"
 #include "amqp.h"
-#include "cache.h"
 
 lamb_config_t config;
 
