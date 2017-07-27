@@ -95,7 +95,8 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
     struct sockaddr_in clientaddr;
     struct epoll_event ev, events[20];
     int i, err, epfd, nfds, confd, sockfd;
-    
+
+    epfd = epoll_create1(0);
     ev.data.fd = cmpp->sock.fd;
     ev.events = EPOLLIN | EPOLLET;
 
