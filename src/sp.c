@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     recv_queue = lamb_list_new();
     lamb_db_init(&cache, "cache");
 
-    if(lamb_cmpp_init() == 0) {
+    if(lamb_cmpp_init(&cmpp) == 0) {
         /* Start worker thread */
         lamb_event_loop();
     }
@@ -390,16 +390,16 @@ void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
     return;
 }
 
-int lamb_cmpp_init(void) {
+int lamb_cmpp_init(cmpp_sp_t *cmpp) {
     int err;
 
     /* setting cmpp socket parameter */
-    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_CONTIMEOUT, config.timeout);
-    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
-    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_CONTIMEOUT, config.timeout);
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
 
     /* Initialization cmpp connection */
-    err = cmpp_init_sp(&cmpp, config.host, config.port);
+    err = cmpp_init_sp(cmpp, config.host, config.port);
     if (err) {
         if (config.daemon) {
             lamb_errlog(config.logfile, "can't connect to cmpp %s server", config.host);
@@ -410,7 +410,7 @@ int lamb_cmpp_init(void) {
     }
 
     /* login to cmpp gateway */
-    err = cmpp_connect(&cmpp, config.user, config.password);
+    err = cmpp_connect(&cmpp->sock, config.user, config.password);
     if (err) {
         if (config.daemon) {
             lamb_errlog(config.logfile, "login cmpp %s gateway failed", config.host);

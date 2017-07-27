@@ -98,6 +98,8 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
     while (true) {
         nfds = epoll_wait(epfd, events, 20, 500);
 
+        cmpp_ismg_loop();
+        
         for (i = 0, i < nfds; ++i) {
             if (events[i].data.fd == cmpp->sock.fd) {
                 /* new client connection */
