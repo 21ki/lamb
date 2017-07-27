@@ -90,7 +90,7 @@ void lamb_event_loop(void) {
 }
 
 void lamb_accept_loop(cmpp_ismg_t *cmpp) {
-    pid_t pid, ppid;
+    //pid_t pid, ppid;
     socklen_t clilen;
     struct sockaddr_in clientaddr;
     struct epoll_event ev, events[20];
@@ -136,8 +136,6 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                 }
 
                 unsigned int sequenceId;
-                char *user = "901234";
-                char *password = "123456";
 
                 if (is_cmpp_command(&pack, sizeof(pack), CMPP_CONNECT)) {
                     unsigned char version;
@@ -147,8 +145,11 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                         continue;
                     }
 
+                    char *user = "901234";
+                    char *password = "123456";
+
                     cmpp_pack_get_integer(&pack, cmpp_sequence_id, &sequenceId, 4);
-                    if (cmpp_check_authentication((cmpp_connect_t *)&pack, sizeof(cmpp_pack_t), user, password)) {
+                    if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
                         printf("login successfull form client %d\n", sockfd);
                     } else {
                         printf("login failed form client %d\n", sockfd);
@@ -205,17 +206,17 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "timeout", &conf->timeout) != 0) {
+    if (lamb_get_int64(&cfg, "timeout", &conf->timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read max connections parameter\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "recv_timeout", &conf->recv_timeout) != 0) {
+    if (lamb_get_int64(&cfg, "recv_timeout", &conf->recv_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read max connections parameter\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "send_timeout", &conf->send_timeout) != 0) {
+    if (lamb_get_int64(&cfg, "send_timeout", &conf->send_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read max connections parameter\n");
         goto error;
     }
