@@ -77,7 +77,13 @@ void lamb_event_loop() {
     /* setting cmpp socket parameter */
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.timeout);
-    
+
+    if (config.daemon) {
+        lamb_errlog(config.logfile, "lamb server listen %s port %d", config.listen, config.port);
+    } else {
+        fprintf(stderr, "lamb server listen %s port %d\n", config.listen, config.port);
+    }
+
     lamb_accept_loop(&cmpp);
 
     return;
@@ -119,14 +125,18 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                     continue;
                 }
 
+                cmpp_sock_t sock;
                 cmpp_pack_t pack;
-                err = cmpp_recv(cmpp, &pack, sizeof(cmpp_pack_t));
+                sock.fd = sockfd;
+                sock.recv_timeout = config.timeout;
+                err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     printf("cmpp packet error form client %d\n", sockfd);
                     close(sockfd);
                     events[i].data.fd = -1;
                     continue;
                 }
+
 
                 unsigned char status;
                 unsigned int sequenceId;
@@ -137,7 +147,7 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                     cmpp_connect_t *ccp = &pack;
                     if (ccp->version != CMPP_VERSION) {
                         status = 4;
-                        cmpp_connect_resp(cmpp, sequenceId, status);
+                        cmpp_connect_resp(&sock, sequenceId, status);
                         continue;
                     }
 
