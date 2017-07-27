@@ -20,4 +20,8 @@ typedef struct {
     bool daemon;
 } lamb_config_t;
 
+void lamb_event_loop(void);
+void lamb_accept_loop(cmpp_ismg_t *cmpp);
+int lamb_read_config(lamb_config_t *conf, const char *file);
+
 #endif

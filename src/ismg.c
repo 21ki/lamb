@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Read lamb configuration file */
+    memset(&config, 0, sizeof(config));
     if (lamb_read_config(&config, file) != 0) {
         return -1;
     }
@@ -58,7 +59,7 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void lamb_event_loop() {
+void lamb_event_loop(void) {
     int err;
     
     cmpp_ismg_t cmpp;
@@ -71,7 +72,7 @@ void lamb_event_loop() {
             fprintf(stderr, "ERROR: %s\n", cmpp_get_error(err));
         }
 
-        return -1;
+        return;
     }
 
     /* setting cmpp socket parameter */
