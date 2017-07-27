@@ -175,14 +175,14 @@ void *lamb_send_loop(void *data) {
             char *phone = (char *)message->destTerminalId;
             char *content = (char *)message->msgContent;
 
-            seqid = cmpp_submit(&cmpp->sock, phone, content, true, config.spcode, config.encoding, config.spid);
+            seqid = cmpp_submit(&cmpp.sock, phone, content, true, config.spcode, config.encoding, config.spid);
             if (seqid > 0) {
                 unconfirmed++;
                 sprintf(seq, "%ld", seqid);
                 sprintf(msgId, "%lld", message->msgId);
                 lamb_db_put(&cache, seq, strlen(seq), msgId, strlen(msgId));
             } else {
-                if (!cmpp_check_connect(&cmpp->sock)) {
+                if (!cmpp_check_connect(&cmpp.sock)) {
                     cmpp.ok = false;
                     cmpp_sp_close(&cmpp);
                     lamb_cmpp_reconnect(&cmpp, &config);
@@ -212,7 +212,7 @@ void *lamb_recv_loop(void *data) {
         }
 
         pack = malloc(sizeof(cmpp_pack_t));
-        err = cmpp_recv(&cmpp->sock, pack, sizeof(cmpp_pack_t));
+        err = cmpp_recv(&cmpp.sock, pack, sizeof(cmpp_pack_t));
         if (err) {
             cmpp_free_pack(pack);
             if (err != CMPP_ERR_NODATA) {
