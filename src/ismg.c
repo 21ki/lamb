@@ -39,7 +39,6 @@ int main(int argc, char *argv[]) {
     }
 
     /* Read lamb configuration file */
-    memset(&config, 0, sizeof(config));
     if (lamb_read_config(&config, file) != 0) {
         return -1;
     }
@@ -98,7 +97,7 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
 
     epfd = epoll_create1(0);
     ev.data.fd = cmpp->sock.fd;
-    ev.events = EPOLLIN | EPOLLET;
+    ev.events = EPOLLIN;
 
     epoll_ctl(epfd, EPOLL_CTL_ADD, cmpp->sock.fd, &ev);
 
@@ -114,8 +113,18 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                     continue;
                 }
 
+                cmpp_sock_t sock;
+                sock.fd = confd;
+
+                /* TCP NONBLOCK */
+                cmpp_sock_nonblock(&sock, true);
+                /* TCP NODELAY */
+                cmpp_sock_tcpnodelay(&sock, true);
+                /* TCP KEEPAVLIE */
+                cmpp_sock_keepavlie(&sock, 30, 5, 3);
+
                 ev.data.fd = confd;
-                ev.events = EPOLLIN | EPOLLET;
+                ev.events = EPOLLIN;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, confd, &ev);
                 printf("new client connection form %s\n", inet_ntoa(clientaddr.sin_addr));
             } else if (events[i].events & EPOLLIN) {
@@ -127,7 +136,9 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                 cmpp_sock_t sock;
                 cmpp_pack_t pack;
                 sock.fd = sockfd;
+                cmpp_sock_init(&sock);
                 sock.recvTimeout = config.timeout;
+                
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     printf("cmpp packet error form client %d\n", sockfd);
