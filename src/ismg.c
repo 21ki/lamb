@@ -104,7 +104,7 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
     while (true) {
         nfds = epoll_wait(epfd, events, 20, 500);
 
-        for (i = 0, i < nfds; ++i) {
+        for (i = 0; i < nfds; ++i) {
             if (events[i].data.fd == cmpp->sock.fd) {
                 /* new client connection */
                 confd = accept(cmpp->sock.fd, (struct sockaddr *)&clientaddr, &clilen);

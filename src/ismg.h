@@ -15,6 +15,8 @@ typedef struct {
     char listen[16];
     int port;
     int connections;
+    unsigned long long send_timeout;
+    unsigned long long recv_timeout;
     char logfile[128];
     bool debug;
     bool daemon;
