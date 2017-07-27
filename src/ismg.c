@@ -105,8 +105,6 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
     while (true) {
         nfds = epoll_wait(epfd, events, 20, 500);
 
-        cmpp_ismg_loop();
-        
         for (i = 0, i < nfds; ++i) {
             if (events[i].data.fd == cmpp->sock.fd) {
                 /* new client connection */
@@ -129,7 +127,7 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                 cmpp_sock_t sock;
                 cmpp_pack_t pack;
                 sock.fd = sockfd;
-                sock.recv_timeout = config.timeout;
+                sock.recvTimeout = config.timeout;
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     printf("cmpp packet error form client %d\n", sockfd);
@@ -138,17 +136,15 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                     continue;
                 }
 
-
-                unsigned char status;
                 unsigned int sequenceId;
-                cahr *user = "901234";
+                char *user = "901234";
                 char *password = "123456";
 
                 if (is_cmpp_command(&pack, sizeof(pack), CMPP_CONNECT)) {
-                    cmpp_connect_t *ccp = &pack;
-                    if (ccp->version != CMPP_VERSION) {
-                        status = 4;
-                        cmpp_connect_resp(&sock, sequenceId, status);
+                    unsigned char version;
+                    cmpp_pack_get_integer(&pack, cmpp_connect_version, &version, 1);
+                    if (version != CMPP_VERSION) {
+                        cmpp_connect_resp(&sock, sequenceId, 4);
                         continue;
                     }
 
