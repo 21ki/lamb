@@ -392,6 +392,7 @@ void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
 
 int lamb_cmpp_init(cmpp_sp_t *cmpp) {
     int err;
+    cmpp_pack_t pack;
 
     /* setting cmpp socket parameter */
     cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_CONTIMEOUT, config.timeout);
@@ -413,10 +414,31 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp) {
     err = cmpp_connect(&cmpp->sock, config.user, config.password);
     if (err) {
         if (config.daemon) {
-            lamb_errlog(config.logfile, "login cmpp %s gateway failed", config.host);
+            lamb_errlog(config.logfile, "cmpp cmpp_connect() failed", 0);
         } else {
-            fprintf(stderr, "login cmpp %s gateway failed\n", config.host);
+            fprintf(stderr, "cmpp cmpp_connect() failed\n", 0);
         }
+        return -1;
+    }
+
+    err = cmpp_recv(&cmpp->sock, &pack, sizeof(pack));
+    if (err) {
+        fprintf(stderr, "cmpp cmpp_recv() failed\n", 0);
+        return -1;
+    }
+
+    if (is_cmpp_command(&pack, sizeof(pack), CMPP_CONNECT_RESP)) {
+        unsigned char status;
+        cmpp_pack_get_integer(&pack, cmpp_connect_resp_status, &status, 1);
+        switch (status) {
+        case 0:
+            printf("cmpp login successfull\n");
+            break;
+        case 3:
+            printf("cmpp user or password authenticator failed\n");
+            break;
+        }
+
         return -1;
     }
 

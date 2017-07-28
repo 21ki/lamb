@@ -138,7 +138,7 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                 sock.fd = sockfd;
                 cmpp_sock_init(&sock);
                 sock.recvTimeout = config.timeout;
-                
+
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     if (err == -1) {
@@ -169,6 +169,7 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
                         printf("login successfull form client %d\n", sockfd);
                     } else {
+                        cmpp_connect_resp(&sock, sequenceId, 3);
                         printf("login failed form client %d\n", sockfd);
                     }
                 }
