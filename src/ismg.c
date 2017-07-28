@@ -20,7 +20,7 @@
 #include "list.h"
 #include "amqp.h"
 
-lamb_config_t config;
+static lamb_config_t config;
 
 int main(int argc, char *argv[]) {
     char *file = "lamb.conf";
@@ -51,15 +51,7 @@ int main(int argc, char *argv[]) {
     /* Signal event processing */
     lamb_signal();
 
-    /* Start main event thread */
-    lamb_event_loop();
-
-    return 0;
-}
-
-void lamb_event_loop(void) {
     int err;
-    
     cmpp_ismg_t cmpp;
     err = cmpp_init_ismg(&cmpp, config.listen, config.port);
 
@@ -70,7 +62,7 @@ void lamb_event_loop(void) {
             fprintf(stderr, "Cmpp server initialization failed\n");
         }
 
-        return;
+        return -1;
     }
 
     if (config.daemon) {
@@ -89,9 +81,10 @@ void lamb_event_loop(void) {
         fprintf(stderr, "lamb server listen %s port %d\n", config.listen, config.port);
     }
 
+    /* Start main event thread */
     lamb_event_loop(&cmpp);
 
-    return;
+    return 0;
 }
 
 void lamb_event_loop(cmpp_ismg_t *cmpp) {
