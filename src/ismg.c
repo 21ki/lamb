@@ -165,7 +165,7 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                         continue;
                     }
 
-                    char SourceAddr[6];
+                    unsigned char SourceAddr[6];
                     char *user = "901234";
                     char *password = "123456";
 
