@@ -414,16 +414,16 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp) {
     err = cmpp_connect(&cmpp->sock, config.user, config.password);
     if (err) {
         if (config.daemon) {
-            lamb_errlog(config.logfile, "cmpp cmpp_connect() failed", 0);
+            lamb_errlog(config.logfile, "send cmpp_connect() failed", 0);
         } else {
-            fprintf(stderr, "cmpp cmpp_connect() failed\n", 0);
+            fprintf(stderr, "send cmpp_connect() failed\n");
         }
         return -1;
     }
 
     err = cmpp_recv(&cmpp->sock, &pack, sizeof(pack));
     if (err) {
-        fprintf(stderr, "cmpp cmpp_recv() failed\n", 0);
+        fprintf(stderr, "cmpp cmpp_recv() failed\n");
         return -1;
     }
 
@@ -432,17 +432,29 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp) {
         cmpp_pack_get_integer(&pack, cmpp_connect_resp_status, &status, 1);
         switch (status) {
         case 0:
-            printf("cmpp login successfull\n");
+            return 0;
+        case 1:
+            lamb_errlog(config.logfile, "Incorrect protocol packets", 0);
+            break;
+        case 2:
+            lamb_errlog(config.logfile, "Illegal source address", 0);
             break;
         case 3:
-            printf("cmpp user or password authenticator failed\n");
+            lamb_errlog(config.logfile, "Authenticator failed", 0);
+            break;
+        case 4:
+            lamb_errlog(config.logfile, "The protocol version is too high", 0);
+            break;
+        default:
+            lamb_errlog(config.logfile, "cmpp login failed unknown error", 0);
             break;
         }
 
         return -1;
     }
 
-    return 0;
+    lamb_errlog(config.logfile, "Cannot resolve response packet", 0);
+    return -1;
 }
 
 void lamb_event_loop(void) {

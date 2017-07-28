@@ -126,6 +126,7 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                 ev.data.fd = confd;
                 ev.events = EPOLLIN;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, confd, &ev);
+                getpeername(confd, (struct sockaddr *)&clientaddr, &clilen);
                 printf("new client connection form %s\n", inet_ntoa(clientaddr.sin_addr));
             } else if (events[i].events & EPOLLIN) {
                 /* receive from client data */
@@ -139,22 +140,24 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                 cmpp_sock_init(&sock);
                 sock.recvTimeout = config.timeout;
 
+                getpeername(sockfd, (struct sockaddr *)&clientaddr, &clilen);
+
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     if (err == -1) {
-                        printf("connection be close form client %d\n", sockfd);
+                        printf("connection be close form client %s\n", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                         close(sockfd);
                         continue;
                     }
 
-                    printf("cmpp packet error form client %d\n", sockfd);
+                    printf("cmpp packet error form client %s\n", inet_ntoa(clientaddr.sin_addr));
                     continue;
                 }
 
                 unsigned int sequenceId;
 
-                if (is_cmpp_command(&pack, sizeof(pack), CMPP_CONNECT)) {
+                if (cmpp_check_method(&pack, sizeof(pack), CMPP_CONNECT)) {
                     unsigned char version;
                     cmpp_pack_get_integer(&pack, cmpp_connect_version, &version, 1);
                     if (version != CMPP_VERSION) {
@@ -162,16 +165,26 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                         continue;
                     }
 
+                    char SourceAddr[6];
                     char *user = "901234";
                     char *password = "123456";
 
+                    cmpp_pack_get_string(&pack, cmpp_connect_source_addr, SourceAddr, sizeof(SourceAddr), 6);
+                    if (memcmp(SourceAddr, user, strlen(user)) != 0) {
+                        cmpp_connect_resp(&sock, sequenceId, 2);
+                        continue;
+                    }
+
                     cmpp_pack_get_integer(&pack, cmpp_sequence_id, &sequenceId, 4);
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
-                        printf("login successfull form client %d\n", sockfd);
+                        cmpp_connect_resp(&sock, sequenceId, 0);
+                        printf("login successfull form client %s\n", inet_ntoa(clientaddr.sin_addr));
                     } else {
                         cmpp_connect_resp(&sock, sequenceId, 3);
-                        printf("login failed form client %d\n", sockfd);
+                        printf("login failed form client %s\n", inet_ntoa(clientaddr.sin_addr));
                     }
+                } else {
+                    cmpp_connect_resp(&sock, sequenceId, 1);
                 }
             }
         }
