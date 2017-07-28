@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
 void lamb_event_loop(cmpp_ismg_t *cmpp) {
     socklen_t clilen;
     struct sockaddr_in clientaddr;
-    struct epoll_event ev, events[20];
+    struct epoll_event ev, events[32];
     int i, err, epfd, nfds, confd, sockfd;
 
     epfd = epoll_create1(0);
@@ -100,7 +100,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
     epoll_ctl(epfd, EPOLL_CTL_ADD, cmpp->sock.fd, &ev);
 
     while (true) {
-        nfds = epoll_wait(epfd, events, 20, -1);
+        nfds = epoll_wait(epfd, events, 32, -1);
 
         for (i = 0; i < nfds; ++i) {
             if (events[i].data.fd == cmpp->sock.fd) {
@@ -241,7 +241,6 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         }
                     }
                 } else {
-                    cmpp_connect_resp(&sock, sequenceId, 1);
                     if (config.daemon) {
                         lamb_errlog(config.logfile, "Unable to resolve packets from client %s", inet_ntoa(clientaddr.sin_addr));
                     } else {
@@ -258,9 +257,9 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 void lamb_work_loop(cmpp_sock_t *sock) {
     cmpp_pack_t pack;
     socklen_t clilen;
+    int err, epfd, nfds;
     struct sockaddr_in clientaddr;
-    struct epoll_event ev, events[20];
-    int i, err, epfd, nfds;
+    struct epoll_event ev, events[32];
 
     epfd = epoll_create1(0);
     ev.data.fd = sock->fd;
@@ -270,7 +269,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     getpeername(sockfd, (struct sockaddr *)&clientaddr, &clilen);
 
     while (true) {
-        nfds = epoll_wait(epfd, events, 20, -1);
+        nfds = epoll_wait(epfd, events, 32, -1);
 
         if (nfds > 0) {
             err = cmpp_recv(sock, &pack, sizeof(pack));
