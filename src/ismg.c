@@ -141,9 +141,14 @@ void lamb_accept_loop(cmpp_ismg_t *cmpp) {
                 
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
+                    if (err == -1) {
+                        printf("connection be close form client %d\n", sockfd);
+                        epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
+                        close(sockfd);
+                        continue;
+                    }
+
                     printf("cmpp packet error form client %d\n", sockfd);
-                    close(sockfd);
-                    events[i].data.fd = -1;
                     continue;
                 }
 
