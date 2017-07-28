@@ -427,7 +427,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp) {
         return -1;
     }
 
-    if (is_cmpp_command(&pack, sizeof(pack), CMPP_CONNECT_RESP)) {
+    if (cmpp_check_method(&pack, sizeof(pack), CMPP_CONNECT_RESP)) {
         unsigned char status;
         cmpp_pack_get_integer(&pack, cmpp_connect_resp_status, &status, 1);
         switch (status) {
