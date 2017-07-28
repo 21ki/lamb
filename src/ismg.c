@@ -266,7 +266,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     ev.events = EPOLLIN;
 
     epoll_ctl(epfd, EPOLL_CTL_ADD, sock->fd, &ev);
-    getpeername(sockfd, (struct sockaddr *)&clientaddr, &clilen);
+    getpeername(sock->fd, (struct sockaddr *)&clientaddr, &clilen);
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
