@@ -432,6 +432,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp) {
         cmpp_pack_get_integer(&pack, cmpp_connect_resp_status, &status, 1);
         switch (status) {
         case 0:
+            cmpp->ok = true;
             return 0;
         case 1:
             lamb_errlog(config.logfile, "Incorrect protocol packets", 0);
