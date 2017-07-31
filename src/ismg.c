@@ -268,6 +268,9 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     epoll_ctl(epfd, EPOLL_CTL_ADD, sock->fd, &ev);
     getpeername(sock->fd, (struct sockaddr *)&clientaddr, &clilen);
 
+    /* msgId */
+    unsigned long long msgId = 90140610510510;
+    
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
 
@@ -292,7 +295,26 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 continue;
             }
 
-            printf("Successfully receive packets from the client\n");
+            unsigned int sequenceId;
+            cmpp_head_t *chp = &pack;
+            unsigned int commandId = ntohl(chp->commandId);
+            
+            switch (commandId) {
+            case CMPP_ACTIVE_TEST:
+                fprintf(stdout, "Receive cmpp_active_test packet from client\n");
+                cmpp_active_test_resp(sock, ntohl(chp->sequenceId));
+                break;
+            case CMPP_SUBMIT:
+                fprintf(stdout, "Receive cmpp_submit packet from client\n");
+                cmpp_submit_resp(sock, ntohl(chp->sequenceId), msgId++, 0);
+                break;
+            case CMPP_TERMINATE:
+                fprintf(stdout, "Receive cmpp_terminate packet from client\n");
+                cmpp_terminate_resp(sock, ntohl(chp->sequenceId));
+                close(epfd);
+                cmpp_sock_close(sock);
+                return;
+            }
         }
     }
 
