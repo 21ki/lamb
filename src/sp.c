@@ -501,118 +501,118 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_bool(&cfg, "debug", &conf->debug) != 0) {
-        fprintf(stderr, "ERROR: Can't read debug parameter\n");
+    if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
+        fprintf(stderr, "ERROR: Can't read Debug parameter\n");
         goto error;
     }
 
-    if (lamb_get_bool(&cfg, "daemon", &conf->daemon) != 0) {
-        fprintf(stderr, "ERROR: Can't read daemon parameter\n");
+    if (lamb_get_bool(&cfg, "Daemon", &conf->daemon) != 0) {
+        fprintf(stderr, "ERROR: Can't read Daemon parameter\n");
         goto error;
     }
         
-    if (lamb_get_string(&cfg, "host", conf->host, 16) != 0) {
+    if (lamb_get_string(&cfg, "Host", conf->host, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid host IP address\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "port", &conf->port) != 0) {
-        fprintf(stderr, "ERROR: Can't read port parameter\n");
+    if (lamb_get_int(&cfg, "Port", &conf->port) != 0) {
+        fprintf(stderr, "ERROR: Can't read Port parameter\n");
         goto error;
     }
 
     if (conf->port < 1 || conf->port > 65535) {
-        fprintf(stderr, "ERROR: Invalid host port number\n");
+        fprintf(stderr, "ERROR: Invalid host Port number\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "user", conf->user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read user parameter\n");
+    if (lamb_get_string(&cfg, "User", conf->user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read User parameter\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "password", conf->password, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read password parameter\n");
+    if (lamb_get_string(&cfg, "Password", conf->password, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read Password parameter\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "spid", conf->spid, 8) != 0) {
-        fprintf(stderr, "ERROR: Can't read spid parameter\n");
+    if (lamb_get_string(&cfg, "Spid", conf->spid, 8) != 0) {
+        fprintf(stderr, "ERROR: Can't read Spid parameter\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "spcode", conf->spcode, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read spcode parameter\n");
+    if (lamb_get_string(&cfg, "SpCode", conf->spcode, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read SpCode parameter\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "encoding", conf->encoding, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read encoding parameter\n");
+    if (lamb_get_string(&cfg, "Encoding", conf->encoding, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read Encoding parameter\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "send", &conf->send) != 0) {
-        fprintf(stderr, "ERROR: Can't read send parameter\n");
+    if (lamb_get_int(&cfg, "SendQueue", &conf->send) != 0) {
+        fprintf(stderr, "ERROR: Can't read SendQueue parameter\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "recv", &conf->recv) != 0) {
-        fprintf(stderr, "ERROR: Can't read recv parameter\n");
+    if (lamb_get_int(&cfg, "RecvQueue", &conf->recv) != 0) {
+        fprintf(stderr, "ERROR: Can't read RecvQueue parameter\n");
         goto error;
     }
     
-    if (lamb_get_int(&cfg, "unconfirmed", &conf->unconfirmed) != 0) {
-        fprintf(stderr, "ERROR: Can't read unconfirmed parameter\n");
+    if (lamb_get_int(&cfg, "Unconfirmed", &conf->unconfirmed) != 0) {
+        fprintf(stderr, "ERROR: Can't read Unconfirmed parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "timeout", &conf->timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read timeout parameter\n");
+    if (lamb_get_int64(&cfg, "ConnectTimeout", &conf->timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read ConnectTimeout parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "send_timeout", &conf->send_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read send_timeout parameter\n");
+    if (lamb_get_int64(&cfg, "SendTimeout", &conf->send_timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read SendTimeout parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "recv_timeout", &conf->recv_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read recv_timeout parameter\n");
+    if (lamb_get_int64(&cfg, "RecvTimeout", &conf->recv_timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read RecvTimeout parameter\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "logfile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read logfile parameter\n");
+    if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read LogFile parameter\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "db_host", conf->db_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read db_host parameter\n");
+    if (lamb_get_string(&cfg, "AmqpHost", conf->db_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read AmqpHost parameter\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "db_port", &conf->db_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read db_port parameter\n");
+    if (lamb_get_int(&cfg, "AmqpPort", &conf->db_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read AmqpPort parameter\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "db_user", conf->db_user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read db_user parameter\n");
+    if (lamb_get_string(&cfg, "AmqpUser", conf->db_user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read AmqpUser parameter\n");
         goto error;
     }
 
     if (conf->db_port < 1 || conf->db_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid db_port number parameter\n");
+        fprintf(stderr, "ERROR: Invalid AmqpPort number parameter\n");
         goto error;
     }
         
-    if (lamb_get_string(&cfg, "db_password", conf->db_password, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read db_password parameter\n");
+    if (lamb_get_string(&cfg, "AmqpPassword", conf->db_password, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read AmqpPassword parameter\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "queue", conf->queue, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read queue parameter\n");
+    if (lamb_get_string(&cfg, "Queues", conf->queue, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read Queues parameter\n");
         goto error;
     }
         

@@ -332,28 +332,28 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "id", &conf->id) != 0) {
-        fprintf(stderr, "ERROR: Can't read debug parameter\n");
+    if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
         goto error;
     }
     
-    if (lamb_get_bool(&cfg, "debug", &conf->debug) != 0) {
-        fprintf(stderr, "ERROR: Can't read debug parameter\n");
+    if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
         goto error;
     }
 
-    if (lamb_get_bool(&cfg, "daemon", &conf->daemon) != 0) {
-        fprintf(stderr, "ERROR: Can't read daemon parameter\n");
+    if (lamb_get_bool(&cfg, "Daemon", &conf->daemon) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Daemon' parameter\n");
         goto error;
     }
         
-    if (lamb_get_string(&cfg, "listen", conf->listen, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid listen IP address\n");
+    if (lamb_get_string(&cfg, "Listen", conf->listen, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid Listen IP address\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "port", &conf->port) != 0) {
-        fprintf(stderr, "ERROR: Can't read port parameter\n");
+    if (lamb_get_int(&cfg, "Port", &conf->port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Port' parameter\n");
         goto error;
     }
 
@@ -362,28 +362,28 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "connections", &conf->connections) != 0) {
-        fprintf(stderr, "ERROR: Can't read max connections parameter\n");
+    if (lamb_get_int(&cfg, "Connections", &conf->connections) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Connections' parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "timeout", &conf->timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read max connections parameter\n");
+    if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "recv_timeout", &conf->recv_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read max connections parameter\n");
+    if (lamb_get_int64(&cfg, "RecvTimeout", &conf->recv_timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "send_timeout", &conf->send_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read max connections parameter\n");
+    if (lamb_get_int64(&cfg, "SendTimeout", &conf->send_timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
         goto error;
     }
         
-    if (lamb_get_string(&cfg, "logfile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read logfile parameter\n");
+    if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;
     }
 
