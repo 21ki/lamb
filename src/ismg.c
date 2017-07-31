@@ -295,8 +295,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 continue;
             }
 
-            unsigned int sequenceId;
-            cmpp_head_t *chp = &pack;
+            cmpp_head_t *chp = (cmpp_head_t *)&pack;
             unsigned int commandId = ntohl(chp->commandId);
             
             switch (commandId) {
@@ -312,6 +311,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 fprintf(stdout, "Receive cmpp_terminate packet from client\n");
                 cmpp_terminate_resp(sock, ntohl(chp->sequenceId));
                 close(epfd);
+                fprintf(stdout, "Close the connection to the client\n");
                 cmpp_sock_close(sock);
                 return;
             }
