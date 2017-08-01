@@ -285,7 +285,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
         return;
     }
 
-    lamb_amqp_setting(&amqp, "lamb.message", "message");
+    lamb_amqp_setting(&amqp, "lamb.message", config.queue);
     
     /* msgId */
     unsigned long long msgId = 90140610510510;

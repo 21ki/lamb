@@ -215,10 +215,7 @@ void *lamb_recv_loop(void *data) {
         err = cmpp_recv(&cmpp.sock, pack, sizeof(cmpp_pack_t));
         if (err) {
             cmpp_free_pack(pack);
-            if (err != CMPP_ERR_NODATA) {
-                lamb_errlog(config.logfile, "cmpp %s", cmpp_get_error(err));
-            }
-            lamb_sleep(500);
+            lamb_sleep(1000);
             continue;
         }
 
