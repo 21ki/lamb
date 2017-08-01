@@ -175,20 +175,26 @@ void *lamb_send_loop(void *data) {
             char *phone = (char *)message->destTerminalId;
             char *content = (char *)message->msgContent;
 
-            seqid = cmpp_submit(&cmpp.sock, phone, content, true, config.spcode, config.encoding, config.spid);
-            if (seqid > 0) {
-                unconfirmed++;
-                sprintf(seq, "%ld", seqid);
-                sprintf(msgId, "%lld", message->msgId);
-                lamb_db_put(&cache, seq, strlen(seq), msgId, strlen(msgId));
-            } else {
-                if (!cmpp_check_connect(&cmpp.sock)) {
-                    cmpp.ok = false;
-                    cmpp_sp_close(&cmpp);
-                    lamb_cmpp_reconnect(&cmpp, &config);
+            err = cmpp_submit(&cmpp.sock, phone, content, true, config.spcode, config.encoding, config.spid);
+            if (err) {
+                if (err == -1) {
+                    if (!cmpp_check_connect(&cmpp.sock)) {
+                        cmpp.ok = false;
+                        cmpp_sp_close(&cmpp);
+                        lamb_cmpp_reconnect(&cmpp, &config);
+                    }
                 }
+
+                lamb_free_pack(pack);
+                free(node);
+                lamb_errlog(config.logfile, "cmpp submit message failed", 0);
+                continue;
             }
 
+            unconfirmed++;
+            sprintf(seq, "%ld", seqid);
+            sprintf(msgId, "%lld", message->msgId);
+            lamb_db_put(&cache, seq, strlen(seq), msgId, strlen(msgId));
             lamb_free_pack(pack);
             free(node);
             continue;
