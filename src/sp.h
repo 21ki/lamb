@@ -37,7 +37,7 @@ typedef struct {
     int db_port;
     char db_user[64];
     char db_password[128];
-    char queue[128];
+    char queues[128];
 } lamb_config_t;
 
 typedef struct {

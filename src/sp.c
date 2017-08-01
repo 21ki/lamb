@@ -27,7 +27,7 @@ lamb_list_t *recv_queue;
 lamb_config_t config;
 lamb_db_t cache;
 int unconfirmed = 0;
-pthread_t fetch_pool[MAX_LIST];
+pthread_t fpool[MAX_LIST];
 
 
 int main(int argc, char *argv[]) {
@@ -84,7 +84,7 @@ void lamb_fetch_loop(void) {
     
     for (i = 0; i < MAX_LIST; i++) {
         if (list[i] != NULL) {
-            err = pthread_create(&fetch_pool[i], &attr, lamb_fetch_work, (void *)list[i]);
+            err = pthread_create(&fpool[i], &attr, lamb_fetch_work, (void *)list[i]);
             if (err == -1) {
                 lamb_errlog(config.logfile, "start %s queue work thread failed", list[i]);
             }
@@ -614,7 +614,7 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "Queues", conf->queue, 128) != 0) {
+    if (lamb_get_string(&cfg, "Queues", conf->queues, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read Queues parameter\n");
         goto error;
     }
