@@ -268,6 +268,25 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     epoll_ctl(epfd, EPOLL_CTL_ADD, sock->fd, &ev);
     getpeername(sock->fd, (struct sockaddr *)&clientaddr, &clilen);
 
+    lamb_amqp_t amqp;
+    err = lamb_amqp_connect(&amqp, config.amqp_host, config.amqp_port);
+    if (err) {
+        close(epfd);
+        cmpp_sock_close(sock);
+        lamb_errlog(config.logfile, "can't connect to %s amqp server ", config.amqp_host);
+        return -1;
+    }
+
+    err = lamb_amqp_login(&amqp, config.amqp_user, config.amqp_password);
+    if (err) {
+        close(epfd);
+        cmpp_sock_close(sock);
+        lamb_errlog(config.logfile, "login amqp server %s failed ", config.amqp_host);
+        return -1;
+    }
+
+    lamb_amqp_setting(&amqp, "lamb.message", "message");
+    
     /* msgId */
     unsigned long long msgId = 90140610510510;
     
@@ -283,7 +302,9 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                     } else {
                         fprintf(stderr, "Connection is closed by the client %s\n", inet_ntoa(clientaddr.sin_addr));
                     }
-
+                    close(epfd);
+                    cmpp_sock_close(sock);
+                    lamb_amqp_destroy_connection(lamb_amqp_t *amqp) 
                     return;
                 }
 
@@ -303,9 +324,15 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 fprintf(stdout, "Receive cmpp_active_test packet from client\n");
                 cmpp_active_test_resp(sock, ntohl(chp->sequenceId));
                 break;
-            case CMPP_SUBMIT:
+            case CMPP_SUBMIT:;
+                unsigned char result = 0;
                 fprintf(stdout, "Receive cmpp_submit packet from client\n");
-                cmpp_submit_resp(sock, ntohl(chp->sequenceId), msgId++, 0);
+                err = lamb_amqp_push_message(&amqp, &pack, ntohl(chp->totalLength));
+                if (err) {
+                    result = 9;
+                    fprintf(stderr, "amqp push message failed\n");
+                }
+                cmpp_submit_resp(sock, ntohl(chp->sequenceId), msgId++, result);
                 break;
             case CMPP_TERMINATE:
                 fprintf(stdout, "Receive cmpp_terminate packet from client\n");
@@ -313,6 +340,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 close(epfd);
                 fprintf(stdout, "Close the connection to the client\n");
                 cmpp_sock_close(sock);
+                lamb_amqp_destroy_connection(&amqp);
                 return;
             }
         }
@@ -381,7 +409,37 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
         goto error;
     }
-        
+
+    if (lamb_get_string(&cfg, "AmqpHost", conf->amqp_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'AmqpHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "AmqpPort", &conf->amqp_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'AmqpPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->amqp_port < 1 || conf->amqp_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid amqp port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "AmqpUser", conf->amqp_user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'AmqpUser' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "AmqpPassword", conf->amqp_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'AmqpPassword' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "Queue", conf->queue, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Queue' parameter\n");
+        goto error;
+    }
+    
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;
