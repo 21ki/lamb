@@ -274,7 +274,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
         close(epfd);
         cmpp_sock_close(sock);
         lamb_errlog(config.logfile, "can't connect to %s amqp server ", config.amqp_host);
-        return -1;
+        return;
     }
 
     err = lamb_amqp_login(&amqp, config.amqp_user, config.amqp_password);
@@ -282,7 +282,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
         close(epfd);
         cmpp_sock_close(sock);
         lamb_errlog(config.logfile, "login amqp server %s failed ", config.amqp_host);
-        return -1;
+        return;
     }
 
     lamb_amqp_setting(&amqp, "lamb.message", "message");
@@ -304,7 +304,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                     }
                     close(epfd);
                     cmpp_sock_close(sock);
-                    lamb_amqp_destroy_connection(lamb_amqp_t *amqp) 
+                    lamb_amqp_destroy_connection(&amqp);
                     return;
                 }
 
