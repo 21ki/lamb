@@ -37,7 +37,7 @@ typedef struct {
     int db_port;
     char db_user[64];
     char db_password[128];
-    char queues[128];
+    char queue[64];
 } lamb_config_t;
 
 typedef struct {
@@ -75,8 +75,7 @@ typedef struct {
 } lamb_deliver_t;
 
 int lamb_read_config(lamb_config_t *conf, const char *file);
-void lamb_fetch_loop(void);
-void *lamb_fetch_work(void *queue);
+void *lamb_fetch_loop(void *data);
 void *lamb_send_loop(void *data);
 void *lamb_recv_loop(void *data);
 void *lamb_update_loop(void *data);

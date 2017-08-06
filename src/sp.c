@@ -73,36 +73,10 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void lamb_fetch_loop(void) {
-    int i, len, err;
-    pthread_attr_t attr;
-    char *list[MAX_LIST] = {NULL};
-    len = lamb_str2list(config.queue, list, MAX_LIST);
-
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-    
-    for (i = 0; i < MAX_LIST; i++) {
-        if (list[i] != NULL) {
-            err = pthread_create(&fpool[i], &attr, lamb_fetch_work, (void *)list[i]);
-            if (err == -1) {
-                lamb_errlog(config.logfile, "start %s queue work thread failed", list[i]);
-            }
-            continue;
-        }
-        break;
-    }
-
-    if (len < 1) {
-        lamb_errlog(config.logfile, "no queues available at the moment", 0);
-    }
-
-    return;
-}
-
-void *lamb_fetch_work(void *queue) {
+void *lamb_fetch_loop(void *data) {
     int err;
     lamb_amqp_t amqp;
+
     err = lamb_amqp_connect(&amqp, config.db_host, config.db_port);
     if (err) {
         lamb_errlog(config.logfile, "can't connection to amqp server", 0);
@@ -116,7 +90,7 @@ void *lamb_fetch_work(void *queue) {
         pthread_exit(NULL);
     }
 
-    err = lamb_amqp_consume(&amqp, (char const *)queue);
+    err = lamb_amqp_consume(&amqp, (char const *)config.queue);
     if (err) {
         lamb_errlog(config.logfile, "set consume mode failed", 0);
         lamb_amqp_destroy_connection(&amqp);
@@ -463,28 +437,31 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp) {
 
 void lamb_event_loop(void) {
     int err;
-    pthread_t tid;
     pthread_attr_t attr;
+    pthread_t uptid, retid, setid, fetid;
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
     
-    err = pthread_create(&tid, &attr, lamb_update_loop, NULL);
+    err = pthread_create(&uptid, &attr, lamb_update_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_update_loop thread failed", 0);
     }
     
-    err = pthread_create(&tid, &attr, lamb_recv_loop, NULL);
+    err = pthread_create(&retid, &attr, lamb_recv_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_recv_loop thread failed", 0);
     }
 
-    err = pthread_create(&tid, &attr, lamb_send_loop, NULL);
+    err = pthread_create(&setid, &attr, lamb_send_loop, NULL);
     if (err) {
         lamb_errlog(config.logfile, "start lamb_send_loop thread failed", 0);
     }
     
-    lamb_fetch_loop();
+    err = pthread_create(&fetid, &attr, lamb_fetch_loop, NULL);
+    if (err) {
+        lamb_errlog(config.logfile, "start lamb_fetch_loop thread failed", 0);
+    }
 
     while (true) {
         lamb_sleep(5000);
@@ -614,8 +591,8 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "Queues", conf->queues, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read Queues parameter\n");
+    if (lamb_get_string(&cfg, "Queue", conf->queue, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read Queue parameter\n");
         goto error;
     }
         
