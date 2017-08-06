@@ -15,5 +15,8 @@ void lamb_daemon(void);
 void lamb_sleep(unsigned long long milliseconds);
 void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, ...);
 int lamb_str2list(char *string, char *list[], int len);
-
+unsigned long long lamb_to_long(unsigned long long mon, unsigned long long day,
+                                unsigned long long hour, unsigned long long min,
+                                unsigned long long sec, unsigned long long gid,
+                                unsigned long long seq);
 #endif
