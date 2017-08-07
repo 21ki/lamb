@@ -129,23 +129,17 @@ int lamb_str2list(char *string, char *list[], int len) {
     return i;
 }
 
-unsigned long long lamb_to_long(unsigned long long mon,
-                                unsigned long long day,
-                                unsigned long long hour,
-                                unsigned long long min,
-                                unsigned long long sec,
-                                unsigned long long gid,
-                                unsigned long long seq) {
+unsigned long long lamb_to_long(int mon,int day,int hour, int min, int sec, int gid, int seq) {
+    unsigned long long x = 0ULL;
 
-    unsigned long long x = 0;
-
-    x |= mon << 60;
-    x |= day << 55;
-    x |= hour << 50;
-    x |= min << 44;
-    x |= sec << 38;
-    x |= gid << 16;
-    x |= seq;
+    x |= ((unsigned long long)mon) << 60;
+    x |= ((unsigned long long)day) << 55;
+    x |= ((unsigned long long)hour) << 50;
+    x |= ((unsigned long long)min) << 44;
+    x |= ((unsigned long long)sec) << 38;
+    x |= ((unsigned long long)gid) << 16;
+    x |= (unsigned long long)seq;
 
     return x;
 }
+
