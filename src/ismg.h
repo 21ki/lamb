@@ -28,6 +28,12 @@ typedef struct {
     bool daemon;
 } lamb_config_t;
 
+typedef struct {
+    cmpp_sock_t *sock;
+    pthread_cond_t *cond;
+    pthread_mutex_t *mutex;
+} lamb_mo_t;
+
 void lamb_event_loop(cmpp_ismg_t *cmpp);
 void lamb_work_loop(cmpp_sock_t *sock);
 int lamb_read_config(lamb_config_t *conf, const char *file);

@@ -9,10 +9,15 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
 #include <getopt.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/time.h>
+#include <pthread.h>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
+#include <errno.h>
 #include <cmpp.h>
 #include "ismg.h"
 #include "utils.h"
@@ -218,7 +223,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                                 fprintf(stderr, "Unable to fork child process\n");
                             }
                         } else if (pid == 0) {
-                           if (config.daemon) {
+                            if (config.daemon) {
                                 lamb_errlog(config.logfile, "Start new child work process", 0);
                             } else {
                                 fprintf(stderr, "Start new child work process\n");
@@ -255,12 +260,23 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 }
 
 void lamb_work_loop(cmpp_sock_t *sock) {
+    int gid;
+    lamb_mt_t mt;
+    lamb_mo_t mo;
+    pthread_t tid;
+    pthread_attr_t attr;
     cmpp_pack_t pack;
     socklen_t clilen;
     int err, epfd, nfds;
+    pthread_cond_t cond;
+    pthread_mutex_t mutex;
     struct sockaddr_in clientaddr;
     struct epoll_event ev, events[32];
 
+    gid = getpid();
+    pthread_cond_init(&lock, NULL);
+    pthread_mutex_init(&mutex, NULL);
+    
     epfd = epoll_create1(0);
     ev.data.fd = sock->fd;
     ev.events = EPOLLIN;
@@ -268,27 +284,27 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     epoll_ctl(epfd, EPOLL_CTL_ADD, sock->fd, &ev);
     getpeername(sock->fd, (struct sockaddr *)&clientaddr, &clilen);
 
-    lamb_amqp_t amqp;
-    err = lamb_amqp_connect(&amqp, config.amqp_host, config.amqp_port);
-    if (err) {
-        close(epfd);
-        cmpp_sock_close(sock);
-        lamb_errlog(config.logfile, "can't connect to %s amqp server ", config.amqp_host);
+    int sock = nn_socket(AF_SP, NN_PUSH);
+    if (sock < 0) {
+        lamb_errlog(config.logfile, "Create MT socket failed", 0);
         return;
     }
 
-    err = lamb_amqp_login(&amqp, config.amqp_user, config.amqp_password);
-    if (err) {
-        close(epfd);
-        cmpp_sock_close(sock);
-        lamb_errlog(config.logfile, "login amqp server %s failed ", config.amqp_host);
+    err = nn_connect(sock, config.mt);
+    if (err < 0) {
+        lamb_errlog(config.logfile, "Connect to MT server failed", 0);
         return;
     }
-
-    lamb_amqp_setting(&amqp, "lamb.message", config.queue);
     
-    /* msgId */
-    unsigned long long msgId = 90140610510510;
+    mo.sock = sock;
+    mo.cond = &cond;
+    mo.mutex = &mutex;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    err = pthread_create(&tid, &attr, lamb_mo_event_loop, (void *)&mo);
+    if (err) {
+        lamb_errlog(config.logfile, "start lamb_mo_event_loop thread failed", 0);
+    }
     
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -302,10 +318,8 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                     } else {
                         fprintf(stderr, "Connection is closed by the client %s\n", inet_ntoa(clientaddr.sin_addr));
                     }
-                    close(epfd);
-                    cmpp_sock_close(sock);
-                    lamb_amqp_destroy_connection(&amqp);
-                    return;
+
+                    break;
                 }
 
                 if (config.daemon) {
@@ -317,36 +331,90 @@ void lamb_work_loop(cmpp_sock_t *sock) {
             }
 
             cmpp_head_t *chp = (cmpp_head_t *)&pack;
+            unsigned int totalLength = ntohl(chp->totalLength);
             unsigned int commandId = ntohl(chp->commandId);
-            
+            unsigned int sequenceId = ntohl(chp->sequenceId);
+
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
                 fprintf(stdout, "Receive cmpp_active_test packet from client\n");
-                cmpp_active_test_resp(sock, ntohl(chp->sequenceId));
+                cmpp_active_test_resp(sock, sequenceId);
                 break;
             case CMPP_SUBMIT:;
                 unsigned char result = 0;
                 fprintf(stdout, "Receive cmpp_submit packet from client\n");
-                err = lamb_amqp_push_message(&amqp, &pack, ntohl(chp->totalLength));
+                err = lamb_amqp_push_message(&amqp, &pack, totalLength);
                 if (err) {
                     result = 9;
                     fprintf(stderr, "amqp push message failed\n");
                 }
-                cmpp_submit_resp(sock, ntohl(chp->sequenceId), msgId++, result);
+
+                /* cmpp submit resp setting */
+                time_t rawtime;
+                struct tm *t;
+                time(&rawtime);
+                t = localtime(&rawtime);
+                unsigned long long msgId;
+
+                msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, sequenceId);
+                cmpp_submit_resp(sock, sequenceId, msgId, result);
+                break;
+            case CMPP_DELIVER_RESP:;
+                unsigned char result;
+                cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
+                if (result == 0) {
+                    pthread_mutex_lock(&mutex);
+                    pthread_cond_signal(&cond);
+                    pthread_mutex_unlock(&mutex);
+                } else {
+                    unsigned long long msgId;
+                    cmpp_pack_get_integer(&pack, cmpp_deliver_resp_msg_id, &msgId, 8);
+                    fprintf(stdout, "Msg_Id %llu deliver message failed\n", msgId);
+                }
                 break;
             case CMPP_TERMINATE:
                 fprintf(stdout, "Receive cmpp_terminate packet from client\n");
-                cmpp_terminate_resp(sock, ntohl(chp->sequenceId));
-                close(epfd);
+                cmpp_terminate_resp(sock, sequenceId);
                 fprintf(stdout, "Close the connection to the client\n");
-                cmpp_sock_close(sock);
-                lamb_amqp_destroy_connection(&amqp);
-                return;
+                break;
             }
         }
     }
 
+    close(epfd);
+    cmpp_sock_close(sock);
+    lamb_amqp_destroy_connection(&amqp);
+    pthread_mutex_destroy(&acklock);
+    pthread_cond_destroy(&acklock);
+    pthread_attr_destroy(&attr);
+    
     return;
+}
+
+void *lamb_mo_event_loop(void *data) {
+    int count;
+    lamb_mo_t *mo;
+    struct timeval now;
+    struct timespec timeout;
+
+    mo = (lamb_mo_t *)data;
+    pthread_mutex_lock(mo->mutex);
+
+    while (true) {
+        /* some code */
+        clock_gettime(CLOCK_REALTIME, &timeout);
+        timeout.tv_sec += 3;
+        err = pthread_cond_timedwait(mo->cond, mo->mutex, &timeout);
+        if (err == ETIMEDOUT) {
+            count++;
+            lamb_errlog(config.logfile, "Deliver message timeout %d frequency", count);
+            continue;
+        }
+
+    }
+
+    pthread_mutex_unlock(mo->mutex);
+    pthread_exit(NULL);
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

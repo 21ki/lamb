@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <arpa/inet.h>
+#include <nanomsg/nn.h>
+#include <nanomsg/pubsub.h>
 #include <cmpp.h>
 #include "sp.h"
 #include "utils.h"
@@ -22,8 +24,6 @@
 #define MAX_LIST 16
 
 cmpp_sp_t cmpp;
-lamb_list_t *send_queue;
-lamb_list_t *recv_queue;
 lamb_config_t config;
 lamb_db_t cache;
 int unconfirmed = 0;
@@ -73,70 +73,21 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void *lamb_fetch_loop(void *data) {
-    int err;
-    lamb_amqp_t amqp;
-
-    err = lamb_amqp_connect(&amqp, config.db_host, config.db_port);
-    if (err) {
-        lamb_errlog(config.logfile, "can't connection to amqp server", 0);
-        pthread_exit(NULL);
-    }
-
-    err = lamb_amqp_login(&amqp, config.db_user, config.db_password);
-    if (err) {
-        lamb_errlog(config.logfile, "login amqp server failed", 0);
-        lamb_amqp_destroy_connection(&amqp);
-        pthread_exit(NULL);
-    }
-
-    err = lamb_amqp_consume(&amqp, (char const *)config.queue);
-    if (err) {
-        lamb_errlog(config.logfile, "set consume mode failed", 0);
-        lamb_amqp_destroy_connection(&amqp);
-        pthread_exit(NULL);
-    }
-
-    while (true) {
-        if (send_queue->len < config.send) {
-            lamb_list_node_t *node;
-            lamb_pack_t *pack = malloc(sizeof(lamb_pack_t));
-            err = lamb_amqp_pull_message(&amqp, pack, 0);
-            if (err) {
-                lamb_free_pack(pack);
-                lamb_errlog(config.logfile, "pull amqp message error", 0);                    
-                continue;
-            }
-
-            pthread_mutex_lock(&send_queue->lock);
-            node = lamb_list_rpush(send_queue, lamb_list_node_new(pack));
-            pthread_mutex_unlock(&send_queue->lock);
-            
-            if (node == NULL) {
-                lamb_free_pack(pack);
-                lamb_errlog(config.logfile, "push queue message error", 0);
-            }
-            
-            continue;
-        }
-        
-        lamb_sleep(10);
-    }
-
-    return NULL;
-}
-
 void *lamb_send_loop(void *data) {
-    lamb_list_node_t *node;
+    int err, sock;
+    sock = nn_socket(AF_SP, NN_REQ);
+    if (sock < 0) {
+        lamb_errlog(config.logfile, "Create nn_socket socket error", 0);
+        pthread_exit(NULL);
+    }
+
+    err = nn_connect(sock, config.mt);
+    if (err < 0) {
+        lamb_errlog(config.logfile, "Can't connect to MT message server", 0);
+    }
 
     while (true) {
-        if (unconfirmed >= config.unconfirmed) {
-            lamb_sleep(10);
-            continue;
-        }
-
-        pthread_mutex_lock(&send_queue->lock);
-        node = lamb_list_lpop(send_queue);
+        
         pthread_mutex_unlock(&send_queue->lock);
         if (node != NULL) {
             lamb_pack_t *pack = (lamb_pack_t *)node->val;
