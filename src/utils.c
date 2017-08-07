@@ -111,35 +111,3 @@ void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, 
     return;
 }
 
-int lamb_str2list(char *string, char *list[], int len) {
-    if (!string) {
-        return 0;
-    }
-
-    int i = 0;
-    char *val = NULL;
-
-    val = strtok(string, ",");
-    while (val) {
-        list[i] = val;
-        val = strtok(NULL, ",");
-        i++;
-    }
-
-    return i;
-}
-
-unsigned long long lamb_to_long(int mon,int day,int hour, int min, int sec, int gid, int seq) {
-    unsigned long long x = 0ULL;
-
-    x |= ((unsigned long long)mon) << 60;
-    x |= ((unsigned long long)day) << 55;
-    x |= ((unsigned long long)hour) << 50;
-    x |= ((unsigned long long)min) << 44;
-    x |= ((unsigned long long)sec) << 38;
-    x |= ((unsigned long long)gid) << 16;
-    x |= (unsigned long long)seq;
-
-    return x;
-}
-
