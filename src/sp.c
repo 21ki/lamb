@@ -18,17 +18,16 @@
 #include "utils.h"
 #include "config.h"
 #include "list.h"
-#include "amqp.h"
 #include "cache.h"
 
 #define MAX_LIST 16
 
+mqd_t queue;
 cmpp_sp_t cmpp;
 lamb_config_t config;
 lamb_db_t cache;
 int unconfirmed = 0;
 pthread_t fpool[MAX_LIST];
-
 
 int main(int argc, char *argv[]) {
     char *file = "lamb.conf";
@@ -61,33 +60,43 @@ int main(int argc, char *argv[]) {
 
     /* Initialization working */
 
-    send_queue = lamb_list_new();
-    recv_queue = lamb_list_new();
     lamb_db_init(&cache, "cache");
 
     if(lamb_cmpp_init(&cmpp) == 0) {
         /* Start worker thread */
+        char name[64] = {0};
+        struct mq_attr attr;
+        attr.mq_maxmsg = config.max_queue;
+        attr.mq_msgsize = 512;
+
+        sprintf(name, "/%u", config.id);
+        queue = mq_open(name, O_RDWR | O_CREAT | O_EXCL, 0644, &attr);
+        if ((queue < 0) && (errno != EEXIST)) {
+            lamb_errlog(config.logfile, "mq_open: %s", strerror(errno));
+            return -1;
+        }
+
+        if ((mqd < 0) && (errno == EEXIST)) {
+            queue = mq_open(name, O_RDONLY);
+            if (queue < 0) {
+                lamb_errlog(config.logfile, "mq_open: %s", strerror(errno));
+                return -1;
+            }
+        }
+        
         lamb_event_loop();
     }
+
 
     return 0;
 }
 
 void *lamb_send_loop(void *data) {
-    int err, sock;
-    sock = nn_socket(AF_SP, NN_REQ);
-    if (sock < 0) {
-        lamb_errlog(config.logfile, "Create nn_socket socket error", 0);
-        pthread_exit(NULL);
-    }
+    int err;
 
-    err = nn_connect(sock, config.mt);
-    if (err < 0) {
-        lamb_errlog(config.logfile, "Can't connect to MT message server", 0);
-    }
+    
 
     while (true) {
-        
         pthread_mutex_unlock(&send_queue->lock);
         if (node != NULL) {
             lamb_pack_t *pack = (lamb_pack_t *)node->val;
@@ -146,13 +155,6 @@ void *lamb_recv_loop(void *data) {
         err = cmpp_recv(&cmpp.sock, pack, sizeof(cmpp_pack_t));
         if (err) {
             cmpp_free_pack(pack);
-            lamb_sleep(1000);
-            continue;
-        }
-
-        if (recv_queue->len >= config.recv) {
-            cmpp_free_pack(pack);
-            lamb_errlog(config.logfile, "the receive queue is full", 0);
             lamb_sleep(1000);
             continue;
         }

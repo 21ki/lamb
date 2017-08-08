@@ -23,7 +23,6 @@
 #include "utils.h"
 #include "config.h"
 #include "list.h"
-#include "amqp.h"
 
 static lamb_config_t config;
 
@@ -261,7 +260,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 
 void lamb_work_loop(cmpp_sock_t *sock) {
     int gid;
-    lamb_mt_t mt;
+    mqd_t queue;
     lamb_mo_t mo;
     pthread_t tid;
     pthread_attr_t attr;
@@ -284,18 +283,6 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     epoll_ctl(epfd, EPOLL_CTL_ADD, sock->fd, &ev);
     getpeername(sock->fd, (struct sockaddr *)&clientaddr, &clilen);
 
-    int sock = nn_socket(AF_SP, NN_PUSH);
-    if (sock < 0) {
-        lamb_errlog(config.logfile, "Create MT socket failed", 0);
-        return;
-    }
-
-    err = nn_connect(sock, config.mt);
-    if (err < 0) {
-        lamb_errlog(config.logfile, "Connect to MT server failed", 0);
-        return;
-    }
-    
     mo.sock = sock;
     mo.cond = &cond;
     mo.mutex = &mutex;
@@ -305,7 +292,13 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     if (err) {
         lamb_errlog(config.logfile, "start lamb_mo_event_loop thread failed", 0);
     }
-    
+
+    queue = mq_open(config.queue, O_WRONLY);
+    if (queue < 0) {
+        lamb_errlog(config.logfile, "Open %s message queue failed", config.queue);
+        goto exit;
+    }
+
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
 
@@ -313,20 +306,11 @@ void lamb_work_loop(cmpp_sock_t *sock) {
             err = cmpp_recv(sock, &pack, sizeof(pack));
             if (err) {
                 if (err == -1) {
-                    if (config.daemon) {
-                        lamb_errlog(config.logfile, "Connection is closed by the client %s\n", inet_ntoa(clientaddr.sin_addr));
-                    } else {
-                        fprintf(stderr, "Connection is closed by the client %s\n", inet_ntoa(clientaddr.sin_addr));
-                    }
-
+                    lamb_errlog(config.logfile, "Connection is closed by the client %s\n", inet_ntoa(clientaddr.sin_addr));
                     break;
                 }
 
-                if (config.daemon) {
-                    lamb_errlog(config.logfile, "Receive packet error from client %s\n", inet_ntoa(clientaddr.sin_addr));
-                } else {
-                    fprintf(stderr, "Receive packet error from client %s\n", inet_ntoa(clientaddr.sin_addr));
-                }
+                lamb_errlog(config.logfile, "Receive packet error from client %s\n", inet_ntoa(clientaddr.sin_addr));
                 continue;
             }
 
@@ -343,10 +327,10 @@ void lamb_work_loop(cmpp_sock_t *sock) {
             case CMPP_SUBMIT:;
                 unsigned char result = 0;
                 fprintf(stdout, "Receive cmpp_submit packet from client\n");
-                err = lamb_amqp_push_message(&amqp, &pack, totalLength);
+                err = mq_send(queue, pack, totalLength, 1);
                 if (err) {
                     result = 9;
-                    fprintf(stderr, "amqp push message failed\n");
+                    fprintf(stderr, "write message to queue failed\n");
                 }
 
                 /* cmpp submit resp setting */
@@ -381,11 +365,11 @@ void lamb_work_loop(cmpp_sock_t *sock) {
         }
     }
 
+exit:
     close(epfd);
     cmpp_sock_close(sock);
-    lamb_amqp_destroy_connection(&amqp);
-    pthread_mutex_destroy(&acklock);
-    pthread_cond_destroy(&acklock);
+    pthread_cond_destroy(&cond);
+    pthread_mutex_destroy(&mutex);
     pthread_attr_destroy(&attr);
     
     return;
@@ -478,36 +462,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "AmqpHost", conf->amqp_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'AmqpHost' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "AmqpPort", &conf->amqp_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'AmqpPort' parameter\n");
-        goto error;
-    }
-
-    if (conf->amqp_port < 1 || conf->amqp_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid amqp port number\n");
-        goto error;
-    }
-
-    if (lamb_get_string(&cfg, "AmqpUser", conf->amqp_user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'AmqpUser' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_string(&cfg, "AmqpPassword", conf->amqp_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'AmqpPassword' parameter\n");
-        goto error;
-    }
-
     if (lamb_get_string(&cfg, "Queue", conf->queue, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Queue' parameter\n");
         goto error;
     }
-    
+
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;

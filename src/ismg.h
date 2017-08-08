@@ -18,10 +18,6 @@ typedef struct {
     long long timeout;
     long long send_timeout;
     long long recv_timeout;
-    char amqp_host[16];
-    int amqp_port;
-    char amqp_user[64];
-    char amqp_password[64];
     char queue[64];
     char logfile[128];
     bool debug;
