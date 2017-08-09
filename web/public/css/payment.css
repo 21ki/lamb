@@ -18,3 +18,8 @@ body {
     border-top: 1px solid #fafafa;
     border-bottom: 1px solid #fafafa;
 }
+
+.pay-icon {
+    width: 180px;
+    height: 40px;
+}
