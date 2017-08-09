@@ -26,5 +26,6 @@ typedef struct {
 } lamb_config_t;
 
 int lamb_read_config(lamb_config_t *conf, const char *file);
+int lamb_check_template(char *pattern, char *message, int len);
 
 #endif

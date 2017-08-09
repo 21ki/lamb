@@ -167,3 +167,25 @@ error:
     lamb_config_destroy(&cfg);
     return -1;
 }
+
+int lamb_check_template(char *pattern, char *message, int len) {
+    int rc;
+    pcre *re;
+    const char *error;
+    int erroffset;
+    int ovector[510];
+
+    re = pcre_compile(pattern, 0, &error, &erroffset, NULL);
+    if (re == NULL) {
+        return -1;
+    }
+
+    rc = pcre_exec(re, NULL, message, len, 0, 0, ovector, 510);
+    if (rc < 0) {
+        pcre_free(re);
+        return -1;
+    }
+
+    pcre_free(re);
+    return 0;
+}
