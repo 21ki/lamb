@@ -5,6 +5,11 @@ body {
     font-family: "lucida grande", "lucida sans unicode", lucida, helvetica, "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
 }
 
+.breadcrumb {
+    padding-left: 18px;
+    padding-right: 18px;
+}
+
 .breadcrumb .pull-right:before {
     content: "";
 }
@@ -17,4 +22,13 @@ body {
     text-align: center;
     border-top: 1px solid #fafafa;
     border-bottom: 1px solid #fafafa;
+}
+
+.checkbox label, .radio label {
+    padding-left: 0px;
+}
+
+form .form-group button, form .form-group a {
+    width: 80px;
+    margin-right: 20px;
 }
