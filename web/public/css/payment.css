@@ -5,6 +5,11 @@ body {
     font-family: "lucida grande", "lucida sans unicode", lucida, helvetica, "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
 }
 
+.breadcrumb {
+    padding-left: 18px;
+    padding-right: 18px;
+}
+
 .breadcrumb .pull-right:before {
     content: "";
 }
@@ -19,7 +24,23 @@ body {
     border-bottom: 1px solid #fafafa;
 }
 
-.pay-icon {
-    width: 180px;
-    height: 40px;
+.pay-icon img {
+    width: 100px;
+    height: 26px;
+}
+
+.badge-default {
+    background-color: #999999;
+}
+
+.badge-success {
+    background-color: #5da55d;
+}
+
+.badge-warning {
+    background-color: #efa133;
+}
+
+.badge-danger {
+    background-color: #ce514e;
 }
