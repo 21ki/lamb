@@ -5,6 +5,11 @@ body {
     font-family: "lucida grande", "lucida sans unicode", lucida, helvetica, "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
 }
 
+.breadcrumb {
+    padding-left: 18px;
+    padding-right: 18px;
+}
+
 .breadcrumb .pull-right:before {
     content: "";
 }

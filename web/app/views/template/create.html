@@ -5,12 +5,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>company - lamb</title>
+    <title>template - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link type="text/css" rel="stylesheet" href="/css/all.css">
     <link type="text/css" rel="stylesheet" href="/css/flat/blue.css">
-    <link type="text/css" rel="stylesheet" href="/css/company.css">
+    <link type="text/css" rel="stylesheet" href="/css/account.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -64,87 +64,65 @@
         </div>
       </div>
     </div>
-    <div class="container main">
+    <div class="container">
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Company</a></li>
-          <li class="active">Edit</li>
+          <li><a href="#">Template</a></li>
+          <li class="active">Create</li>
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row">
-        <div class="container">
+        <div class="container main">
           <form class="form-horizontal" action="/server/create" method="post">
             <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">公司名称:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">签名名称:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="name" value="港华燃气" placeholder="Enter Name" required="required">
+                <input type="text" class="form-control" name="name" placeholder="Enter Signature" minlength="6" maxlength="6" required="required">
               </div>
               <div class="col-xs-2 col-sm-2">
-                <span class="help-block">公司名称</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系人:</label>
-              <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" value="周杰伦" placeholder="Enter Contacts" required="required">
-              </div>
-              <div class="col-xs-3 col-sm-3">
-                <span class="help-block">公司业务联系人姓名</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系电话:</label>
-              <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="port" placeholder="Enter Telephone" value="15021553368" required="required">
-              </div>
-              <div class="col-xs-3 col-sm-3">
-                <span class="help-block">联系人电话或手机</span>
+                <span class="help-block">客户签名名称</span>
               </div>
             </div>
             <div id="route" class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">付费类型:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">绑定帐号:</label>
               <div class="col-xs-3 col-sm-3">
                 <select class="form-control" name="route">
-                  <option value="1">预付费</option>
-                  <option value="2">后付费</option>
+                  <option value="1">a0001(九城游戏)</option>
+                  <option value="2">w0002(万达地产)</option>
+                  <option value="2">s0005(四海恒通)</option>
+                  <option value="2">t0001(统一企业)</option>
+                  <option value="2">g0002(港华燃气)</option>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">账户付费结算方式</span>
+                <span class="help-block">签名模板所属帐号</span>
               </div>
             </div>
             <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">计费类型:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">模板内容:</label>
               <div class="col-xs-3 col-sm-3">
-                <div class="checkbox">
-                  <label>
-                    <input class="call" type="checkbox" name="call" checked="checked" /> 提交计费
-                  </label>
-                  &nbsp;&nbsp;&nbsp;&nbsp;
-                  <label>
-                    <input class="call" type="checkbox" name="call" /> 成功计费
-                  </label>
-                </div>
+                <textarea class="form-control" rows="5" cols="20" minlength="140" placeholder="Enter Template Content" required="required"></textarea>
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">业务计费类型</span>
+                <span class="help-block">模板内容，可变内容用 * 星号代替</span>
               </div>
             </div>
+
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">备注信息:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="description" value="Enter Description" placeholder="Enter Description" />
+                <input type="text" class="form-control" name="description" placeholder="Enter Description" />
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">客户相关备注说明</span>
+                <span class="help-block">帐号相关备注说明</span>
               </div>
             </div>
             <div class="form-group">
               <div class="col-sm-offset-4 col-xs-3 col-sm-3">
-                <button type="submit" id="submit" class="btn btn-success">保 存</button>
-                <a class="btn btn-default" href="/company">取 消</a>
+                <button type="submit" id="submit" class="btn btn-success">创 建</button>
+                <a class="btn btn-default" href="/template">取 消</a>
               </div>
             </div>
           </form>

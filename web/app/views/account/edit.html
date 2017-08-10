@@ -5,12 +5,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>company - lamb</title>
+    <title>account - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link type="text/css" rel="stylesheet" href="/css/all.css">
     <link type="text/css" rel="stylesheet" href="/css/flat/blue.css">
-    <link type="text/css" rel="stylesheet" href="/css/company.css">
+    <link type="text/css" rel="stylesheet" href="/css/account.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -64,87 +64,151 @@
         </div>
       </div>
     </div>
-    <div class="container main">
+    <div class="container">
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Company</a></li>
+          <li><a href="#">Account</a></li>
           <li class="active">Edit</li>
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row">
-        <div class="container">
+        <div class="container main">
           <form class="form-horizontal" action="/server/create" method="post">
             <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">公司名称:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">帐号名称:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="name" value="港华燃气" placeholder="Enter Name" required="required">
+                <input type="text" class="form-control" name="name" value="901234" placeholder="Enter Name" minlength="6" maxlength="6" required="required">
               </div>
               <div class="col-xs-2 col-sm-2">
-                <span class="help-block">公司名称</span>
+                <span class="help-block">客户端 SPID 接入帐号</span>
               </div>
             </div>
             <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系人:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">帐号密码:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" value="周杰伦" placeholder="Enter Contacts" required="required">
+                <input type="text" class="form-control" name="ip" value="x08kf18tk" minlength="6" placeholder="Enter Contacts" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">公司业务联系人姓名</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系电话:</label>
-              <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="port" placeholder="Enter Telephone" value="15021553368" required="required">
-              </div>
-              <div class="col-xs-3 col-sm-3">
-                <span class="help-block">联系人电话或手机</span>
+                <span class="help-block">接入端帐号密码</span>
               </div>
             </div>
             <div id="route" class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">付费类型:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">所属公司:</label>
               <div class="col-xs-3 col-sm-3">
                 <select class="form-control" name="route">
-                  <option value="1">预付费</option>
-                  <option value="2">后付费</option>
+                  <option value="1">九城游戏</option>
+                  <option value="2">万达地产</option>
+                  <option value="2">四海恒通</option>
+                  <option value="2">统一企业</option>
+                  <option value="2">港华燃气</option>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">账户付费结算方式</span>
+                <span class="help-block">帐号所属公司</span>
               </div>
             </div>
             <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">计费类型:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">服务器地址:</label>
               <div class="col-xs-3 col-sm-3">
+                <input type="text" class="form-control" name="port" value="112.25.78.65" placeholder="Enter Telephone" required="required">
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">服务器 IP 地址</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">最大并发:</label>
+              <div class="col-xs-3 col-sm-3">
+                <input type="number" class="form-control" name="port" value="5000" placeholder="Enter Telephone" min="1" required="required">
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">通道最大并发数</span>
+              </div>
+            </div>
+            <div id="route" class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道路由:</label>
+              <div class="col-xs-3 col-sm-3">
+                <select class="form-control" name="route">
+                  <option value="1">cmcc01</option>
+                  <option value="1">cmcc02</option>
+                  <option value="1">cmcc03</option>
+                  <option value="1">cmcc04</option>
+                  <option value="1">cmcc05</option>
+                  <option value="1">cmcc06</option>
+                  <option value="1">cmcc07</option>
+                </select>
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">接入帐号通道路由</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道接入码:</label>
+              <div class="col-xs-3 col-sm-3 col-md-3">
+                <input type="number" class="form-control" name="port" min="1" value="45680578" placeholder="Enter Telephone" required="required" />
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">客户端通道接入码</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">扩展码选项:</label>
+              <div class="col-xs-3 col-sm-3 col-md-3">
                 <div class="checkbox">
                   <label>
-                    <input class="call" type="checkbox" name="call" checked="checked" /> 提交计费
-                  </label>
-                  &nbsp;&nbsp;&nbsp;&nbsp;
-                  <label>
-                    <input class="call" type="checkbox" name="call" /> 成功计费
+                    <input class="call" type="checkbox" name="call" checked="checked" /> 允许扩展码 (可选参数)
                   </label>
                 </div>
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">业务计费类型</span>
+                <span class="help-block">允许自定义扩展子号码</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">黑白名单:</label>
+              <div class="col-xs-3 col-sm-3 col-md-3">
+                <div class="checkbox">
+                  <label>
+                    <input class="call" type="checkbox" name="call" checked="checked" /> 开启黑名单
+                  </label>
+                  &nbsp;&nbsp;
+                  <label>
+                    <input class="call" type="checkbox" name="call" /> 开启白名单
+                  </label>
+                </div>
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">通道白名单，黑名单</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">签名与模板:</label>
+              <div class="col-xs-3 col-sm-3 col-md-3">
+                <div class="checkbox">
+                  <label>
+                    <input class="call" type="checkbox" name="call" checked="checked" /> 开启签名模板校验
+                  </label>
+                </div>
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">签名与模板内容过滤</span>
               </div>
             </div>
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">备注信息:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="description" value="Enter Description" placeholder="Enter Description" />
+                <input type="text" class="form-control" name="description" value="no description" placeholder="Enter Description" />
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">客户相关备注说明</span>
+                <span class="help-block">帐号相关备注说明</span>
               </div>
             </div>
             <div class="form-group">
               <div class="col-sm-offset-4 col-xs-3 col-sm-3">
-                <button type="submit" id="submit" class="btn btn-success">保 存</button>
-                <a class="btn btn-default" href="/company">取 消</a>
+                <button type="submit" id="submit" class="btn btn-success">创 建</button>
+                <a class="btn btn-default" href="/account">取 消</a>
               </div>
             </div>
           </form>

@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>company - lamb</title>
+    <title>channel - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link type="text/css" rel="stylesheet" href="/css/all.css">
@@ -64,87 +64,128 @@
         </div>
       </div>
     </div>
-    <div class="container main">
+    <div class="container">
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Company</a></li>
-          <li class="active">Edit</li>
+          <li><a href="#">Channel</a></li>
+          <li class="active">Create</li>
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row">
-        <div class="container">
-          <form class="form-horizontal" action="/server/create" method="post">
+        <div class="container main">
+          <form class="form-horizontal" action="create.html" method="post">
             <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">公司名称:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道名称:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="name" value="港华燃气" placeholder="Enter Name" required="required">
+                <input type="text" class="form-control" name="name" placeholder="Enter Name" required="required">
               </div>
               <div class="col-xs-2 col-sm-2">
-                <span class="help-block">公司名称</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系人:</label>
-              <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" value="周杰伦" placeholder="Enter Contacts" required="required">
-              </div>
-              <div class="col-xs-3 col-sm-3">
-                <span class="help-block">公司业务联系人姓名</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系电话:</label>
-              <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="port" placeholder="Enter Telephone" value="15021553368" required="required">
-              </div>
-              <div class="col-xs-3 col-sm-3">
-                <span class="help-block">联系人电话或手机</span>
+                <span class="help-block">落地通道名称</span>
               </div>
             </div>
             <div id="route" class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">付费类型:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道类型:</label>
               <div class="col-xs-3 col-sm-3">
                 <select class="form-control" name="route">
-                  <option value="1">预付费</option>
-                  <option value="2">后付费</option>
+                  <option value="1">cmpp/2.0</option>
+                  <option value="2">cmpp/3.0</option>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">账户付费结算方式</span>
+                <span class="help-block">落地通道类型</span>
               </div>
             </div>
             <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">计费类型:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">Account:</label>
               <div class="col-xs-3 col-sm-3">
-                <div class="checkbox">
-                  <label>
-                    <input class="call" type="checkbox" name="call" checked="checked" /> 提交计费
-                  </label>
-                  &nbsp;&nbsp;&nbsp;&nbsp;
-                  <label>
-                    <input class="call" type="checkbox" name="call" /> 成功计费
-                  </label>
-                </div>
+                <input type="text" class="form-control" name="ip" placeholder="Enter Username" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">业务计费类型</span>
+                <span class="help-block">落地通道服务器 IP 地址</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">Password:</label>
+              <div class="col-xs-3 col-sm-3">
+                <input type="password" class="form-control" name="ip" placeholder="Enter Password" required="required">
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">落地通道帐号密码</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">SPID:</label>
+              <div class="col-xs-3 col-sm-3">
+                <input type="text" class="form-control" name="ip" placeholder="Enter SPID" required="required">
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">落地通道 SPID 号码</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">接入号码:</label>
+              <div class="col-xs-3 col-sm-3">
+                <input type="number" class="form-control" name="ip" min="1" placeholder="Enter Access Code" required="required">
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">落地通道接入号码</span>
+              </div>
+            </div>
+            <div id="route" class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">短信编码:</label>
+              <div class="col-xs-3 col-sm-3">
+                <select class="form-control" name="route">
+                  <option value="0">ASCII</option>
+                  <option value="8">UCS-2</option>
+                  <option value="15">GBK</option>
+                </select>
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">落地通道短信编码</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">服务器地址:</label>
+              <div class="col-xs-3 col-sm-3">
+                <input type="text" class="form-control" name="ip" placeholder="Enter IP Address" required="required">
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">落地通道服务器 IP 地址</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">端 口:</label>
+              <div class="col-xs-3 col-sm-3">
+                <input type="number" class="form-control" name="port" min="1" max="65535" placeholder="Enter Port" required="required">
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">落地通道服务器端口</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">最大并发:</label>
+              <div class="col-xs-3 col-sm-3">
+                <input type="number" class="form-control" name="port" min="1" placeholder="Enter Concurrent Number" required="required">
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">落地通道最大并发数</span>
               </div>
             </div>
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">备注信息:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="description" value="Enter Description" placeholder="Enter Description" />
+                <input type="text" class="form-control" name="description" placeholder="Enter Description" />
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">客户相关备注说明</span>
+                <span class="help-block">落地通道相关备注说明</span>
               </div>
             </div>
             <div class="form-group">
               <div class="col-sm-offset-4 col-xs-3 col-sm-3">
-                <button type="submit" id="submit" class="btn btn-success">保 存</button>
-                <a class="btn btn-default" href="/company">取 消</a>
+                <button type="submit" id="submit" class="btn btn-success">创 建</button>
+                <a class="btn btn-default" href="/channel">取 消</a>
               </div>
             </div>
           </form>
