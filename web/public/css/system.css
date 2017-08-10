@@ -1,0 +1,84 @@
+body {
+    color: #555555;
+    font-size: 15px;
+    font-family: "lucida grande", "lucida sans unicode", lucida, helvetica, "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+}
+
+.navbar .navbar-nav li a {
+    font-size: 16px;
+}
+
+.breadcrumb .pull-right:before {
+    content: "";
+}
+
+.tab-left {
+    width: 60px;
+    font-size: 12px;
+}
+
+.tab-right {
+    width: 100px;
+}
+
+.text-success {
+    color: #6ea96f;
+}
+
+.badge-default {
+    background-color: #999999;
+}
+
+.badge-success {
+    background-color: #5da55d;
+}
+
+.badge-primary {
+    background-color: #518abb;
+}
+
+.badge-info {
+    background-color: #8ac9dc;
+}
+
+.badge-warning {
+    background-color: #efa133;
+}
+
+.badge-danger {
+    background-color: #ce514e;
+}
+
+.main {
+    margin-top: -5px;
+}
+
+.main .row {
+    margin-top: 18px;
+}
+
+.table>thead>tr>th, .table>tbody>tr>td {
+    border-top: 1px solid #ffffff;
+    border-bottom: 1px solid #ffffff;
+}
+
+.box {
+	margin-top: 10px;
+	padding: 20px;
+}
+
+.box .checkbox {
+    margin-top: 15px;
+}
+
+.progress {
+    margin-bottom: 0px;
+}
+
+.checkbox label, .radio label {
+    padding-left: 0px;
+}
+
+.tb-header {
+    width: 120px;
+}
