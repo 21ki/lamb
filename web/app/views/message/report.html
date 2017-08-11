@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.ico">
+    <title>message report - lamb</title>
+    <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
+    <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
+    <link type="text/css" rel="stylesheet" href="/css/bootstrap-datetimepicker.min.css">
+    <link type="text/css" rel="stylesheet" href="/css/message.css">
+  </head>
+  <body>
+    <div class="navbar navbar-default">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">
+            <img alt="Brand" src="/img/logo.png" width="32" height="32" style="margin-top:-6px" />
+          </a>
+          <a class="navbar-brand">lamb</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="/status">状态监控</a></li>
+            <li><a href="/company">企业管理</a></li>
+            <li><a href="/account">帐号管理</a></li>
+            <li><a href="/template">签名模板</a></li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
+              <ul class="dropdown-menu">
+                <li><a href="/channel">落地通道</a></li>
+                <li><a href="/channel/groups">通道组管理</a></li>
+                <li><a href="/routes">下发路由</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">数据记录</a>
+              <ul class="dropdown-menu">
+                <li><a href="/message">上行短信</a></li>
+                <li><a href="/message/deliver">下行短信</a></li>
+                <li><a href="/message/report">状态报告</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
+              <ul class="dropdown-menu">
+                <li><a href="/system/number">黑白名单</a></li>
+                <li><a href="/payment/logs">充值记录</a></li>
+                <li><a href="/payment">支付管理</a></li>
+              </ul>
+            </li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="/system/option"><span class="glyphicon glyphicon-cog"></span> 系统设置</a></li>
+            <li><a href="/logout"><span class="glyphicon glyphicon-log-out"></span> 退 出</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="row">
+        <ol class="breadcrumb">
+          <li><a href="/cdr">Home</a></li>
+          <li><a href="#">Message</a></li>
+          <li class="active">Report</li>
+          <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
+        </ol>
+      </div>
+      <div class="row query">
+        <form class="form-inline" action="/cdr" method="get">
+          <div class="form-group">
+            <label>发送时间: </label>
+	        <input type="text" id="begin" class="form-control input-sm" name="begin" value="2017-08-11 08:00:00" />
+            -
+            <input type="text" id="end" class="form-control input-sm" name="end" value="2017-08-11 20:00:00" />
+          </div>
+          <div class="form-group">
+            <label>接入号码: </label>
+            <input type="text" id="account" class="form-control input-sm" placeholder="请输入接入号码" name="account" value="" />
+          </div>
+          <div class="form-group">
+            <label>手机号码: </label>
+	        <input type="text" id="account" class="form-control input-sm" placeholder="请输入接入号码" name="account" value="" />
+          </div>
+          <div class="form-group">
+            <label>状 态: </label>
+	        <select class="form-control" name="route">
+              <option value="1">所有状态</option>
+              <option value="1">已发送</option>
+              <option value="2">发送成功</option>
+              <option value="2">发送失败</option>
+              <option value="2">未知状态</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>目标帐号: </label>
+	        <input type="text" id="account" class="form-control input-sm" placeholder="请输入接入号码" name="account" value="" />
+          </div>
+          <button type="submit" id="query" class="btn btn-success btn-sm pull-right" name="sub" value="ok">查 询</button>
+        </form>
+      </div>
+      <div class="row"><hr /></div>
+      <div class="row">
+        <table class="table table-hover">
+          <thead>
+            <tr><th>#</th><th>接入号码</th><th>手机号码</th><th>客户帐号</th><th>状态报告</th><th>处理时间</th><th>报告接收时间</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>a100005</td><td>接收成功</td><td>00:00:05</td><td>2017-08-10 08:25:00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+</div>
+<script src="/js/jquery.min.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/bootstrap-datetimepicker.min.js"></script>
+<script type="text/javascript" src="/js/locales/bootstrap-datetimepicker.zh-CN.js" charset="UTF-8"></script>
+<script type="text/javascript">
+  $('li.dropdown').mouseover(function() {   
+    $(this).addClass('open');
+  }).mouseout(function() {
+    $(this).removeClass('open');
+  });
+
+    // datetimepicker
+    $('#begin').datetimepicker({
+      format: 'yyyy-mm-dd hh:ii:ss',
+      language: 'zh-CN',
+      autoclose: true
+    });
+
+    $('#end').datetimepicker({
+      format: 'yyyy-mm-dd hh:ii:ss',
+      language: 'zh-CN',
+      autoclose: true
+    });
+</script>
+</body>
+</html>

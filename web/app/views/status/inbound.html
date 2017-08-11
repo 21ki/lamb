@@ -38,15 +38,16 @@
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
               <ul class="dropdown-menu">
                 <li><a href="/channel">落地通道</a></li>
-                <li><a href="/channel/groups">通道群组</a></li>
-                <li><a href="/routes">路由管理</a></li>
+                <li><a href="/channel/groups">通道组管理</a></li>
+                <li><a href="/routes">下发路由</a></li>
               </ul>
             </li>
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">数据记录</a>
               <ul class="dropdown-menu">
-                <li><a href="/message">短信记录</a></li>
-                <li><a href="/deliver">下行记录</a></li>
+                <li><a href="/message">上行短信</a></li>
+                <li><a href="/message/deliver">下行短信</a></li>
+                <li><a href="/message/report">状态报告</a></li>
               </ul>
             </li>
             <li class="dropdown">
@@ -112,9 +113,9 @@
     <script type="text/javascript" src="/js/bootstrap.min.js"></script>
     <script type="text/javascript">
       $('li.dropdown').mouseover(function() {   
-        $(this).addClass('open');
+      $(this).addClass('open');
       }).mouseout(function() {
-        $(this).removeClass('open');
+      $(this).removeClass('open');
       });
 
       

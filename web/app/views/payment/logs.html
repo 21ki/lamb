@@ -5,10 +5,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>payment logs - lamb</title>
+    <title>payment - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/payment.css">
+    <link type="text/css" rel="stylesheet" href="/css/blacklist.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -35,15 +35,16 @@
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
               <ul class="dropdown-menu">
                 <li><a href="/channel">落地通道</a></li>
-                <li><a href="/channel/groups">通道群组</a></li>
-                <li><a href="/routes">路由管理</a></li>
+                <li><a href="/channel/groups">通道组管理</a></li>
+                <li><a href="/routes">下发路由</a></li>
               </ul>
             </li>
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">数据记录</a>
               <ul class="dropdown-menu">
-                <li><a href="/message">短信记录</a></li>
-                <li><a href="/deliver">下行记录</a></li>
+                <li><a href="/message">上行短信</a></li>
+                <li><a href="/message/deliver">下行短信</a></li>
+                <li><a href="/message/report">状态报告</a></li>
               </ul>
             </li>
             <li class="dropdown">
@@ -66,18 +67,30 @@
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Payment Logs</a></li>
-          <li class="active">Data</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="/server/create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li><a href="#">Payment</a></li>
+          <li class="active">Logs</li>
+          <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>帐 号</th><th>密 码</th><th>接入码</th><th>模 板</th><th>所属公司</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>公司名称</th><th>充值金额</th><th>操作员</th><th>IP 地址</th><th>操作时间</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>x20j23jfk</td><td>1065855</td><td>验证码</td><td>比特云</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="#"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
           </tbody>
         </table>
       </div>

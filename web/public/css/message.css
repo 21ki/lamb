@@ -28,14 +28,6 @@ body {
     border-bottom: 1px solid #fafafa;
 }
 
-.channel-groups thead tr th {
-    border-top: 2px solid #ddd;
-}
-
-.channel-groups tbody tr td {
-    border-top: 2px solid #eeeeee;
-}
-
 .badge-default {
     background-color: #999999;
 }
@@ -52,26 +44,18 @@ body {
     background-color: #ce514e;
 }
 
-.list-group-item .add {
-    margin-left: 15px;
+.query {
+    padding: 12px;
 }
 
-form .form-group button, form .form-group a {
-    margin-right: 0px;
+.query #begin, .query #end {
+    width: 120px;
 }
 
-form div .list-group a {
-    width: 15px;
+.query #phone, .query #account {
+    width: 110px;
 }
 
-.list-group .list-group-item .badge {
-    margin-right: 10px;
-}
-
-.weight {
-    width: 80px;
-}
-
-#submit, #cancel, #add {
-    margin-right: 18px;
+.query .form-group {
+    margin-right: 8px;
 }
