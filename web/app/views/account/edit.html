@@ -52,7 +52,8 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/system/number">黑白名单</a></li>
+                <li><a href="/system/blacklist">黑名单库</a></li>
+                <li><a href="/system/whitelist">白名单库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
               </ul>
@@ -83,7 +84,7 @@
                 <input type="text" class="form-control" name="name" value="901234" placeholder="Enter Name" minlength="6" maxlength="6" required="required">
               </div>
               <div class="col-xs-2 col-sm-2">
-                <span class="help-block">客户端 SPID 接入帐号</span>
+                <span class="help-block">客户端接入帐号</span>
               </div>
             </div>
             <div class="form-group">
@@ -108,6 +109,18 @@
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">帐号所属公司</span>
+              </div>
+            </div>
+            <div id="route" class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">计费类型:</label>
+              <div class="col-xs-3 col-sm-3">
+                <select class="form-control" name="route">
+                  <option value="1">提交计费</option>
+                  <option value="2">成功计费</option>
+                </select>
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">帐号计费方式</span>
               </div>
             </div>
             <div class="form-group">
