@@ -29,7 +29,7 @@
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li><a href="/status">状态监控</a></li>
+            <li><a href="/status/inbound">状态监控</a></li>
             <li><a href="/company">企业管理</a></li>
             <li><a href="/account">帐号管理</a></li>
             <li><a href="/template">签名模板</a></li>
@@ -52,8 +52,8 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/system/blacklist">黑名单库</a></li>
-                <li><a href="/system/whitelist">白名单库</a></li>
+                <li><a href="/settings/blacklist">黑名单库</a></li>
+                <li><a href="/settings/whitelist">白名单库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
               </ul>
@@ -77,11 +77,12 @@
       </div>
       <div class="row">
         <div class="container">
-          <form class="form-horizontal" action="/server/create" method="post">
+          <form class="form-horizontal" action="edit" method="post">
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">公司名称:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="name" value="港华燃气" placeholder="Enter Name" required="required">
+                <input type="hidden" class="form-control" name="id" value="<?php echo $company['id']; ?>" />
+                <input type="text" class="form-control" name="name" value="<?php echo lamb_output($company['name']); ?>" placeholder="Enter Name" required="required">
               </div>
               <div class="col-xs-2 col-sm-2">
                 <span class="help-block">公司名称</span>
@@ -90,7 +91,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系人:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" value="周杰伦" placeholder="Enter Contacts" required="required">
+                <input type="text" class="form-control" name="ip" value="<?php echo lamb_output($company['contacts']); ?>" placeholder="Enter Contacts" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">公司业务联系人姓名</span>
@@ -99,7 +100,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系电话:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="port" placeholder="Enter Telephone" value="15021553368" required="required">
+                <input type="text" class="form-control" name="port" placeholder="Enter Telephone" value="<?php echo lamb_output($company['telephone']); ?>" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">联系人电话或手机</span>
@@ -109,35 +110,18 @@
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">付费类型:</label>
               <div class="col-xs-3 col-sm-3">
                 <select class="form-control" name="route">
-                  <option value="1">预付费</option>
-                  <option value="2">后付费</option>
-                </select>
+                  <option value="1"<?php if ($company['paytype'] == 1) {echo ' selected="selected"';}?>>预付费</option>
+                  <option value=""<?php if ($company['paytype'] == 2) {echo ' selected="selected"';}?>>后付费</option>
+                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">账户付费结算方式</span>
               </div>
             </div>
             <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">计费类型:</label>
-              <div class="col-xs-3 col-sm-3">
-                <div class="checkbox">
-                  <label>
-                    <input class="call" type="checkbox" name="call" checked="checked" /> 提交计费
-                  </label>
-                  &nbsp;&nbsp;&nbsp;&nbsp;
-                  <label>
-                    <input class="call" type="checkbox" name="call" /> 成功计费
-                  </label>
-                </div>
-              </div>
-              <div class="col-xs-3 col-sm-3">
-                <span class="help-block">业务计费类型</span>
-              </div>
-            </div>
-            <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">备注信息:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="description" value="Enter Description" placeholder="Enter Description" />
+                <input type="text" class="form-control" name="description" value="<?php echo lamb_output($company['description']);?>" placeholder="Enter Description" />
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">客户相关备注说明</span>

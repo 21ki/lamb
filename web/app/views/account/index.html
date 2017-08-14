@@ -27,7 +27,7 @@
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li><a href="/status">状态监控</a></li>
+            <li><a href="/status/inbound">状态监控</a></li>
             <li><a href="/company">企业管理</a></li>
             <li><a href="/account">帐号管理</a></li>
             <li><a href="/template">签名模板</a></li>
@@ -50,8 +50,8 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/system/blacklist">黑名单库</a></li>
-                <li><a href="/system/whitelist">白名单库</a></li>
+                <li><a href="/settings/blacklist">黑名单库</a></li>
+                <li><a href="/settings/whitelist">白名单库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
               </ul>
@@ -70,7 +70,7 @@
           <li><a href="/cdr">Home</a></li>
           <li><a href="#">Account</a></li>
           <li class="active">Data</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="create.html"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><a class="btn btn-success btn-xs" href="create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
         </ol>
       </div>
       <div class="row">
@@ -79,16 +79,16 @@
             <tr><th>#</th><th>帐号名称</th><th>接入码</th><th>所属公司</th><th>计费类型</th><th>最大并发</th><th>备注信息</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>106585</td><td>比特云</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>1065853</td><td>九城游戏</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>106534539</td><td>万达地产</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>106524</td><td>祥云科技</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>1065545</td><td>四海恒通</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>140234</td><td>港华燃气</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>10632425</td><td>统一企业</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>5855</td><td>统一企业</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>10609084</td><td>农夫山泉</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>10650328</td><td>农夫山泉</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>106585</td><td>比特云</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>1065853</td><td>九城游戏</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>106534539</td><td>万达地产</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>106524</td><td>祥云科技</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>1065545</td><td>四海恒通</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>140234</td><td>港华燃气</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>10632425</td><td>统一企业</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>5855</td><td>统一企业</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>10609084</td><td>农夫山泉</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>10650328</td><td>农夫山泉</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
           </tbody>
         </table>
       </div>

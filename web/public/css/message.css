@@ -53,9 +53,9 @@ body {
 }
 
 .query #phone, .query #account {
-    width: 110px;
+    width: 100px;
 }
 
 .query .form-group {
-    margin-right: 8px;
+    margin-right: 5px;
 }

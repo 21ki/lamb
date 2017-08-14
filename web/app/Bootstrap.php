@@ -13,9 +13,15 @@ class Bootstrap extends Yaf\Bootstrap_Abstract{
         Yaf\Registry::set('config', $this->config);
     }
 
+    /*
     public function _initAuth(Yaf\Dispatcher $dispatcher) {
         $authPlugin = new AuthPlugin();
         $dispatcher->registerPlugin($authPlugin);
+    }
+    */
+
+    public function _initCommon() {
+        Yaf\Loader::import("common.php");
     }
     
     public function _initDatabase() {
@@ -26,7 +32,7 @@ class Bootstrap extends Yaf\Bootstrap_Abstract{
         $name = $this->config->db->name;
 
         try {
-            $db = new PDO('mysql:host=' . $host . ';port=' . $port . ';dbname=' . $name, $user, $pass);
+            $db = new PDO('pgsql:host=' . $host . ';port=' . $port . ';dbname=' . $name, $user, $pass);
             $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             Yaf\Registry::set('db', $db);
         } catch (PDOException $e) {

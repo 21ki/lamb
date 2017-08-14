@@ -27,7 +27,7 @@
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li><a href="/status">状态监控</a></li>
+            <li><a href="/status/inbound">状态监控</a></li>
             <li><a href="/company">企业管理</a></li>
             <li><a href="/account">帐号管理</a></li>
             <li><a href="/template">签名模板</a></li>
@@ -50,8 +50,8 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/system/blacklist">黑名单库</a></li>
-                <li><a href="/system/whitelist">白名单库</a></li>
+                <li><a href="/settings/blacklist">黑名单库</a></li>
+                <li><a href="/settings/whitelist">白名单库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
               </ul>
@@ -70,7 +70,7 @@
           <li><a href="/cdr">Home</a></li>
           <li><a href="#">Template</a></li>
           <li class="active">Data</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="create.html"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><a class="btn btn-success btn-xs" href="create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
         </ol>
       </div>
       <div class="row">
@@ -79,17 +79,17 @@
             <tr><th>#</th><th>签 名</th><th>模板内容</th><th>所属帐号</th><th>审核状态</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>九城游戏</td><td>物流显示您的订单已签收...</td><td>a065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>九城游戏</td><td>物流显示您的订单已签收...</td><td>k065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>九城游戏</td><td>物流显示您的订单已签收...</td><td>j065855</td><td><span class="badge badge-default">未审核</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>万达地产</td><td>物流显示您的订单已签收...</td><td>j065855</td><td><span class="badge badge-default">未审核</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>万达地产</td><td>物流显示您的订单已签收...</td><td>s065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯游戏</td><td>物流显示您的订单已签收...</td><td>j065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯游戏</td><td>物流显示您的订单已签收...</td><td>s065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯游戏</td><td>物流显示您的订单已签收...</td><td>t065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯游戏</td><td>物流显示您的订单已签收...</td><td>t065855</td><td><span class="badge badge-danger">不通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯会员</td><td>物流显示您的订单已签收...</td><td>a065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯会员</td><td>物流显示您的订单已签收...</td><td>a065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>九城游戏</td><td>物流显示您的订单已签收...</td><td>a065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>九城游戏</td><td>物流显示您的订单已签收...</td><td>k065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>九城游戏</td><td>物流显示您的订单已签收...</td><td>j065855</td><td><span class="badge badge-default">未审核</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>万达地产</td><td>物流显示您的订单已签收...</td><td>j065855</td><td><span class="badge badge-default">未审核</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>万达地产</td><td>物流显示您的订单已签收...</td><td>s065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯游戏</td><td>物流显示您的订单已签收...</td><td>j065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯游戏</td><td>物流显示您的订单已签收...</td><td>s065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯游戏</td><td>物流显示您的订单已签收...</td><td>t065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯游戏</td><td>物流显示您的订单已签收...</td><td>t065855</td><td><span class="badge badge-danger">不通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯会员</td><td>物流显示您的订单已签收...</td><td>a065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>腾讯会员</td><td>物流显示您的订单已签收...</td><td>a065855</td><td><span class="badge badge-success">已通过</span></td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
           </tbody>
         </table>
       </div>
