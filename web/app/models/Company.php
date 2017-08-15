@@ -6,11 +6,14 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
+use Tool\Filter;
+
 class CompanyModel {
     public $db = null;
     public $config = null;
     private $table = 'company';
-
+    private $column = ['name', 'paytype', 'contacts', 'telephone', 'description'];
+    
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
         $this->config = Yaf\Registry::get('config');
@@ -25,9 +28,136 @@ class CompanyModel {
         return $sth->fetch();
     }
 
-    public function getAll() {
-        $sql = 'SELECT * FROM ' . $this->table;
+    public function getAll(array $column = null) {
+        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id';
         $result = $this->db->query($sql)->fetchAll();
         return $result;
+    }
+
+    public function create(array $data) {
+        $data = $this->checkArgs($data);
+        
+        if (count($data) == count($this->column)) {
+            $sql = 'INSERT INTO ' . $this->table . '(name, paytype, contacts, telephone, description) VALUES(:name, :paytype, :contacts, :telephone, :description)';
+            $sth = $this->db->prepare($sql);
+
+            foreach ($data as $key => $val) {
+                if ($val !== null) {
+                    $sth->bindParam(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                } else {
+                    return false;
+                }
+
+            }
+
+            if ($sth->execute()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function change($id = null, array $data = null) {
+        $id = intval($id);
+        $data = $this->checkArgs($data);
+        $column = $this->keyAssembly($data);
+
+        if (count($data) > 0) {
+            $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id';
+            $sth = $this->db->prepare($sql);
+            $sth->bindParam(':id', $id, PDO::PARAM_INT);
+            
+            foreach ($data as $key => $val) {
+                $sth->bindParam(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+
+            if ($sth->execute()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
+    public function delete($id = null) {
+        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
+        if ($this->db->query($sql)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function recharge($id = null, $money = 0) {
+        if ($this->isExist($id)) {
+            $sql = 'UPDATE ' . $this->table . ' SET money = money + ' . intval($money) . ' WHERE id = ' . intval($id);
+            if ($this->db->query($sql)) {
+                $payment = new PaymentModel();
+                $company = $this->get($id);
+                $event['company'] = $company['name'];
+                $event['money'] = intval($money);
+                $event['operator'] = 'admin';
+                $event['ip_addr'] = ip2long($_SERVER['REMOTE_ADDR']);
+                $payment->writeLogs($event);
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
+    public function isExist($id = null) {
+        $sql = 'SELECT id FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $result = $this->db->query($sql);
+        if (count($result) > 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function checkArgs(array $data) {
+        $res = array();
+        $data = array_intersect_key($data, array_flip($this->column));
+
+        foreach ($data as $key => $val) {
+            switch ($key) {
+            case 'name':
+                $res['name'] = Filter::string($val, null, 1, 32);
+                break;
+            case 'paytype':
+                $res['paytype'] = Filter::number($val, 1, 1, 2);
+                break;
+            case 'contacts':
+                $res['contacts'] = Filter::string($val, null, 1, 32);
+                break;
+            case 'telephone':
+                $res['telephone'] = Filter::alpha($val, null, 1, 21);
+                break;
+            case 'description':
+                $res['description'] = Filter::string($val, 'no description', 1, 64);
+                break;
+            }
+        }
+
+        return $res;
+    }
+
+    
+    public function keyAssembly(array $data) {
+    	$text = '';
+        $append = false;
+        foreach ($data as $key => $val) {
+            if ($val !== null) {
+                if ($text != '' && $append) {
+                    $text .= ", $key = :$key";
+                } else {
+                    $append = true;
+                    $text .= "$key = :$key";
+                }
+            }
+        }
+        return $text;
     }
 }

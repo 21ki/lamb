@@ -70,7 +70,7 @@
           <li><a href="/cdr">Home</a></li>
           <li><a href="#">Account</a></li>
           <li class="active">Data</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><a class="btn btn-success btn-xs" href="account/create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
         </ol>
       </div>
       <div class="row">
@@ -79,29 +79,43 @@
             <tr><th>#</th><th>帐号名称</th><th>接入码</th><th>所属公司</th><th>计费类型</th><th>最大并发</th><th>备注信息</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>106585</td><td>比特云</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>1065853</td><td>九城游戏</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>106534539</td><td>万达地产</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>106524</td><td>祥云科技</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>1065545</td><td>四海恒通</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>140234</td><td>港华燃气</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>10632425</td><td>统一企业</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>5855</td><td>统一企业</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>10609084</td><td>农夫山泉</td><td>提交计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-user"></span></td><td>a10001</td><td>10650328</td><td>农夫山泉</td><td>成功计费</td><td>5000/s</td><td>No Description</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+            <?php
+              foreach ($accounts as $a) {
+                echo '<tr><td><span class="glyphicon glyphicon-user"></span></td><td>',$a['username'],'</td>';
+                echo '<td>',$a['spcode'],'</td><td>',$companys[$a['company']]['name'],'</td><td>',$a['charge_type'] == 1 ? '提交计费' : '成功计费','</td><td>',$a['concurrent'],'/s</td>';
+                echo '<td>',$a['description'],'</td><td>',$a['create_time'],'</td>';
+                echo '<td><button class="btn btn-default btn-xs" onclick="deleteAccount(',$a['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
+                echo '<td><a class="btn btn-default btn-xs" href="account/edit?id=',$a['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
+              }
+            ?>
           </tbody>
         </table>
       </div>
     </div>
 </div>
-<script src="/js/jquery.min.js"></script>
-<script src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/jquery.min.js"></script>
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript">
   $('li.dropdown').mouseover(function() {   
-  $(this).addClass('open');
+    $(this).addClass('open');
   }).mouseout(function() {
-  $(this).removeClass('open');
+    $(this).removeClass('open');
   });
+
+  function deleteAccount(id) {
+    layer.confirm('亲，确定要删除？', {
+      btn: ['是','否'], icon: 3
+    }, function(){
+      var url = '/account/delete?id=' + id;
+      $.get(url, function(){
+        layer.msg('删除成功!', {icon: 1, time: 1000});
+        setTimeout(function() {
+          window.location.reload();
+        }, 1000);
+      });
+    });
+  }
 </script>
 </body>
 </html>

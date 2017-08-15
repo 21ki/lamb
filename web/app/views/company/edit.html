@@ -91,7 +91,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系人:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" value="<?php echo lamb_output($company['contacts']); ?>" placeholder="Enter Contacts" required="required">
+                <input type="text" class="form-control" name="contacts" value="<?php echo lamb_output($company['contacts']); ?>" placeholder="Enter Contacts" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">公司业务联系人姓名</span>
@@ -100,7 +100,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">联系电话:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="port" placeholder="Enter Telephone" value="<?php echo lamb_output($company['telephone']); ?>" required="required">
+                <input type="text" class="form-control" name="telephone" placeholder="Enter Telephone" value="<?php echo lamb_output($company['telephone']); ?>" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">联系人电话或手机</span>
@@ -109,9 +109,9 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">付费类型:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="route">
+                <select class="form-control" name="paytype">
                   <option value="1"<?php if ($company['paytype'] == 1) {echo ' selected="selected"';}?>>预付费</option>
-                  <option value=""<?php if ($company['paytype'] == 2) {echo ' selected="selected"';}?>>后付费</option>
+                  <option value="2"<?php if ($company['paytype'] == 2) {echo ' selected="selected"';}?>>后付费</option>
                  </select>
               </div>
               <div class="col-xs-3 col-sm-3">

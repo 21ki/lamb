@@ -79,19 +79,11 @@
             <tr><th>#</th><th>公司名称</th><th>充值金额</th><th>操作员</th><th>记录 IP 地址</th><th>操作时间</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>九城游戏</td><td>5000</td><td>admin</td><td>112.2.28.98</td><td>2017-08-10 08:25:00</td></tr>
+            <?php
+              foreach ($data as $l) {
+                echo '<tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>',lamb_output($l['company']),'</td><td>',$l['money'],'</td><td>',$l['operator'],'</td><td>',long2ip($l['ip_addr']),'</td><td>',$l['create_time'],'</td></tr>';
+              }
+            ?>
           </tbody>
         </table>
       </div>

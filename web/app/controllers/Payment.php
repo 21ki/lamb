@@ -14,6 +14,8 @@ class PaymentController extends Yaf\Controller_Abstract {
     }
 
     public function logsAction() {
+        $payment = new PaymentModel();
+        $this->getView()->assign('data', $payment->getLogs());
         return true;
     }
 }
