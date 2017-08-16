@@ -41,7 +41,45 @@ class TemplateController extends Yaf\Controller_Abstract {
     }
 
     public function editAction() {
+        $request = $this->getRequest();
+        $template = new TemplateModel();
+
+        if ($request->isPost()) {
+            $template->change($request->getPost('id'), $request->getPost());
+            $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/template';
+            $response = $this->getResponse();
+            $response->setRedirect($url);
+            $response->response();
+            return false;
+        }
+
+        $company = new CompanyModel();
+        $clist = array();
+        foreach ($company->getAll() as $key => $val) {
+            $clist[$val['id']] = $val;
+        }
+
+        $account = new AccountModel();
+        $alist = array();
+        foreach ($account->getAll() as $key => $val) {
+            $alist[$val['id']] = $val;
+        }
+
+        $this->getView()->assign('companys', $clist);
+        $this->getView()->assign('accounts', $alist);
+        $this->getView()->assign('template', $template->get($request->getQuery('id')));
         return true;
+    }
+
+    public function deleteAction() {
+        $request = $this->getRequest();
+        $template = new TemplateModel();
+        $success = $template->delete($request->getQuery('id'));
+        $response['status'] = $success ? 200 : 400;
+        $response['message'] = $success ? 'success' : 'failed';
+        header('Content-type: application/json');
+        echo json_encode($response);
+        return false;
     }
 }
 

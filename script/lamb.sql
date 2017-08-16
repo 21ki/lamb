@@ -39,6 +39,35 @@ CREATE TABLE template (
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
+CREATE TABLE channel (
+    id serial PRIMARY KEY NOT NULL,
+    name varchar(64) NOT NULL,
+    type int NOT NULL,
+    host varchar(32),
+    port int NOT NULL,
+    username varchar(32) NOT NULL,
+    password varchar(64) NOT NULL,
+    spid varchar(32) NOT NULL,
+    spcode varchar(32) NOT NULL,
+    encoded int NOT NULL,
+    concurrent int NOT NULL,
+    description varchar(64) NOT NULL,
+    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+);
+
+CREATE TABLE groups (
+    id serial PRIMARY KEY NOT NULL,
+    name varchar(64) NOT NULL,
+    description varchar(64) NOT NULL,
+    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+);
+
+CREATE TABLE channels (
+    id int NOT NULL,
+    gid int NOT NULL,
+    weight int NOT NULL
+);
+
 CREATE TABLE pay_logs (
        id serial NOT NULL,
        company varchar(64) NOT NULL,

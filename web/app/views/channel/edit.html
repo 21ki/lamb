@@ -77,11 +77,12 @@
       </div>
       <div class="row">
         <div class="container main">
-          <form class="form-horizontal" action="create.html" method="post">
+          <form class="form-horizontal" action="edit" method="post">
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道名称:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="name" value="cmcc01" placeholder="Enter Name" required="required">
+                <input type="hidden" class="form-control" name="id" value="<?php echo $channel['id'];?>" />
+                <input type="text" class="form-control" name="name" value="<?php echo $channel['name'];?>" placeholder="Enter Name" required="required">
               </div>
               <div class="col-xs-2 col-sm-2">
                 <span class="help-block">落地通道名称</span>
@@ -90,9 +91,8 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道类型:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="route">
+                <select class="form-control" name="type">
                   <option value="1">cmpp/2.0</option>
-                  <option value="2">cmpp/3.0</option>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
@@ -102,7 +102,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">服务器地址:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" value="112.28.45.78" placeholder="Enter IP Address" required="required">
+                <input type="text" class="form-control" name="host" value="<?php echo $channel['host'];?>" placeholder="Enter IP Address" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道网关 IP 地址</span>
@@ -111,7 +111,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">端 口:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="number" class="form-control" name="port" min="1" max="65535" value="7890" placeholder="Enter Port" required="required">
+                <input type="number" class="form-control" name="port" min="1" max="65535" value="<?php echo $channel['port'];?>" placeholder="Enter Port" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道网关端口</span>
@@ -120,7 +120,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">Account:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" value="901234" placeholder="Enter Username" required="required">
+                <input type="text" class="form-control" name="username" value="<?php echo $channel['username'];?>" placeholder="Enter Username" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道账号</span>
@@ -129,7 +129,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">Password:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="password" class="form-control" name="ip" value="156we6f15et" placeholder="Enter Password" required="required">
+                <input type="password" class="form-control" name="password" value="<?php echo $channel['password'];?>" placeholder="Enter Password" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道密码</span>
@@ -138,7 +138,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">SPID:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" value="901234" placeholder="Enter SPID" required="required">
+                <input type="text" class="form-control" name="spid" value="<?php echo $channel['spid'];?>" placeholder="Enter SPID" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道 SPID 号码</span>
@@ -147,7 +147,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">接入号码:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" value="456778085" placeholder="Enter Access Code" required="required">
+                <input type="text" class="form-control" name="spcode" value="<?php echo $channel['spcode'];?>" placeholder="Enter Access Code" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道接入号码</span>
@@ -156,10 +156,10 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">短信编码:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="route">
-                  <option value="0">ASCII</option>
-                  <option value="8" selected="selected">UCS-2</option>
-                  <option value="15">GBK</option>
+                <select class="form-control" name="encoded">
+                  <option value="0"<?php if ($channel['encoded'] == 0) {echo ' selected="selected"';}?>>ASCII</option>
+                  <option value="8"<?php if ($channel['encoded'] == 8) {echo ' selected="selected"';}?>>UCS-2</option>
+                  <option value="15"<?php if ($channel['encoded'] == 15) {echo ' selected="selected"';}?>>GBK</option>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
@@ -169,7 +169,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">最大并发:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="number" class="form-control" name="port" min="1" value="2000" placeholder="Enter Concurrent Number" required="required">
+                <input type="number" class="form-control" name="concurrent" min="1" value="<?php echo $channel['concurrent'];?>" placeholder="Enter Concurrent Number" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道最大并发数</span>
@@ -178,7 +178,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">备注信息:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="description" value="no description" placeholder="Enter Description" />
+                <input type="text" class="form-control" name="description" value="<?php echo $channel['description'];?>" placeholder="Enter Description" />
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道相关备注说明</span>
@@ -186,7 +186,7 @@
             </div>
             <div class="form-group">
               <div class="col-sm-offset-4 col-xs-3 col-sm-3">
-                <button type="submit" id="submit" class="btn btn-success">创 建</button>
+                <button type="submit" id="submit" class="btn btn-success">保存修改</button>
                 <a class="btn btn-default" href="/channel">取 消</a>
               </div>
             </div>
@@ -197,20 +197,11 @@
 </div>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="/js/icheck.min.js"></script>
 <script type="text/javascript">
   $('li.dropdown').mouseover(function() {   
-  $(this).addClass('open');
+    $(this).addClass('open');
   }).mouseout(function() {
-  $(this).removeClass('open');
-  });
-
-  $(document).ready(function(){
-  $('.call').iCheck({
-  checkboxClass: 'icheckbox_flat-blue',
-  radioClass: 'iradio_flat-blue',
-  increaseArea: '20%'
-  });
+    $(this).removeClass('open');
   });
 </script>
 </body>

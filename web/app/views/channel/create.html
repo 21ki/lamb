@@ -70,14 +70,14 @@
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Channel</a></li>
+          <li><a href="/channel">Channel</a></li>
           <li class="active">Create</li>
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row">
         <div class="container main">
-          <form class="form-horizontal" action="create.html" method="post">
+          <form class="form-horizontal" action="create" method="post">
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道名称:</label>
               <div class="col-xs-3 col-sm-3">
@@ -90,7 +90,7 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道类型:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="route">
+                <select class="form-control" name="type">
                   <option value="1">cmpp/2.0</option>
                   <option value="2">cmpp/3.0</option>
                 </select>
@@ -102,7 +102,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">服务器地址:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" placeholder="Enter IP Address" required="required">
+                <input type="text" class="form-control" name="host" placeholder="Enter IP Address" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道网关 IP 地址</span>
@@ -120,7 +120,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">Account:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" placeholder="Enter Username" required="required">
+                <input type="text" class="form-control" name="username" placeholder="Enter Username" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道账号</span>
@@ -129,7 +129,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">Password:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="password" class="form-control" name="ip" placeholder="Enter Password" required="required">
+                <input type="password" class="form-control" name="password" placeholder="Enter Password" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道密码</span>
@@ -138,7 +138,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">SPID:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip" placeholder="Enter SPID" required="required">
+                <input type="text" class="form-control" name="spid" placeholder="Enter SPID" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道 SPID 号码</span>
@@ -147,7 +147,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">接入号码:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="number" class="form-control" name="ip" min="1" placeholder="Enter Access Code" required="required">
+                <input type="text" class="form-control" name="spcode" placeholder="Enter Access Code" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道接入号码</span>
@@ -156,7 +156,7 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">短信编码:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="route">
+                <select class="form-control" name="encoded">
                   <option value="0">ASCII</option>
                   <option value="8">UCS-2</option>
                   <option value="15">GBK</option>
@@ -169,7 +169,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">最大并发:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="number" class="form-control" name="port" min="1" placeholder="Enter Concurrent Number" required="required">
+                <input type="number" class="form-control" name="concurrent" min="1" placeholder="Enter Concurrent Number" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道最大并发数</span>
@@ -197,21 +197,13 @@
 </div>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="/js/icheck.min.js"></script>
 <script type="text/javascript">
   $('li.dropdown').mouseover(function() {   
-  $(this).addClass('open');
+    $(this).addClass('open');
   }).mouseout(function() {
-  $(this).removeClass('open');
+    $(this).removeClass('open');
   });
 
-  $(document).ready(function(){
-  $('.call').iCheck({
-  checkboxClass: 'icheckbox_flat-blue',
-  radioClass: 'iradio_flat-blue',
-  increaseArea: '20%'
-  });
-  });
 </script>
 </body>
 </html>

@@ -1,17 +1,17 @@
 <?php
 
 /*
- * The Template Model
+ * The Channel Model
  * Link http://github.com/typefo/lamb
  * Copyright (C) typefo <typefo@qq.com>
  */
 
 use Tool\Filter;
 
-class TemplateModel {
+class ChannelModel {
     public $db = null;
-    private $table = 'template';
-    private $column = ['name', 'contents', 'account', 'description'];
+    private $table = 'channel';
+    private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid', 'spcode', 'encoded', 'concurrent', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -31,17 +31,18 @@ class TemplateModel {
 
     public function create(array $data = null) {
         $data = $this->checkArgs($data);
-        
-        if (isset($data['account'])) {
-            $account = new AccountModel();
-            if (!$account->isExist($data['account'])) {
+
+        $data['type'] = 1;
+
+        if (isset($data['encoded'])) {
+            if (!in_array($data['encoded'], [0, 8, 15], true)) {
                 return false;
             }
         }
         
         if (count($data) == count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(name, contents, account, description) ';
-            $sql .= 'VALUES(:name, :contents, :account, :description)';
+            $sql = 'INSERT INTO ' . $this->table . '(name, type, host, port, username, password, spid, spcode, encoded, concurrent, description) ';
+            $sql .= 'VALUES(:name, :type, :host, :port, :username, :password, :spid, :spcode, :encoded, :concurrent, :description)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -59,14 +60,18 @@ class TemplateModel {
     public function change($id = null, array $data = null) {
         $id = intval($id);
         $data = $this->checkArgs($data);
-        $column = $this->keyAssembly($data);
 
-        if (isset($data['account'])) {
-            $account = new AccountModel();
-            if (!$account->isExist($data['account'])) {
-                return false;
+        if (isset($data['type'])) {
+            $data['type'] = 1;
+        }
+        
+        if (isset($data['encoded'])) {
+            if (!in_array($data['encoded'], [0, 8, 15], true)) {
+                unset($data['encoded']);
             }
         }
+
+        $column = $this->keyAssembly($data);
 
         if (count($data) > 0) {
             $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id';
@@ -95,6 +100,10 @@ class TemplateModel {
 
         return false;
     }
+
+    public function test($id = null, $phone = null, $message = null) {
+        return true;
+    }
     
     public function checkArgs(array $data) {
         $res = array();
@@ -103,13 +112,34 @@ class TemplateModel {
         foreach ($data as $key => $val) {
             switch ($key) {
             case 'name':
-                $res['name'] = Filter::string($val, null, 3, 24);
+                $res['name'] = Filter::string($val, null, 3, 32);
                 break;
-            case 'contents':
-                $res['contents'] = Filter::string($val, null, 3, 480);
+            case 'type':
+                $res['type'] = Filter::number($val, null, 1);
                 break;
-            case 'account':
-                $res['account'] = Filter::number($val, null);
+            case 'host':
+                $res['host'] = Filter::ip($val, null);
+                break;
+            case 'port':
+                $res['port'] = Filter::port($val, null);
+                break;
+            case 'username':
+                $res['username'] = Filter::alpha($val, null, 1, 32);
+                break;
+            case 'password':
+                $res['password'] = Filter::string($val, null, 1, 64);
+                break;
+            case 'spid':
+                $res['spid'] = Filter::alpha($val, null, 1, 32);
+                break;
+            case 'spcode':
+                $res['spcode'] = Filter::alpha($val, null, 1, 32);
+                break;
+            case 'encoded':
+                $res['encoded'] = Filter::number($val, null);
+                break;
+            case 'concurrent':
+                $res['concurrent'] = Filter::number($val, null, 1);
                 break;
             case 'description':
                 $res['description'] = Filter::string($val, 'no description', 1, 64);

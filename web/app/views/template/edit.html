@@ -10,7 +10,7 @@
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link type="text/css" rel="stylesheet" href="/css/all.css">
     <link type="text/css" rel="stylesheet" href="/css/flat/blue.css">
-    <link type="text/css" rel="stylesheet" href="/css/account.css">
+    <link type="text/css" rel="stylesheet" href="/css/template.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -77,11 +77,12 @@
       </div>
       <div class="row">
         <div class="container main">
-          <form class="form-horizontal" action="/server/create" method="post">
+          <form class="form-horizontal" action="edit" method="post">
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">签名名称:</label>
               <div class="col-xs-4 col-sm-4">
-                <input type="text" class="form-control" name="name" value="九城游戏" placeholder="Enter Signature" minlength="6" maxlength="6" required="required">
+                <input type="hidden" class="form-control" name="id" value="<?php echo $template['id'];?>" />
+                <input type="text" class="form-control" name="name" value="<?php echo $template['name']; ?>" placeholder="Enter Signature" minlength="1" maxlength="8" required="required">
               </div>
               <div class="col-xs-2 col-sm-2">
                 <span class="help-block">客户签名名称</span>
@@ -90,12 +91,13 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">绑定帐号:</label>
               <div class="col-xs-4 col-sm-4">
-                <select class="form-control" name="route">
-                  <option value="1">a0001(九城游戏)</option>
-                  <option value="2">w0002(万达地产)</option>
-                  <option value="2">s0005(四海恒通)</option>
-                  <option value="2">t0001(统一企业)</option>
-                  <option value="2">g0002(港华燃气)</option>
+                <select class="form-control" name="account">
+                  <?php
+                    foreach ($accounts as $a) {
+                      $selected = ($a['id'] == $template['account']) ? ' selected="selected"' : '';
+                      echo '<option value="',$a['id'],'"',$selected,'>',$a['username'],' (',$companys[$a['company']]['name'],')</option>',"\n";
+                    }
+                    ?>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
@@ -105,7 +107,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">模板内容:</label>
               <div class="col-xs-4 col-sm-4">
-                <textarea class="form-control" rows="5" cols="20" minlength="140" placeholder="Enter Template Content" required="required">您的账户 * 已成功充值 * 元，有任何问题请联系客服热线 40089008</textarea>
+                <textarea class="form-control" rows="5" cols="20" minlength="1" maxlength="140" name="contents" placeholder="Enter Template Content" required="required"><?php echo $template['contents'];?></textarea>
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">模板详细内容</span>
@@ -115,7 +117,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">备注信息:</label>
               <div class="col-xs-4 col-sm-4">
-                <input type="text" class="form-control" name="description" value="no description" placeholder="Enter Description" />
+                <input type="text" class="form-control" name="description" value="<?php echo $template['description'];?>" placeholder="Enter Description" />
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">相关备注说明</span>
@@ -123,7 +125,7 @@
             </div>
             <div class="form-group">
               <div class="col-sm-offset-4 col-xs-3 col-sm-3">
-                <button type="submit" id="submit" class="btn btn-success">创 建</button>
+                <button type="submit" id="submit" class="btn btn-success">保存修改</button>
                 <a class="btn btn-default" href="/template">取 消</a>
               </div>
             </div>
@@ -134,20 +136,11 @@
 </div>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="/js/icheck.min.js"></script>
 <script type="text/javascript">
   $('li.dropdown').mouseover(function() {   
-  $(this).addClass('open');
+    $(this).addClass('open');
   }).mouseout(function() {
-  $(this).removeClass('open');
-  });
-
-  $(document).ready(function(){
-  $('.call').iCheck({
-  checkboxClass: 'icheckbox_flat-blue',
-  radioClass: 'iradio_flat-blue',
-  increaseArea: '20%'
-  });
+    $(this).removeClass('open');
   });
 </script>
 </body>
