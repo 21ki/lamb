@@ -117,12 +117,20 @@
   function hotkey() {  
     var key=window.event.keyCode;
     if(key == 119) {
-      layer.prompt({title: '请输入要查询的号码', formType: 0}, function(phone, index){
+      layer.prompt({title: '请输入要查询的号码', formType: 0}, function(phone, index) {
         layer.close(index);
-        layer.msg('找到 ' + phone + ' 号码!', {icon: 1, time: 3000});
+        var url = '/security/check?type=whitelist&phone=' + phone;
+        $.get(url, function(resp, status) {
+          if (resp.message == "yes") {
+            layer.msg('号码 ' + phone + ' 已存在!', {icon: 1, time: 3000});
+          } else {
+            layer.msg('号码 ' + phone + ' 不存在!', {icon: 2, time: 3000});
+          }
+        });
       });
     }
   }
+  
   document.onkeydown = hotkey;
 
   function phoneImport(id) {
@@ -133,6 +141,7 @@
           '<label>号码文件:</label>' +
         '</div>' +
         '<div class="col-xs-8" style="margin-top:-5px">' +
+          '<input type="hidden" class="form-control" name="type" value="whitelist" />' +
           '<input type="file" class="form-control" name="file" placeholder="Enter number file" required="required">' +
         '</div>' +
       '</div>' +

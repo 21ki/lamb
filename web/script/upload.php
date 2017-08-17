@@ -17,7 +17,7 @@ try {
     if (!isset($argv[1], $argv[2])) {
         exit(0);
     }
-    
+
     $type = $argv[1];
     $file = $argv[2];
 

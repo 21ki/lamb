@@ -129,8 +129,8 @@ class AccountModel {
 
     public function isExist($id = null) {
         $sql = 'SELECT id FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
-        $result = $this->db->query($sql)->fetch();
-        if (count($result) > 0) {
+        $sth = $this->db->query($sql);
+        if ($sth && ($sth->fetch() !== false)) {
             return true;
         }
     }
