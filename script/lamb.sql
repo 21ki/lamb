@@ -68,11 +68,31 @@ CREATE TABLE channels (
     weight int NOT NULL
 );
 
-CREATE TABLE pay_logs (
-       id serial NOT NULL,
-       company varchar(64) NOT NULL,
-       money bigint NOT NULL,
-       operator varchar(64) NOT NULL,
-       ip_addr bigint NOT NULL,
-       create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+CREATE TABLE routes (
+    id serial PRIMARY KEY NOT NULL,
+    spcode varchar(32) NOT NULL,
+    account varchar(32) NOT NULL,
+    description varchar(64) NOT NULL,
+    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
+
+CREATE TABLE pay_logs (
+    id serial NOT NULL,
+    company varchar(64) NOT NULL,
+    money bigint NOT NULL,
+    operator varchar(64) NOT NULL,
+    ip_addr bigint NOT NULL,
+    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+);
+
+CREATE TABLE blacklist (
+    phone bigint UNIQUE NOT NULL
+);
+
+CREATE UNIQUE INDEX idx_blacklist on blacklist(phone);
+
+CREATE TABLE whitelist (
+    phone bigint UNIQUE NOT NULL
+);
+
+CREATE UNIQUE INDEX idx_whitelist on whitelist(phone);

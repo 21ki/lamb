@@ -1,0 +1,115 @@
+<?php
+
+/*
+ * The Route Model
+ * Link http://github.com/typefo/lamb
+ * Copyright (C) typefo <typefo@qq.com>
+ */
+
+use Tool\Filter;
+
+class RouteModel {
+    public $db = null;
+    private $table = 'routes';
+    private $column = ['spcode', 'account', 'description'];
+    
+    public function __construct() {
+        $this->db = Yaf\Registry::get('db');
+    }
+
+    public function get($id = null) {
+        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($id);
+        $result = $this->db->query($sql)->fetch();
+        return $result;
+    }
+    
+    public function getAll() {
+        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id';
+        $result = $this->db->query($sql)->fetchAll();
+        return $result;
+    }
+
+    public function create(array $data) {
+        $data = $this->checkArgs($data);
+
+        if (count($data) === count($this->column)) {
+            $sql = 'INSERT INTO ' . $this->table . '(spcode, account, description) VALUES(:spcode, :account, :description)';
+            $sth = $this->db->prepare($sql);
+            
+            foreach ($data as $key => $val) {
+                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+            
+            return $sth->execute();
+        }
+        
+        return false;
+    }
+
+    public function change($id = null, array $data = null) {
+        $id = intval($id);
+        $data = $this->checkArgs($data);
+        $column = $this->keyAssembly($data);
+
+        if (count($data) > 0) {
+            $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id';
+            $sth = $this->db->prepare($sql);
+            $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+            foreach ($data as $key => $val) {
+                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+
+            return $sth->execute();
+        }
+
+        return false;
+    }
+    
+    public function delete($id = null) {
+        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
+        if ($this->db->query($sql)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function checkArgs(array $data) {
+        $res = array();
+        $data = array_intersect_key($data, array_flip($this->column));
+
+        foreach ($data as $key => $val) {
+            switch ($key) {
+            case 'spcode':
+                $res['spcode'] = Filter::alpha($val, null, 1, 32);
+                break;
+            case 'account':
+                $res['account'] = Filter::alpha($val, null, 1, 32);
+                break;
+            case 'description':
+                $res['description'] = Filter::string($val, 'no description', 1, 64);
+                break;
+            }
+        }
+
+        return $res;
+    }
+
+    
+    public function keyAssembly(array $data) {
+    	$text = '';
+        $append = false;
+        foreach ($data as $key => $val) {
+            if ($val !== null) {
+                if ($text != '' && $append) {
+                    $text .= ", $key = :$key";
+                } else {
+                    $append = true;
+                    $text .= "$key = :$key";
+                }
+            }
+        }
+        return $text;
+    }
+}

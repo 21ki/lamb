@@ -10,7 +10,7 @@
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link type="text/css" rel="stylesheet" href="/css/all.css">
     <link type="text/css" rel="stylesheet" href="/css/flat/blue.css">
-    <link type="text/css" rel="stylesheet" href="/css/company.css">
+    <link type="text/css" rel="stylesheet" href="/css/routes.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -52,8 +52,8 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/settings/blacklist">黑名单库</a></li>
-                <li><a href="/settings/whitelist">白名单库</a></li>
+                <li><a href="/security/blacklist">黑名单库</a></li>
+                <li><a href="/security/whitelist">白名单库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
               </ul>
@@ -71,17 +71,18 @@
         <ol class="breadcrumb">
           <li><a href="/status">Home</a></li>
           <li><a href="/routes">Routes</a></li>
-          <li class="active">Create</li>
+          <li class="active">Edit</li>
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row">
         <div class="container main">
-          <form class="form-horizontal" action="/server/create" method="post">
+          <form class="form-horizontal" action="edit" method="post">
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label"> 接入号码:</label>
               <div class="col-xs-3 col-sm-3 col-md-3">
-                <input type="text" class="form-control" name="name" value="10650800458" placeholder="Enter Code" required="required">
+                <input type="hidden" class="form-control" name="id" value="<?php echo $route['id'];?>" />
+                <input type="text" class="form-control" name="spcode" value="<?php echo $route['spcode'];?>" placeholder="Enter Code" required="required">
               </div>
               <div class="col-xs-3 col-sm-3 col-md-3">
                 <span class="help-block">上行接入号码，例如 106508008</span>
@@ -90,14 +91,13 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">绑定帐号:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="route">
-                  <option value="1">a0001(九城游戏)</option>
-                  <option value="2">a0002(九城游戏)</option>
-                  <option value="3">w0002(万达地产)</option>
-                  <option value="4">t0002(统一企业)</option>
-                  <option value="5">t0003(统一企业)</option>
-                  <option value="6">s0002(四海恒通)</option>
-                  <option value="7">g0001(港华燃气)</option>
+                <select class="form-control" name="account">
+                  <?php
+                    foreach ($accounts as $a) {
+                      $selected = $a['username'] == $route['account'] ? ' selected="selected"' : '';
+                      echo '<option value="',$a['username'],'"',$selected,'>',$a['username'],' (',$companys[$a['company']]['name'],')</option>',"\n";
+                    }
+                  ?>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
@@ -107,7 +107,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">备注信息:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="description" value="no description" placeholder="Enter Description" />
+                <input type="text" class="form-control" name="description" value="<?php echo lamb_output($route['description']);?>" placeholder="Enter Description" />
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">相关备注信息说明</span>

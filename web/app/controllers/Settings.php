@@ -9,13 +9,7 @@
 use Tool\Filter;
 
 class SettingsController extends Yaf\Controller_Abstract {
-    public function blacklistAction() {
-        return true;
-    }
-
-    public function whitelistAction() {
-        return true;
-    }
+    
 }
 
 

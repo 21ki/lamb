@@ -5,10 +5,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>channel - lamb</title>
+    <title>routes - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/channel.css">
+    <link type="text/css" rel="stylesheet" href="/css/routes.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -50,8 +50,8 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/settings/blacklist">黑名单库</a></li>
-                <li><a href="/settings/whitelist">白名单库</a></li>
+                <li><a href="/security/blacklist">黑名单库</a></li>
+                <li><a href="/security/whitelist">白名单库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
               </ul>
@@ -68,9 +68,9 @@
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Routes</a></li>
+          <li><a href="/routes">Routes</a></li>
           <li class="active">Data</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><a class="btn btn-success btn-xs" href="/routes/create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
         </ol>
       </div>
       <div class="row">
@@ -79,34 +79,42 @@
             <tr><th>#</th><th>接入号码</th><th>绑定帐号</th><th>备注信息</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868808</td><td>a10001</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit.html"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868809</td><td>a10002</td><td>九城游戏客服业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868810</td><td>a10003</td><td>九城游戏增值业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868811</td><td>j10001</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868812</td><td>j10002</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868813</td><td>j10003</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868814</td><td>t10001</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868815</td><td>t10002</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868816</td><td>s10001</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868817</td><td>s10002</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868818</td><td>a10009</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868819</td><td>a10010</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868820</td><td>a10011</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>1065868821</td><td>a10012</td><td>九城游戏会员业务</td><td>2017-08-10 08:25:00</td><td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td><td><a class="btn btn-default btn-xs" href="edit"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
-            
+            <?php
+              foreach ($routes as $r) {
+                echo '<tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>',$r['spcode'],'</td><td>',$r['account'],'</td>';
+                echo '<td>',$r['description'],'</td><td>',$r['create_time'],'</td>';
+                echo '<td><button class="btn btn-default btn-xs" onclick="deleteRoute(',$r['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
+                echo '<td><a class="btn btn-default btn-xs" href="/routes/edit?id=',$r['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
+              }
+            ?>
           </tbody>
         </table>
       </div>
     </div>
 </div>
-<script src="/js/jquery.min.js"></script>
-<script src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/jquery.min.js"></script>
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript">
   $('li.dropdown').mouseover(function() {   
-  $(this).addClass('open');
+    $(this).addClass('open');
   }).mouseout(function() {
-  $(this).removeClass('open');
+    $(this).removeClass('open');
   });
+
+  function deleteRoute(id) {
+    layer.confirm('亲，确定要删除？', {
+      btn: ['是','否'], icon: 3
+    }, function(){
+      var url = '/routes/delete?id=' + id;
+      $.get(url, function(){
+        layer.msg('删除成功!', {icon: 1, time: 1000});
+        setTimeout(function() {
+          window.location.reload();
+        }, 1000);
+      });
+    });
+  }
 </script>
 </body>
 </html>

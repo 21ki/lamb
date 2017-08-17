@@ -90,7 +90,7 @@ class CompanyModel {
     }
 
     public function recharge($id = null, $money = 0) {
-        if ($this->isExist($id)) {
+        if (intval($money) !== 0 && $this->isExist($id)) {
             $sql = 'UPDATE ' . $this->table . ' SET money = money + ' . intval($money) . ' WHERE id = ' . intval($id);
             if ($this->db->query($sql)) {
                 $payment = new PaymentModel();
