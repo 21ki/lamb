@@ -20,17 +20,26 @@ class CompanyModel {
     }
 
     public function get($id = null) {
-        $id = intval($id);
-        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = :id LIMIT 1';
-        $sth = $this->db->prepare($sql);
-        $sth->bindParam(':id', $id, PDO::PARAM_INT);
-        $sth->execute();
-        return $sth->fetch();
+        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            if ($result !== false) {
+                return $result;
+            }
+        }
+
+        return null;
     }
 
     public function getAll(array $column = null) {
+        $result = [];
         $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id';
-        $result = $this->db->query($sql)->fetchAll();
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetchAll();
+        }
+
         return $result;
     }
 
@@ -89,6 +98,20 @@ class CompanyModel {
         return false;
     }
 
+    public function accountTotal($id = null) {
+        $count = 0;
+        $sql = 'SELECT count(id) FROM account WHERE company = ' . intval($id);
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            if ($result !== false) {
+                $count = $result['count'];
+            }
+        }
+
+        return $count;
+    }
+    
     public function recharge($id = null, $money = 0) {
         if (intval($money) !== 0 && $this->isExist($id)) {
             $sql = 'UPDATE ' . $this->table . ' SET money = money + ' . intval($money) . ' WHERE id = ' . intval($id);
@@ -102,16 +125,6 @@ class CompanyModel {
                 $payment->writeLogs($event);
                 return true;
             }
-        }
-
-        return false;
-    }
-    
-    public function isExist($id = null) {
-        $sql = 'SELECT id FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
-        $result = $this->db->query($sql);
-        if (count($result) > 0) {
-            return true;
         }
 
         return false;
@@ -144,7 +157,19 @@ class CompanyModel {
         return $res;
     }
 
-    
+    public function isExist($id = null) {
+        $result = false;
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $sth = $this->db->query($sql);
+        if ($sth && ($result = $sth->fetch()) !== false) {
+            if ($result['count'] > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function keyAssembly(array $data) {
     	$text = '';
         $append = false;

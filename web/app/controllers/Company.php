@@ -11,7 +11,13 @@ use Tool\Filter;
 class CompanyController extends Yaf\Controller_Abstract {
     public function indexAction() {
         $company = new CompanyModel();
-        $this->getView()->assign('data', $company->getAll());
+
+        $list = $company->getAll();
+        foreach ($list as &$val) {
+            $val['count'] = $company->accountTotal($val['id']);
+        }
+
+        $this->getView()->assign('companys', $list);
         return true;
     }
 
@@ -69,6 +75,19 @@ class CompanyController extends Yaf\Controller_Abstract {
             $response['message'] = $success ? 'success' : 'failed';
             header('Content-type: application/json');
             echo json_encode($response);
+        }
+
+        return false;
+    }
+
+    public function isExist($id = null) {
+        $result = false;
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $sth = $this->db->query($sql);
+        if ($sth && ($result = $sth->fetch()) !== false) {
+            if ($result['count'] > 0) {
+                return true;
+            }
         }
 
         return false;

@@ -70,6 +70,19 @@ class GroupModel {
         $result = $this->db->query($sql)->fetchAll();
         return $result;
     }
+
+    public function isExist($id = null) {
+        $result = false;
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $sth = $this->db->query($sql);
+        if ($sth && ($result = $sth->fetch()) !== false) {
+            if ($result['count'] > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
     
     public function checkArgs(array $data) {
         $res = array();

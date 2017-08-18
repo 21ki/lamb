@@ -69,47 +69,42 @@
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Message</a></li>
+          <li><a href="/message">Message</a></li>
           <li class="active">Data</li>
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row query">
-        <form class="form-inline" action="/cdr" method="get">
+        <form class="form-inline" action="/message" method="get">
           <div class="form-group">
             <label>发送时间: </label>
-	        <input type="text" id="begin" class="form-control input-sm" name="begin" value="2017-08-11 08:00:00" />
+	        <input type="text" id="message-begin" class="form-control" name="begin" value="2017-08-11 08:00:00" />
             -
-            <input type="text" id="end" class="form-control input-sm" name="end" value="2017-08-11 20:00:00" />
+            <input type="text" id="message-end" class="form-control" name="end" value="2017-08-11 20:00:00" />
           </div>
           <div class="form-group">
-            <label>所属公司: </label>
-	        <select class="form-control" name="route">
-              <option value="1">All (所有)</option>
-              <option value="1">九城游戏</option>
-              <option value="2">万达地产</option>
-              <option value="2">四海恒通</option>
-              <option value="2">统一企业</option>
-              <option value="2">港华燃气</option>
-            </select>
+            <label>帐 号: </label>
+	        <input type="text" id="message-account" class="form-control" placeholder="请输入帐号" name="account" />
           </div>
           <div class="form-group">
-            <label>接入帐号: </label>
-	        <input type="text" id="account" class="form-control input-sm" placeholder="请输入接入号码" name="account" value="" />
+            <label>服务号码: </label>
+	        <input type="text" id="message-spcode" class="form-control" name="spcode" placeholder="请输入号码" />
           </div>
           <div class="form-group">
             <label>状 态: </label>
-	        <select class="form-control" name="route">
-              <option value="1">所有状态</option>
-              <option value="1">已发送</option>
-              <option value="2">发送成功</option>
-              <option value="2">发送失败</option>
-              <option value="2">未知状态</option>
+	        <select class="form-control" name="status" style="width:100px">
+              <option value="1">DELIVRD</option>
+              <option value="2">EXPIRED</option>
+              <option value="3">DELETED</option>
+              <option value="4">UNDELIV</option>
+              <option value="5">ACCEPTD</option>
+              <option value="6">UNKNOWN</option>
+              <option value="7">REJECTD</option>
             </select>
           </div>
           <div class="form-group">
             <label>手机号码: </label>
-	        <input type="text" id="phone" class="form-control input-sm" placeholder="请输入号码" name="phone" value="" />
+	        <input type="text" id="message-phone" class="form-control" name="phone" placeholder="请输入号码" />
           </div>
           <button type="submit" id="query" class="btn btn-success btn-sm pull-right" name="sub" value="ok">查 询</button>
         </form>
@@ -118,46 +113,16 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>手机号码</th><th>短信内容</th><th>短信状态</th><th>所属帐号</th><th>接入号码</th><th>所属公司</th><th>发送时间</th></tr>
+            <tr><th>#</th><th>帐 号</th><th>服务号码</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th>发送时间</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>15021553368</td><td>您的验证码是 123456 请不要将此验证码...</td><td>发送成功</td><td>a00001</td><td>457890156</td><td>四海恒通</td><td>2017-08-10 08:25:00</td></tr>
-            
+            <?php
+              foreach ($messages as $m) {
+                $status = [1 => 'DELIVRD', 2 => 'EXPIRED', 3 => 'DELETED', 4 => 'UNDELIV', 5 => 'ACCEPTD', 6 => 'UNKNOWN', 7 => 'REJECTD'];
+                echo '<tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>',$m['spid'],'</td><td>',$m['spcode'],'</td>';
+                echo '<td>',$m['phone'],'</td><td>',lamb_output($m['content'], 24),'</td><td>',$status[$m['status']],'</td><td>',$m['create_time'],'</td></tr>';
+              }
+            ?>
           </tbody>
         </table>
       </div>
@@ -175,17 +140,17 @@
   });
 
   // datetimepicker
-    $('#begin').datetimepicker({
-      format: 'yyyy-mm-dd hh:ii:ss',
-      language: 'zh-CN',
-      autoclose: true
-    });
+  $('#message-begin').datetimepicker({
+    format: 'yyyy-mm-dd hh:ii:ss',
+    language: 'zh-CN',
+    autoclose: true
+  });
 
-    $('#end').datetimepicker({
-      format: 'yyyy-mm-dd hh:ii:ss',
-      language: 'zh-CN',
-      autoclose: true
-    });
+  $('#message-end').datetimepicker({
+    format: 'yyyy-mm-dd hh:ii:ss',
+    language: 'zh-CN',
+    autoclose: true
+  });
 </script>
 </body>
 </html>

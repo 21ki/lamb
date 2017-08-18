@@ -17,8 +17,13 @@ class PaymentModel {
     }
 
     public function getLogs() {
+        $result = [];
         $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id DESC';
-        $result = $this->db->query($sql)->fetchAll();
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetchAll();
+        }
+
         return $result;
     }
     

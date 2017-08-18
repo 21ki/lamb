@@ -48,14 +48,49 @@ body {
     padding: 12px;
 }
 
-.query #begin, .query #end {
+.query .form-group {
+    margin-right: 5px;
+}
+
+/* Message */
+#message-begin, #message-end {
+    width: 135px;
+}
+
+#message-phone {
     width: 120px;
 }
 
-.query #phone, .query #account {
+#message-account {
     width: 100px;
 }
 
-.query .form-group {
-    margin-right: 5px;
+#message-spcode {
+    width: 100px;
+}
+
+/* Message */
+#deliver-begin, #deliver-end {
+    width: 135px;
+}
+
+#deliver-phone {
+    width: 120px;
+}
+
+#deliver-spcode {
+    width: 100px;
+}
+
+/* Message Report */
+#report-begin, #report-end {
+    width: 135px;
+}
+
+#report-phone {
+    width: 120px;
+}
+
+#report-spcode {
+    width: 200px;
 }

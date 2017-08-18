@@ -69,40 +69,26 @@
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Message</a></li>
+          <li><a href="/message">Message</a></li>
           <li class="active">Deliver</li>
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row query">
-        <form class="form-inline" action="/cdr" method="get">
+        <form class="form-inline" action="/message/deliver" method="get">
           <div class="form-group">
             <label>发送时间: </label>
-	        <input type="text" id="begin" class="form-control input-sm" name="begin" value="2017-08-11 08:00:00" />
+	        <input type="text" id="deliver-begin" class="form-control" name="begin" value="2017-08-11 08:00:00" />
             -
-            <input type="text" id="end" class="form-control input-sm" name="end" value="2017-08-11 20:00:00" />
+            <input type="text" id="deliver-end" class="form-control" name="end" value="2017-08-11 20:00:00" />
           </div>
           <div class="form-group">
-            <label>接入号码: </label>
-            <input type="text" id="account" class="form-control input-sm" placeholder="请输入接入号码" name="account" value="" />
+            <label>服务号码: </label>
+            <input type="text" id="deliver-spcode" class="form-control" placeholder="请输入服务号码" name="spcode" />
           </div>
           <div class="form-group">
             <label>手机号码: </label>
-	        <input type="text" id="account" class="form-control input-sm" placeholder="请输入接入号码" name="account" value="" />
-          </div>
-          <div class="form-group">
-            <label>状 态: </label>
-	        <select class="form-control" name="route">
-              <option value="1">所有状态</option>
-              <option value="1">已发送</option>
-              <option value="2">发送成功</option>
-              <option value="2">发送失败</option>
-              <option value="2">未知状态</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>目标帐号: </label>
-	        <input type="text" id="account" class="form-control input-sm" placeholder="请输入接入号码" name="account" value="" />
+	        <input type="text" id="deliver-phone" class="form-control" placeholder="请输入手机号码" name="phone" />
           </div>
           <button type="submit" id="query" class="btn btn-success btn-sm pull-right" name="sub" value="ok">查 询</button>
         </form>
@@ -111,32 +97,14 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>接入号码</th><th>原始号码</th><th>短信内容</th><th>目标帐号</th><th>短信状态</th><th>发送时间</th></tr>
+            <tr><th>#</th><th>服务号码</th><th>手机号码</th><th>短信内容</th><th>发送时间</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>a10001</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
-            <tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>654237017</td><td>15021553368</td><td>您的账户余额为 45680.00 元</td><td>t10005</td><td>下发成功</td><td>2017-08-10 08:25:00</td></tr>
+            <?php
+              foreach ($delivers as $d) {
+                echo '<tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>',$d['spcode'],'</td><td>',$d['phone'],'</td><td>',lamb_output($d['content'], 24),'</td><td>',$d['create_time'],'</td></tr>';
+              }
+            ?>
           </tbody>
         </table>
       </div>
@@ -154,13 +122,13 @@
   });
 
     // datetimepicker
-    $('#begin').datetimepicker({
+    $('#deliver-begin').datetimepicker({
       format: 'yyyy-mm-dd hh:ii:ss',
       language: 'zh-CN',
       autoclose: true
     });
 
-    $('#end').datetimepicker({
+    $('#deliver-end').datetimepicker({
       format: 'yyyy-mm-dd hh:ii:ss',
       language: 'zh-CN',
       autoclose: true

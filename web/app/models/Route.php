@@ -19,13 +19,25 @@ class RouteModel {
 
     public function get($id = null) {
         $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($id);
-        $result = $this->db->query($sql)->fetch();
-        return $result;
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            if ($result !== false) {
+                return $result;
+            }
+        }
+
+        return null;
     }
     
     public function getAll() {
+        $result = [];
         $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id';
-        $result = $this->db->query($sql)->fetchAll();
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetchAll();
+        }
+
         return $result;
     }
 
@@ -75,6 +87,19 @@ class RouteModel {
         return false;
     }
 
+    public function isExist($id = null) {
+        $result = false;
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $sth = $this->db->query($sql);
+        if ($sth && ($result = $sth->fetch()) !== false) {
+            if ($result['count'] > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
     public function checkArgs(array $data) {
         $res = array();
         $data = array_intersect_key($data, array_flip($this->column));

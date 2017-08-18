@@ -19,13 +19,25 @@ class TemplateModel {
 
     public function get($id = null) {
         $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($id);
-        $result = $this->db->query($sql)->fetch();
-        return $result;
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            if ($result !== false) {
+                return $result;
+            }
+        }
+
+        return null;
     }
 
     public function getAll() {
+        $result = [];
         $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id';
-        $result = $this->db->query($sql)->fetchAll();
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetchAll();
+        }
+
         return $result;
     }
 
@@ -91,6 +103,19 @@ class TemplateModel {
         $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
         if ($this->db->query($sql)) {
             return true;
+        }
+
+        return false;
+    }
+
+    public function isExist($id = null) {
+        $result = false;
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $sth = $this->db->query($sql);
+        if ($sth && ($result = $sth->fetch()) !== false) {
+            if ($result['count'] > 0) {
+                return true;
+            }
         }
 
         return false;
