@@ -444,11 +444,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
     }
 
-    if (lamb_get_int(&cfg, "redisPort", &conf->redisPort) != 0) {
+    if (lamb_get_int(&cfg, "redisPort", &conf->redis_port) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
     }
 
-    if (conf->redisPort < 1 || conf->redisPort > 65535) {
+    if (conf->redis_port < 1 || conf->redis_port > 65535) {
         fprintf(stderr, "ERROR: Invalid redis port number\n");
         goto error;
     }

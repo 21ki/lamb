@@ -6,11 +6,11 @@ LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lrabbitmq -lleveldb
 
 all: client server
 
-client: src/sp.c src/sp.h $(OBJS)
-	$(CC) $(CFLAGS) src/sp.c $(OBJS) $(LIBS) -o client
+sp: src/sp.c src/sp.h $(OBJS)
+	$(CC) $(CFLAGS) src/sp.c $(OBJS) $(LIBS) -o sp
 
-server: src/ismg.c src/ismg.h $(OBJS)
-	$(CC) $(CFLAGS) src/ismg.c $(OBJS) $(LIBS) -o server
+ismg: src/ismg.c src/ismg.h $(OBJS)
+	$(CC) $(CFLAGS) src/ismg.c $(OBJS) $(LIBS) -o ismg
 
 src/amqp.o: src/amqp.c src/amqp.h
 	$(CC) $(CFLAGS) -c src/amqp.c -o src/amqp.o
