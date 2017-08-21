@@ -188,7 +188,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     memset(user, 0, sizeof(user));
                     cmpp_pack_get_string(&pack, cmpp_connect_source_addr, user, sizeof(user), 6);
 
-                    if (!lamb_cache_has(&cache, user)) {
+                    if (!lamb_cache_has(&cache, (char *)user)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
                         lamb_errlog(config.logfile, "Incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
@@ -198,7 +198,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     lamb_cache_get(&cache, (char *)user, (char *)password, sizeof(password));
 
                     /* Check AuthenticatorSource */
-                    if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
+                    if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), (const char *)user, password)) {
                         cmpp_connect_resp(&sock, sequenceId, 0);
                         lamb_errlog(config.logfile, "login successfull form client %s", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
