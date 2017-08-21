@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     int err;
 
     /* Redis Cache */
-    err = lamb_cache_connect(&cache, config.redisHost, config.redisPort, config.redisPassword, config.redsiDb);
+    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, config.redis_password, config.redsi_db);
     if (err) {
         if (config.daemon) {
             lamb_errlog(config.logfile, "can't connect to redis server", 0);
@@ -182,8 +182,8 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     }
                     
                     /* Check SourceAddr */
-                    char user[8];
-                    char password[64];
+                    unsigned char user[8];
+                    unsigned char password[64];
 
                     memset(user, 0, sizeof(user));
                     cmpp_pack_get_string(&pack, cmpp_connect_source_addr, user, sizeof(user), 6);
@@ -246,7 +246,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     struct epoll_event ev, events[32];
 
     gid = getpid();
-    pthread_cond_init(&lock, NULL);
+    pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
     
     epfd = epoll_create1(0);
@@ -300,7 +300,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
             case CMPP_SUBMIT:;
                 unsigned char result = 0;
                 fprintf(stdout, "Receive cmpp_submit packet from client\n");
-                err = mq_send(queue, pack, totalLength, 1);
+                err = mq_send(queue, (const char *)pack, totalLength, 1);
                 if (err) {
                     result = 9;
                     fprintf(stderr, "write message to queue failed\n");
