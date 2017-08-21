@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     int err;
 
     /* Redis Cache */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, config.redis_password, config.redsi_db);
+    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
         if (config.daemon) {
             lamb_errlog(config.logfile, "can't connect to redis server", 0);
@@ -195,7 +195,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     }
 
                     memset(password, 0, sizeof(password));
-                    lamb_cache_get(&cache, user, password, sizeof(password));
+                    lamb_cache_get(&cache, (char *)user, (char *)password, sizeof(password));
 
                     /* Check AuthenticatorSource */
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
@@ -234,20 +234,20 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 void lamb_work_loop(cmpp_sock_t *sock) {
     int gid;
     mqd_t queue;
-    lamb_mo_t mo;
-    pthread_t tid;
-    pthread_attr_t attr;
+    //lamb_mo_t mo;
+    //pthread_t tid;
+    //pthread_attr_t attr;
     cmpp_pack_t pack;
     socklen_t clilen;
     int err, epfd, nfds;
-    pthread_cond_t cond;
-    pthread_mutex_t mutex;
+    //pthread_cond_t cond;
+    //pthread_mutex_t mutex;
     struct sockaddr_in clientaddr;
     struct epoll_event ev, events[32];
 
     gid = getpid();
-    pthread_cond_init(&cond, NULL);
-    pthread_mutex_init(&mutex, NULL);
+    //pthread_cond_init(&cond, NULL);
+    //pthread_mutex_init(&mutex, NULL);
     
     epfd = epoll_create1(0);
     ev.data.fd = sock->fd;
@@ -256,6 +256,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     epoll_ctl(epfd, EPOLL_CTL_ADD, sock->fd, &ev);
     getpeername(sock->fd, (struct sockaddr *)&clientaddr, &clilen);
 
+    /* 
     mo.sock = sock;
     mo.cond = &cond;
     mo.mutex = &mutex;
@@ -265,7 +266,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
     if (err) {
         lamb_errlog(config.logfile, "start lamb_mo_event_loop thread failed", 0);
     }
-
+    */
     queue = mq_open(config.queue, O_WRONLY);
     if (queue < 0) {
         lamb_errlog(config.logfile, "Open %s message queue failed", config.queue);
@@ -317,8 +318,10 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 cmpp_submit_resp(sock, sequenceId, msgId, result);
                 break;
             case CMPP_DELIVER_RESP:;
+               
                 unsigned char result;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
+                 /* 
                 if (result == 0) {
                     pthread_mutex_lock(&mutex);
                     pthread_cond_signal(&cond);
@@ -328,6 +331,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                     cmpp_pack_get_integer(&pack, cmpp_deliver_resp_msg_id, &msgId, 8);
                     fprintf(stdout, "Msg_Id %llu deliver message failed\n", msgId);
                 }
+                */
                 break;
             case CMPP_TERMINATE:
                 fprintf(stdout, "Receive cmpp_terminate packet from client\n");
@@ -341,9 +345,9 @@ void lamb_work_loop(cmpp_sock_t *sock) {
 exit:
     close(epfd);
     cmpp_sock_close(sock);
-    pthread_cond_destroy(&cond);
-    pthread_mutex_destroy(&mutex);
-    pthread_attr_destroy(&attr);
+    //pthread_cond_destroy(&cond);
+    //pthread_mutex_destroy(&mutex);
+    //pthread_attr_destroy(&attr);
     
     return;
 }
