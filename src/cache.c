@@ -5,92 +5,111 @@
  * Update: 2017-07-20
  */
 
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/time.h>
 #include "cache.h"
 
-int lamb_db_init(lamb_db_t *db, const char *name) {
-    db->options = leveldb_options_create();
-    leveldb_options_set_create_if_missing(db->options, 1);
+int lamb_cache_connect(lamb_cache_t *cache, char *host, int port, char *password, int db) {
+    redisReply *reply = NULL;
+    struct timeval timeout = {3, 500000};
+    
+    cache->handle = redisConnectWithTimeout(host, port, timeout);
+    if (cache->handle == NULL|| cache->handle->err) {
+        if (cache->handle) {
+            redisFree(cache->handle);
+        }
 
-    if (lamb_db_open(db, name) != 0) {
-        return -1;
+        return 1;
     }
 
-    db->roptions = leveldb_readoptions_create();
-    db->woptions = leveldb_writeoptions_create();
+    if (password) {
+        reply = redisCommand(cache->handle, "AUTH %s", password);
+        if (reply != NULL) {
+            freeReplyObject(reply);
+        }
+    }
+
+    reply = redisCommand(cache->handle, "SELECT %d", db);
+    if (reply != NULL) {
+        if ((reply->type == REDIS_REPLY_STATUS) && (strcmp(reply->str, "OK") == 0)) {
+            freeReplyObject(reply);
+            return 0;
+        }
+        freeReplyObject(reply);
+    }
+
+    redisFree(cache->handle);
+    return 2;
+}
+
+bool lamb_cache_check_connect(lamb_cache_t *cache) {
+    if (!cache || cache->handle) {
+        return false;
+    }
+    
+    bool r = false;
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "PING");
+    if (reply != NULL) {
+        if (strcmp(reply->str, "PONG") == 0) {
+            r = true;
+        }
+        freeReplyObject(reply);
+    }
+
+    return r;
+}
+
+int lamb_cache_close(lamb_cache_t *cache) {
+    if (cache->handle) {
+        redisFree(cache->handle);
+    }
 
     return 0;
 }
 
-int lamb_db_open(lamb_db_t *db, const char *name) {
-    char *err = NULL;
+bool lamb_cache_has(lamb_cache_t *cache, char *key) {
+    if (!cache || !cache->handle) {
+        return false;
+    }
 
-    db->handle = leveldb_open(db->options, name, &err);
+    bool r = false;
+    redisReply *reply = NULL;
 
-    if (err != NULL) {
+    reply = redisCommand(cache->handle, "EXISTS %s", key);
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_INTEGER) {
+            r = (reply->integer == 1) ? true : false;
+        }
+        freeReplyObject(reply);
+    }
+
+    return r;
+}
+
+int lamb_cache_get(lamb_cache_t *cache, char *key, char *buff, size_t len) {
+    if (!cache || !cache->handle || !key) {
         return -1;
     }
 
-    leveldb_free(err);
-    err = NULL;
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "GET %s", key);
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_STRING) {
+            if (reply->len > len) {
+                memcpy(buff, reply->str, len - 1);
+            } else {
+                memcpy(buff, reply->str, reply->len);
+            }
+        }
+
+        freeReplyObject(reply);
+    }
 
     return 0;
 }
 
-int lamb_db_put(lamb_db_t *db, const char *key, size_t keylen, const char *val, size_t vallen) {
-    char *err = NULL;
-
-    leveldb_put(db->handle, db->woptions, key, keylen, val, vallen, &err);
-    if (err != NULL) {
-        return -1;
-    }
-
-    leveldb_free(err);
-    err = NULL;
-
-    return 0;
-}
-
-char *lamb_db_get(lamb_db_t *db, const char *key, size_t keylen, size_t *len) {
-    char *val;
-    char *err = NULL;
-
-    val = leveldb_get(db->handle, db->roptions, key, keylen, len, &err);
-    if (err != NULL) {
-        return NULL;
-    }
-
-    leveldb_free(err);
-
-    return val;
-}
-
-int lamb_db_delete(lamb_db_t *db, const char *key, size_t keylen) {
-    char *err = NULL;
-
-    leveldb_delete(db->handle, db->woptions, key, keylen, &err);
-
-    if (err != NULL) {
-        return -1;
-    }
-
-    leveldb_free(err);
-    err = NULL;
-
-    return 0;
-}
-
-int lamb_db_close(lamb_db_t *db) {
-    char *err = NULL;
-
-    leveldb_close(db->handle);
-    leveldb_destroy_db(db->options, db->name, &err);
-
-    if (err != NULL) {
-        return -1;
-    }
-
-    leveldb_free(err);
-    err = NULL;
-
-    return 0;
-}

@@ -8,21 +8,15 @@
 #ifndef _LAMB_CACHE_H
 #define _LAMB_CACHE_H
 
-#include <leveldb/c.h>
+#include <stdbool.h>
+#include <hiredis/hiredis.h>
 
 typedef struct {
-    char *name;
-    leveldb_t *handle;
-    leveldb_options_t *options;
-    leveldb_readoptions_t *roptions;
-    leveldb_writeoptions_t *woptions;
-} lamb_db_t;
+    redisContext *handle;
+} lamb_cache_t;
 
-int lamb_db_init(lamb_db_t *db, const char *name);
-int lamb_db_open(lamb_db_t *db, const char *name);
-int lamb_db_put(lamb_db_t *db, const char *key, size_t keylen, const char *val, size_t vallen);
-char *lamb_db_get(lamb_db_t *db, const char *key, size_t keylen, size_t *len);
-int lamb_db_delete(lamb_db_t *db, const char *key, size_t keylen);
-int lamb_db_close(lamb_db_t *db);
+int lamb_cache_connect(lamb_cache_t *cache, char *host, int port, char *password, int db);
+bool lamb_cache_check_connect(lamb_cache_t *cache);
+int lamb_cache_close(lamb_cache_t *cache);
 
 #endif

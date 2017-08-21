@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
+#include <mqueue.h>
 #include <pthread.h>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
@@ -21,9 +22,11 @@
 #include <cmpp.h>
 #include "ismg.h"
 #include "utils.h"
+#include "cache.h"
 #include "config.h"
-#include "list.h"
 
+static cmpp_ismg_t cmpp;
+static lamb_cache_t cache;
 static lamb_config_t config;
 
 int main(int argc, char *argv[]) {
@@ -56,7 +59,20 @@ int main(int argc, char *argv[]) {
     lamb_signal();
 
     int err;
-    cmpp_ismg_t cmpp;
+
+    /* Redis Cache */
+    err = lamb_cache_connect(&cache, config.redisHost, config.redisPort, config.redisPassword, config.redsiDb);
+    if (err) {
+        if (config.daemon) {
+            lamb_errlog(config.logfile, "can't connect to redis server", 0);
+        } else {
+            fprintf(stderr, "can't connect to redis server\n");
+        }
+
+        return -1;
+    }
+
+    /* Cmpp ISMG Gateway Initialization */
     err = cmpp_init_ismg(&cmpp, config.listen, config.port);
 
     if (err) {
@@ -75,7 +91,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Cmpp server initialization successfull\n");
     }
 
-    /* setting cmpp socket parameter */
+    /* Setting Cmpp Socket Parameter */
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.timeout);
 
@@ -85,7 +101,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "lamb server listen %s port %d\n", config.listen, config.port);
     }
 
-    /* Start main event thread */
+    /* Start Main Event Thread */
     lamb_event_loop(&cmpp);
 
     return 0;
@@ -166,16 +182,20 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     }
                     
                     /* Check SourceAddr */
-                    char *user = "901234";
-                    char *password = "123456";
-                    unsigned char SourceAddr[8];
+                    char user[8];
+                    char password[64];
 
-                    cmpp_pack_get_string(&pack, cmpp_connect_source_addr, SourceAddr, sizeof(SourceAddr), 6);
-                    if (memcmp(SourceAddr, user, strlen(user)) != 0) {
+                    memset(user, 0, sizeof(user));
+                    cmpp_pack_get_string(&pack, cmpp_connect_source_addr, user, sizeof(user), 6);
+
+                    if (!lamb_cache_has(&cache, user)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
                         lamb_errlog(config.logfile, "Incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
+
+                    memset(password, 0, sizeof(password));
+                    lamb_cache_get(&cache, user, password, sizeof(password));
 
                     /* Check AuthenticatorSource */
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
@@ -191,6 +211,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             lamb_errlog(config.logfile, "Start new child work process", 0);
                             close(epfd);
                             cmpp_ismg_close(cmpp);
+                            lamb_cache_close(&cache);
                             lamb_work_loop(&sock);
                             return;
                         }
@@ -419,6 +440,23 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
+    if (lamb_get_string(&cfg, "redisHost", conf->redis_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
+    }
+
+    if (lamb_get_int(&cfg, "redisPort", &conf->redisPort) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
+    }
+
+    if (conf->redisPort < 1 || conf->redisPort > 65535) {
+        fprintf(stderr, "ERROR: Invalid redis port number\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "redisDb", &conf->redis_db) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'redisDb' parameter\n");
+    }
+    
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;

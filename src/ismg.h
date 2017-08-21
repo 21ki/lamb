@@ -19,6 +19,9 @@ typedef struct {
     long long send_timeout;
     long long recv_timeout;
     char queue[64];
+    char redis_host[16];
+    int redis_port;
+    int redis_db;
     char logfile[128];
     bool debug;
     bool daemon;
