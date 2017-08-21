@@ -117,7 +117,7 @@
               '</thead>' +
             '<tbody id="channels">' +
               '<tr id="channel-1"><td>' +
-                  '<select class="form-control input-sm" name="channels[]">' +
+                  '<select class="form-control input-sm" name="channels[1]">' +
                     <?php
                       foreach ($channels as $c) {
                         echo "'",'<option value="',$c['id'],'">',$c['name'],'</option>',"' +\n";
@@ -125,7 +125,7 @@
                     ?>
                     '</select>' +
                   '</td>' +
-                '<td class="weight"><input type="number" class="form-control input-sm" name="weights[]" min="0" value="1" /></td>' +
+                '<td class="weight"><input type="number" class="form-control input-sm" name="weights[1]" min="0" value="1" /></td>' +
                 '<td><a href="javascript:void(0)" onclick="deleteChannel(1)">删 除</a>' +
                   '</td></tr>' +
               '</tbody>' +
@@ -151,7 +151,7 @@
   function add() {
     var id = $("#channels").children('tr').length + 1;
     var channel = '<tr id="channel-' + id + '"><td>' +
-      '<select class="form-control input-sm" name="channels[]">' +
+      '<select class="form-control input-sm" name="channels[' + id + ']">' +
         <?php
           foreach ($channels as $c) {
             echo "'",'<option value="',$c['id'],'">',$c['name'],'</option>',"' +\n";
@@ -159,7 +159,7 @@
         ?>
       '</select>' +
       '</td>' +
-      '<td class="weight"><input type="number" class="form-control input-sm" name="weights[]" min="0" value="1" /></td>' +
+      '<td class="weight"><input type="number" class="form-control input-sm" name="weights[' + id + ']" min="0" value="1" /></td>' +
       '<td><a href="javascript:void(0)" onclick="deleteChannel(' + id + ')">删 除</a>' +
       '</td></tr>';
       $(channel).appendTo("#channels");

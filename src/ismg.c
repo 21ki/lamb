@@ -111,12 +111,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 /* new client connection */
                 confd = accept(cmpp->sock.fd, (struct sockaddr *)&clientaddr, &clilen);
                 if (confd < 0) {
-                    if (config.daemon) {
-                        lamb_errlog(config.logfile, "Lamb server accept client connect error", 0);
-                    } else {
-                        fprintf(stderr, "Lamb server accept client connect error\n");
-                    }
-
+                    lamb_errlog(config.logfile, "Lamb server accept client connect error", 0);
                     continue;
                 }
 
@@ -130,12 +125,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 ev.events = EPOLLIN;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, confd, &ev);
                 getpeername(confd, (struct sockaddr *)&clientaddr, &clilen);
-                if (config.daemon) {
-                    lamb_errlog(config.logfile, "New client connection form %s", inet_ntoa(clientaddr.sin_addr));
-                } else {
-                    fprintf(stderr, "New client connection form %s\n", inet_ntoa(clientaddr.sin_addr));
-                }
-
+                lamb_errlog(config.logfile, "New client connection form %s", inet_ntoa(clientaddr.sin_addr));
             } else if (events[i].events & EPOLLIN) {
                 /* receive from client data */
                 if ((sockfd = events[i].data.fd) < 0) {
@@ -152,23 +142,13 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     if (err == -1) {
-                        if (config.daemon) {
-                            lamb_errlog(config.logfile, "Connection is closed by the client %s", inet_ntoa(clientaddr.sin_addr));
-                        } else {
-                            fprintf(stderr, "Connection is closed by the client %s\n", inet_ntoa(clientaddr.sin_addr));
-                        }
-                        
+                        lamb_errlog(config.logfile, "Connection is closed by the client %s", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                         close(sockfd);
                         continue;
                     }
 
-                    if (config.daemon) {
-                        lamb_errlog(config.logfile, "Receive packet error from client %s", inet_ntoa(clientaddr.sin_addr));
-                    } else {
-                        fprintf(stderr, "Receive packet error from client %s\n", inet_ntoa(clientaddr.sin_addr));
-                    }
-                    
+                    lamb_errlog(config.logfile, "Receive packet error from client %s", inet_ntoa(clientaddr.sin_addr));
                     continue;
                 }
 
@@ -193,41 +173,22 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     cmpp_pack_get_string(&pack, cmpp_connect_source_addr, SourceAddr, sizeof(SourceAddr), 6);
                     if (memcmp(SourceAddr, user, strlen(user)) != 0) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
-                        if (config.daemon) {
-                            lamb_errlog(config.logfile, "Incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
-                        } else {
-                            fprintf(stderr, "Incorrect source address from client %s\n", inet_ntoa(clientaddr.sin_addr));
-                        }
-                        
+                        lamb_errlog(config.logfile, "Incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
 
                     /* Check AuthenticatorSource */
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
                         cmpp_connect_resp(&sock, sequenceId, 0);
-                        if (config.daemon) {
-                            lamb_errlog(config.logfile, "login successfull form client %s", inet_ntoa(clientaddr.sin_addr));
-                        } else {
-                            fprintf(stdout, "login successfull form client %s\n", inet_ntoa(clientaddr.sin_addr));
-                        }
-
+                        lamb_errlog(config.logfile, "login successfull form client %s", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
 
                         /* Create Work Process */
                         pid_t pid = fork();
                         if (pid < 0) {
-                            if (config.daemon) {
-                                lamb_errlog(config.logfile, "Unable to fork child process", 0);
-                            } else {
-                                fprintf(stderr, "Unable to fork child process\n");
-                            }
+                            lamb_errlog(config.logfile, "Unable to fork child process", 0);
                         } else if (pid == 0) {
-                            if (config.daemon) {
-                                lamb_errlog(config.logfile, "Start new child work process", 0);
-                            } else {
-                                fprintf(stderr, "Start new child work process\n");
-                            }
-                            /* some code ... */
+                            lamb_errlog(config.logfile, "Start new child work process", 0);
                             close(epfd);
                             cmpp_ismg_close(cmpp);
                             lamb_work_loop(&sock);
@@ -237,19 +198,10 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         cmpp_sock_close(&sock);
                     } else {
                         cmpp_connect_resp(&sock, sequenceId, 3);
-                        
-                        if (config.daemon) {
-                            lamb_errlog(config.logfile, "login failed form client %s", inet_ntoa(clientaddr.sin_addr));
-                        } else {
-                            fprintf(stderr, "login failed form client %s\n", inet_ntoa(clientaddr.sin_addr));
-                        }
+                        lamb_errlog(config.logfile, "login failed form client %s", inet_ntoa(clientaddr.sin_addr));
                     }
                 } else {
-                    if (config.daemon) {
-                        lamb_errlog(config.logfile, "Unable to resolve packets from client %s", inet_ntoa(clientaddr.sin_addr));
-                    } else {
-                        fprintf(stderr, "Unable to resolve packets from client %s", inet_ntoa(clientaddr.sin_addr));
-                    }
+                    lamb_errlog(config.logfile, "Unable to resolve packets from client %s", inet_ntoa(clientaddr.sin_addr));
                 }
             }
         }
