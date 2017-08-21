@@ -292,14 +292,14 @@ void lamb_work_loop(cmpp_sock_t *sock) {
             unsigned int totalLength = ntohl(chp->totalLength);
             unsigned int commandId = ntohl(chp->commandId);
             unsigned int sequenceId = ntohl(chp->sequenceId);
-
+            unsigned char result;
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
                 fprintf(stdout, "Receive cmpp_active_test packet from client\n");
                 cmpp_active_test_resp(sock, sequenceId);
                 break;
             case CMPP_SUBMIT:;
-                unsigned char result = 0;
+                result = 0;
                 fprintf(stdout, "Receive cmpp_submit packet from client\n");
                 err = mq_send(queue, (const char *)&pack, totalLength, 1);
                 if (err) {
@@ -318,7 +318,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 cmpp_submit_resp(sock, sequenceId, msgId, result);
                 break;
             case CMPP_DELIVER_RESP:;
-                unsigned char result;
+                result = 0;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                  /* 
                 if (result == 0) {
