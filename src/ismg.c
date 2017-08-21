@@ -10,11 +10,13 @@
 #include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <mqueue.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
-#include <mqueue.h>
 #include <pthread.h>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
@@ -112,6 +114,8 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
     struct sockaddr_in clientaddr;
     struct epoll_event ev, events[32];
     int i, err, epfd, nfds, confd, sockfd;
+
+    clilen = sizeof(struct sockaddr);
 
     epfd = epoll_create1(0);
     ev.data.fd = cmpp->sock.fd;
@@ -233,7 +237,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 
 void lamb_work_loop(cmpp_sock_t *sock) {
     int gid;
-    mqd_t queue;
+
     //lamb_mo_t mo;
     //pthread_t tid;
     //pthread_attr_t attr;
@@ -267,7 +271,13 @@ void lamb_work_loop(cmpp_sock_t *sock) {
         lamb_errlog(config.logfile, "start lamb_mo_event_loop thread failed", 0);
     }
     */
-    queue = mq_open(config.queue, O_WRONLY);
+    
+    mqd_t queue;
+    struct mq_attr attr;
+    attr.mq_maxmsg = 1024;
+    attr.mq_msgsize = 512;
+
+    queue = mq_open(config.queue, O_CREAT | O_WRONLY, 0644, &attr);
     if (queue < 0) {
         lamb_errlog(config.logfile, "Open %s message queue failed", config.queue);
         goto exit;
@@ -283,8 +293,6 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                     lamb_errlog(config.logfile, "Connection is closed by the client %s\n", inet_ntoa(clientaddr.sin_addr));
                     break;
                 }
-
-                lamb_errlog(config.logfile, "Receive packet error from client %s\n", inet_ntoa(clientaddr.sin_addr));
                 continue;
             }
 
@@ -292,6 +300,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
             unsigned int totalLength = ntohl(chp->totalLength);
             unsigned int commandId = ntohl(chp->commandId);
             unsigned int sequenceId = ntohl(chp->sequenceId);
+
             unsigned char result;
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
@@ -300,11 +309,10 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 break;
             case CMPP_SUBMIT:;
                 result = 0;
-                fprintf(stdout, "Receive cmpp_submit packet from client\n");
                 err = mq_send(queue, (const char *)&pack, totalLength, 1);
                 if (err) {
                     result = 9;
-                    fprintf(stderr, "write message to queue failed\n");
+                    lamb_errlog(config.logfile, "write message to queue failed", 0);
                 }
 
                 /* cmpp submit resp setting */
@@ -314,7 +322,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 t = localtime(&rawtime);
                 unsigned long long msgId;
 
-                msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, sequenceId);
+                msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, cmpp_sequence());
                 cmpp_submit_resp(sock, sequenceId, msgId, result);
                 break;
             case CMPP_DELIVER_RESP:;
