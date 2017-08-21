@@ -309,12 +309,6 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 break;
             case CMPP_SUBMIT:;
                 result = 0;
-                err = mq_send(queue, (const char *)&pack, totalLength, 1);
-                if (err) {
-                    result = 9;
-                    lamb_errlog(config.logfile, "write message to queue failed", 0);
-                }
-
                 /* cmpp submit resp setting */
                 time_t rawtime;
                 struct tm *t;
@@ -323,6 +317,16 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 unsigned long long msgId;
 
                 msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, cmpp_sequence());
+                
+                cmpp_pack_add_integer(&pack, msgId, cmpp_submit_msg_id, 8);
+
+                err = mq_send(queue, (const char *)&pack, totalLength, 1);
+                if (err) {
+                    result = 9;
+                    lamb_errlog(config.logfile, "write message to queue failed", 0);
+                }
+
+
                 cmpp_submit_resp(sock, sequenceId, msgId, result);
                 break;
             case CMPP_DELIVER_RESP:;
