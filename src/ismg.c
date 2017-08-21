@@ -301,7 +301,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
             case CMPP_SUBMIT:;
                 unsigned char result = 0;
                 fprintf(stdout, "Receive cmpp_submit packet from client\n");
-                err = mq_send(queue, (char *)pack, totalLength, 1);
+                err = mq_send(queue, (const char *)&pack, totalLength, 1);
                 if (err) {
                     result = 9;
                     fprintf(stderr, "write message to queue failed\n");
@@ -318,7 +318,6 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 cmpp_submit_resp(sock, sequenceId, msgId, result);
                 break;
             case CMPP_DELIVER_RESP:;
-               
                 unsigned char result;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                  /* 
@@ -353,6 +352,7 @@ exit:
 }
 
 void *lamb_mo_event_loop(void *data) {
+    /* 
     int count;
     lamb_mo_t *mo;
     struct timeval now;
@@ -362,7 +362,6 @@ void *lamb_mo_event_loop(void *data) {
     pthread_mutex_lock(mo->mutex);
 
     while (true) {
-        /* some code */
         clock_gettime(CLOCK_REALTIME, &timeout);
         timeout.tv_sec += 3;
         err = pthread_cond_timedwait(mo->cond, mo->mutex, &timeout);
@@ -376,6 +375,7 @@ void *lamb_mo_event_loop(void *data) {
 
     pthread_mutex_unlock(mo->mutex);
     pthread_exit(NULL);
+ */
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
