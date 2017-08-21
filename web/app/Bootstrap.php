@@ -30,9 +30,10 @@ class Bootstrap extends Yaf\Bootstrap_Abstract{
         $user = $this->config->db->user;
         $pass = $this->config->db->pass;
         $name = $this->config->db->name;
+        $options = [PDO::ATTR_PERSISTENT => true];
 
         try {
-            $db = new PDO('pgsql:host=' . $host . ';port=' . $port . ';dbname=' . $name, $user, $pass);
+            $db = new PDO('pgsql:host=' . $host . ';port=' . $port . ';dbname=' . $name, $user, $pass, $options);
             $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             Yaf\Registry::set('db', $db);
         } catch (PDOException $e) {
