@@ -26,7 +26,7 @@ typedef struct {
     bool debug;
     bool daemon;
 } lamb_config_t;
-
+    
 typedef struct {
     cmpp_sock_t *sock;
     pthread_cond_t *cond;

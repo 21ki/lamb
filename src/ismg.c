@@ -212,11 +212,18 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         if (pid < 0) {
                             lamb_errlog(config.logfile, "Unable to fork child process", 0);
                         } else if (pid == 0) {
-                            lamb_errlog(config.logfile, "Start new child work process", 0);
                             close(epfd);
                             cmpp_ismg_close(cmpp);
                             lamb_cache_close(&cache);
-                            lamb_work_loop(&sock);
+
+                            lamb_account_t account;
+                            err = lamb_account_get(&cache, user, &account);
+                            if (err) {
+                                lamb_errlog(config.logfile, "can't to obtain account information", 0);
+                                return;
+                            }
+
+                            lamb_work_loop(&sock, &account);
                             return;
                         }
 
@@ -235,7 +242,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
     return;
 }
 
-void lamb_work_loop(cmpp_sock_t *sock) {
+void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *client) {
     int gid;
 
     //lamb_mo_t mo;
@@ -271,7 +278,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
         lamb_errlog(config.logfile, "start lamb_mo_event_loop thread failed", 0);
     }
     */
-    
+
     mqd_t queue;
     struct mq_attr attr;
     attr.mq_maxmsg = 1024;
@@ -317,8 +324,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
                 unsigned long long msgId;
 
                 msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, cmpp_sequence());
-                
-                cmpp_pack_add_integer(&pack, msgId, cmpp_submit_msg_id, 8);
+                cmpp_pack_set_integer(&pack, msgId, cmpp_submit_msg_id, 8);
 
                 err = mq_send(queue, (const char *)&pack, totalLength, 1);
                 if (err) {
