@@ -376,6 +376,7 @@ void *lamb_mo_event_loop(void *data) {
     pthread_mutex_unlock(mo->mutex);
     pthread_exit(NULL);
  */
+    return NULL;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
