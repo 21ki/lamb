@@ -198,7 +198,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     lamb_cache_get(&cache, (char *)user, (char *)password, sizeof(password));
 
                     /* Check AuthenticatorSource */
-                    if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), (const char *)user, password)) {
+                    if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), (const char *)user, (char *)password)) {
                         cmpp_connect_resp(&sock, sequenceId, 0);
                         lamb_errlog(config.logfile, "login successfull form client %s", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
@@ -301,7 +301,7 @@ void lamb_work_loop(cmpp_sock_t *sock) {
             case CMPP_SUBMIT:;
                 unsigned char result = 0;
                 fprintf(stdout, "Receive cmpp_submit packet from client\n");
-                err = mq_send(queue, (const char *)pack, totalLength, 1);
+                err = mq_send(queue, (char *)pack, totalLength, 1);
                 if (err) {
                     result = 9;
                     fprintf(stderr, "write message to queue failed\n");
