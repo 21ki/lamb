@@ -2,7 +2,7 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
 OBJS = src/amqp.o src/utils.o src/config.o src/list.o src/cache.o
-LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lrabbitmq -lleveldb -lhiredis
+LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lrabbitmq -lleveldb -lhiredis -lrt
 
 all: client server
 
