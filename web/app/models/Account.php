@@ -11,7 +11,7 @@ use Tool\Filter;
 class AccountModel {
     public $db = null;
     private $table = 'account';
-    private $column = ['username', 'password', 'spcode', 'company', 'charge_type', 'ip_addr', 'concurrent', 'route', 'extended', 'policy', 'check_template', 'description'];
+    private $column = ['username', 'password', 'spcode', 'company', 'charge_type', 'ip_addr', 'concurrent', 'route', 'extended', 'policy', 'check_template', 'check_keyword', 'description'];
 
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -65,10 +65,14 @@ class AccountModel {
             $data['check_template'] = 0;
         }
 
+        if (!isset($data['check_keyword'])) {
+            $data['check_keyword'] = 0;
+        }
+        
         if (count($data) == count($this->column)) {
             $sql = 'INSERT INTO ' . $this->table;
-            $sql .= '(username, password, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, description) ';
-            $sql .= 'VALUES(:username, :password, :spcode, :company, :charge_type, :ip_addr, :concurrent, :route, :extended, :policy, :check_template, :description)';
+            $sql .= '(username, password, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword, description) ';
+            $sql .= 'VALUES(:username, :password, :spcode, :company, :charge_type, :ip_addr, :concurrent, :route, :extended, :policy, :check_template, :check_keyword, :description)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -99,18 +103,6 @@ class AccountModel {
             }
         }
         
-        if (!isset($data['extended'])) {
-            $data['extended'] = 0;
-        }
-
-        if (!isset($data['policy'])) {
-            $data['policy'] = 0;
-        }
-
-        if (!isset($data['check_template'])) {
-            $data['check_template'] = 0;
-        }
-
         $column = $this->keyAssembly($data);
 
         if (count($data) > 0) {
@@ -190,6 +182,9 @@ class AccountModel {
                 break;
             case 'check_template':
                 $res['check_template'] = Filter::number($val, null, 0, 1);
+                break;
+            case 'check_keyword':
+                $res['check_keyword'] = Filter::number($val, null, 0, 1);
                 break;
             case 'description':
                 $res['description'] = Filter::string($val, 'no description', 1, 64);

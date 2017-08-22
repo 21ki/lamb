@@ -1,7 +1,7 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
-OBJS = src/amqp.o src/utils.o src/config.o src/list.o src/cache.o
+OBJS = src/amqp.o src/utils.o src/config.o src/list.o src/cache.o src/account.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lrabbitmq -lleveldb -lhiredis -lrt
 
 all: client server
@@ -26,6 +26,9 @@ src/list.o: src/list.c src/list.h
 
 src/cache.o: src/cache.c src/cache.h
 	$(CC) $(CFLAGS) -c src/cache.c -o src/cache.o
+
+src/account.o: src/account.c src/account.h
+	$(CC) $(CFLAGS) -c src/account.c -o src/account.o
 
 .PHONY: install clean
 

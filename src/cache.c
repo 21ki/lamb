@@ -113,3 +113,26 @@ int lamb_cache_get(lamb_cache_t *cache, char *key, char *buff, size_t len) {
     return 0;
 }
 
+int lamb_cache_hget(lamb_cache_t *cache, char *key, char *field, char *buff, size_t len) {
+    if (!cache || !cache->handle || !key) {
+        return -1;
+    }
+
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HGET %s %s", key, field);
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_STRING) {
+            if (reply->len > len) {
+                memcpy(buff, reply->str, len - 1);
+            } else {
+                memcpy(buff, reply->str, reply->len);
+            }
+        }
+
+        freeReplyObject(reply);
+    }
+
+    return 0;
+}
+

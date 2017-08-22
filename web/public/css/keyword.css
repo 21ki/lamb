@@ -1,0 +1,58 @@
+body {
+    color: #555555;
+    font-size: 16px;
+    background-color: #ffffff;
+    font-family: "lucida grande", "lucida sans unicode", lucida, helvetica, "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+}
+
+.breadcrumb {
+    padding-left: 18px;
+    padding-right: 18px;
+}
+
+.breadcrumb .pull-right:before {
+    content: "";
+}
+
+.label-default {
+    background-color: #b7b4b4;
+}
+
+.label-primary {
+    background-color: #91bade;
+}
+
+.label-success {
+    background-color: #96d896;
+}
+
+.label-warning {
+    background-color: #f5ca8d;
+}
+
+.label-danger {
+    background-color: #ec918f;
+}
+
+.label-info {
+    background-color: #a3dcec;
+}
+
+
+.box {
+    padding: 15px;
+}
+
+.box .label {
+    float: left;
+    padding: 10px;
+    margin: 10px;
+    color: #555555;
+    font-weight: 100;
+    border-radius: 15px;
+}
+
+.box .label a {
+    color: #ffffff;
+    margin-left: 3px;
+}

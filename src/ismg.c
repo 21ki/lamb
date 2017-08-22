@@ -23,11 +23,13 @@
 #include <errno.h>
 #include <cmpp.h>
 #include "ismg.h"
+#include "list.h"
 #include "utils.h"
 #include "cache.h"
 #include "config.h"
 
 static cmpp_ismg_t cmpp;
+static lamb_list_t *list;
 static lamb_cache_t cache;
 static lamb_config_t config;
 
@@ -186,20 +188,22 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     }
                     
                     /* Check SourceAddr */
+                    char key[32];
                     unsigned char user[8];
                     unsigned char password[64];
 
                     memset(user, 0, sizeof(user));
                     cmpp_pack_get_string(&pack, cmpp_connect_source_addr, user, sizeof(user), 6);
-
-                    if (!lamb_cache_has(&cache, (char *)user)) {
+                    sprintf(key, "account.%s", user);
+                    
+                    if (!lamb_cache_has(&cache, key)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
                         lamb_errlog(config.logfile, "Incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
 
                     memset(password, 0, sizeof(password));
-                    lamb_cache_get(&cache, (char *)user, (char *)password, sizeof(password));
+                    lamb_cache_hget(&cache, key, "password", (char *)password, sizeof(password));
 
                     /* Check AuthenticatorSource */
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), (const char *)user, (char *)password)) {
@@ -217,8 +221,11 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             lamb_cache_close(&cache);
 
                             lamb_account_t account;
-                            err = lamb_account_get(&cache, user, &account);
+                            memset(&account, 0, sizeof(account));
+                            strcpy(account.username, (char *)user);
+                            err = lamb_account_get(&cache, (char *)user, &account);
                             if (err) {
+                                cmpp_connect_resp(&sock, sequenceId, 9);
                                 lamb_errlog(config.logfile, "can't to obtain account information", 0);
                                 return;
                             }
@@ -242,52 +249,59 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
     return;
 }
 
-void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *client) {
-    int gid;
-
-    //lamb_mo_t mo;
-    //pthread_t tid;
-    //pthread_attr_t attr;
+void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
+    int err, gid;
     cmpp_pack_t pack;
-    socklen_t clilen;
-    int err, epfd, nfds;
-    //pthread_cond_t cond;
-    //pthread_mutex_t mutex;
-    struct sockaddr_in clientaddr;
+    lamb_message_t message;
+    
+    gid = getpid();
+    list = lamb_list_new();
+    
+    /* Epoll Events */
+    int epfd, nfds;
     struct epoll_event ev, events[32];
 
-    gid = getpid();
-    //pthread_cond_init(&cond, NULL);
-    //pthread_mutex_init(&mutex, NULL);
-    
     epfd = epoll_create1(0);
     ev.data.fd = sock->fd;
     ev.events = EPOLLIN;
-
     epoll_ctl(epfd, EPOLL_CTL_ADD, sock->fd, &ev);
+
+    /* Client Information */
+    socklen_t clilen;
+    struct sockaddr_in clientaddr;
+    clilen = sizeof(struct sockaddr);
     getpeername(sock->fd, (struct sockaddr *)&clientaddr, &clilen);
 
-    /* 
-    mo.sock = sock;
-    mo.cond = &cond;
-    mo.mutex = &mutex;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-    err = pthread_create(&tid, &attr, lamb_mo_event_loop, (void *)&mo);
-    if (err) {
-        lamb_errlog(config.logfile, "start lamb_mo_event_loop thread failed", 0);
-    }
-    */
-
+    /* Mqueue Message Queue */
     mqd_t queue;
-    struct mq_attr attr;
-    attr.mq_maxmsg = 1024;
-    attr.mq_msgsize = 512;
+    char name[64];
+    struct mq_attr mattr;
 
-    queue = mq_open(config.queue, O_CREAT | O_WRONLY, 0644, &attr);
+    mattr.mq_maxmsg = 1024;
+    mattr.mq_msgsize = sizeof(message);
+
+    sprintf(name, "/msg.%s", account->username);
+    queue = mq_open(name, O_CREAT | O_WRONLY, 0644, &mattr);
     if (queue < 0) {
-        lamb_errlog(config.logfile, "Open %s message queue failed", config.queue);
+        lamb_errlog(config.logfile, "Open %s message queue failed", name);
         goto exit;
+    }
+
+    /* Client Online Status Update */
+    pthread_t tid;
+    pthread_attr_t attr;
+
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    err = pthread_create(&tid, &attr, lamb_online, (void *)(account->username));
+    if (err) {
+        lamb_errlog(config.logfile, "Start client online status thread failed", account->username);
+    }
+
+    /* Client Message Deliver */
+    err = pthread_create(&tid, &attr, lamb_deliver_loop, (void *)(account->username));
+    if (err) {
+        lamb_errlog(config.logfile, "Start client message deliver thread failed", account->username);
     }
 
     while (true) {
@@ -304,14 +318,13 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *client) {
             }
 
             cmpp_head_t *chp = (cmpp_head_t *)&pack;
-            unsigned int totalLength = ntohl(chp->totalLength);
+            //unsigned int totalLength = ntohl(chp->totalLength);
             unsigned int commandId = ntohl(chp->commandId);
             unsigned int sequenceId = ntohl(chp->sequenceId);
 
             unsigned char result;
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
-                fprintf(stdout, "Receive cmpp_active_test packet from client\n");
                 cmpp_active_test_resp(sock, sequenceId);
                 break;
             case CMPP_SUBMIT:;
@@ -326,9 +339,19 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *client) {
                 msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, cmpp_sequence());
                 cmpp_pack_set_integer(&pack, msgId, cmpp_submit_msg_id, 8);
 
-                err = mq_send(queue, (const char *)&pack, totalLength, 1);
+                unsigned char len;
+                memset(&message, 0, sizeof(message));
+                message.type = CMPP_SUBMIT;
+                message.id = msgId;
+                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, message.phone, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_submit_src_id, message.spcode, 24, 21);
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, (size_t *)&len, 1);
+                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, message.content, 160, len);
+                printf("len: %d\n", len);
+                
+                err = mq_send(queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
-                    result = 9;
+                    result = 10;
                     lamb_errlog(config.logfile, "write message to queue failed", 0);
                 }
 
@@ -338,20 +361,16 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *client) {
             case CMPP_DELIVER_RESP:;
                 result = 0;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
-                 /* 
                 if (result == 0) {
-                    pthread_mutex_lock(&mutex);
-                    pthread_cond_signal(&cond);
-                    pthread_mutex_unlock(&mutex);
-                } else {
-                    unsigned long long msgId;
-                    cmpp_pack_get_integer(&pack, cmpp_deliver_resp_msg_id, &msgId, 8);
-                    fprintf(stdout, "Msg_Id %llu deliver message failed\n", msgId);
+                    char val[64];
+                    sprintf(val, "%u", sequenceId);
+                    pthread_mutex_lock(&list->lock);
+                    lamb_list_rpush(list, lamb_list_node_new(val));
+                    pthread_mutex_unlock(&list->lock);
                 }
-                */
+
                 break;
             case CMPP_TERMINATE:
-                fprintf(stdout, "Receive cmpp_terminate packet from client\n");
                 cmpp_terminate_resp(sock, sequenceId);
                 fprintf(stdout, "Close the connection to the client\n");
                 break;
@@ -369,32 +388,68 @@ exit:
     return;
 }
 
-void *lamb_mo_event_loop(void *data) {
-    /* 
-    int count;
-    lamb_mo_t *mo;
-    struct timeval now;
-    struct timespec timeout;
+void *lamb_deliver_loop(void *data) {
+    //int err;
+    ssize_t ret;
+    lamb_message_t message;
+    //cmpp_pack_t pack;
 
-    mo = (lamb_mo_t *)data;
-    pthread_mutex_lock(mo->mutex);
+    mqd_t queue;
+    char name[64];
+    struct mq_attr attr;
 
-    while (true) {
-        clock_gettime(CLOCK_REALTIME, &timeout);
-        timeout.tv_sec += 3;
-        err = pthread_cond_timedwait(mo->cond, mo->mutex, &timeout);
-        if (err == ETIMEDOUT) {
-            count++;
-            lamb_errlog(config.logfile, "Deliver message timeout %d frequency", count);
-            continue;
-        }
+    attr.mq_maxmsg = 1024;
+    attr.mq_msgsize = sizeof(message);
 
+    sprintf(name, "/msg.%s", (char *)data);
+    queue = mq_open(name, O_CREAT | O_RDWR, 0644, &attr);
+    if (queue < 0) {
+        lamb_errlog(config.logfile, "Open %s message queue failed", name);
+        goto exit;
     }
 
-    pthread_mutex_unlock(mo->mutex);
+    while (true) {
+        memset(&message, 0 , sizeof(message));
+        ret = mq_receive(queue, (char *)&message, sizeof(message), 0);
+        printf(" ret: %zd", ret);
+        if (ret > 0) {
+            printf("===============================\n");
+            printf("msgId: %llu\n", message.id);
+            printf("phone: %s\n", message.phone);
+            printf("message: %s\n", message.content);
+        }
+    }
+
+exit:
     pthread_exit(NULL);
- */
     return NULL;
+}
+
+void *lamb_online(void *user) {
+    int err;
+    /* Redis Cache */
+    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connect to redis server", 0);
+        return NULL;
+    }
+
+    redisReply *reply = NULL;
+
+    while (true) {
+        reply = redisCommand(cache.handle, "SET online.%s 1", (char *)user);
+        if (reply != NULL) {
+            freeReplyObject(reply);
+            reply = redisCommand(cache.handle, "EXPIRE online.%s 5", (char *)user);
+            if (reply != NULL) {
+                freeReplyObject(reply);
+            }
+        }
+
+        sleep(3);
+    }
+
+    pthread_exit(NULL);
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

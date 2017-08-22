@@ -83,4 +83,8 @@ class SecurityController extends Yaf\Controller_Abstract {
         echo json_encode($response);
         return false;
     }
+
+    public function keywordAction() {
+        return true;
+    }
 }

@@ -11,10 +11,17 @@
 #include "cache.h"
 
 typedef struct {
-    char spid[8];
-    char account[8];
-    char ip[16];
-    int limit;
+    char username[8];
+    int company;
+    int charge_type;
+    char ip_addr[16];
+    int route;
+    char spcode[24];
+    int concurrent;
+    bool extended;
+    int policy;
+    bool check_template;
+    bool check_keyword;
 } lamb_account_t;
 
 int lamb_account_get(lamb_cache_t *cache, char *user, lamb_account_t *account);

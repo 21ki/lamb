@@ -54,6 +54,7 @@
               <ul class="dropdown-menu">
                 <li><a href="/settings/blacklist">黑名单库</a></li>
                 <li><a href="/settings/whitelist">白名单库</a></li>
+                <li><a href="/security/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
               </ul>
@@ -210,6 +211,19 @@
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">签名与模板内容过滤</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">关键词过滤:</label>
+              <div class="col-xs-3 col-sm-3 col-md-3">
+                <div class="checkbox">
+                  <label>
+                    <input id="check_keyword" type="checkbox" name="check_keyword" value="1" <?php if ($account['check_keyword'] == 1) {echo 'checked="checked" ';}?> /> 开启关键词过滤
+                  </label>
+                </div>
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">内容敏感关键词过滤</span>
               </div>
             </div>
             <div class="form-group">

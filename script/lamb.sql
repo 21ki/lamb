@@ -26,6 +26,7 @@ CREATE TABLE account (
     extended int NOT NULL,
     policy int NOT NULL,
     check_template int NOT NULL,
+    check_keyword int NOT NULL,
     description varchar(64) NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );

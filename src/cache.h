@@ -20,5 +20,6 @@ bool lamb_cache_check_connect(lamb_cache_t *cache);
 int lamb_cache_close(lamb_cache_t *cache);
 bool lamb_cache_has(lamb_cache_t *cache, char *key);
 int lamb_cache_get(lamb_cache_t *cache, char *key, char *buff, size_t len);
+int lamb_cache_hget(lamb_cache_t *cache, char *key, char *field, char *buff, size_t len);
 
 #endif
