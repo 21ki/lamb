@@ -180,17 +180,19 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 
                     cmpp_pack_get_integer(&pack, cmpp_sequence_id, &sequenceId, 4);
                     cmpp_pack_get_integer(&pack, cmpp_connect_version, &version, 1);
+                    sequenceId = ntohl(sequenceId);
 
                     /* Check Cmpp Version */
                     if (version != CMPP_VERSION) {
                         cmpp_connect_resp(&sock, sequenceId, 4);
+                        lamb_errlog(config.logfile, "Version not supported from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
                     
                     /* Check SourceAddr */
                     char key[32];
-                    unsigned char user[8];
-                    unsigned char password[64];
+                    char user[8];
+                    char password[64];
 
                     memset(user, 0, sizeof(user));
                     cmpp_pack_get_string(&pack, cmpp_connect_source_addr, user, sizeof(user), 6);
@@ -203,10 +205,10 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     }
 
                     memset(password, 0, sizeof(password));
-                    lamb_cache_hget(&cache, key, "password", (char *)password, sizeof(password));
+                    lamb_cache_hget(&cache, key, "password", password, sizeof(password));
 
                     /* Check AuthenticatorSource */
-                    if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), (const char *)user, (char *)password)) {
+                    if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
                         cmpp_connect_resp(&sock, sequenceId, 0);
                         lamb_errlog(config.logfile, "login successfull form client %s", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
@@ -222,8 +224,8 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 
                             lamb_account_t account;
                             memset(&account, 0, sizeof(account));
-                            strcpy(account.username, (char *)user);
-                            err = lamb_account_get(&cache, (char *)user, &account);
+                            strcpy(account.username, user);
+                            err = lamb_account_get(&cache, user, &account);
                             if (err) {
                                 cmpp_connect_resp(&sock, sequenceId, 9);
                                 lamb_errlog(config.logfile, "can't to obtain account information", 0);
@@ -287,7 +289,7 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
         goto exit;
     }
 
-    /* Client Online Status Update */
+    /* Client Status Update */
     pthread_t tid;
     pthread_attr_t attr;
 
@@ -317,28 +319,29 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
                 continue;
             }
 
+            unsigned char result;
             cmpp_head_t *chp = (cmpp_head_t *)&pack;
             //unsigned int totalLength = ntohl(chp->totalLength);
             unsigned int commandId = ntohl(chp->commandId);
             unsigned int sequenceId = ntohl(chp->sequenceId);
 
-            unsigned char result;
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
                 cmpp_active_test_resp(sock, sequenceId);
                 break;
             case CMPP_SUBMIT:;
                 result = 0;
-                /* cmpp submit resp setting */
                 time_t rawtime;
                 struct tm *t;
                 time(&rawtime);
                 t = localtime(&rawtime);
                 unsigned long long msgId;
 
+                /* Generate Message ID */
                 msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, cmpp_sequence());
-                cmpp_pack_set_integer(&pack, msgId, cmpp_submit_msg_id, 8);
+                cmpp_pack_set_integer(&pack, cmpp_submit_msg_id, msgId, 8);
 
+                /* Message Write Queue */
                 unsigned char len;
                 memset(&message, 0, sizeof(message));
                 message.type = CMPP_SUBMIT;
@@ -347,7 +350,6 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
                 cmpp_pack_get_string(&pack, cmpp_submit_src_id, message.spcode, 24, 21);
                 cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, (size_t *)&len, 1);
                 cmpp_pack_get_string(&pack, cmpp_submit_msg_content, message.content, 160, len);
-                printf("len: %d\n", len);
                 
                 err = mq_send(queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
@@ -355,24 +357,22 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
                     lamb_errlog(config.logfile, "write message to queue failed", 0);
                 }
 
-
+                /* Ack Response */
                 cmpp_submit_resp(sock, sequenceId, msgId, result);
                 break;
             case CMPP_DELIVER_RESP:;
                 result = 0;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                 if (result == 0) {
-                    char val[64];
-                    sprintf(val, "%u", sequenceId);
+                    char ack[64];
+                    sprintf(ack, "%u", sequenceId);
                     pthread_mutex_lock(&list->lock);
-                    lamb_list_rpush(list, lamb_list_node_new(val));
+                    lamb_list_rpush(list, lamb_list_node_new(ack));
                     pthread_mutex_unlock(&list->lock);
                 }
-
                 break;
             case CMPP_TERMINATE:
                 cmpp_terminate_resp(sock, sequenceId);
-                fprintf(stdout, "Close the connection to the client\n");
                 break;
             }
         }

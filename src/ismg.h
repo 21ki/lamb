@@ -31,9 +31,9 @@ typedef struct {
 typedef struct {
     unsigned int type;
     unsigned long long id;
-    unsigned char phone[24];
-    unsigned char spcode[24];
-    unsigned char content[160];
+    char phone[24];
+    char spcode[24];
+    char content[160];
 } lamb_message_t;
 
 typedef struct {
