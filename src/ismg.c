@@ -29,7 +29,6 @@
 #include "config.h"
 
 static cmpp_ismg_t cmpp;
-static lamb_list_t *list;
 static lamb_cache_t cache;
 static lamb_config_t config;
 static pthread_cond_t cond;
@@ -270,8 +269,6 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
     lamb_message_t message;
     
     gid = getpid();
-    list = lamb_list_new();
-
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
     
@@ -326,6 +323,7 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
         nfds = epoll_wait(epfd, events, 32, -1);
 
         if (nfds > 0) {
+            /* Waiting for receive request */
             err = cmpp_recv(sock, &pack, sizeof(pack));
             if (err) {
                 if (err == -1) {
@@ -335,12 +333,13 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
                 continue;
             }
 
+            /* Analytic data packet header */
             unsigned char result;
             cmpp_head_t *chp = (cmpp_head_t *)&pack;
-            //unsigned int totalLength = ntohl(chp->totalLength);
             unsigned int commandId = ntohl(chp->commandId);
             unsigned int sequenceId = ntohl(chp->sequenceId);
 
+            /* Check protocol command */
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
                 cmpp_active_test_resp(sock, sequenceId);
@@ -396,12 +395,14 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
         }
     }
 
+    pthread_attr_destroy(&attr);
+
 exit:
     close(epfd);
     cmpp_sock_close(sock);
-    //pthread_cond_destroy(&cond);
-    //pthread_mutex_destroy(&mutex);
-    //pthread_attr_destroy(&attr);
+    pthread_cond_destroy(&cond);
+    pthread_mutex_destroy(&mutex);
+
     
     return;
 }
