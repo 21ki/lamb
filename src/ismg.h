@@ -11,6 +11,9 @@
 #include <stdbool.h>
 #include "account.h"
 
+#define lamb_deliver 1
+#define lamb_report 2
+
 typedef struct {
     int id;
     char listen[16];
@@ -29,7 +32,7 @@ typedef struct {
 } lamb_config_t;
     
 typedef struct {
-    unsigned int type;
+    int type;
     unsigned long long id;
     char phone[24];
     char spcode[24];
@@ -37,11 +40,21 @@ typedef struct {
 } lamb_message_t;
 
 typedef struct {
-    unsigned int type;
+    int type;
+    unsigned long long id;
     char phone[24];
     char spcode[24];
     char content[160];
 } lamb_deliver_t;
+
+typedef struct {
+    int type;
+    unsigned long long id;
+    char phone[24];
+    char status[8];
+    char submitTime[16];
+    char doneTime[16];
+} lamb_report_t;
 
 void lamb_event_loop(cmpp_ismg_t *cmpp);
 void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account);

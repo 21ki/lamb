@@ -14,5 +14,6 @@ void lamb_signal(void);
 void lamb_daemon(void);
 void lamb_sleep(unsigned long long milliseconds);
 void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, ...);
+unsigned short lamb_sequence(void);
 
 #endif

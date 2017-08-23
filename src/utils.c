@@ -111,3 +111,7 @@ void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, 
     return;
 }
 
+unsigned short lamb_sequence(void) {
+    static unsigned short seq = 1;
+    return (seq < 0xffff) ? (seq++) : (seq = 1);
+}

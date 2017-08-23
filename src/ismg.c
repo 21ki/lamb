@@ -32,6 +32,8 @@ static cmpp_ismg_t cmpp;
 static lamb_list_t *list;
 static lamb_cache_t cache;
 static lamb_config_t config;
+static pthread_cond_t cond;
+static pthread_mutex_t mutex;
 
 int main(int argc, char *argv[]) {
     char *file = "lamb.conf";
@@ -209,8 +211,19 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 
                     /* Check AuthenticatorSource */
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
+                        /* Check Duplicate Logon */
+                        sprintf(key, "online.%s", user);
+                        if (lamb_cache_has(&cache, key)) {
+                            cmpp_connect_resp(&sock, sequenceId, 9);
+                            epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
+                            close(sockfd);
+                            lamb_errlog(config.logfile, "Duplicate login from client %s", inet_ntoa(clientaddr.sin_addr));
+                            continue;
+                        }
+
+                        /* Login Successfull */
                         cmpp_connect_resp(&sock, sequenceId, 0);
-                        lamb_errlog(config.logfile, "login successfull form client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_errlog(config.logfile, "Login successfull from client %s", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
 
                         /* Create Work Process */
@@ -227,8 +240,8 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             strcpy(account.username, user);
                             err = lamb_account_get(&cache, user, &account);
                             if (err) {
-                                cmpp_connect_resp(&sock, sequenceId, 9);
-                                lamb_errlog(config.logfile, "can't to obtain account information", 0);
+                                cmpp_connect_resp(&sock, sequenceId, 10);
+                                lamb_errlog(config.logfile, "Can't to obtain account information", 0);
                                 return;
                             }
 
@@ -239,7 +252,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         cmpp_sock_close(&sock);
                     } else {
                         cmpp_connect_resp(&sock, sequenceId, 3);
-                        lamb_errlog(config.logfile, "login failed form client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_errlog(config.logfile, "Login failed form client %s", inet_ntoa(clientaddr.sin_addr));
                     }
                 } else {
                     lamb_errlog(config.logfile, "Unable to resolve packets from client %s", inet_ntoa(clientaddr.sin_addr));
@@ -258,6 +271,9 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
     
     gid = getpid();
     list = lamb_list_new();
+
+    pthread_cond_init(&cond, NULL);
+    pthread_mutex_init(&mutex, NULL);
     
     /* Epoll Events */
     int epfd, nfds;
@@ -283,7 +299,7 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
     mattr.mq_msgsize = sizeof(message);
 
     sprintf(name, "/msg.%s", account->username);
-    queue = mq_open(name, O_CREAT | O_WRONLY, 0644, &mattr);
+    queue = mq_open(name, O_CREAT | O_WRONLY | O_NONBLOCK, 0644, &mattr);
     if (queue < 0) {
         lamb_errlog(config.logfile, "Open %s message queue failed", name);
         goto exit;
@@ -338,7 +354,7 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
                 unsigned long long msgId;
 
                 /* Generate Message ID */
-                msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, cmpp_sequence());
+                msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, lamb_sequence());
                 cmpp_pack_set_integer(&pack, cmpp_submit_msg_id, msgId, 8);
 
                 /* Message Write Queue */
@@ -353,8 +369,12 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
                 
                 err = mq_send(queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
-                    result = 10;
-                    lamb_errlog(config.logfile, "write message to queue failed", 0);
+                    result = 11;
+                    if (errno == EAGAIN) {
+                        lamb_errlog(config.logfile, "The message queue was full", 0);
+                    } else {
+                        lamb_errlog(config.logfile, "Lamb mq_send() %s", strerror(errno));
+                    }
                 }
 
                 /* Ack Response */
@@ -364,11 +384,9 @@ void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account) {
                 result = 0;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                 if (result == 0) {
-                    char ack[64];
-                    sprintf(ack, "%u", sequenceId);
-                    pthread_mutex_lock(&list->lock);
-                    lamb_list_rpush(list, lamb_list_node_new(ack));
-                    pthread_mutex_unlock(&list->lock);
+                    pthread_mutex_lock(&mutex);
+                    pthread_cond_signal(&cond);
+                    pthread_mutex_unlock(&mutex);
                 }
                 break;
             case CMPP_TERMINATE:
@@ -389,11 +407,16 @@ exit:
 }
 
 void *lamb_deliver_loop(void *data) {
-    //int err;
+    int err;
+    int type;
+    int count;
     ssize_t ret;
-    lamb_message_t message;
-    //cmpp_pack_t pack;
-
+    char message[512];
+    struct timeval now;
+    struct timespec timeout;
+    lamb_deliver_t *deliver;
+    lamb_report_t *report;
+    
     mqd_t queue;
     char name[64];
     struct mq_attr attr;
@@ -401,22 +424,46 @@ void *lamb_deliver_loop(void *data) {
     attr.mq_maxmsg = 1024;
     attr.mq_msgsize = sizeof(message);
 
-    sprintf(name, "/msg.%s", (char *)data);
+    sprintf(name, "/inb.%s", (char *)data);
     queue = mq_open(name, O_CREAT | O_RDWR, 0644, &attr);
     if (queue < 0) {
         lamb_errlog(config.logfile, "Open %s message queue failed", name);
         goto exit;
     }
 
+    count = 0;
+    
     while (true) {
+        gettimeofday(&now, NULL);
+        timeout.tv_sec = now.tv_sec + 5;
+        err = pthread_cond_timedwait(&cond, &mutex, &timeout);
+
+        if (err == ETIMEDOUT) {
+            count++;
+            lamb_errlog(config.logfile, "Deliver message timeout %d frequency", count);
+            continue;
+        }
+        
         memset(&message, 0 , sizeof(message));
-        ret = mq_receive(queue, (char *)&message, sizeof(message), 0);
-        printf(" ret: %zd", ret);
+        ret = mq_receive(queue, (char *)message, sizeof(message), 0);
         if (ret > 0) {
-            printf("===============================\n");
-            printf("msgId: %llu\n", message.id);
-            printf("phone: %s\n", message.phone);
-            printf("message: %s\n", message.content);
+            type = *((int *)&message);
+            switch (type) {
+            case lamb_deliver:
+                deliver = (lamb_deliver_t *)message;
+                err = cmpp_deliver(&sock, deliver.id, deliver.spcode, 8, deliver.phone, deliver.content);
+                if (err) {
+                    lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet failed", 0);
+                }
+                break;
+            case lamb_report:
+                report = (lamb_report_t *)message;
+                err = cmpp_report(&sock, report.msgId, report.status, report.submitTime, report.doneTime, report.phone, 0);
+                if (err) {
+                    lamb_errlog(config.logfile, "Sending 'cmpp_report' packet failed", 0);
+                }
+                break;
+            }
         }
     }
 
