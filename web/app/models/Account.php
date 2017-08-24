@@ -95,12 +95,27 @@ class AccountModel {
         $id = intval($id);
         $data = $this->checkArgs($data);
 
-
         if (isset($data['company'])) {
             $company = new CompanyModel();
             if (!$company->isExist($data['company'])) {
                 return false;
             }
+        }
+
+        if (!isset($data['extended'])) {
+            $data['extended'] = 0;
+        }
+
+        if (!isset($data['policy'])) {
+            $data['policy'] = 0;
+        }
+
+        if (!isset($data['check_template'])) {
+            $data['check_template'] = 0;
+        }
+
+        if (!isset($data['check_keyword'])) {
+            $data['check_keyword'] = 0;
         }
         
         $column = $this->keyAssembly($data);

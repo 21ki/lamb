@@ -19,12 +19,20 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <cmpp.h>
-#include "ismg.h"
+#include "server.h"
 #include "utils.h"
 #include "config.h"
-#include "list.h"
+#include "db.h"
+#include "cache.h"
 
+static lamb_db_t db;
+static lamb_cache_t cache;
 static lamb_config_t config;
+static lamb_account_t *accounts[1024];
+static lamb_company_t *companys;
+static lamb_group_t *groups;
+static mqd_t *cli_queue;
+static mqd_t *gw_queue;
 
 int main(int argc, char *argv[]) {
     char *file = "server.conf";
@@ -62,6 +70,118 @@ int main(int argc, char *argv[]) {
 }
 
 void lamb_event_loop(void) {
+    int err;
+    pid_t pid;
+
+    /* fetch all account */
+    err = lamb_account_get_all(&db, accounts, 1024);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't fetch account information");
+        return;
+    }
+
+    /* fetch all company */
+    err = lamb_company_get_all(&db, companys, 1024);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't fetch company information");
+    }
+
+    /* fetch all group */
+    lamb_group_get_all(&db, groups);
+
+    /* fetch all gateway */
+    lamb_gateway_get_all(&db, gateways);
+
+    /* Open all gateway queue */
+    lamb_queue_open(gw_queue, gateways);
+
+    /* Open all client queue */
+    lamb_queue_open(cli_queue, accounts);
+    
+    /* Start sender process */
+    for (int i = 0; i < config.sender; i++) {
+        pid = fork();
+        if (pid < 0) {
+            lamb_errlog(config.logfile, "Can't fork sender child process", 0);
+            return;
+        } else if (pid == 0) {
+            lamb_sender_loop();
+            return;
+        }
+    }
+
+    /* Start deliver process */
+    for (int i = 0; i < config.deliver; i++) {
+        pid = fork();
+        if (pid < 0) {
+            lamb_errlog(config.logfile, "Can't fork deliver child process", 0);
+            return;
+        } else if (pid == 0) {
+            lamb_deliver_loop();
+            return;
+        }
+    }
+
+    while (true) {
+        sleep(3);
+    }
+
+    return;
+}
+
+void lamb_sender_loop(void) {
+    int err;
+
+    /* Redis Initialization */
+    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
+        return;
+    }
+    
+    /* client queue fd */
+    int ret;
+    int epfd, nfds;
+    struct epoll_event ev, events[32];
+    lamb_submit_t message;
+    lamb_list_t list;
+
+    lamb_epoll_add(ev, cli_queue);
+
+    /* Start worker threads */
+    lamb_send_worker(list, config.work_threads);
+
+    /* Read queue message */
+    while (true) {
+        nfds = epoll_wait(epfd, events, 32, -1);
+
+        if (nfds > 0) {
+            for (int i = 0; i < nfds; i++) {
+                if (events[i].events & EPOLLIN) {
+                    if (list->len < config.queue) {
+                        ret = mq_receive(events[i].data.fd, message, sizeof(message), 0);
+                        if (ret > 0) {
+                            lamb_list_rpush(list, message);
+                        }
+                    } else {
+                        lamb_sleep(500);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void lamb_deliver_loop(void) {
+    int err;
+
+    /* Postgresql Database Initialization */
+    lamb_db_init(&db);
+    err = lamb_db_connect(&db, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to postgresql database", 0);
+        return;
+    }
 
 }
 
@@ -96,11 +216,26 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "Queue", conf->queue, 64) != 0) {
+    if (lamb_get_int(&cfg, "Sender", &conf->sender) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Sender' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "Deliver", &conf->deliver) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Deliver' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "WorkThreads", &conf->work_threads) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'WorkThreads' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int64(&cfg, "Queue", &conf->queue) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Queue' parameter\n");
         goto error;
     }
-        
+
     if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
         goto error;
@@ -116,7 +251,7 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "RedisPassword", &conf->redis_password) != 0) {
+    if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
         goto error;
     }

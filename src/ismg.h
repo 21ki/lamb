@@ -9,10 +9,12 @@
 #define _LAMB_ISMG_H
 
 #include <stdbool.h>
+#include <cmpp.h>
 #include "account.h"
 
-#define lamb_deliver 1
-#define lamb_report 2
+#define lamb_submit 1
+#define lamb_deliver 2
+#define lamb_report 3
 
 typedef struct {
     int id;
@@ -30,14 +32,20 @@ typedef struct {
     bool debug;
     bool daemon;
 } lamb_config_t;
-    
+
+typedef struct {
+    cmpp_sock_t *sock;
+    lamb_account_t *account;
+    char *addr;
+} lamb_client_t;
+
 typedef struct {
     int type;
     unsigned long long id;
     char phone[24];
     char spcode[24];
     char content[160];
-} lamb_message_t;
+} lamb_submit_t;
 
 typedef struct {
     int type;
@@ -57,9 +65,9 @@ typedef struct {
 } lamb_report_t;
 
 void lamb_event_loop(cmpp_ismg_t *cmpp);
-void lamb_work_loop(cmpp_sock_t *sock, lamb_account_t *account);
+void lamb_work_loop(lamb_client_t *client);
 int lamb_read_config(lamb_config_t *conf, const char *file);
-void *lamb_online(void *user);
+void *lamb_online(void *data);
 void *lamb_deliver_loop(void *data);
 
 #endif

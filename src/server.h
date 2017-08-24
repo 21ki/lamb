@@ -13,7 +13,10 @@ typedef struct {
     bool debug;
     bool daemon;
     char logfile[128];
-    char queue[64];
+    int sender;
+    int deliver;
+    int work_threads;
+    long long queue;
     char redis_host[16];
     int redis_port;
     char redis_password[64];
@@ -24,6 +27,14 @@ typedef struct {
     char db_password[64];
     char db_name[64];
 } lamb_config_t;
+
+typedef struct {
+    int type;
+    unsigned long long id;
+    char phone[24];
+    char spcode[24];
+    char content[160];
+} lamb_submit_t;
 
 int lamb_read_config(lamb_config_t *conf, const char *file);
 int lamb_check_template(char *pattern, char *message, int len);

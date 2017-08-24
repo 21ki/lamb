@@ -11,7 +11,8 @@
 #include "cache.h"
 
 typedef struct {
-    char username[8];
+    int id;
+    char user[8];
     int company;
     int charge_type;
     char ip_addr[16];

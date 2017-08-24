@@ -9,6 +9,7 @@
 #include <string.h>
 #include <hiredis/hiredis.h>
 #include "account.h"
+#include "db.h"
 
 int lamb_account_get(lamb_cache_t *cache, char *user, lamb_account_t *account) {
     if (!cache || !cache->handle || !account) {
@@ -25,7 +26,6 @@ int lamb_account_get(lamb_cache_t *cache, char *user, lamb_account_t *account) {
             for (int i = 0; i < reply->elements; i++) {
                 if (reply->element[i]->len == 0) {
                     r = 1;
-                    printf("error line: %d\n", i);
                     break;
                 }
 
@@ -71,9 +71,51 @@ int lamb_account_get(lamb_cache_t *cache, char *user, lamb_account_t *account) {
                 }
             }
         }
+
         freeReplyObject(reply);
     }
 
     return r;
 }
 
+int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size) {
+    int rows = 0;
+    char *sql = NULL;
+    PGresult *res = NULL;
+    
+    sql = "SELECT id, username, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword FROM account ORDER BY id";
+    res = PQexec(conn, sql);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+        return 1;
+    }
+
+    rows = PQntuples(res);
+    if (rows < 1) {
+        return 2;
+    }
+
+    for (int i = 0; (i < rows) && (i < size); i++) {
+        lamb_account_t *a= NULL;
+        a = (lamb_account_t *)malloc(sizeof(lamb_account_t));
+        if (a != NULL) {
+            memset(a, 0, sizeof(lamb_account_t));
+            a->id = atoi(PQgetvalue(res, i, 0));
+            strncpy(a->user, PQgetvalue(res, i, 1), 7);
+            strncpy(a->spcode, PQgetvalue(res, i, 2), 20);
+            a->company = atoi(PQgetvalue(res, i, 3));
+            a->charge_type = atoi(PQgetvalue(res, i, 4));
+            strncpy(a->ip_addr, PQgetvalue(res, i, 5), 15);
+            a->concurrent = atoi(PQgetvalue(res, i, 6));
+            a->route = atoi(PQgetvalue(res, i, 7));
+            a->extended = atoi(PQgetvalue(res, i, 8)) == 0 ? false : true;
+            a->policy = atoi(PQgetvalue(res, i, 9));
+            a->check_template = atoi(PQgetvalue(res, i, 10)) == 0 ? false : true;
+            a->check_keyword = atoi(PQgetvalue(res, i, 11)) == 0 ? false : true;
+            accounts[i] = a;
+        }
+    }
+
+    PQclear(res);
+    return 0;
+}

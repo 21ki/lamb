@@ -115,3 +115,14 @@ unsigned short lamb_sequence(void) {
     static unsigned short seq = 1;
     return (seq < 0xffff) ? (seq++) : (seq = 1);
 }
+
+char *lamb_strdup(const char *str) {
+    size_t len = strlen (str) + 1;
+    void *new = malloc (len);
+
+    if (new == NULL) {
+        return NULL;
+    }
+
+    return (char *) memcpy (new, str, len);
+}
