@@ -11,13 +11,6 @@
 #include "db.h"
 #include "queue.h"
 
-#define LAMB_GATEWAY_SEND_QUEUE 1
-#define LAMB_GATEWAY_RECV_QUEUE 2
-#define LAMB_GATEWAY_SEND_QUEUE_LEN 128;
-#define LAMB_GATEWAY_RECV_QUEUE_LEN 1024;
-#define LAMB_GATEWAY_SEND_QUEUE_SIZE 512;
-#define LAMB_GATEWAY_RECV_QUEUE_SIZE 512;
-
 typedef struct {
     int id;
     int type;

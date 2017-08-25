@@ -28,6 +28,7 @@
 #include "template.h"
 
 static lamb_db_t db;
+static lamb_list_t list;
 static lamb_cache_t cache;
 static lamb_config_t config;
 static lamb_account_t *accounts[LAMB_MAX_CLIENT];
@@ -35,8 +36,8 @@ static lamb_company_t *companys[LAMB_MAX_COMPANY];
 static lamb_gateway_t *gateways[LAMB_MAX_GATEWAY];
 static lamb_template_t *templates[LAMB_MAX_TEMPLATE];
 static lamb_route_t *routes[LAMB_MAX_ROUTE];
-static lamb_queue_t *cli_queue[LAMB_MAX_CLIENT];
-static lamb_queue_t *gw_queue[LAMB_MAX_GATEWAY];
+static lamb_account_queue_t *cli_queue[LAMB_MAX_CLIENT];
+static lamb_gateway_queue_t *gw_queue[LAMB_MAX_GATEWAY];
 
 int main(int argc, char *argv[]) {
     char *file = "server.conf";
@@ -113,7 +114,7 @@ void lamb_event_loop(void) {
     }
 
     /* Open all client queue */
-    err = lamb_account_queue_open(cli_queue, LAMB_MAX_QUEUE, accounts, LAMB_MAX_ACCOUNT);
+    err = lamb_account_queue_open(cli_queue, LAMB_MAX_ACCOUNT, accounts, LAMB_MAX_ACCOUNT);
     if (err) {
         lamb_errlog(config.logfile, "Can't open all client queue failed");
         return;
@@ -167,8 +168,13 @@ void lamb_sender_loop(void) {
     lamb_submit_t message;
     lamb_list_t list;
 
-    lamb_epoll_add(ev, cli_queue);
-
+    epfd = epoll_create1(0);
+    err = lamb_account_epoll_add(epfd, &ev, cli_queue, LAMB_MAX_ACCOUNT, LAMB_QUEUE_SEND);
+    if (err) {
+        lamb_errlog(config.logfile, "Lamb epoll add client sender queue failed", 0);
+        return;
+    }
+    
     /* Start worker threads */
     lamb_send_worker(list, config.work_threads);
 
@@ -211,8 +217,8 @@ void lamb_deliver_loop(void) {
     lamb_submit_t message;
     lamb_list_t list;
 
-    lamb_epoll_add(ev, cli_queue);
-
+    lamb_epoll_add(ev, (void *)gw_queue, LAMB_GATEWAY);
+    
     /* Start worker threads */
     lamb_deliver_worker(list, config.work_threads);
 

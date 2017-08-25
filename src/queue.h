@@ -8,8 +8,10 @@
 #ifndef _LAMB_QUEUE_H
 #define _LAMB_QUEUE_H
 
-#define LAMB_QUEUE_CLIENT  1
-#define LAMB_QUEUE_GATEWAY 2
+#include <mqueue.h>
+
+#define LAMB_QUEUE_SEND 1
+#define LAMB_QUEUE_RECV 2
 
 typedef struct {
     mqd_t mqd;

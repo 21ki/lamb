@@ -151,3 +151,30 @@ int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_ac
 
     return 0;
 }
+
+int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_queue_t *queues[], size_t len, int type) {
+    int err;
+
+    for (int i = 0; i < len && (queues[i] != NULL); i++) {
+        switch (type) {
+        case LAMB_QUEUE_SEND:
+            event->data.fd = queues[i]->send.mqd;
+            event->events = EPOLLOUT;
+            err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues[i]->send.mqd, event);
+            if (err == -1) {
+                return 1;
+            }
+            break;
+        case LAMB_QUEUE_RECV:
+            event->data.fd = queues[i]->recv.mqd;
+            event->events = EPOLLIN;
+            err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues[i]->recv.mqd, event);
+            if (err == -1) {
+                return 1;
+            }
+            break;
+        }
+    }
+
+    return 0;
+}
