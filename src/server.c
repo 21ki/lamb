@@ -22,17 +22,21 @@
 #include "server.h"
 #include "utils.h"
 #include "config.h"
-#include "db.h"
-#include "cache.h"
+#include "account.h"
+#include "company.h"
+#include "gateway.h"
+#include "template.h"
 
 static lamb_db_t db;
 static lamb_cache_t cache;
 static lamb_config_t config;
-static lamb_account_t *accounts[1024];
-static lamb_company_t *companys;
-static lamb_group_t *groups;
-static mqd_t *cli_queue;
-static mqd_t *gw_queue;
+static lamb_account_t *accounts[LAMB_MAX_CLIENT];
+static lamb_company_t *companys[LAMB_MAX_COMPANY];
+static lamb_gateway_t *gateways[LAMB_MAX_GATEWAY];
+static lamb_template_t *templates[LAMB_MAX_TEMPLATE];
+static lamb_route_t *routes[LAMB_MAX_ROUTE];
+static lamb_queue_t *cli_queue[LAMB_MAX_CLIENT];
+static lamb_queue_t *gw_queue[LAMB_MAX_GATEWAY];
 
 int main(int argc, char *argv[]) {
     char *file = "server.conf";
@@ -74,29 +78,46 @@ void lamb_event_loop(void) {
     pid_t pid;
 
     /* fetch all account */
-    err = lamb_account_get_all(&db, accounts, 1024);
+    memset(accounts, 0, sizeof(accounts));
+    err = lamb_account_get_all(&db, accounts, LAMB_MAX_CLIENT);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch account information");
         return;
     }
 
     /* fetch all company */
-    err = lamb_company_get_all(&db, companys, 1024);
+    memset(companys, 0, sizeof(companys));
+    err = lamb_company_get_all(&db, companys, LAMB_MAX_COMPANY);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch company information");
+        return;
     }
 
     /* fetch all group */
-    lamb_group_get_all(&db, groups);
+    //lamb_group_get_all(&db, groups);
 
     /* fetch all gateway */
-    lamb_gateway_get_all(&db, gateways);
+    memset(gateways, 0, sizeof(gateways));
+    err = lamb_gateway_get_all(&db, gateways, LAMB_MAX_GATEWAY);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't fetch gateway information");
+        return;
+    }
 
     /* Open all gateway queue */
-    lamb_queue_open(gw_queue, gateways);
+    memset(gw_queue, 0, sizeof(gw_queue));    
+    err = lamb_gateway_queue_open(gw_queue, LAMB_MAX_GATEWAY, gateways, LAMB_MAX_GATEWAY);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open all gateway queue");
+        return;
+    }
 
     /* Open all client queue */
-    lamb_queue_open(cli_queue, accounts);
+    err = lamb_account_queue_open(cli_queue, LAMB_MAX_QUEUE, accounts, LAMB_MAX_ACCOUNT);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open all client queue failed");
+        return;
+    }
     
     /* Start sender process */
     for (int i = 0; i < config.sender; i++) {
@@ -138,7 +159,7 @@ void lamb_sender_loop(void) {
         lamb_errlog(config.logfile, "Can't connect to redis server", 0);
         return;
     }
-    
+
     /* client queue fd */
     int ret;
     int epfd, nfds;
@@ -183,6 +204,37 @@ void lamb_deliver_loop(void) {
         return;
     }
 
+    /* client queue fd */
+    int ret;
+    int epfd, nfds;
+    struct epoll_event ev, events[32];
+    lamb_submit_t message;
+    lamb_list_t list;
+
+    lamb_epoll_add(ev, cli_queue);
+
+    /* Start worker threads */
+    lamb_deliver_worker(list, config.work_threads);
+
+    /* Read queue message */
+    while (true) {
+        nfds = epoll_wait(epfd, events, 32, -1);
+
+        if (nfds > 0) {
+            for (int i = 0; i < nfds; i++) {
+                if (events[i].events & EPOLLIN) {
+                    if (list->len < config.queue) {
+                        ret = mq_receive(events[i].data.fd, message, sizeof(message), 0);
+                        if (ret > 0) {
+                            lamb_list_rpush(list, message);
+                        }
+                    } else {
+                        lamb_sleep(500);
+                    }
+                }
+            }
+        }
+    }
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
@@ -211,11 +263,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
-        goto error;
-    }
-
     if (lamb_get_int(&cfg, "Sender", &conf->sender) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Sender' parameter\n");
         goto error;
@@ -231,11 +278,21 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "Queue", &conf->queue) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Queue' parameter\n");
+    if (lamb_get_int64(&cfg, "SenderQueue", &conf->sender_queue) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'SenderQueue' parameter\n");
         goto error;
     }
 
+    if (lamb_get_int64(&cfg, "DeliverQueue", &conf->deliver_queue) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DeliverQueue' parameter\n");
+        goto error;
+    }
+    
+    if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
+        goto error;
+    }
+    
     if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
         goto error;

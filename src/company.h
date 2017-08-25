@@ -8,6 +8,8 @@
 #ifndef _LAMB_COMPANY_H
 #define _LAMB_COMPANY_H
 
+#include "db.h"
+
 typedef struct {
     int id;
     int paytype;

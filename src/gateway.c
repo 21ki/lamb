@@ -7,9 +7,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <hiredis/hiredis.h>
 #include "gateway.h"
-#include "db.h"
+#include "queue.h"
 
 int lamb_gateway_get(lamb_db_t *db, int id, lamb_gateway_t *gateway) {
     char *column;
@@ -51,7 +50,7 @@ int lamb_gateway_get_all(lamb_db_t *db, lamb_gateway_t *gateways[], size_t size)
     PGresult *res = NULL;
     
     column = "id, type, host, port, username, password, spid, spcode, encoded, concurrent";
-    sprintf(sql, "SELECT %s FROM gateway ORDER BY id", column);
+    sprintf(sql, "SELECT %s FROM channel ORDER BY id", column);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -83,5 +82,36 @@ int lamb_gateway_get_all(lamb_db_t *db, lamb_gateway_t *gateways[], size_t size)
     }
 
     PQclear(res);
+    return 0;
+}
+
+int lamb_gateway_queue_open(lamb_gateway_queue_t *queues[], size_t qlen, lamb_gateway_t *gateways[], size_t glen) {
+    int err;
+    char name[128];
+    lamb_queue_opt opt;
+
+    for (int i = 0; i < glen && i < qlen && (gateways[i] != NULL); i++) {
+        queues[i].id = gateways[i]->id;
+        memset(name, 0, sizeof(name));
+
+        /* Open send queue */
+        opt.flag = O_WRONLY | O_NONBLOCK;
+        opt.attr = NULL;
+        sprintf(name, "gw.%d.message", gateways[i]->id);
+        err = lamb_queue_open(&(queues[i].send), name, &opt);
+        if (err) {
+            return 1;
+        }
+
+        /* Open recv queue */
+        opt.flag = O_RDWR | O_NONBLOCK;
+        opt.attr = NULL;
+        sprintf(name, "gw.%d.deliver", gateways[i]->id);
+        err = lamb_queue_open(queues[i].recv, name, &opt);
+        if (err) {
+            return 2;
+        }
+    }
+
     return 0;
 }

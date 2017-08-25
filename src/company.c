@@ -7,9 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <hiredis/hiredis.h>
 #include "company.h"
-#include "db.h"
 
 int lamb_company_get(lamb_cache_t *cache, int id, lamb_company_t *company) {
     if (!cache || !cache->handle || !company) {

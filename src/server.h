@@ -8,6 +8,12 @@
 #ifndef _LAMB_SERVER_H
 #define _LAMB_SERVER_H
 
+#define LAMB_MAX_CLIENT   1024
+#define LAMB_MAX_GATEWAY  1024
+#define LAMB_MAX_COMPANY  1024
+#define LAMB_MAX_TEMPLATE 1024
+#define LAMB_MAX_ROUTE    1024
+
 typedef struct {
     int id;
     bool debug;
@@ -16,7 +22,8 @@ typedef struct {
     int sender;
     int deliver;
     int work_threads;
-    long long queue;
+    long long sender_queue;
+    long long deliver_queue;
     char redis_host[16];
     int redis_port;
     char redis_password[64];

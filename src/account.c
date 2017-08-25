@@ -10,6 +10,7 @@
 #include <hiredis/hiredis.h>
 #include "account.h"
 #include "db.h"
+#include "queue.h"
 
 int lamb_account_get(lamb_cache_t *cache, char *user, lamb_account_t *account) {
     if (!cache || !cache->handle || !account) {
@@ -117,5 +118,36 @@ int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size)
     }
 
     PQclear(res);
+    return 0;
+}
+
+int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_account_t *accounts[], size_t alen) {
+    int err;
+    char name[128];
+    lamb_queue_opt opt;
+
+    for (int i = 0; i < alen && i < qlen && (accounts[i] != NULL); i++) {
+        queues[i].id = accounts[i]->id;
+        memset(name, 0, sizeof(name));
+
+        /* Open send queue */
+        opt.flag = O_WRONLY | O_NONBLOCK;
+        opt.attr = NULL;
+        sprintf(name, "cli.%d.message", gateways[i]->id);
+        err = lamb_queue_open(&(queues[i].send), name, &opt);
+        if (err) {
+            return 1;
+        }
+
+        /* Open recv queue */
+        opt.flag = O_RDWR | O_NONBLOCK;
+        opt.attr = NULL;
+        sprintf(name, "cli.%d.deliver", gateways[i]->id);
+        err = lamb_queue_open(queues[i].recv, name, &opt);
+        if (err) {
+            return 2;
+        }
+    }
+
     return 0;
 }
