@@ -134,13 +134,24 @@ void lamb_event_loop(void) {
     */
     
     /* Open all client queue */
-    /* 
-    err = lamb_account_queue_open(cli_queue, LAMB_MAX_CLIENT, accounts, LAMB_MAX_CLIENT);
+    struct mq_attr sattr, rattr;
+    lamb_queue_opt sopt, ropt;
+    
+    sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
+    sattr.mq_maxmsg = config.queue;
+    sattr.mq_msgsize = sizeof(lamb_message_t);
+    sopt.attr = &sattr;
+
+    ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
+    rattr.mq_maxmsg = 3;
+    rattr.mq_msgsize = sizeof(lamb_message_t);
+    ropt.attr = &rattr;
+
+    err = lamb_account_queue_open(cli_queue, LAMB_MAX_CLIENT, accounts, LAMB_MAX_CLIENT, &sopt, &ropt);
     if (err) {
         lamb_errlog(config.logfile, "Can't open all client queue failed", 0);
         return;
     }
-    */
     
     /* Start sender process */
     for (int i = 0; i < config.sender; i++) {

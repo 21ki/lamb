@@ -12,9 +12,9 @@
 #include <cmpp.h>
 #include "account.h"
 
-#define lamb_submit 1
-#define lamb_deliver 2
-#define lamb_report 3
+#define LAMB_SUBMIT 1
+#define LAMB_DELIVER 2
+#define LAMB_REPORT 3
 
 typedef struct {
     int id;
@@ -34,13 +34,17 @@ typedef struct {
 } lamb_config_t;
 
 typedef struct {
+    int type;
+    char data[508];
+} lamb_message_t;
+
+typedef struct {
     cmpp_sock_t *sock;
     lamb_account_t *account;
     char *addr;
 } lamb_client_t;
 
 typedef struct {
-    int type;
     unsigned long long id;
     char phone[24];
     char spcode[24];
@@ -48,7 +52,6 @@ typedef struct {
 } lamb_submit_t;
 
 typedef struct {
-    int type;
     unsigned long long id;
     char phone[24];
     char spcode[24];
@@ -56,7 +59,6 @@ typedef struct {
 } lamb_deliver_t;
 
 typedef struct {
-    int type;
     unsigned long long id;
     char phone[24];
     char status[8];
@@ -66,8 +68,8 @@ typedef struct {
 
 void lamb_event_loop(cmpp_ismg_t *cmpp);
 void lamb_work_loop(lamb_client_t *client);
-int lamb_read_config(lamb_config_t *conf, const char *file);
-void *lamb_online(void *data);
 void *lamb_deliver_loop(void *data);
+void *lamb_client_online(void *data);
+int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

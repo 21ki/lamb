@@ -126,3 +126,23 @@ char *lamb_strdup(const char *str) {
 
     return (char *) memcpy (new, str, len);
 }
+
+void lamb_start_thread((void*)(*func)(void*), void *arg, int count) {
+    int err;
+    pthread_t tid;
+    pthread_attr_t attr;
+
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+    for (int i = 0; i < count; i++) {
+        err = pthread_create(&tid, &attr, func, arg);
+        if (err) {
+            lamb_errlog(config.logfile, "Lmab exec lamb_start_thread() thread failed", 0);
+            continue;
+        }
+    }
+
+    pthread_attr_destroy(&attr);
+    return;
+}

@@ -25,6 +25,7 @@
 #include "ismg.h"
 #include "utils.h"
 #include "cache.h"
+#include "queue.h"
 #include "config.h"
 
 static cmpp_ismg_t cmpp;
@@ -270,12 +271,13 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 void lamb_work_loop(lamb_client_t *client) {
     int err, gid;
     cmpp_pack_t pack;
-    lamb_submit_t message;
-    
+    lamb_submit_t submit;
+    lamb_message_t message;
+
     gid = getpid();
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
-    
+
     /* Epoll Events */
     int epfd, nfds;
     struct epoll_event ev, events[32];
@@ -286,36 +288,27 @@ void lamb_work_loop(lamb_client_t *client) {
     epoll_ctl(epfd, EPOLL_CTL_ADD, client->sock->fd, &ev);
 
     /* Mqueue Message Queue */
-    mqd_t queue;
     char name[64];
-    struct mq_attr mattr;
+    lamb_queue_t queue;
+    lamb_queue_opt opt;
+    struct mq_attr attr;
 
-    mattr.mq_maxmsg = 1024;
-    mattr.mq_msgsize = sizeof(message);
+    opt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
+    attr.mq_maxmsg = 1024;
+    attr.mq_msgsize = sizeof(message);
+    sprintf(name, "/cli.%d.message", client->account->id);
 
-    sprintf(name, "/msg.%s", client->account->user);
-    queue = mq_open(name, O_CREAT | O_WRONLY | O_NONBLOCK, 0644, &mattr);
-    if (queue < 0) {
+    err = lamb_queue_open(&queue, name, &opt);
+    if (err) {
         lamb_errlog(config.logfile, "Open %s message queue failed", name);
         goto exit;
     }
 
-    /* Client Status Update */
-    pthread_t tid;
-    pthread_attr_t attr;
-
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    err = pthread_create(&tid, &attr, lamb_online, (void *)client);
-    if (err) {
-        lamb_errlog(config.logfile, "Start client status thread failed", 0);
-    }
+    /* Start Client Status Update Thread */
+    lamb_start_thread(lamb_client_online, NULL, 1);
 
     /* Client Message Deliver */
-    err = pthread_create(&tid, &attr, lamb_deliver_loop, (void *)client);
-    if (err) {
-        lamb_errlog(config.logfile, "Start client deliver thread failed", 0);
-    }
+    lamb_start_thread(lamb_deliver_loop, (void *)client, 1);
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -356,22 +349,20 @@ void lamb_work_loop(lamb_client_t *client) {
 
                 /* Message Write Queue */
                 unsigned char len;
-                memset(&message, 0, sizeof(message));
-                message.type = lamb_submit;
-                message.id = msgId;
-                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, message.phone, 24, 21);
-                cmpp_pack_get_string(&pack, cmpp_submit_src_id, message.spcode, 24, 21);
+                memset(&submit, 0, sizeof(submit));
+                submit.id = msgId;
+                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit.phone, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit.spcode, 24, 21);
                 cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, (size_t *)&len, 1);
-                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, message.content, 160, len);
-                
-                err = mq_send(queue, (const char *)&message, sizeof(message), 0);
+                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit.content, 160, len);
+                memset(&message, 0, sizeof(message));
+                message.type = LAMB_SUBMIT;
+                memcpy(message.data, (char *)&submit, sizeof(submit));
+
+                err = lamb_queue_send(&queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
                     result = 11;
-                    if (errno == EAGAIN) {
-                        lamb_errlog(config.logfile, "The %s message queue was full", name);
-                    } else {
-                        lamb_errlog(config.logfile, "Lamb mq_send() %s", strerror(errno));
-                    }
+                    lamb_errlog(config.logfile, "Write %s message queue failed", name);
                 }
 
                 /* Ack Response */
@@ -405,28 +396,28 @@ exit:
 
 void *lamb_deliver_loop(void *data) {
     int err;
-    int type;
     int count;
     ssize_t ret;
-    char pack[256];
     struct timeval now;
     struct timespec timeout;
+    lamb_message_t message;
     lamb_client_t *client;
     lamb_deliver_t *deliver;
     lamb_report_t *report;
 
     client = (lamb_client_t *)data;
-    
-    mqd_t queue;
+
     char name[64];
+    lamb_queue_t queue;
+    lamb_queue_opt opt;
     struct mq_attr attr;
 
-    attr.mq_maxmsg = 1024;
-    attr.mq_msgsize = 256;
+    opt.flag = O_RDWR;
+    opt.attr = NULL;
 
-    sprintf(name, "/inb.%s", client->account->user);
-    queue = mq_open(name, O_CREAT | O_RDWR, 0644, &attr);
-    if (queue < 0) {
+    sprintf(name, "/cli.%d.deliver", client->account->id);
+    err = lamb_queue_open(&queue, name, &opt);
+    if (err) {
         lamb_errlog(config.logfile, "Open %s message queue failed", name);
         goto exit;
     }
@@ -447,20 +438,19 @@ void *lamb_deliver_loop(void *data) {
         }
         pthread_mutex_unlock(&mutex);
 
-        memset(pack, 0 , sizeof(pack));
-        ret = mq_receive(queue, pack, sizeof(pack), 0);
+        memset(&message, 0 , sizeof(message));
+        ret = lamb_queue_receive(&queue, (char *)&message, sizeof(message), 0);
         if (ret > 0) {
-            type = *((int *)&pack);
-            switch (type) {
-            case lamb_deliver:
-                deliver = (lamb_deliver_t *)(&pack);
+            switch (message.type) {
+            case LAMB_DELIVER:
+                deliver = (lamb_deliver_t *)(&message.data);
                 err = cmpp_deliver(client->sock, deliver->id, deliver->spcode, 8, deliver->phone, deliver->content);
                 if (err) {
                     lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet to client %s failed", client->addr);
                 }
                 break;
-            case lamb_report:
-                report = (lamb_report_t *)(&pack);
+            case LAMB_REPORT:
+                report = (lamb_report_t *)(&message.data);
                 err = cmpp_report(client->sock, report->id, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
                     lamb_errlog(config.logfile, "Sending 'cmpp_report' packet to client %s failed", client->addr);
@@ -475,7 +465,7 @@ exit:
     return NULL;
 }
 
-void *lamb_online(void *data) {
+void *lamb_client_online(void *data) {
     int err;
     lamb_client_t *client;
 

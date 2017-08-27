@@ -44,7 +44,7 @@ typedef struct {
 
 typedef struct {
     int type;
-    char data[512];
+    char data[508];
 } lamb_message_t;
 
 typedef struct {

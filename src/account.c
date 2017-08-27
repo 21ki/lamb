@@ -122,10 +122,9 @@ int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size)
     return 0;
 }
 
-int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_account_t *accounts[], size_t alen) {
+int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_account_t *accounts[], size_t alen, lamb_queue_opt *ropt, lamb_queue_opt *sopt) {
     int err;
     char name[128];
-    lamb_queue_opt opt;
 
     memset(name, 0, sizeof(name));
 
@@ -137,10 +136,8 @@ int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_ac
             q->id = accounts[i]->id;
 
             /* Open send queue */
-            opt.flag = O_WRONLY | O_NONBLOCK;
-            opt.attr = NULL;
             sprintf(name, "/cli.%d.message", accounts[i]->id);
-            err = lamb_queue_open(&(q->send), name, &opt);
+            err = lamb_queue_open(&(q->send), name, ropt);
             if (err) {
                 j--;
                 free(q);
@@ -148,10 +145,8 @@ int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_ac
             }
 
             /* Open recv queue */
-            opt.flag = O_RDWR | O_NONBLOCK;
-            opt.attr = NULL;
             sprintf(name, "/cli.%d.deliver", accounts[i]->id);
-            err = lamb_queue_open(&(q->recv), name, &opt);
+            err = lamb_queue_open(&(q->recv), name, sopt);
 
             if (err) {
                 j--;
