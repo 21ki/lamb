@@ -1,10 +1,10 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
-OBJS = src/amqp.o src/utils.o src/config.o src/list.o src/cache.o src/account.o
-LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lrabbitmq -lleveldb -lhiredis -lrt
+OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o
+LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lpq -lhiredis -lrt -lpcre
 
-all: client server
+all: sp ismg server
 
 sp: src/sp.c src/sp.h $(OBJS)
 	$(CC) $(CFLAGS) src/sp.c $(OBJS) $(LIBS) -o sp
@@ -12,23 +12,38 @@ sp: src/sp.c src/sp.h $(OBJS)
 ismg: src/ismg.c src/ismg.h $(OBJS)
 	$(CC) $(CFLAGS) src/ismg.c $(OBJS) $(LIBS) -o ismg
 
-src/amqp.o: src/amqp.c src/amqp.h
-	$(CC) $(CFLAGS) -c src/amqp.c -o src/amqp.o
+server: src/server.c src/server.h $(OBJS)
+	$(CC) $(CFLAGS) src/server.c $(OBJS) $(LIBS) -o server
 
-src/utils.o: src/utils.c src/utils.h
-	$(CC) $(CFLAGS) -c src/utils.c -o src/utils.o
-
-src/config.o: src/config.c src/config.h
-	$(CC) $(CFLAGS) -c src/config.c -o src/config.o
-
-src/list.o: src/list.c src/list.h
-	$(CC) $(CFLAGS) -c src/list.c -o src/list.o
+src/account.o: src/account.c src/account.h
+	$(CC) $(CFLAGS) -c src/account.c -o src/account.o
 
 src/cache.o: src/cache.c src/cache.h
 	$(CC) $(CFLAGS) -c src/cache.c -o src/cache.o
 
-src/account.o: src/account.c src/account.h
-	$(CC) $(CFLAGS) -c src/account.c -o src/account.o
+src/channel.o: src/channel.c src/channel.h
+	$(CC) $(CFLAGS) -c src/channel.c -o src/channel.o
+
+src/company.o: src/company.c src/company.h
+	$(CC) $(CFLAGS) -c src/company.c -o src/company.o
+
+src/config.o: src/config.c src/config.h
+	$(CC) $(CFLAGS) -c src/config.c -o src/config.o
+
+src/db.o: src/db.c src/db.h
+	$(CC) $(CFLAGS) -c src/db.c -o src/db.o
+
+src/gateway.o: src/gateway.c src/gateway.h
+	$(CC) $(CFLAGS) -c src/gateway.c -o src/gateway.o
+
+src/group.o: src/group.c src/group.h
+	$(CC) $(CFLAGS) -c src/group.c -o src/group.o
+
+src/queue.o: src/queue.c src/queue.h
+	$(CC) $(CFLAGS) -c src/queue.c -o src/queue.o
+
+src/utils.o: src/utils.c src/utils.h
+	$(CC) $(CFLAGS) -c src/utils.c -o src/utils.o
 
 .PHONY: install clean
 

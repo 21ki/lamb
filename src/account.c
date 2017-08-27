@@ -5,6 +5,7 @@
  * Update: 2017-07-14
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <hiredis/hiredis.h>
@@ -85,7 +86,7 @@ int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size)
     PGresult *res = NULL;
     
     sql = "SELECT id, username, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword FROM account ORDER BY id";
-    res = PQexec(conn, sql);
+    res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
         return 1;
@@ -126,26 +127,41 @@ int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_ac
     char name[128];
     lamb_queue_opt opt;
 
-    for (int i = 0; i < alen && i < qlen && (accounts[i] != NULL); i++) {
-        queues[i].id = accounts[i]->id;
-        memset(name, 0, sizeof(name));
+    memset(name, 0, sizeof(name));
 
-        /* Open send queue */
-        opt.flag = O_WRONLY | O_NONBLOCK;
-        opt.attr = NULL;
-        sprintf(name, "cli.%d.message", gateways[i]->id);
-        err = lamb_queue_open(&(queues[i].send), name, &opt);
-        if (err) {
-            return 1;
-        }
+    for (int i = 0, j = 0; (i < alen) && (i < qlen) && (accounts[i] != NULL); i++, j++) {
+        lamb_account_queue_t *q = NULL;
+        q = malloc(sizeof(lamb_account_queue_t));
+        if (q != NULL) {
+            memset(q, 0, sizeof(lamb_account_queue_t));
+            q->id = accounts[i]->id;
 
-        /* Open recv queue */
-        opt.flag = O_RDWR | O_NONBLOCK;
-        opt.attr = NULL;
-        sprintf(name, "cli.%d.deliver", gateways[i]->id);
-        err = lamb_queue_open(queues[i].recv, name, &opt);
-        if (err) {
-            return 2;
+            /* Open send queue */
+            opt.flag = O_WRONLY | O_NONBLOCK;
+            opt.attr = NULL;
+            sprintf(name, "/cli.%d.message", accounts[i]->id);
+            err = lamb_queue_open(&(q->send), name, &opt);
+            if (err) {
+                j--;
+                free(q);
+                continue;
+            }
+
+            /* Open recv queue */
+            opt.flag = O_RDWR | O_NONBLOCK;
+            opt.attr = NULL;
+            sprintf(name, "/cli.%d.deliver", accounts[i]->id);
+            err = lamb_queue_open(&(q->recv), name, &opt);
+
+            if (err) {
+                j--;
+                free(q);
+                continue;
+            }
+
+            queues[j] = q;
+        } else {
+            j--;
         }
     }
 

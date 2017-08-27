@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <pcre.h>
 #include "template.h"
 
 int lamb_template_get(lamb_db_t *db, int id, lamb_template_t *template) {
@@ -69,5 +70,27 @@ int lamb_template_get_all(lamb_db_t *db, lamb_template_t *templates[], size_t si
     }
 
     PQclear(res);
+    return 0;
+}
+
+int lamb_check_template(char *pattern, char *message, int len) {
+    int rc;
+    pcre *re;
+    const char *error;
+    int erroffset;
+    int ovector[510];
+
+    re = pcre_compile(pattern, 0, &error, &erroffset, NULL);
+    if (re == NULL) {
+        return -1;
+    }
+
+    rc = pcre_exec(re, NULL, message, len, 0, 0, ovector, 510);
+    if (rc < 0) {
+        pcre_free(re);
+        return -1;
+    }
+
+    pcre_free(re);
     return 0;
 }

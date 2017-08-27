@@ -8,11 +8,12 @@
 #ifndef _LAMB_DB_H
 #define _LAMB_DB_H
 
+#include <stdbool.h>
 #include <pthread.h>
 #include <libpq-fe.h>
 
 typedef struct {
-    leveldb_t *conn;
+    PGconn *conn;
     pthread_mutex_t lock;
 } lamb_db_t;
 

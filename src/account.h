@@ -8,6 +8,8 @@
 #ifndef _LAMB_ACCOUNT_H
 #define _LAMB_ACCOUNT_H
 
+#include <sys/epoll.h>
+#include "db.h"
 #include "cache.h"
 #include "queue.h"
 
@@ -30,7 +32,7 @@ typedef struct {
     int id;
     lamb_queue_t send;
     lamb_queue_t recv;
-} lamb_account_queue;
+} lamb_account_queue_t;
 
 int lamb_account_get(lamb_cache_t *cache, char *user, lamb_account_t *account);
 int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size);

@@ -40,7 +40,7 @@ CREATE TABLE template (
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
-CREATE TABLE channel (
+CREATE TABLE gateway (
     id serial PRIMARY KEY NOT NULL,
     name varchar(64) NOT NULL,
     type int NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE groups (
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
-CREATE TABLE channels (
+CREATE TABLE channel (
     id int NOT NULL,
     gid int NOT NULL,
     weight int NOT NULL

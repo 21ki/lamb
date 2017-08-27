@@ -22,6 +22,12 @@ typedef struct {
     struct mq_attr *attr;
 } lamb_queue_opt;
 
+typedef struct {
+    long len;
+} lamb_queue_attr;
+
 int lamb_queue_open(lamb_queue_t *queue, char *name, lamb_queue_opt *opt);
+int lamb_queue_send(lamb_queue_t *queue, const char *val, size_t len, unsigned int prio);
+ssize_t lamb_queue_receive(lamb_queue_t *queue, char *buff, size_t len, unsigned int *prio);
 
 #endif

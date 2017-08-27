@@ -9,37 +9,28 @@
 #include <string.h>
 #include "company.h"
 
-int lamb_company_get(lamb_cache_t *cache, int id, lamb_company_t *company) {
-    if (!cache || !cache->handle || !company) {
-        return -1;
+int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company) {
+    char sql[256];
+    char *column;
+    PGresult *res = NULL;
+
+    column = "id, paytype";
+    sprintf(sql, "SELECT %s FROM groups WHERE id = %d", column, id);
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+        return 1;
     }
 
-    int r = 0;
-    redisReply *reply = NULL;
-    const char *cmd = "HMGET company.%d paytype";
-    reply = redisCommand(cache->handle, cmd, id);
-
-    company->id = id;
-
-    if (reply != NULL) {
-        if (reply->type == REDIS_REPLY_ARRAY) {
-            for (int i = 0; i < reply->elements; i++) {
-                if (reply->element[i]->len == 0) {
-                    r = 1;
-                    break;
-                }
-
-                switch (i) {
-                case 0:
-                    account->company = atoi(reply->element[0]->str);
-                    break;
-            }
-        }
-
-        freeReplyObject(reply);
+    if (PQntuples(res) < 1) {
+        return 2;
     }
 
-    return r;
+    company->id = atoi(PQgetvalue(res, 0, 0));
+    company->paytype = atoi(PQgetvalue(res, 0, 1));
+    PQclear(res);
+
+    return 0;
 }
 
 int lamb_company_get_all(lamb_db_t *db, lamb_company_t *companys[], size_t size) {

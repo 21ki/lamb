@@ -20,7 +20,7 @@ int lamb_db_connect(lamb_db_t *db, char *host, int port, char *user, char *passw
     sprintf(info, string, host, port, user, password, dbname);
 
     db->conn = PQconnectdb(info);
-    if (PQstatus(conn) != CONNECTION_OK) {
+    if (PQstatus(db->conn) != CONNECTION_OK) {
         return -1;
     }
 

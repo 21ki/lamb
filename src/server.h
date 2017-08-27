@@ -12,10 +12,14 @@
 #define LAMB_GATEWAY      2
 
 #define LAMB_MAX_CLIENT   1024
+#define LAMB_MAX_GROUP    1024
 #define LAMB_MAX_GATEWAY  1024
 #define LAMB_MAX_COMPANY  1024
 #define LAMB_MAX_TEMPLATE 1024
 #define LAMB_MAX_ROUTE    1024
+
+#define LAMB_SENDER_QUEUE  "/sender.queue"
+#define LAMB_DELIVER_QUEUE "/deliver.queue"
 
 typedef struct {
     int id;
@@ -40,12 +44,22 @@ typedef struct {
 
 typedef struct {
     int type;
+    char data[512];
+} lamb_message_t;
+
+typedef struct {
     unsigned long long id;
     char phone[24];
     char spcode[24];
     char content[160];
 } lamb_submit_t;
 
+void lamb_event_loop(void);
+void lamb_sender_loop(void);
+void lamb_deliver_loop(void);
+void lamb_start_worker(void *(*func)(void *), int count);
+void *lamb_sender_worker(void *val);
+void *lamb_deliver_worker(void *val);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 int lamb_check_template(char *pattern, char *message, int len);
 

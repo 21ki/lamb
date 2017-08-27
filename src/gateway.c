@@ -90,26 +90,67 @@ int lamb_gateway_queue_open(lamb_gateway_queue_t *queues[], size_t qlen, lamb_ga
     char name[128];
     lamb_queue_opt opt;
 
-    for (int i = 0; i < glen && i < qlen && (gateways[i] != NULL); i++) {
-        queues[i].id = gateways[i]->id;
-        memset(name, 0, sizeof(name));
+    memset(name, 0, sizeof(name));
 
-        /* Open send queue */
-        opt.flag = O_WRONLY | O_NONBLOCK;
-        opt.attr = NULL;
-        sprintf(name, "gw.%d.message", gateways[i]->id);
-        err = lamb_queue_open(&(queues[i].send), name, &opt);
-        if (err) {
-            return 1;
+    for (int i = 0, j = 0; (i < glen) && (i < qlen) && (gateways[i] != NULL); i++, j++) {
+        lamb_gateway_queue_t *q = NULL;
+        q = (lamb_gateway_queue_t *)malloc(sizeof(lamb_gateway_queue_t));
+        if (q != NULL) {
+            memset(q, 0, sizeof(lamb_gateway_queue_t));
+            q->id = gateways[i]->id;
+
+            /* Open send queue */
+            opt.flag = O_WRONLY | O_NONBLOCK;
+            opt.attr = NULL;
+            sprintf(name, "/gw.%d.message", gateways[i]->id);
+            err = lamb_queue_open(&(q->send), name, &opt);
+            if (err) {
+                j--;
+                free(q);
+                continue;
+            }
+
+            /* Open recv queue */
+            opt.flag = O_RDWR | O_NONBLOCK;
+            opt.attr = NULL;
+            sprintf(name, "/gw.%d.deliver", gateways[i]->id);
+            err = lamb_queue_open(&(q->recv), name, &opt);
+            if (err) {
+                j--;
+                free(q);
+                continue;
+            }
+
+            queues[j] = q;
+        } else {
+            j--;
         }
+    }
 
-        /* Open recv queue */
-        opt.flag = O_RDWR | O_NONBLOCK;
-        opt.attr = NULL;
-        sprintf(name, "gw.%d.deliver", gateways[i]->id);
-        err = lamb_queue_open(queues[i].recv, name, &opt);
-        if (err) {
-            return 2;
+    return 0;
+}
+
+int lamb_gateway_epoll_add(int epfd, struct epoll_event *event, lamb_gateway_queue_t *queues[], size_t len, int type) {
+    int err;
+
+    for (int i = 0; i < len && (queues[i] != NULL); i++) {
+        switch (type) {
+        case LAMB_QUEUE_SEND:
+            event->data.fd = queues[i]->send.mqd;
+            event->events = EPOLLOUT;
+            err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues[i]->send.mqd, event);
+            if (err == -1) {
+                return 1;
+            }
+            break;
+        case LAMB_QUEUE_RECV:
+            event->data.fd = queues[i]->recv.mqd;
+            event->events = EPOLLIN;
+            err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues[i]->recv.mqd, event);
+            if (err == -1) {
+                return 1;
+            }
+            break;
         }
     }
 
