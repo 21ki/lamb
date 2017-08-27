@@ -271,7 +271,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 void lamb_work_loop(lamb_client_t *client) {
     int err, gid;
     cmpp_pack_t pack;
-    lamb_submit_t submit;
+    lamb_submit_t *submit;
     lamb_message_t message;
 
     gid = getpid();
@@ -349,15 +349,14 @@ void lamb_work_loop(lamb_client_t *client) {
 
                 /* Message Write Queue */
                 unsigned char len;
-                memset(&submit, 0, sizeof(submit));
-                submit.id = msgId;
-                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit.phone, 24, 21);
-                cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit.spcode, 24, 21);
-                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, (size_t *)&len, 1);
-                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit.content, 160, len);
                 memset(&message, 0, sizeof(message));
                 message.type = LAMB_SUBMIT;
-                memcpy(message.data, (char *)&submit, sizeof(submit));
+                submit = (lamb_submit_t *)&message.data;
+                submit->id = msgId;
+                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit->phone, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit->spcode, 24, 21);
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, (size_t *)&len, 1);
+                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit->content, 160, len);
 
                 err = lamb_queue_send(&queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
