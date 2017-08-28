@@ -12,6 +12,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <mqueue.h>
 #include <sys/types.h>
@@ -28,6 +29,7 @@
 #include "queue.h"
 #include "config.h"
 
+static lamb_db_t db;
 static cmpp_ismg_t cmpp;
 static lamb_cache_t cache;
 static lamb_config_t config;
@@ -68,33 +70,30 @@ int main(int argc, char *argv[]) {
     /* Redis Cache */
     err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
-        if (config.daemon) {
-            lamb_errlog(config.logfile, "can't connect to redis server", 0);
-        } else {
-            fprintf(stderr, "can't connect to redis server\n");
-        }
-
+        lamb_errlog(config.logfile, "can't connect to redis server", 0);
         return -1;
     }
 
+    /* Postgresql Database Initialization */
+    err = lamb_db_init(&db);
+    if (err) {
+        lamb_errlog(config.logfile, "Postgresql database handle initialization failed", 0);
+    }
+
+    err = lamb_db_connect(&db, "127.0.0.1", 5432, "postgres", "postgres", "lamb");
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to postgresql database", 0);
+        return -1;
+    }
+    
     /* Cmpp ISMG Gateway Initialization */
     err = cmpp_init_ismg(&cmpp, config.listen, config.port);
-
     if (err) {
-        if (config.daemon) {
-            lamb_errlog(config.logfile, "Cmpp server initialization failed", 0);
-        } else {
-            fprintf(stderr, "Cmpp server initialization failed\n");
-        }
-
+        lamb_errlog(config.logfile, "Cmpp server initialization failed", 0);
         return -1;
     }
 
-    if (config.daemon) {
-        lamb_errlog(config.logfile, "Cmpp server initialization successfull", 0);
-    } else {
-        fprintf(stderr, "Cmpp server initialization successfull\n");
-    }
+    fprintf(stderr, "Cmpp server initialization successfull\n");
 
     /* Setting Cmpp Socket Parameter */
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
@@ -107,6 +106,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Start Main Event Thread */
+    prctl(PR_SET_NAME, "lamb-ismg", 0, 0, 0);
     lamb_event_loop(&cmpp);
 
     return 0;
@@ -220,10 +220,20 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             continue;
                         }
 
+                        epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
+
                         /* Login Successfull */
                         cmpp_connect_resp(&sock, sequenceId, 0);
                         lamb_errlog(config.logfile, "Login successfull from client %s", inet_ntoa(clientaddr.sin_addr));
-                        epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
+
+                        lamb_account_t account;
+                        memset(&account, 0, sizeof(account));
+                        err = lamb_account_get(&db, user, &account);
+                        if (err) {
+                            cmpp_connect_resp(&sock, sequenceId, 10);
+                            lamb_errlog(config.logfile, "Can't to obtain account information", 0);
+                            continue;
+                        }
 
                         /* Create Work Process */
                         pid_t pid = fork();
@@ -233,17 +243,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             close(epfd);
                             cmpp_ismg_close(cmpp);
                             lamb_cache_close(&cache);
-
-                            lamb_account_t account;
-                            memset(&account, 0, sizeof(account));
-                            strncpy(account.user, user, 6);
-                            err = lamb_account_get(&cache, user, &account);
-                            if (err) {
-                                cmpp_connect_resp(&sock, sequenceId, 10);
-                                lamb_errlog(config.logfile, "Can't to obtain account information", 0);
-                                return;
-                            }
-
+                            
                             lamb_client_t client;
                             client.sock = &sock;
                             client.account = &account;
@@ -277,6 +277,7 @@ void lamb_work_loop(lamb_client_t *client) {
     gid = getpid();
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
+    prctl(PR_SET_NAME, "lamb-client", 0, 0, 0);
 
     /* Epoll Events */
     int epfd, nfds;
@@ -291,12 +292,10 @@ void lamb_work_loop(lamb_client_t *client) {
     char name[64];
     lamb_queue_t queue;
     lamb_queue_opt opt;
-    struct mq_attr attr;
 
-    opt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
-    attr.mq_maxmsg = 1024;
-    attr.mq_msgsize = sizeof(message);
+    opt.flag = O_WRONLY | O_NONBLOCK;
     sprintf(name, "/cli.%d.message", client->account->id);
+    opt.attr = NULL;
 
     err = lamb_queue_open(&queue, name, &opt);
     if (err) {
@@ -308,7 +307,7 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_start_thread(lamb_client_online, NULL, 1);
 
     /* Client Message Deliver */
-    lamb_start_thread(lamb_deliver_loop, (void *)client, 1);
+    //lamb_start_thread(lamb_deliver_loop, (void *)client, 1);
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -371,7 +370,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 result = 0;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                 if (result == 0) {
-                    pthread_cond_signal(&cond);
+                    //pthread_cond_signal(&cond);
                 }
                 break;
             case CMPP_TERMINATE:
@@ -381,14 +380,11 @@ void lamb_work_loop(lamb_client_t *client) {
         }
     }
 
-    pthread_attr_destroy(&attr);
-
 exit:
     close(epfd);
     cmpp_sock_close(client->sock);
     pthread_cond_destroy(&cond);
     pthread_mutex_destroy(&mutex);
-
     
     return;
 }
@@ -409,7 +405,6 @@ void *lamb_deliver_loop(void *data) {
     char name[64];
     lamb_queue_t queue;
     lamb_queue_opt opt;
-    struct mq_attr attr;
 
     opt.flag = O_RDWR;
     opt.attr = NULL;

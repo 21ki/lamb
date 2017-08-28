@@ -13,71 +13,38 @@
 #include "db.h"
 #include "queue.h"
 
-int lamb_account_get(lamb_cache_t *cache, char *user, lamb_account_t *account) {
-    if (!cache || !cache->handle || !account) {
-        return -1;
+int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account) {
+    char sql[512];
+    char *column = NULL;
+    PGresult *res = NULL;
+
+    column = "id, username, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword";
+    sprintf(sql, "SELECT %s FROM account WHERE username = '%s'", column, username);
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+        return 1;
     }
 
-    int r = 0;
-    redisReply *reply = NULL;
-    const char *cmd = "HMGET account.%s company charge_type ip_addr route spcode concurrent extended policy check_template check_keyword";
-    reply = redisCommand(cache->handle, cmd, user);
-
-    if (reply != NULL) {
-        if (reply->type == REDIS_REPLY_ARRAY) {
-            for (int i = 0; i < reply->elements; i++) {
-                if (reply->element[i]->len == 0) {
-                    r = 1;
-                    break;
-                }
-
-                switch (i) {
-                case 0:
-                    account->company = atoi(reply->element[0]->str);
-                    break;
-                case 1:
-                    account->charge_type = atoi(reply->element[1]->str);
-                    break;
-                case 2:
-                    if (reply->element[2]->len > 15) {
-                        memcpy(account->ip_addr, reply->element[2]->str, 15);
-                    } else {
-                        memcpy(account->ip_addr, reply->element[2]->str, reply->element[2]->len);
-                    }
-                    break;
-                case 3:
-                    account->route = atoi(reply->element[3]->str);
-                    break;
-                case 4:
-                    if (reply->element[4]->len > 23) {
-                        memcpy(account->spcode, reply->element[4]->str, 23);
-                    } else {
-                        memcpy(account->spcode, reply->element[4]->str, reply->element[4]->len);
-                    }
-                    break;
-                case 5:
-                    account->concurrent = atoi(reply->element[5]->str);
-                    break;
-                case 6:
-                    account->extended = (atoi(reply->element[6]->str) == 0) ? false : true;
-                    break;
-                case 7:
-                    account->policy = atoi(reply->element[7]->str);
-                    break;
-                case 8:
-                    account->check_template = (atoi(reply->element[8]->str) == 0) ? false : true;
-                    break;
-                case 9:
-                    account->check_keyword = (atoi(reply->element[9]->str) == 0) ? false : true;
-                    break;
-                }
-            }
-        }
-
-        freeReplyObject(reply);
+    if (PQntuples(res) < 1) {
+        return 2;
     }
 
-    return r;
+    account->id = atoi(PQgetvalue(res, 0, 0));
+    strncpy(account->user, PQgetvalue(res, 0, 1), 7);
+    strncpy(account->spcode, PQgetvalue(res, 0, 2), 20);
+    account->company = atoi(PQgetvalue(res, 0, 3));
+    account->charge_type = atoi(PQgetvalue(res, 0, 4));
+    strncpy(account->ip_addr, PQgetvalue(res, 0, 5), 15);
+    account->concurrent = atoi(PQgetvalue(res, 0, 6));
+    account->route = atoi(PQgetvalue(res, 0, 7));
+    account->extended = atoi(PQgetvalue(res, 0, 8)) == 0 ? false : true;
+    account->policy = atoi(PQgetvalue(res, 0, 9));
+    account->check_template = atoi(PQgetvalue(res, 0, 10)) == 0 ? false : true;
+    account->check_keyword = atoi(PQgetvalue(res, 0, 11)) == 0 ? false : true;
+
+    PQclear(res);
+    return 0;
 }
 
 int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size) {
@@ -170,7 +137,7 @@ int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_que
         switch (type) {
         case LAMB_QUEUE_SEND:
             event->data.fd = queues[i]->send.mqd;
-            event->events = EPOLLOUT;
+            event->events = EPOLLIN;
             err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues[i]->send.mqd, event);
             if (err == -1) {
                 return 1;
@@ -178,7 +145,7 @@ int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_que
             break;
         case LAMB_QUEUE_RECV:
             event->data.fd = queues[i]->recv.mqd;
-            event->events = EPOLLIN;
+            event->events = EPOLLOUT;
             err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues[i]->recv.mqd, event);
             if (err == -1) {
                 return 1;

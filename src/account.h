@@ -34,7 +34,7 @@ typedef struct {
     lamb_queue_t recv;
 } lamb_account_queue_t;
 
-int lamb_account_get(lamb_cache_t *cache, char *user, lamb_account_t *account);
+int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account);
 int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size);
 int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_account_t *accounts[], size_t alen, lamb_queue_opt *ropt, lamb_queue_opt *sopt);
 int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_queue_t *queues[], size_t len, int type);

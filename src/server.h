@@ -57,7 +57,6 @@ typedef struct {
 void lamb_event_loop(void);
 void lamb_sender_loop(void);
 void lamb_deliver_loop(void);
-void lamb_start_worker(void *(*func)(void *), int count);
 void *lamb_sender_worker(void *val);
 void *lamb_deliver_worker(void *val);
 int lamb_read_config(lamb_config_t *conf, const char *file);

@@ -138,7 +138,7 @@ void lamb_event_loop(void) {
     lamb_queue_opt sopt, ropt;
     
     sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    sattr.mq_maxmsg = config.queue;
+    sattr.mq_maxmsg = 1024;
     sattr.mq_msgsize = sizeof(lamb_message_t);
     sopt.attr = &sattr;
 
@@ -219,7 +219,7 @@ void lamb_sender_loop(void) {
     
     opt.flag = O_CREAT | O_WRONLY;
     attr.mq_maxmsg = config.sender_queue;
-    attr.mq_msgsize = 10;
+    attr.mq_msgsize = sizeof(lamb_message_t);
     opt.attr = &attr;
 
     err = lamb_queue_open(&queue, LAMB_SENDER_QUEUE, &opt);
@@ -229,7 +229,7 @@ void lamb_sender_loop(void) {
     }
     
     /* Start sender worker threads */
-    lamb_start_worker(lamb_sender_worker, config.work_threads);
+    lamb_start_thread(lamb_sender_worker, NULL, config.work_threads);
 
     lamb_message_t *message;
     message = malloc(sizeof(lamb_message_t));
@@ -281,7 +281,7 @@ void lamb_deliver_loop(void) {
     
     opt.flag = O_CREAT | O_RDWR;
     attr.mq_maxmsg = config.deliver_queue;
-    attr.mq_msgsize = 512;
+    attr.mq_msgsize = sizeof(lamb_message_t);
     opt.attr = &attr;
 
     err = lamb_queue_open(&queue, LAMB_DELIVER_QUEUE, &opt);
@@ -291,7 +291,7 @@ void lamb_deliver_loop(void) {
     }
 
     /* Start sender worker threads */
-    lamb_start_worker(lamb_deliver_worker, config.work_threads);
+    lamb_start_thread(lamb_deliver_worker, NULL, config.work_threads);
 
     lamb_message_t *message;
     message = malloc(sizeof(lamb_message_t));
@@ -314,32 +314,12 @@ void lamb_deliver_loop(void) {
     }
 }
 
-void lamb_start_worker(void *(*func)(void *), int count) {
-    int err;
-    pthread_t tid;
-    pthread_attr_t attr;
-
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-    for (int i = 0; i < count; i++) {
-        err = pthread_create(&tid, &attr, func, NULL);
-        if (err) {
-            lamb_errlog(config.logfile, "Start work thread failed", 0);
-            continue;
-        }
-    }
-
-    pthread_attr_destroy(&attr);
-    return;
-}
-
 void *lamb_sender_worker(void *val) {
     int err;
     ssize_t ret;
     lamb_queue_t queue;
     lamb_queue_opt opt;
-    lamb_message_t *message;
+    lamb_message_t message;
     lamb_submit_t *msg;
     
     opt.flag = O_RDWR;
@@ -350,13 +330,11 @@ void *lamb_sender_worker(void *val) {
         goto exit;
     }
 
-    message = (lamb_message_t *)malloc(sizeof(lamb_message_t));
-
     while (true) {
-        memset(message, 0, sizeof(lamb_message_t));
-        ret = lamb_queue_receive(&queue, (char *)message, sizeof(lamb_message_t), 0);
+        memset(&message, 0, sizeof(lamb_message_t));
+        ret = lamb_queue_receive(&queue, (char *)&message, sizeof(lamb_message_t), 0);
         if (ret > 0) {
-            msg = (lamb_submit_t *)message->data;
+            msg = (lamb_submit_t *)&(message.data);
             printf("id: %llu, ", msg->id);
             printf("phone: %s, ", msg->phone);
             printf("spcode: %s, ", msg->spcode);
