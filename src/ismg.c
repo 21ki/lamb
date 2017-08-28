@@ -223,7 +223,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
 
                         /* Login Successfull */
-                        cmpp_connect_resp(&sock, sequenceId, 0);
+
                         lamb_errlog(config.logfile, "Login successfull from client %s", inet_ntoa(clientaddr.sin_addr));
 
                         lamb_account_t account;
@@ -249,6 +249,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             client.account = &account;
                             client.addr = lamb_strdup(inet_ntoa(clientaddr.sin_addr));
 
+                            cmpp_connect_resp(&sock, sequenceId, 0);
                             lamb_work_loop(&client);
                             return;
                         }
@@ -279,6 +280,13 @@ void lamb_work_loop(lamb_client_t *client) {
     pthread_mutex_init(&mutex, NULL);
     prctl(PR_SET_NAME, "lamb-client", 0, 0, 0);
 
+    /* Redis Cache */
+    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connect to redis server", 0);
+        return;
+    }
+    
     /* Epoll Events */
     int epfd, nfds;
     struct epoll_event ev, events[32];
@@ -304,7 +312,7 @@ void lamb_work_loop(lamb_client_t *client) {
     }
 
     /* Start Client Status Update Thread */
-    lamb_start_thread(lamb_client_online, NULL, 1);
+    lamb_start_thread(lamb_client_online, client, 1);
 
     /* Client Message Deliver */
     //lamb_start_thread(lamb_deliver_loop, (void *)client, 1);
@@ -375,6 +383,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 break;
             case CMPP_TERMINATE:
                 cmpp_terminate_resp(client->sock, sequenceId);
+                goto exit;
                 break;
             }
         }
