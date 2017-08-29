@@ -17,17 +17,17 @@
 #include "sp.h"
 #include "utils.h"
 #include "config.h"
-#include "list.h"
+#include "queue.h"
 #include "cache.h"
 
-#define MAX_LIST 16
-
-mqd_t queue;
-cmpp_sp_t cmpp;
-lamb_config_t config;
-lamb_db_t cache;
-int unconfirmed = 0;
-pthread_t fpool[MAX_LIST];
+static cmpp_sp_t cmpp;
+static lamb_db_t cache;
+static lamb_queue_t send;
+static lamb_queue_t recv;
+static lamb_config_t config;
+static pthread_cond_t cond;
+static pthread_mutex_t mutex;
+static lamb_seqtable_t table;
 
 int main(int argc, char *argv[]) {
     char *file = "lamb.conf";
@@ -58,246 +58,211 @@ int main(int argc, char *argv[]) {
     /* Signal event processing */
     lamb_signal();
 
-    /* Initialization working */
-
-    lamb_db_init(&cache, "cache");
-
-    if(lamb_cmpp_init(&cmpp) == 0) {
-        /* Start worker thread */
-        char name[64] = {0};
-        struct mq_attr attr;
-        attr.mq_maxmsg = config.max_queue;
-        attr.mq_msgsize = 512;
-
-        sprintf(name, "/%u", config.id);
-        queue = mq_open(name, O_RDWR | O_CREAT | O_EXCL, 0644, &attr);
-        if ((queue < 0) && (errno != EEXIST)) {
-            lamb_errlog(config.logfile, "mq_open: %s", strerror(errno));
-            return -1;
-        }
-
-        if ((mqd < 0) && (errno == EEXIST)) {
-            queue = mq_open(name, O_RDONLY);
-            if (queue < 0) {
-                lamb_errlog(config.logfile, "mq_open: %s", strerror(errno));
-                return -1;
-            }
-        }
-        
-        lamb_event_loop();
-    }
-
+    /* Start main event processing */
+    lamb_event_loop();
 
     return 0;
 }
 
-void *lamb_send_loop(void *data) {
+void lamb_event_loop(void) {
     int err;
 
-    
-
-    while (true) {
-        pthread_mutex_unlock(&send_queue->lock);
-        if (node != NULL) {
-            lamb_pack_t *pack = (lamb_pack_t *)node->val;
-            lamb_submit_t *message = (lamb_submit_t *)pack->data;
-
-            /* code */
-            char seq[64];
-            char msgId[64];
-            unsigned long seqid;
-            char *phone = (char *)message->destTerminalId;
-            char *content = (char *)message->msgContent;
-
-            err = cmpp_submit(&cmpp.sock, phone, content, true, config.spcode, config.encoding, config.spid);
-            if (err) {
-                if (err == -1) {
-                    if (!cmpp_check_connect(&cmpp.sock)) {
-                        cmpp.ok = false;
-                        cmpp_sp_close(&cmpp);
-                        lamb_cmpp_reconnect(&cmpp, &config);
-                    }
-                }
-
-                lamb_free_pack(pack);
-                free(node);
-                lamb_errlog(config.logfile, "cmpp submit message failed", 0);
-                continue;
-            }
-
-            unconfirmed++;
-            sprintf(seq, "%ld", seqid);
-            sprintf(msgId, "%lld", message->msgId);
-            lamb_db_put(&cache, seq, strlen(seq), msgId, strlen(msgId));
-            lamb_free_pack(pack);
-            free(node);
-            continue;
-        }
-
-        lamb_sleep(10);
+    /* Redis Database Initialization */
+    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to redis database", 0);
+        return;
     }
 
-    return NULL;
+    /* Message queue initialization */
+    char name[64];
+    lamb_queue_opt opt;
+    opt.flag =  O_RDWR | O_NONBLOCK;
+    opt.attr = NULL;
+
+    sprintf(name, "/gw.%d.message", config.id);
+    err = lamb_queue_open(&send, name, &opt);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open %s queue", name);
+        return;
+    }
+
+    opt.flag = O_WRONLY | O_NONBLOCK;
+    sprintf(name, "/gw.%d.deliver", config.id);
+    err = lamb_queue_open(&recv, name, &opt);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open %s queue", name);
+        return;
+    }
+    
+    /* Cmpp client initialization */
+    err = lamb_cmpp_init(&cmpp, &config);
+    if (err) {
+        lamb_errlog(config.logfile, "Lamb sp client initialization failed", 0);
+        return;
+    }
+
+    pthread_cond_init(&cond, NULL);
+    pthread_mutex_init(&mutex, NULL);
+    
+    /* Start Sender Thread */
+    lamb_start_thread(lamb_sender_loop, NULL, 1);
+
+    /* Start Deliver Thread */
+    lamb_start_thread(lamb_deliver_loop, NULL, 1);
+    
+    while (true) {
+        lamb_sleep(3000);
+    }
 }
 
-void *lamb_recv_loop(void *data) {
-    int err;
-    cmpp_pack_t *pack;
+void *lamb_sender_loop(void *data) {
+    int msgFmt;
+    ssize_t ret;
+    cmpp_pack_t pack;
+    int err, sub, rep;
+    lamb_submit_t *submit;
+    lamb_message_t message;
+    unsigned int sequenceId;
+
+    if (strcasecmp(config.encoding, "ASCII") == 0) {
+        msgFmt = 0;
+    } else if (strcasecmp(config.encoding, "UCS-2") == 0) {
+        msgFmt = 8;
+    } else if (strcasecmp(config.encoding, "GBK") == 0) {
+        msgFmt = 15;
+    } else {
+        msgFmt = 0;
+    }
 
     while (true) {
-        if (!cmpp.ok) {
-            lamb_errlog(config.logfile, "cmpp gateway %s connection error", config.host);
-            lamb_sleep(3000);
-            continue;
-        }
+        sub = 0; rep = 0;
+        ret = lamb_queue_receive(&send, (char *)&message, sizeof(message), 0);
+        if (ret > 0) {
+            submit = (lamb_submit_t *)&(message.data);
+            sequenceId = cmpp_sequence();
+            table.sequenceId = sequenceId;
+            table.msgId = submit->id;
+        submit:
+            err = cmpp_submit(&cmpp.sock, sequenceId, submit->phone, submit->content, true, submit->serviceId, msgFmt, config.spid);
 
-        pack = malloc(sizeof(cmpp_pack_t));
-        err = cmpp_recv(&cmpp.sock, pack, sizeof(cmpp_pack_t));
-        if (err) {
-            cmpp_free_pack(pack);
-            lamb_sleep(1000);
-            continue;
-        }
-
-        switch (ntohl(pack->commandId)) {
-        case CMPP_SUBMIT_RESP:;
-            unconfirmed--;
-            unsigned char result;
-
-            cmpp_pack_get_integer(pack, cmpp_submit_resp_result, &result, 1);
-            if (result != 0) {
-                cmpp_free_pack(pack);
-                lamb_errlog(config.logfile, "receive cmpp_submit_resp packet error result = %d", result);
-                continue;
+            if (err) {
+                if (++sub > config.retry) {
+                    continue;
+                }
+                lamb_errlog(config.logfile, "Unable to receive packets from %s gateway", config.host);
+                lamb_sleep(config.interval);
+                goto submit;
             }
-	    
-            lamb_pack_t *lpack;
-            lamb_update_t *update;
-            update = malloc(sizeof(lamb_update_t));
-            lpack = malloc(sizeof(lamb_pack_t));
-	    
-            update->type = LAMB_UPDATE;
-            cmpp_pack_get_integer(pack, cmpp_submit_resp_msg_id, &update->msgId, 8);
-	    
-            char seqid[64];
-            unsigned long sequenceId;
-            cmpp_pack_get_integer(pack, cmpp_sequence_id , &sequenceId, 4);
-            sprintf(seqid, "%ld", sequenceId);
-	    
-            size_t len;
-            unsigned long long id;
-            id = atoll(lamb_db_get(&cache, seqid, strlen(seqid), &len));
-            if (id > 0) {
-                update->id =id;
-                lpack->len = sizeof(lamb_update_t);
-                lpack->data = update;
-                pthread_mutex_lock(&recv_queue->lock);
-                lamb_list_rpush(recv_queue, lamb_list_node_new(lpack));
-                pthread_mutex_unlock(&recv_queue->lock);
-            } else {
-                free(update);
-                free(lpack);
+
+            struct timeval now;
+            struct timespec timeout;
+
+            gettimeofday(&now, NULL);
+            timeout.tv_sec = now.tv_sec + config.timeout;
+            err = pthread_cond_timedwait(&cond, &mutex, &timeout);
+
+            if (err = ETIMEDOUT) {
+                if (++rep > config.retry) {
+                    continue;
+                }
+                lamb_errlog(config.logfile, "Receive submit message response timeout from %s", config.host);
+                lamb_sleep(config.interval);
+                goto submit;
+            }
+        }
+    }
+}
+
+pthread_exit(NULL);
+
+}
+
+void *lamb_deliver_loop(void *data) {
+    int err;
+    cmpp_pack_t pack;
+    cmpp_head_t *chp;
+    lamb_report_t *report;
+    lamb_update_t *update;
+    lamb_deliver_t *deliver;
+    lamb_message_t message;
+    unsigned int commandId;
+    unsigned int sequenceId;
+    unsigned long long msgId;
+    
+    
+    while (true) {
+        
+        err = cmpp_recv_timeout(&cmpp->sock, pack, sizeof(pack), 60000);
+
+        if (err) {
+            /* Gateway heartbeat check */
+            pthread_mutex_lock(&cmpp->wlock);
+            err = cmpp_active_test(&cmpp.sock);
+            if (err) {
+                lamb_errlog(config.logfile, "Sending Keepalive packet to gateway error", 0);
+            }
+            continue;
+        }
+
+        chp = (cmpp_head_t *)&pack;
+        commandId = ntohl(chp->commandId);
+        sequenceId = ntohl(chp->sequenceId);
+
+        switch (commandId) {
+        case CMPP_SUBMIT_RESP:;
+            /* Cmpp Submit Resp */
+            message.type = LAMB_UPDATE;
+            update = (lamb_update_t *)&(message.data);
+            cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, msgId, 8);
+
+            if (table.sequenceId == sequenceId) {
+                update.id = table.id;
+                update.msgId = msgId;
+                pthread_cond_signal(&cond);
+
+                while (!lamb_queue_send(&recv, &message, sizeof(message), 0)) {
+                    lamb_errlog(config.logfile, "Can't write update message to queue", 0);
+                    lamb_sleep(10);
+                }
             }
             break;
         case CMPP_DELIVER:;
-            unsigned char registered_delivery;
-            lamb_pack_t *delpack = malloc(sizeof(lamb_pack_t));
-            cmpp_pack_get_integer(pack, cmpp_deliver_registered_delivery, &registered_delivery, 1);
-            memset(delpack, 0, sizeof(lamb_pack_t));
-            switch (registered_delivery) {
-            case 0:; /* message delivery */
-                lamb_deliver_t *deliver = malloc(sizeof(lamb_deliver_t));
-                deliver->type = LAMB_DELIVER;
-                cmpp_pack_get_integer(pack, cmpp_deliver_msg_id, &deliver->msgId, 8);
-                cmpp_pack_get_string(pack, cmpp_deliver_dest_id, deliver->destId, 24, 21);
-                cmpp_pack_get_string(pack, cmpp_deliver_service_id, deliver->serviceId, 16, 10);
-                cmpp_pack_get_integer(pack, cmpp_deliver_msg_fmt, &deliver->msgFmt, 1);
-                cmpp_pack_get_string(pack, cmpp_deliver_src_terminal_id, deliver->srcTerminalId, 24, 21);
-                cmpp_pack_get_integer(pack, cmpp_deliver_msg_length, &deliver->msgLength, 1);
-                cmpp_pack_get_string(pack, cmpp_deliver_msg_content, deliver->msgContent, 160, deliver->msgLength);
-                delpack->len = sizeof(lamb_deliver_t);
-                delpack->data = deliver;
-                pthread_mutex_lock(&recv_queue->lock);
-                lamb_list_rpush(recv_queue, lamb_list_node_new(delpack));
-                pthread_mutex_unlock(&recv_queue->lock);
-                break;
-            case 1:;
-                /* message status report */ 
-                lamb_report_t *report = malloc(sizeof(lamb_report_t));
-                report->type = LAMB_REPORT;
-                cmpp_pack_get_integer(pack, cmpp_deliver_msg_content , &report->msgId, 8);
-                cmpp_pack_get_string(pack, cmpp_deliver_msg_content + 8, report->stat, 8, 7);
-                cmpp_pack_get_string(pack, cmpp_deliver_msg_content + 35, report->destTerminalId, 24, 21);
-                delpack->len = sizeof(lamb_report_t);
-                delpack->data = report;
-                pthread_mutex_lock(&recv_queue->lock);
-                lamb_list_rpush(recv_queue, lamb_list_node_new(delpack));
-                pthread_mutex_unlock(&recv_queue->lock);
-                break;
-            default:
-                free(delpack);
-                break;
+            /* Cmpp Deliver */
+            int registered_delivery;
+            cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, &registered_delivery, 1);
+            if (registered_delivery == 1) {
+                message.type = LAMB_REPORT;
+                report = (lamb_report_t *)&(message.data);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &report->id, 8);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_stat, report->status, 8, 7);
+                cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, report->spcode, 24, 21);
+
+                while (!lamb_queue_send(&recv, &message, sizeof(message), 0)) {
+                    lamb_errlog(config.logfile, "Can't write report message to queue", 0);
+                    lamb_sleep(10);
+                }
+            } else {
+                message.type = LAMB_DELIVER;
+                deliver = (lamb_deliver_t *)&(message.data);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_id, &deliver->id, 8);
+                cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, deliver->phone, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, deliver->spcode, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_deliver_service_id, deliver->serviceId, 16, 10);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_fmt, &deliver->msgFmt, 1);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_length, &deliver->msgLength, 1);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->msgContent, 160, deliver->msgLength);
+
+                while (!lamb_queue_send(&recv, &message, sizeof(message), 0)) {
+                    lamb_errlog(config.logfile, "Can't write deliver message to queue", 0);
+                    lamb_sleep(10);
+                }
             }
             break;
-	    case CMPP_ACTIVE_TEST:;
-            unsigned int seq_id;
-            cmpp_pack_get_integer(pack, cmpp_sequence_id, &seq_id, 4);
-            cmpp_active_test_resp(&cmpp.sock, seq_id);
-            break;
-	    default:
-            break;
-        }
-
-        if (pack != NULL) {
-            cmpp_free_pack(pack);
         }
     }
 
-    return NULL;
-}
-
-void *lamb_update_loop(void *data) {
-    int err;
-    lamb_amqp_t amqp;
-
-    err = lamb_amqp_connect(&amqp, config.db_host, config.db_port);
-    if (err) {
-        lamb_errlog(config.logfile, "can't connection to %s amqp server", config.db_host);
-    }
-
-    err = lamb_amqp_login(&amqp, config.db_user, config.db_password);
-    if (err) {
-        lamb_errlog(config.logfile, "login amqp server %s failed", config.db_host);
-    }
-
-    lamb_amqp_setting(&amqp, "lamb.inbox", "inbox");
-
-    while (true) {
-        lamb_pack_t *pack;
-        lamb_list_node_t *node;
-
-        pthread_mutex_lock(&recv_queue->lock);
-        node = lamb_list_lpop(recv_queue);
-        pthread_mutex_unlock(&recv_queue->lock);
-        if (node != NULL) {
-            pack = (lamb_pack_t *)node->val;
-
-            /* code */
-            err = lamb_amqp_push_message(&amqp, pack->data, pack->len);
-            if (err != LAMB_AMQP_STATUS_OK) {
-                lamb_errlog(config.logfile, "amqp push message failed", 0);
-                lamb_sleep(1000);
-            }
-
-            lamb_free_pack(pack);
-            free(node);
-            continue;
-        }
-
-        lamb_sleep(10);
-    }
-
-    return NULL;
+    pthread_exit(NULL);
 }
 
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
@@ -306,7 +271,7 @@ void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
 
     /* Initialization cmpp connection */
     while ((err = cmpp_init_sp(cmpp, config->host, config->port)) != 0) {
-        lamb_errlog(config->logfile, "can't connect to cmpp %s server", config->host);
+        lamb_errlog(config->logfile, "can't connect to gateway %s server", config->host);
         lamb_sleep(cmpp->sock.conTimeout);
     }
 
@@ -320,41 +285,33 @@ void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
     return;
 }
 
-int lamb_cmpp_init(cmpp_sp_t *cmpp) {
+int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     int err;
     cmpp_pack_t pack;
 
     /* setting cmpp socket parameter */
-    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_CONTIMEOUT, config.timeout);
-    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
-    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_CONTIMEOUT, config->timeout);
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_SENDTIMEOUT, config->send_timeout);
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_RECVTIMEOUT, config->recv_timeout);
 
     /* Initialization cmpp connection */
-    err = cmpp_init_sp(cmpp, config.host, config.port);
+    err = cmpp_init_sp(cmpp, config->host, config->port);
     if (err) {
-        if (config.daemon) {
-            lamb_errlog(config.logfile, "can't connect to cmpp %s server", config.host);
-        } else {
-            fprintf(stderr, "can't connect to cmpp %s server\n", config.host);
-        }
-        return -1;
+        lamb_errlog(config->logfile, "Can't connect to gateway %s server", config->host);
+        return 1;
     }
 
     /* login to cmpp gateway */
-    err = cmpp_connect(&cmpp->sock, config.user, config.password);
+    err = cmpp_connect(&cmpp->sock, config->user, config->password);
     if (err) {
-        if (config.daemon) {
-            lamb_errlog(config.logfile, "send cmpp_connect() failed", 0);
-        } else {
-            fprintf(stderr, "send cmpp_connect() failed\n");
-        }
-        return -1;
+        lamb_errlog(config->logfile, "Sending connection request failed", 0);
+        return 2;
     }
 
     err = cmpp_recv(&cmpp->sock, &pack, sizeof(pack));
     if (err) {
-        fprintf(stderr, "cmpp cmpp_recv() failed\n");
-        return -1;
+        lamb_errlog(config->logfile, "Receive gateway response packet failed", 0);
+        return 3;
     }
 
     if (cmpp_check_method(&pack, sizeof(pack), CMPP_CONNECT_RESP)) {
@@ -363,64 +320,32 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp) {
         switch (status) {
         case 0:
             cmpp->ok = true;
-            return 0;
+            goto success;
         case 1:
-            lamb_errlog(config.logfile, "Incorrect protocol packets", 0);
+            lamb_errlog(config->logfile, "Incorrect protocol packets", 0);
             break;
         case 2:
-            lamb_errlog(config.logfile, "Illegal source address", 0);
+            lamb_errlog(config->logfile, "Illegal source address", 0);
             break;
         case 3:
-            lamb_errlog(config.logfile, "Authenticator failed", 0);
+            lamb_errlog(config->logfile, "Authenticator failed", 0);
             break;
         case 4:
-            lamb_errlog(config.logfile, "The protocol version is too high", 0);
+            lamb_errlog(config->logfile, "Protocol version is too high", 0);
             break;
         default:
-            lamb_errlog(config.logfile, "cmpp login failed unknown error", 0);
+            lamb_errlog(config->logfile, "Cmpp unknown error code: %d", status);
             break;
         }
 
-        return -1;
-    }
-
-    lamb_errlog(config.logfile, "Cannot resolve response packet", 0);
-    return -1;
-}
-
-void lamb_event_loop(void) {
-    int err;
-    pthread_attr_t attr;
-    pthread_t uptid, retid, setid, fetid;
-
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-    
-    err = pthread_create(&uptid, &attr, lamb_update_loop, NULL);
-    if (err) {
-        lamb_errlog(config.logfile, "start lamb_update_loop thread failed", 0);
+        return 4;
+    } else {
+        lamb_errlog(config->logfile, "Incorrect gateway response command", 0);
+        return 5;
     }
     
-    err = pthread_create(&retid, &attr, lamb_recv_loop, NULL);
-    if (err) {
-        lamb_errlog(config.logfile, "start lamb_recv_loop thread failed", 0);
-    }
-
-    err = pthread_create(&setid, &attr, lamb_send_loop, NULL);
-    if (err) {
-        lamb_errlog(config.logfile, "start lamb_send_loop thread failed", 0);
-    }
-    
-    err = pthread_create(&fetid, &attr, lamb_fetch_loop, NULL);
-    if (err) {
-        lamb_errlog(config.logfile, "start lamb_fetch_loop thread failed", 0);
-    }
-
-    while (true) {
-        lamb_sleep(5000);
-    }
-
-    return;
+success:
+    return 0;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
@@ -519,36 +444,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "AmqpHost", conf->db_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read AmqpHost parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "AmqpPort", &conf->db_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read AmqpPort parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_string(&cfg, "AmqpUser", conf->db_user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read AmqpUser parameter\n");
-        goto error;
-    }
-
-    if (conf->db_port < 1 || conf->db_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid AmqpPort number parameter\n");
-        goto error;
-    }
-        
-    if (lamb_get_string(&cfg, "AmqpPassword", conf->db_password, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read AmqpPassword parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_string(&cfg, "Queue", conf->queue, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read Queue parameter\n");
-        goto error;
-    }
-        
     lamb_config_destroy(&cfg);
     return 0;
 error:

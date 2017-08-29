@@ -491,6 +491,8 @@ void *lamb_client_online(void *data) {
             if (reply != NULL) {
                 freeReplyObject(reply);
             }
+        } else {
+            lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
         }
 
         sleep(3);

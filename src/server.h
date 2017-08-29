@@ -11,6 +11,10 @@
 #define LAMB_CLIENT       1
 #define LAMB_GATEWAY      2
 
+#define LAMB_SUBMIT 1
+#define LAMB_DELIVER 2
+#define LAMB_REPORT 3
+
 #define LAMB_MAX_CLIENT   1024
 #define LAMB_MAX_GROUP    1024
 #define LAMB_MAX_GATEWAY  1024

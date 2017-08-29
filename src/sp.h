@@ -26,61 +26,62 @@ typedef struct {
     char spid[8];
     char spcode[16];
     char encoding[32];
-    int send;
-    int recv;
-    int unconfirmed;
+    int retry;
+    int interval;
     long long timeout;
     long long send_timeout;
     long long recv_timeout;
     char logfile[128];
-    char db_host[16];
-    int db_port;
-    char db_user[64];
-    char db_password[128];
-    char queue[64];
 } lamb_config_t;
 
 typedef struct {
+    unsigned int sequenceId;
+    unsigned long long msgId;
+} lamb_seqtable_t;
+
+typedef struct {
     int type;
+    char data[508];
+} lamb_message_t;
+
+typedef struct {
     unsigned long long id;
     unsigned long long msgId;
 } lamb_update_t;
 
 typedef struct {
-    unsigned long long msgId;
-    unsigned char serviceId[16];
-    unsigned char msgSrc[8];
-    unsigned char srcId[24];
-    unsigned char destTerminalId[24];
-    unsigned int msgLength;
-    unsigned char msgContent[160];
+    unsigned long long id;
+    char phone[24];
+    char spcode[24];
+    char serviceId[16];
+    bool extended;
+    int msgLength;
+    char msgContent[160];
 } lamb_submit_t;
 
 typedef struct {
-    int type;
-    unsigned long long msgId;
-    unsigned char stat[8];
-    unsigned char destTerminalId[24];
+    unsigned long long id;
+    char status[8];
+    char spcode[24];
 } lamb_report_t;
 
 typedef struct {
-    int type;
-    unsigned long long msgId;
-    unsigned char destId[24];
-    unsigned char serviceId[16];
-    unsigned int msgFmt;
-    unsigned char srcTerminalId[24];
-    unsigned int msgLength;
-    unsigned char msgContent[160];
+    unsigned long long id;
+    char phone[24];
+    char spcode[24];
+    char serviceId[16];
+    int msgFmt;
+    int msgLength;
+    char msgContent[160];
 } lamb_deliver_t;
 
-int lamb_read_config(lamb_config_t *conf, const char *file);
-void *lamb_fetch_loop(void *data);
-void *lamb_send_loop(void *data);
-void *lamb_recv_loop(void *data);
-void *lamb_update_loop(void *data);
-int lamb_cmpp_init(cmpp_sp_t *cmpp);
+#pragma pack()
+
 void lamb_event_loop(void);
+void *lamb_sender_loop(void *data);
+void *lamb_deliver_loop(void *data);
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config);
+int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config);
+int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif
