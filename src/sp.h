@@ -54,7 +54,6 @@ typedef struct {
     char phone[24];
     char spcode[24];
     char serviceId[16];
-    bool extended;
     int msgLength;
     char msgContent[160];
 } lamb_submit_t;

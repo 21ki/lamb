@@ -124,7 +124,8 @@ void *lamb_sender_loop(void *data) {
     lamb_submit_t *submit;
     lamb_message_t message;
     unsigned int sequenceId;
-
+    char spcode[21];
+        
     if (strcasecmp(config.encoding, "ASCII") == 0) {
         msgFmt = 0;
     } else if (strcasecmp(config.encoding, "UCS-2") == 0) {
@@ -143,8 +144,9 @@ void *lamb_sender_loop(void *data) {
             sequenceId = cmpp_sequence();
             table.sequenceId = sequenceId;
             table.msgId = submit->id;
+            sprintf(spcode, "%s%s", config.spcode, submit.sp);
         submit:
-            err = cmpp_submit(&cmpp.sock, sequenceId, submit->phone, submit->content, true, submit->serviceId, msgFmt, config.spid);
+            err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, submit->content, msgFmt, true);
 
             if (err) {
                 if (++sub > config.retry) {
@@ -359,16 +361,46 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
+    if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
+        goto error;
+    }
+
     if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
-        fprintf(stderr, "ERROR: Can't read Debug parameter\n");
+        fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
         goto error;
     }
 
     if (lamb_get_bool(&cfg, "Daemon", &conf->daemon) != 0) {
-        fprintf(stderr, "ERROR: Can't read Daemon parameter\n");
+        fprintf(stderr, "ERROR: Can't read 'Daemon' parameter\n");
         goto error;
     }
-        
+
+    if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "Retry", &conf->retry) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Retry' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "Interval", &conf->interval) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Interval' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int64(&cfg, "SendTimeout", &conf->send_timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int64(&cfg, "RecvTimeout", &conf->recv_timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
+        goto error;
+    }
+    
     if (lamb_get_string(&cfg, "Host", conf->host, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid host IP address\n");
         goto error;
@@ -385,62 +417,32 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     }
 
     if (lamb_get_string(&cfg, "User", conf->user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read User parameter\n");
+        fprintf(stderr, "ERROR: Can't read 'User' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Password", conf->password, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read Password parameter\n");
+        fprintf(stderr, "ERROR: Can't read 'Password' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Spid", conf->spid, 8) != 0) {
-        fprintf(stderr, "ERROR: Can't read Spid parameter\n");
+        fprintf(stderr, "ERROR: Can't read 'Spid' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "SpCode", conf->spcode, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read SpCode parameter\n");
+        fprintf(stderr, "ERROR: Can't read 'SpCode' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Encoding", conf->encoding, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read Encoding parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "SendQueue", &conf->send) != 0) {
-        fprintf(stderr, "ERROR: Can't read SendQueue parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "RecvQueue", &conf->recv) != 0) {
-        fprintf(stderr, "ERROR: Can't read RecvQueue parameter\n");
-        goto error;
-    }
-    
-    if (lamb_get_int(&cfg, "Unconfirmed", &conf->unconfirmed) != 0) {
-        fprintf(stderr, "ERROR: Can't read Unconfirmed parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int64(&cfg, "ConnectTimeout", &conf->timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read ConnectTimeout parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int64(&cfg, "SendTimeout", &conf->send_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read SendTimeout parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int64(&cfg, "RecvTimeout", &conf->recv_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read RecvTimeout parameter\n");
+        fprintf(stderr, "ERROR: Can't read 'Encoding' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read LogFile parameter\n");
+        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;
     }
 
