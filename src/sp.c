@@ -28,6 +28,7 @@ static lamb_config_t config;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 static lamb_seqtable_t table;
+static lamb_heartbeat_t heartbeat;
 
 int main(int argc, char *argv[]) {
     char *file = "lamb.conf";
@@ -111,16 +112,20 @@ void lamb_event_loop(void) {
     /* Start Deliver Thread */
     lamb_start_thread(lamb_deliver_loop, NULL, 1);
     
+    /* Start Keepalive Thread */
+    heartbeat.count = 0;
+    lamb_start_thread(lamb_cmpp_keepalive, NULL, 1);
+
     while (true) {
         lamb_sleep(3000);
     }
 }
 
 void *lamb_sender_loop(void *data) {
+    int err;
     int msgFmt;
     ssize_t ret;
     cmpp_pack_t pack;
-    int err, sub, rep;
     lamb_submit_t *submit;
     lamb_message_t message;
     unsigned int sequenceId;
@@ -137,23 +142,25 @@ void *lamb_sender_loop(void *data) {
     }
 
     while (true) {
-        sub = 0; rep = 0;
+        if (!cmpp.ok) {
+            lamb_sleep(1000);
+            continue;
+        }
+
         ret = lamb_queue_receive(&send, (char *)&message, sizeof(message), 0);
         if (ret > 0) {
             submit = (lamb_submit_t *)&(message.data);
-            sequenceId = cmpp_sequence();
-            table.sequenceId = sequenceId;
+            sequenceId = table.sequenceId = cmpp_sequence();
             table.msgId = submit->id;
-            sprintf(spcode, "%s%s", config.spcode, submit.sp);
+            sprintf(spcode, "%s%s", config.spcode, submit->spcode);
         submit:
             err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, submit->content, msgFmt, true);
-
             if (err) {
-                if (++sub > config.retry) {
-                    continue;
-                }
                 lamb_errlog(config.logfile, "Unable to receive packets from %s gateway", config.host);
                 lamb_sleep(config.interval);
+                if (!cmpp.ok) {
+                    continue;
+                }
                 goto submit;
             }
 
@@ -162,21 +169,20 @@ void *lamb_sender_loop(void *data) {
 
             gettimeofday(&now, NULL);
             timeout.tv_sec = now.tv_sec + config.timeout;
+            pthread_mutex_lock(&mutex);
             err = pthread_cond_timedwait(&cond, &mutex, &timeout);
 
             if (err = ETIMEDOUT) {
-                if (++rep > config.retry) {
-                    continue;
-                }
                 lamb_errlog(config.logfile, "Receive submit message response timeout from %s", config.host);
                 lamb_sleep(config.interval);
+                pthread_mutex_unlock(&mutex);
                 goto submit;
             }
+            pthread_mutex_unlock(&mutex);
         }
     }
-}
 
-pthread_exit(NULL);
+    pthread_exit(NULL);
 
 }
 
@@ -194,16 +200,9 @@ void *lamb_deliver_loop(void *data) {
     
     
     while (true) {
-        
         err = cmpp_recv_timeout(&cmpp->sock, pack, sizeof(pack), 60000);
 
         if (err) {
-            /* Gateway heartbeat check */
-            pthread_mutex_lock(&cmpp->wlock);
-            err = cmpp_active_test(&cmpp.sock);
-            if (err) {
-                lamb_errlog(config.logfile, "Sending Keepalive packet to gateway error", 0);
-            }
             continue;
         }
 
@@ -219,12 +218,11 @@ void *lamb_deliver_loop(void *data) {
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, msgId, 8);
 
             if (table.sequenceId == sequenceId) {
+                pthread_cond_signal(&cond);
                 update.id = table.id;
                 update.msgId = msgId;
-                pthread_cond_signal(&cond);
 
                 while (!lamb_queue_send(&recv, &message, sizeof(message), 0)) {
-                    lamb_errlog(config.logfile, "Can't write update message to queue", 0);
                     lamb_sleep(10);
                 }
             }
@@ -241,7 +239,6 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, report->spcode, 24, 21);
 
                 while (!lamb_queue_send(&recv, &message, sizeof(message), 0)) {
-                    lamb_errlog(config.logfile, "Can't write report message to queue", 0);
                     lamb_sleep(10);
                 }
             } else {
@@ -256,9 +253,13 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->msgContent, 160, deliver->msgLength);
 
                 while (!lamb_queue_send(&recv, &message, sizeof(message), 0)) {
-                    lamb_errlog(config.logfile, "Can't write deliver message to queue", 0);
                     lamb_sleep(10);
                 }
+            }
+            break;
+        case CMPP_ACTIVE_TEST_RESP:
+            if (heartbeat.sequenceId == sequenceId) {
+                heartbeat.count = 0;
             }
             break;
         }
@@ -267,20 +268,34 @@ void *lamb_deliver_loop(void *data) {
     pthread_exit(NULL);
 }
 
-void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
+void *lamb_cmpp_keepalive(void *data) {
     int err;
-    pthread_mutex_lock(&cmpp->lock);
+    unsigned int sequenceId;
 
-    /* Initialization cmpp connection */
-    while ((err = cmpp_init_sp(cmpp, config->host, config->port)) != 0) {
-        lamb_errlog(config->logfile, "can't connect to gateway %s server", config->host);
-        lamb_sleep(cmpp->sock.conTimeout);
+    while (true) {
+        heartbeat.count++;
+        sequenceId = heartbeat.sequenceId = cmpp_sequence();
+        err = cmpp_active_test(&cmpp.sock, sequenceId);
+        if (err) {
+            lamb_errlog(config.logfile, "sending 'cmpp_active_test' to %s gateway failed", config.host);
+        }
+
+        if (heartbeat.count > 3) {
+            cmpp_ismg_close(&cmpp);
+            lamb_cmpp_reconnect(&cmpp, &config);
+            heartbeat.count = 0;
+        }
+
+        lamb_sleep(30000);
     }
 
-    /* login to cmpp gateway */
-    while ((err = cmpp_connect(&cmpp->sock, config->user, config->password)) != 0) {
-        lamb_errlog(config->logfile, "login cmpp %s gateway failed", config->host);
-        lamb_sleep(cmpp->sock.conTimeout);
+    pthread_exit(NULL);
+}
+
+void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
+
+    while (lamb_cmpp_init(cmpp, config) != 0) {
+        lamb_errlog(config->logfile, "Can't connect to gateway %s", config->host);
     }
 
     pthread_mutex_unlock(&cmpp->lock);
@@ -289,7 +304,10 @@ void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
 
 int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     int err;
+    cmpp_head_t *chp;
     cmpp_pack_t pack;
+    unsigned int sequenceId;
+    unsigned int responseId;
 
     /* setting cmpp socket parameter */
     cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_CONTIMEOUT, config->timeout);
@@ -304,7 +322,8 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     }
 
     /* login to cmpp gateway */
-    err = cmpp_connect(&cmpp->sock, config->user, config->password);
+    sequenceId = cmpp_sequence();
+    err = cmpp_connect(&cmpp->sock, sequenceId, config->user, config->password);
     if (err) {
         lamb_errlog(config->logfile, "Sending connection request failed", 0);
         return 2;
@@ -316,7 +335,10 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
         return 3;
     }
 
-    if (cmpp_check_method(&pack, sizeof(pack), CMPP_CONNECT_RESP)) {
+    chp = (cmpp_head_t *)&pack;
+    responseId = ntohl(chp->sequenceId);
+
+    if (cmpp_check_method(&pack, sizeof(pack), CMPP_CONNECT_RESP) && (sequenceId == responseId)) {
         unsigned char status;
         cmpp_pack_get_integer(&pack, cmpp_connect_resp_status, &status, 1);
         switch (status) {
@@ -342,7 +364,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
 
         return 4;
     } else {
-        lamb_errlog(config->logfile, "Incorrect gateway response command", 0);
+        lamb_errlog(config->logfile, "Incorrect response packet from %s gateway", config->host);
         return 5;
     }
     

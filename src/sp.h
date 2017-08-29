@@ -40,6 +40,11 @@ typedef struct {
 } lamb_seqtable_t;
 
 typedef struct {
+    int count;
+    unsigned int sequenceId;
+} lamb_heartbeat_t;
+
+typedef struct {
     int type;
     char data[508];
 } lamb_message_t;
@@ -79,6 +84,7 @@ typedef struct {
 void lamb_event_loop(void);
 void *lamb_sender_loop(void *data);
 void *lamb_deliver_loop(void *data);
+void *lamb_cmpp_keepalive(void *data);
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config);
 int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config);
 int lamb_read_config(lamb_config_t *conf, const char *file);

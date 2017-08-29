@@ -33,6 +33,7 @@ static lamb_db_t db;
 static cmpp_ismg_t cmpp;
 static lamb_cache_t cache;
 static lamb_config_t config;
+static unsigned int sequence;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 
@@ -344,14 +345,10 @@ void lamb_work_loop(lamb_client_t *client) {
                 break;
             case CMPP_SUBMIT:;
                 result = 0;
-                time_t rawtime;
-                struct tm *t;
-                time(&rawtime);
-                t = localtime(&rawtime);
                 unsigned long long msgId;
 
                 /* Generate Message ID */
-                msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, lamb_sequence());
+                msgId = lamb_gen_msgid(gid, lamb_sequence());
                 cmpp_pack_set_integer(&pack, cmpp_submit_msg_id, msgId, 8);
 
                 /* Message Write Queue */
@@ -377,14 +374,13 @@ void lamb_work_loop(lamb_client_t *client) {
             case CMPP_DELIVER_RESP:;
                 result = 0;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
-                if (result == 0) {
-                    //pthread_cond_signal(&cond);
+                if ((result == 0) && (sequenceId == sequence)) {
+                    pthread_cond_signal(&cond);
                 }
                 break;
             case CMPP_TERMINATE:
                 cmpp_terminate_resp(client->sock, sequenceId);
                 goto exit;
-                break;
             }
         }
     }
@@ -402,12 +398,11 @@ void *lamb_deliver_loop(void *data) {
     int err;
     int count;
     ssize_t ret;
-    struct timeval now;
-    struct timespec timeout;
     lamb_message_t message;
     lamb_client_t *client;
     lamb_deliver_t *deliver;
     lamb_report_t *report;
+    unsigned int sequenceId;
 
     client = (lamb_client_t *)data;
 
@@ -424,42 +419,58 @@ void *lamb_deliver_loop(void *data) {
         lamb_errlog(config.logfile, "Open %s message queue failed", name);
         goto exit;
     }
-
-    count = 0;
     
     while (true) {
-        gettimeofday(&now, NULL);
-        timeout.tv_sec = now.tv_sec + 5;
-
-        pthread_mutex_lock(&mutex);
-        err = pthread_cond_timedwait(&cond, &mutex, &timeout);
-
-        if (err == ETIMEDOUT) {
-            count++;
-            lamb_errlog(config.logfile, "Deliver message timeout %d frequency from client ", count, client->addr);
-            continue;
-        }
-        pthread_mutex_unlock(&mutex);
-
         memset(&message, 0 , sizeof(message));
         ret = lamb_queue_receive(&queue, (char *)&message, sizeof(message), 0);
         if (ret > 0) {
             switch (message.type) {
-            case LAMB_DELIVER:
+            case LAMB_DELIVER:;
+                sequenceId = sequence = cmpp_sequence();
                 deliver = (lamb_deliver_t *)(&message.data);
-                err = cmpp_deliver(client->sock, deliver->id, deliver->spcode, 8, deliver->phone, deliver->content);
+            deliver:
+                err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, 8, deliver->phone, deliver->content);
                 if (err) {
                     lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet to client %s failed", client->addr);
+                    lamb_sleep(3000);
+                    goto deliver;
                 }
                 break;
-            case LAMB_REPORT:
+            case LAMB_REPORT:;
+                sequenceId = sequence = cmpp_sequence();
                 report = (lamb_report_t *)(&message.data);
-                err = cmpp_report(client->sock, report->id, report->status, report->submitTime, report->doneTime, report->phone, 0);
+            report:
+                err = cmpp_report(client->sock, sequenceId, report->id, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
                     lamb_errlog(config.logfile, "Sending 'cmpp_report' packet to client %s failed", client->addr);
+                    lamb_sleep(3000);
+                    goto report;
                 }
                 break;
+            default:
+                continue;
             }
+
+            struct timeval now;
+            struct timespec timeout;
+            gettimeofday(&now, NULL);
+            timeout.tv_sec = now.tv_sec + 5;
+
+            /* Waiting for message confirmation */
+            pthread_mutex_lock(&mutex);
+            err = pthread_cond_timedwait(&cond, &mutex, &timeout);
+
+            if (err == ETIMEDOUT) {
+                lamb_errlog(config.logfile, "Deliver message timeout %d frequency from client ", count, client->addr);
+                if (message.type == LAMB_DELIVER) {
+                    pthread_mutex_unlock(&mutex);
+                    goto deliver;
+                } else if (message.type == LAMB_REPORT) {
+                    goto report;
+                    pthread_mutex_unlock(&mutex);
+                }
+            }
+            pthread_mutex_unlock(&mutex);
         }
     }
 
@@ -499,6 +510,20 @@ void *lamb_client_online(void *data) {
     }
 
     pthread_exit(NULL);
+}
+
+unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId) {
+    time_t rawtime;
+    struct tm *t;
+    unsigned long long msgId;
+
+    time(&rawtime);
+    t = localtime(&rawtime);
+
+    /* Generate Message ID */
+    msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, sequenceId);
+
+    return msgId;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
