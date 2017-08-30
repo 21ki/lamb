@@ -77,6 +77,11 @@ CREATE TABLE routes (
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
+CREATE TABLE keyword (
+    id serial PRIMARY KEY NOT NULL,
+    val varchar(36) NOT NULL
+);
+
 CREATE TABLE pay_logs (
     id serial NOT NULL,
     company varchar(64) NOT NULL,
