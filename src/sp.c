@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <arpa/inet.h>
@@ -21,13 +22,12 @@
 #include "cache.h"
 
 static cmpp_sp_t cmpp;
-static lamb_db_t cache;
-static lamb_queue_t send;
-static lamb_queue_t recv;
 static lamb_config_t config;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 static lamb_seqtable_t table;
+static lamb_queue_t send_queue;
+static lamb_queue_t recv_queue;
 static lamb_heartbeat_t heartbeat;
 
 int main(int argc, char *argv[]) {
@@ -68,13 +68,6 @@ int main(int argc, char *argv[]) {
 void lamb_event_loop(void) {
     int err;
 
-    /* Redis Database Initialization */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to redis database", 0);
-        return;
-    }
-
     /* Message queue initialization */
     char name[64];
     lamb_queue_opt opt;
@@ -82,7 +75,7 @@ void lamb_event_loop(void) {
     opt.attr = NULL;
 
     sprintf(name, "/gw.%d.message", config.id);
-    err = lamb_queue_open(&send, name, &opt);
+    err = lamb_queue_open(&send_queue, name, &opt);
     if (err) {
         lamb_errlog(config.logfile, "Can't open %s queue", name);
         return;
@@ -90,7 +83,7 @@ void lamb_event_loop(void) {
 
     opt.flag = O_WRONLY | O_NONBLOCK;
     sprintf(name, "/gw.%d.deliver", config.id);
-    err = lamb_queue_open(&recv, name, &opt);
+    err = lamb_queue_open(&recv_queue, name, &opt);
     if (err) {
         lamb_errlog(config.logfile, "Can't open %s queue", name);
         return;
@@ -125,7 +118,6 @@ void *lamb_sender_loop(void *data) {
     int err;
     int msgFmt;
     ssize_t ret;
-    cmpp_pack_t pack;
     lamb_submit_t *submit;
     lamb_message_t message;
     unsigned int sequenceId;
@@ -147,7 +139,7 @@ void *lamb_sender_loop(void *data) {
             continue;
         }
 
-        ret = lamb_queue_receive(&send, (char *)&message, sizeof(message), 0);
+        ret = lamb_queue_receive(&send_queue, (char *)&message, sizeof(message), 0);
         if (ret > 0) {
             submit = (lamb_submit_t *)&(message.data);
             sequenceId = table.sequenceId = cmpp_sequence();
@@ -172,7 +164,7 @@ void *lamb_sender_loop(void *data) {
             pthread_mutex_lock(&mutex);
             err = pthread_cond_timedwait(&cond, &mutex, &timeout);
 
-            if (err = ETIMEDOUT) {
+            if (err == ETIMEDOUT) {
                 lamb_errlog(config.logfile, "Receive submit message response timeout from %s", config.host);
                 lamb_sleep(config.interval);
                 pthread_mutex_unlock(&mutex);
@@ -200,7 +192,7 @@ void *lamb_deliver_loop(void *data) {
     
     
     while (true) {
-        err = cmpp_recv_timeout(&cmpp->sock, pack, sizeof(pack), 60000);
+        err = cmpp_recv_timeout(&cmpp.sock, &pack, sizeof(pack), 60000);
 
         if (err) {
             continue;
@@ -215,16 +207,16 @@ void *lamb_deliver_loop(void *data) {
             /* Cmpp Submit Resp */
             message.type = LAMB_UPDATE;
             update = (lamb_update_t *)&(message.data);
-            cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, msgId, 8);
+            cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, &msgId, 8);
 
             if (table.sequenceId == sequenceId) {
                 pthread_mutex_lock(&mutex);
                 pthread_cond_signal(&cond);
                 pthread_mutex_unlock(&mutex);
-                update.id = table.id;
-                update.msgId = msgId;
+                update->id = table.msgId;
+                update->msgId = msgId;
 
-                while (!lamb_queue_send(&recv, &message, sizeof(message), 0)) {
+                while (!lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0)) {
                     lamb_sleep(10);
                 }
             }
@@ -240,7 +232,7 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_stat, report->status, 8, 7);
                 cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, report->spcode, 24, 21);
 
-                while (!lamb_queue_send(&recv, &message, sizeof(message), 0)) {
+                while (!lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0)) {
                     lamb_sleep(10);
                 }
             } else {
@@ -254,7 +246,7 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_length, &deliver->msgLength, 1);
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->msgContent, 160, deliver->msgLength);
 
-                while (!lamb_queue_send(&recv, &message, sizeof(message), 0)) {
+                while (!lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0)) {
                     lamb_sleep(10);
                 }
             }
@@ -283,7 +275,7 @@ void *lamb_cmpp_keepalive(void *data) {
         }
 
         if (heartbeat.count > 3) {
-            cmpp_ismg_close(&cmpp);
+            cmpp_sp_close(&cmpp);
             lamb_cmpp_reconnect(&cmpp, &config);
             heartbeat.count = 0;
         }

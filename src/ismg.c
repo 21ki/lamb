@@ -316,7 +316,7 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_start_thread(lamb_client_online, client, 1);
 
     /* Client Message Deliver */
-    //lamb_start_thread(lamb_deliver_loop, (void *)client, 1);
+    lamb_start_thread(lamb_deliver_loop, (void *)client, 1);
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -398,7 +398,6 @@ exit:
 
 void *lamb_deliver_loop(void *data) {
     int err;
-    int count;
     ssize_t ret;
     lamb_message_t message;
     lamb_client_t *client;
@@ -431,7 +430,7 @@ void *lamb_deliver_loop(void *data) {
                 sequenceId = sequence = cmpp_sequence();
                 deliver = (lamb_deliver_t *)(&message.data);
             deliver:
-                err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, 8, deliver->phone, deliver->content);
+                err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, 8);
                 if (err) {
                     lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
@@ -463,7 +462,7 @@ void *lamb_deliver_loop(void *data) {
             err = pthread_cond_timedwait(&cond, &mutex, &timeout);
 
             if (err == ETIMEDOUT) {
-                lamb_errlog(config.logfile, "Deliver message timeout %d frequency from client ", count, client->addr);
+                lamb_errlog(config.logfile, "Deliver message timeout from client %s", client->addr);
                 if (message.type == LAMB_DELIVER) {
                     pthread_mutex_unlock(&mutex);
                     goto deliver;
@@ -512,20 +511,6 @@ void *lamb_client_online(void *data) {
     }
 
     pthread_exit(NULL);
-}
-
-unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId) {
-    time_t rawtime;
-    struct tm *t;
-    unsigned long long msgId;
-
-    time(&rawtime);
-    t = localtime(&rawtime);
-
-    /* Generate Message ID */
-    msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, sequenceId);
-
-    return msgId;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

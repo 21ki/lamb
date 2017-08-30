@@ -17,5 +17,6 @@ void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, 
 unsigned short lamb_sequence(void);
 char *lamb_strdup(const char *str);
 void lamb_start_thread(void *(*func)(void *), void *arg, int count);
+unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId);
 
 #endif

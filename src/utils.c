@@ -145,3 +145,17 @@ void lamb_start_thread(void *(*func)(void *), void *arg, int count) {
     pthread_attr_destroy(&attr);
     return;
 }
+
+unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId) {
+    time_t rawtime;
+    struct tm *t;
+    unsigned long long msgId;
+
+    time(&rawtime);
+    t = localtime(&rawtime);
+
+    /* Generate Message ID */
+    msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, sequenceId);
+
+    return msgId;
+}

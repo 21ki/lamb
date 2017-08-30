@@ -17,6 +17,7 @@
 #define LAMB_DELIVER 3
 
 typedef struct {
+    int id;
     bool debug;
     bool daemon;
     char host[16];
@@ -59,8 +60,8 @@ typedef struct {
     char phone[24];
     char spcode[24];
     char serviceId[16];
-    int msgLength;
-    char msgContent[160];
+    int length;
+    char content[160];
 } lamb_submit_t;
 
 typedef struct {
