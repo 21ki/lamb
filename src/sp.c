@@ -218,7 +218,9 @@ void *lamb_deliver_loop(void *data) {
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, msgId, 8);
 
             if (table.sequenceId == sequenceId) {
+                pthread_mutex_lock(&mutex);
                 pthread_cond_signal(&cond);
+                pthread_mutex_unlock(&mutex);
                 update.id = table.id;
                 update.msgId = msgId;
 

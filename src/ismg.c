@@ -375,7 +375,9 @@ void lamb_work_loop(lamb_client_t *client) {
                 result = 0;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                 if ((result == 0) && (sequenceId == sequence)) {
+                    pthread_mutex_lock(&mutex);
                     pthread_cond_signal(&cond);
+                    pthread_mutex_unlock(&mutex);
                 }
                 break;
             case CMPP_TERMINATE:
