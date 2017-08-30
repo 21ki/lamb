@@ -11,6 +11,8 @@
 #include "db.h"
 #include "channel.h"
 
+#define LAMB_MAX_GROUP 1024
+
 typedef struct {
     int id;
     int len;

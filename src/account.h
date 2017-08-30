@@ -13,6 +13,11 @@
 #include "cache.h"
 #include "queue.h"
 
+#define LAMB_MAX_CLIENT 1024
+
+#define LAMB_CHARGE_SUBMIT  1
+#define LAMB_CHARGE_SUCCESS 2
+
 typedef struct {
     int id;
     char user[8];
@@ -38,5 +43,6 @@ int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account);
 int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size);
 int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_account_t *accounts[], size_t alen, lamb_queue_opt *ropt, lamb_queue_opt *sopt);
 int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_queue_t *queues[], size_t len, int type);
+int lamb_account_spcode_process(char *code, char *spcode, size_t size);
 
 #endif

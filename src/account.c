@@ -156,3 +156,21 @@ int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_que
 
     return 0;
 }
+
+int lamb_account_spcode_process(char *code, char *spcode, size_t size) {
+    size_t len;
+
+    len = strlen(code);
+    
+    if (len > strlen(spcode)) {
+        memcpy(spcode, code, len >= size ? (size - 1) : len);
+        return 0;
+    }
+
+    for (int i = 0; (i < len) && (i < (size - 1)); i++) {
+        spcode[i] = code[i];
+    }
+
+    return 0;
+}
+

@@ -10,6 +10,8 @@
 
 #include "db.h"
 
+#define LAMB_MAX_COMPANY 1024
+
 typedef struct {
     int id;
     int paytype;

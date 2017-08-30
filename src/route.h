@@ -10,6 +10,8 @@
 
 #include "db.h"
 
+#define LAMB_MAX_ROUTE 1024
+
 typedef struct {
     int id;
     char spcode[32];

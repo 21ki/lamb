@@ -15,12 +15,8 @@
 #define LAMB_DELIVER 2
 #define LAMB_REPORT 3
 
-#define LAMB_MAX_CLIENT   1024
-#define LAMB_MAX_GROUP    1024
-#define LAMB_MAX_GATEWAY  1024
-#define LAMB_MAX_COMPANY  1024
-#define LAMB_MAX_TEMPLATE 1024
-#define LAMB_MAX_ROUTE    1024
+#define LAMB_BLACKLIST 1
+#define LAMB_WHITELIST 2
 
 #define LAMB_SENDER_QUEUE  "/sender.queue"
 #define LAMB_DELIVER_QUEUE "/deliver.queue"
@@ -45,18 +41,6 @@ typedef struct {
     char db_password[64];
     char db_name[64];
 } lamb_config_t;
-
-typedef struct {
-    int type;
-    char data[508];
-} lamb_message_t;
-
-typedef struct {
-    unsigned long long id;
-    char phone[24];
-    char spcode[24];
-    char content[160];
-} lamb_submit_t;
 
 void lamb_event_loop(void);
 void lamb_sender_loop(void);

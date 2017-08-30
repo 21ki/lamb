@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Start Main Event Thread */
-    prctl(PR_SET_NAME, "lamb-ismg", 0, 0, 0);
+    lamb_set_process("lamb_ismg");
     lamb_event_loop(&cmpp);
 
     return 0;
@@ -279,8 +279,8 @@ void lamb_work_loop(lamb_client_t *client) {
     gid = getpid();
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
-    prctl(PR_SET_NAME, "lamb-client", 0, 0, 0);
-
+    lamb_set_process("lamb-client");
+    
     /* Redis Cache */
     err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
@@ -357,10 +357,11 @@ void lamb_work_loop(lamb_client_t *client) {
                 message.type = LAMB_SUBMIT;
                 submit = (lamb_submit_t *)&message.data;
                 submit->id = msgId;
+                strcpy(submit->spid, clilen->account.user);
                 cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit->phone, 24, 21);
                 cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit->spcode, 24, 21);
-                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, (size_t *)&len, 1);
-                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit->content, 160, len);
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit->length, 1);
+                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit->content, 160, submit->length);
 
                 err = lamb_queue_send(&queue, (const char *)&message, sizeof(message), 0);
                 if (err) {

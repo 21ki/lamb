@@ -60,6 +60,8 @@ int main(int argc, char *argv[]) {
     lamb_signal();
 
     /* Start main event processing */
+    lamb_set_process("lamb-gateway");
+
     lamb_event_loop();
 
     return 0;

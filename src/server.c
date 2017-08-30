@@ -12,7 +12,6 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <sys/prctl.h>
 #include <time.h>
 #include <sys/time.h>
 #include <pthread.h>
@@ -31,6 +30,7 @@
 
 static lamb_db_t db;
 static lamb_cache_t cache;
+static lamb_keyword_t keys;
 static lamb_config_t config;
 static lamb_account_t *accounts[LAMB_MAX_CLIENT];
 static lamb_company_t *companys[LAMB_MAX_COMPANY];
@@ -77,7 +77,11 @@ int main(int argc, char *argv[]) {
 void lamb_event_loop(void) {
     int err;
     pid_t pid;
-
+    lamb_queue_opt sopt,
+    lamb_queue_opt ropt;
+    struct mq_attr sattr;
+    struct mq_attr rattr;
+    
     /* Postgresql Database  */
     err = lamb_db_init(&db);
     if (err) {
@@ -122,31 +126,43 @@ void lamb_event_loop(void) {
         lamb_errlog(config.logfile, "Can't fetch group information", 0);
         return;
     }
+
+    memset(&keys, 0, sizeof(keys));
+    err = lamb_keyword_get_all(&db, keys, LAMB_MAX_KEYWORD);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
+    }
     
     /* Open all gateway queue */
-    /* 
-       memset(gw_queue, 0, sizeof(gw_queue));    
-       err = lamb_gateway_queue_open(gw_queue, LAMB_MAX_GATEWAY, gateways, LAMB_MAX_GATEWAY);
-       if (err) {
-       lamb_errlog(config.logfile, "Can't open all gateway queue", 0);
-       return;
-       }
-    */
-    
-    /* Open all client queue */
-    struct mq_attr sattr, rattr;
-    lamb_queue_opt sopt, ropt;
-    
     sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
     sattr.mq_maxmsg = 1024;
     sattr.mq_msgsize = sizeof(lamb_message_t);
     sopt.attr = &sattr;
 
     ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
-    rattr.mq_maxmsg = 3;
+    rattr.mq_maxmsg = 5;
+    rattr.mq_msgsize = sizeof(lamb_message_t);
+    ropt.attr = &rattr;
+    
+    memset(gw_queue, 0, sizeof(gw_queue));
+    err = lamb_gateway_queue_open(gw_queue, LAMB_MAX_GATEWAY, gateways, LAMB_MAX_GATEWAY, &sopt, &ropt);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open all gateway queue", 0);
+        return;
+    }
+
+    /* Open all client queue */
+    sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
+    sattr.mq_maxmsg = 1024;
+    sattr.mq_msgsize = sizeof(lamb_message_t);
+    sopt.attr = &sattr;
+
+    ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
+    rattr.mq_maxmsg = 5;
     rattr.mq_msgsize = sizeof(lamb_message_t);
     ropt.attr = &rattr;
 
+    memset(cli_queue, 0, sizeof(cli_queue));
     err = lamb_account_queue_open(cli_queue, LAMB_MAX_CLIENT, accounts, LAMB_MAX_CLIENT, &sopt, &ropt);
     if (err) {
         lamb_errlog(config.logfile, "Can't open all client queue failed", 0);
@@ -160,28 +176,26 @@ void lamb_event_loop(void) {
             lamb_errlog(config.logfile, "Can't fork sender child process", 0);
             return;
         } else if (pid == 0) {
-            prctl(PR_SET_NAME, "lamb-sender", 0, 0, 0);
+            lamb_set_process("lamb-sender");
             lamb_sender_loop();
             return;
         }
     }
 
     /* Start deliver process */
-    /* 
-       for (int i = 0; i < config.deliver; i++) {
-       pid = fork();
-       if (pid < 0) {
-       lamb_errlog(config.logfile, "Can't fork deliver child process", 0);
-       return;
-       } else if (pid == 0) {
-       prctl(PR_SET_NAME, "lamb-deliver", 0, 0, 0);
-       lamb_deliver_loop();
-       return;
-       }
-       }
-    */
+    for (int i = 0; i < config.deliver; i++) {
+        pid = fork();
+        if (pid < 0) {
+            lamb_errlog(config.logfile, "Can't fork deliver child process", 0);
+            return;
+        } else if (pid == 0) {
+            lamb_set_process("lamb-deliver");
+            lamb_deliver_loop();
+            return;
+        }
+    }
 
-    prctl(PR_SET_NAME, "lamb-server", 0, 0, 0);
+    lamb_set_process("lamb_server");
     
     while (true) {
         sleep(3);
@@ -321,6 +335,10 @@ void *lamb_sender_worker(void *val) {
     lamb_queue_opt opt;
     lamb_message_t message;
     lamb_submit_t *msg;
+
+    lamb_account_t *account;
+    lamb_company_t *company;
+    lamb_templates_t *template;
     
     opt.flag = O_RDWR;
     opt.attr = NULL;
@@ -335,14 +353,56 @@ void *lamb_sender_worker(void *val) {
         ret = lamb_queue_receive(&queue, (char *)&message, sizeof(lamb_message_t), 0);
         if (ret > 0) {
             msg = (lamb_submit_t *)&(message.data);
-            printf("id: %llu, ", msg->id);
+            /* 
+            printf("-> id: %llu, ", msg->id);
             printf("phone: %s, ", msg->phone);
             printf("spcode: %s, ", msg->spcode);
             printf("content: %s\n, ", msg->content);
-            printf("-----------------------------------------------------------------\n");
+            */
+
+            /* Blacklist and Whitelist */
+            if (lamb_security_check(list, account->policy, submit->phone)) {
+                continue;
+            }
+
+            /* SpCode Processing  */
+            if (account->extended) {
+                lamb_account_spcode_process(account->spcode, submit->spcode, 20);
+            } else {
+                strcpy(submit->spcode, account->spcode);
+            }
+
+            /* Template Processing */
+            if (account->check_template) {
+                if (!lamb_template_check(template, submit->content, submit->length)) {
+                    continue;
+                }
+            }
+
+            /* Keywords Filtration */
+            if (account->check_keyword) {
+                if (lamb_keyword_check(&keys, submit->content)) {
+                    continue;
+                }
+            }
+
+            /* Routing Scheduling */
+            gw = lamb_route_schedul(account->route, groups);
+
+            /* Billing and Billing Methods */
+            if (account->charge_type == LAMB_CHARGE_SUBMIT) {
+                lamb_company_billing(company->id, 1);
+            }
+
+        submit:
+            err = lamb_queue_send(gw_queue[gw]->send, (char *)&message, sizeof(message), 0);
+            if (err) {
+                lamb_sleep(10);
+                gw = lamb_route_schedul(account->route, groups);
+                goto submit;
+            }
         }
     }
-    
 
 exit:
     pthread_exit(NULL);
@@ -374,7 +434,6 @@ void *lamb_deliver_worker(void *val) {
         }
     }
     
-
 exit:
     pthread_exit(NULL);
     return NULL;

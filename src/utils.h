@@ -8,7 +8,50 @@
 #ifndef _LAMB_UTILS_H
 #define _LAMB_UTILS_H
 
+#include <stdbool.h>
+
 #define lamb_errlog(f, fmt, ...) lamb_log_error(f, __FILE__, __LINE__, fmt, __VA_ARGS__)
+
+#pragma pack(1)
+
+typedef struct {
+    int type;
+    char data[508];
+} lamb_message_t;
+
+typedef struct {
+    unsigned long long id;
+    unsigned long long msgId;
+} lamb_update_t;
+
+typedef struct {
+    unsigned long long id;
+    char spid[8];
+    char spcode[24];
+    char phone[24];
+    int length;
+    char content[160];
+} lamb_submit_t;
+
+typedef struct {
+    unsigned long long id;
+    char phone[24];
+    char status[8];
+    char submitTime[16];
+    char doneTime[16];
+} lamb_report_t;
+
+typedef struct {
+    unsigned long long id;
+    char phone[24];
+    char spcode[24];
+    char serviceId[16];
+    int msgFmt;
+    int length;
+    char content[160];
+} lamb_deliver_t;
+
+#pragma pack()
 
 void lamb_signal(void);
 void lamb_daemon(void);
@@ -18,5 +61,7 @@ unsigned short lamb_sequence(void);
 char *lamb_strdup(const char *str);
 void lamb_start_thread(void *(*func)(void *), void *arg, int count);
 unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId);
+void lamb_set_process(char *name);
+bool lamb_pcre_regular(char *pattern, char *message, int len);
 
 #endif

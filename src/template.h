@@ -10,6 +10,8 @@
 
 #include "db.h"
 
+#define LAMB_MAX_TEMPLATE 1024
+
 typedef struct {
     int id;
     char name[64];
@@ -17,8 +19,14 @@ typedef struct {
     int account;
 } lamb_template_t;
 
+typedef struct {
+    int id;
+    int len;
+    lamb_template_t *list[LAMB_MAX_TEMPLATE];
+} lamb_templates_t;
+
 int lamb_template_get(lamb_db_t *db, int id, lamb_template_t *template);
 int lamb_template_get_all(lamb_db_t *db, lamb_template_t *templates[], size_t size);
-int lamb_check_template(char *pattern, char *message, int len);
-
+bool lamb_template_check(lamb_templates_t *templates, char *content, int len);
+    
 #endif

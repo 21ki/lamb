@@ -73,24 +73,18 @@ int lamb_template_get_all(lamb_db_t *db, lamb_template_t *templates[], size_t si
     return 0;
 }
 
-int lamb_check_template(char *pattern, char *message, int len) {
-    int rc;
-    pcre *re;
-    const char *error;
-    int erroffset;
-    int ovector[510];
+bool lamb_template_check(lamb_templates_t *templates, char *content, int len) {
+    char pattern[512];
 
-    re = pcre_compile(pattern, 0, &error, &erroffset, NULL);
-    if (re == NULL) {
-        return -1;
+    for (int i = 0; (i < templates->len) && (templates->list[i] != NULL); i++) {
+        memset(pattern, 0, sizeof(pattern));
+        sprintf(pattern, "【%s】%s", templates->list[i]->name, templates->list[i]->contents);
+        printf("-> %s\n", pattern);
+        if (lamb_pcre_regular(pattern, content, len)) {
+            return true;
+        }
     }
 
-    rc = pcre_exec(re, NULL, message, len, 0, 0, ovector, 510);
-    if (rc < 0) {
-        pcre_free(re);
-        return -1;
-    }
-
-    pcre_free(re);
-    return 0;
+    return false;
 }
+

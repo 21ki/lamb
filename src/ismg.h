@@ -34,37 +34,10 @@ typedef struct {
 } lamb_config_t;
 
 typedef struct {
-    int type;
-    char data[508];
-} lamb_message_t;
-
-typedef struct {
     cmpp_sock_t *sock;
     lamb_account_t *account;
     char *addr;
 } lamb_client_t;
-
-typedef struct {
-    unsigned long long id;
-    char phone[24];
-    char spcode[24];
-    char content[160];
-} lamb_submit_t;
-
-typedef struct {
-    unsigned long long id;
-    char phone[24];
-    char spcode[24];
-    char content[160];
-} lamb_deliver_t;
-
-typedef struct {
-    unsigned long long id;
-    char phone[24];
-    char status[8];
-    char submitTime[16];
-    char doneTime[16];
-} lamb_report_t;
 
 void lamb_event_loop(cmpp_ismg_t *cmpp);
 void lamb_work_loop(lamb_client_t *client);

@@ -85,25 +85,22 @@ int lamb_gateway_get_all(lamb_db_t *db, lamb_gateway_t *gateways[], size_t size)
     return 0;
 }
 
-int lamb_gateway_queue_open(lamb_gateway_queue_t *queues[], size_t qlen, lamb_gateway_t *gateways[], size_t glen) {
+int lamb_gateway_queue_open(lamb_gateway_queue_t *queues[], size_t qlen, lamb_gateway_t *gateways[], size_t glen, lamb_queue_opt *ropt, lamb_queue_opt *sopt) {
     int err;
     char name[128];
-    lamb_queue_opt opt;
 
     memset(name, 0, sizeof(name));
 
     for (int i = 0, j = 0; (i < glen) && (i < qlen) && (gateways[i] != NULL); i++, j++) {
         lamb_gateway_queue_t *q = NULL;
-        q = (lamb_gateway_queue_t *)malloc(sizeof(lamb_gateway_queue_t));
+        q = malloc(sizeof(lamb_gateway_queue_t));
         if (q != NULL) {
             memset(q, 0, sizeof(lamb_gateway_queue_t));
             q->id = gateways[i]->id;
 
             /* Open send queue */
-            opt.flag = O_WRONLY | O_NONBLOCK;
-            opt.attr = NULL;
             sprintf(name, "/gw.%d.message", gateways[i]->id);
-            err = lamb_queue_open(&(q->send), name, &opt);
+            err = lamb_queue_open(&(q->send), name, ropt);
             if (err) {
                 j--;
                 free(q);
@@ -111,10 +108,9 @@ int lamb_gateway_queue_open(lamb_gateway_queue_t *queues[], size_t qlen, lamb_ga
             }
 
             /* Open recv queue */
-            opt.flag = O_RDWR | O_NONBLOCK;
-            opt.attr = NULL;
             sprintf(name, "/gw.%d.deliver", gateways[i]->id);
-            err = lamb_queue_open(&(q->recv), name, &opt);
+            err = lamb_queue_open(&(q->recv), name, sopt);
+
             if (err) {
                 j--;
                 free(q);

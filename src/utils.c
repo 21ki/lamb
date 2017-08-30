@@ -10,9 +10,10 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <sys/prctl.h>
 #include <time.h>
 #include <sys/time.h>
 #include <signal.h>
@@ -158,4 +159,31 @@ unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId) {
     msgId = cmpp_gen_msgid(t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, gid, sequenceId);
 
     return msgId;
+}
+
+void lamb_set_process(char *name) {
+    prctl(PR_SET_NAME, "lamb-server", 0, 0, 0);
+    return;
+}
+
+bool lamb_pcre_regular(char *pattern, char *content, int len) {
+    int rc;
+    pcre *re;
+    const char *error;
+    int erroffset;
+    int ovector[510];
+
+    re = pcre_compile(pattern, 0, &error, &erroffset, NULL);
+    if (re == NULL) {
+        return false;
+    }
+
+    rc = pcre_exec(re, NULL, content, len, 0, 0, ovector, 510);
+    if (rc < 0) {
+        pcre_free(re);
+        return false;
+    }
+
+    pcre_free(re);
+    return true;
 }

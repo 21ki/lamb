@@ -12,6 +12,8 @@
 #include "db.h"
 #include "queue.h"
 
+#define LAMB_MAX_GATEWAY 1024
+
 typedef struct {
     int id;
     int type;
