@@ -65,3 +65,6 @@ int lamb_company_get_all(lamb_db_t *db, lamb_company_t *companys[], size_t size)
     return 0;
 }
 
+int lamb_company_billing(int company, int count) {
+    return 0;
+}

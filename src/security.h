@@ -13,6 +13,7 @@
 #define _GNU_SOURCE
 #include <search.h>
 
+#define LAMB_POL_EMPTY 0
 #define LAMB_BLACKLIST 1
 #define LAMB_WHITELIST 2
 

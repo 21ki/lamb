@@ -11,10 +11,6 @@
 #define LAMB_CLIENT       1
 #define LAMB_GATEWAY      2
 
-#define LAMB_SUBMIT 1
-#define LAMB_DELIVER 2
-#define LAMB_REPORT 3
-
 #define LAMB_BLACKLIST 1
 #define LAMB_WHITELIST 2
 
@@ -47,7 +43,7 @@ void lamb_sender_loop(void);
 void lamb_deliver_loop(void);
 void *lamb_sender_worker(void *val);
 void *lamb_deliver_worker(void *val);
+int lamb_update_msgid(lamb_cache_t *cache, unsigned long long id, unsigned long long msgId);
 int lamb_read_config(lamb_config_t *conf, const char *file);
-int lamb_check_template(char *pattern, char *message, int len);
 
 #endif

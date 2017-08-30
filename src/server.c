@@ -361,8 +361,10 @@ void *lamb_sender_worker(void *val) {
             */
 
             /* Blacklist and Whitelist */
-            if (lamb_security_check(list, account->policy, submit->phone)) {
-                continue;
+            if (account->policy != LAMB_POL_EMPTY) {
+                if (lamb_security_check(list, account->policy, submit->phone)) {
+                    continue;
+                }
             }
 
             /* SpCode Processing  */
@@ -386,13 +388,9 @@ void *lamb_sender_worker(void *val) {
                 }
             }
 
+        schedul:
             /* Routing Scheduling */
             gw = lamb_route_schedul(account->route, groups);
-
-            /* Billing and Billing Methods */
-            if (account->charge_type == LAMB_CHARGE_SUBMIT) {
-                lamb_company_billing(company->id, 1);
-            }
 
         submit:
             err = lamb_queue_send(gw_queue[gw]->send, (char *)&message, sizeof(message), 0);
@@ -400,6 +398,17 @@ void *lamb_sender_worker(void *val) {
                 lamb_sleep(10);
                 gw = lamb_route_schedul(account->route, groups);
                 goto submit;
+            }
+
+            /* Write Message Id to Cache */
+            err = lamb_write_msgid(&cache, msg.id);
+            if (err) {
+                lamb_errlog(config.logfile, "Can't write message id to redis database", 0);
+            }
+
+            /* Billing and Billing Methods */
+            if (account->charge_type == LAMB_CHARGE_SUBMIT) {
+                lamb_company_billing(company->id, 1);
             }
         }
     }
@@ -414,8 +423,11 @@ void *lamb_deliver_worker(void *val) {
     ssize_t ret;
     lamb_queue_t queue;
     lamb_queue_opt opt;
-    lamb_message_t *message;
-    
+    lamb_message_t message;
+    lamb_update_t *update;
+    lamb_deliver_t *deliver;
+    lamb_report_t *report;
+
     opt.flag = O_RDWR;
     opt.attr = NULL;
     err = lamb_queue_open(&queue, LAMB_DELIVER_QUEUE, &opt);
@@ -424,19 +436,39 @@ void *lamb_deliver_worker(void *val) {
         goto exit;
     }
 
-    message = (lamb_message_t *)malloc(sizeof(lamb_message_t));
-
     while (true) {
         memset(message, 0, sizeof(lamb_message_t));
         ret = lamb_queue_receive(&queue, (char *)message, sizeof(lamb_message_t), 0);
         if (ret > 0) {
-            printf("-----------------------------------------------------------------\n");
+            switch (message.type) {
+                case LAMB_UPDATE:
+                    update = (lamb_update_t *)&message.data;
+                    err = lamb_update_msgid(&cache, update.id, update.msgId);
+                    if (err) {
+                        lamb_errlog(config.logfile, "Can't write update message id", 0);
+                    }
+                    break;
+                case LAMB_REPORT:
+                case LAMB_DELIVER:
+            }
         }
     }
     
 exit:
     pthread_exit(NULL);
     return NULL;
+}
+
+int lamb_update_msgid(lamb_cache_t *cache, unsigned long long id, unsigned long long msgId) {
+    redisReply *reply;
+
+    reply = redisCommand(cache->handle, "SET %llu %llu", id , msgId);
+    if (reply == NULL) {
+        return -1;
+    }
+
+    freeReplyObject(reply);
+    return 0;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

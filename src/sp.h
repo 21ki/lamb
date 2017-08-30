@@ -10,10 +10,6 @@
 
 #include <stdbool.h>
 
-#define LAMB_UPDATE  1
-#define LAMB_REPORT  2
-#define LAMB_DELIVER 3
-
 typedef struct {
     int id;
     bool debug;
