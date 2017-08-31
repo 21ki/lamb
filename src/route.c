@@ -35,12 +35,13 @@ int lamb_route_get(lamb_db_t *db, int id, lamb_route_t *route) {
     return 0;
 }
 
-int lamb_route_get_all(lamb_db_t *db, lamb_route_t *routes[], size_t size) {
+int lamb_route_get_all(lamb_db_t *db, lamb_routes_t *routes, int size) {
     int rows = 0;
     char *column;
     char sql[256];
     PGresult *res = NULL;
-    
+
+    routes->len = 0;
     column = "id, spcode, account";
     sprintf(sql, "SELECT %s FROM routes ORDER BY id", column);
     res = PQexec(db->conn, sql);
@@ -54,15 +55,19 @@ int lamb_route_get_all(lamb_db_t *db, lamb_route_t *routes[], size_t size) {
         return 2;
     }
 
-    for (int i = 0; (i < rows) && (i < size); i++) {
-        lamb_route_t *r= NULL;
-        r = (lamb_route_t *)malloc(sizeof(lamb_route_t));
+    for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
+        lamb_route_t *r = NULL;
+        r = (lamb_route_t *)calloc(1, sizeof(lamb_route_t));
         if (r != NULL) {
-            memset(r, 0, sizeof(lamb_route_t));
             r->id = atoi(PQgetvalue(res, i, 0));
             strncpy(r->spcode, PQgetvalue(res, i, 1), 31);
             strncpy(r->account, PQgetvalue(res, i, 2), 31);
-            routes[i] = r;
+            routes->list[i] = r;
+            routes->len++;
+        } else {
+            if (j > 0) {
+                j--;
+            }
         }
     }
 

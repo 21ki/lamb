@@ -19,7 +19,12 @@ typedef struct {
     lamb_channel_t *channels[1024];
 } lamb_group_t;
 
+typedef struct {
+    int len;
+    lamb_group_t *list[LAMB_MAX_GROUP];
+} lamb_groups_t;
+
 int lamb_group_get(lamb_db_t *db, int id, lamb_group_t *group);
-int lamb_group_get_all(lamb_db_t *db, lamb_group_t *groups[], size_t size);
+int lamb_group_get_all(lamb_db_t *db, lamb_groups_t *groups, int size);
 
 #endif

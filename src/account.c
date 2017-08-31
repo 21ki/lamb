@@ -47,11 +47,12 @@ int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account) {
     return 0;
 }
 
-int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size) {
+int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
     int rows = 0;
     char *sql = NULL;
     PGresult *res = NULL;
-    
+
+    accounts->len = 0;
     sql = "SELECT id, username, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword FROM account ORDER BY id";
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -64,11 +65,10 @@ int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size)
         return 2;
     }
 
-    for (int i = 0; (i < rows) && (i < size); i++) {
-        lamb_account_t *a= NULL;
-        a = (lamb_account_t *)malloc(sizeof(lamb_account_t));
+    for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
+        lamb_account_t *a = NULL;
+        a = (lamb_account_t *)calloc(1, sizeof(lamb_account_t));
         if (a != NULL) {
-            memset(a, 0, sizeof(lamb_account_t));
             a->id = atoi(PQgetvalue(res, i, 0));
             strncpy(a->user, PQgetvalue(res, i, 1), 7);
             strncpy(a->spcode, PQgetvalue(res, i, 2), 20);
@@ -81,7 +81,12 @@ int lamb_account_get_all(lamb_db_t *db, lamb_account_t *accounts[], size_t size)
             a->policy = atoi(PQgetvalue(res, i, 9));
             a->check_template = atoi(PQgetvalue(res, i, 10)) == 0 ? false : true;
             a->check_keyword = atoi(PQgetvalue(res, i, 11)) == 0 ? false : true;
-            accounts[i] = a;
+            accounts->list[j] = a;
+            accounts->len++;
+        } else {
+            if (j > 0) {
+                j--;
+            }
         }
     }
 

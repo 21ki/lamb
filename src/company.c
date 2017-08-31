@@ -33,11 +33,12 @@ int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company) {
     return 0;
 }
 
-int lamb_company_get_all(lamb_db_t *db, lamb_company_t *companys[], size_t size) {
+int lamb_company_get_all(lamb_db_t *db, lamb_companys_t companys, int size) {
     int rows = 0;
     char *sql = NULL;
     PGresult *res = NULL;
-    
+
+    companys->len = 0;
     sql = "SELECT id, paytype FROM company ORDER BY id";
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -50,14 +51,18 @@ int lamb_company_get_all(lamb_db_t *db, lamb_company_t *companys[], size_t size)
         return 2;
     }
 
-    for (int i = 0; (i < rows) && (i < size); i++) {
-        lamb_company_t *c= NULL;
-        c = (lamb_company_t *)malloc(sizeof(lamb_company_t));
+    for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
+        lamb_company_t *c = NULL;
+        c = (lamb_company_t *)calloc(1, sizeof(lamb_company_t));
         if (c != NULL) {
-            memset(c, 0, sizeof(lamb_company_t));
             c->id = atoi(PQgetvalue(res, i, 0));
             c->paytype = atoi(PQgetvalue(res, i, 1));
-            companys[i] = c;
+            companys->list[j] = c;
+            companys->len++;
+        } else {
+            if (j > 0) {
+                j--;
+            }
         }
     }
 

@@ -39,13 +39,14 @@ int lamb_group_get(lamb_db_t *db, int id, lamb_group_t *group) {
     return 0;
 }
 
-int lamb_group_get_all(lamb_db_t *db, lamb_group_t *groups[], size_t size) {
+int lamb_group_get_all(lamb_db_t *db, lamb_groups_t *groups, int size) {
     int err;
     int rows;
     char *column;
     char sql[256];
     PGresult *res = NULL;
-    
+
+    groups->len = 0;
     column = "id";
     sprintf(sql, "SELECT %s FROM groups ORDER BY id", column);
     res = PQexec(db->conn, sql);
@@ -61,7 +62,7 @@ int lamb_group_get_all(lamb_db_t *db, lamb_group_t *groups[], size_t size) {
 
     for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
         lamb_group_t *g = NULL;
-        g = (lamb_group_t *)malloc(sizeof(lamb_group_t));
+        g = (lamb_group_t *)calloc(1, sizeof(lamb_group_t));
         if (g != NULL) {
             int gid = atoi(PQgetvalue(res, i, 0));
             err = lamb_group_get(db, gid, g);
@@ -69,9 +70,12 @@ int lamb_group_get_all(lamb_db_t *db, lamb_group_t *groups[], size_t size) {
                 g->id = gid;
                 g->len = 0;
             }
-            groups[j] = g;
+            groups->list[j] = g;
+            groups->len++;
         } else {
-            j--;
+            if (j > 0) {
+                j--;
+            }
         }
     }
 

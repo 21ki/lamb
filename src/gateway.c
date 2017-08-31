@@ -43,12 +43,13 @@ int lamb_gateway_get(lamb_db_t *db, int id, lamb_gateway_t *gateway) {
     return 0;
 }
 
-int lamb_gateway_get_all(lamb_db_t *db, lamb_gateway_t *gateways[], size_t size) {
+int lamb_gateway_get_all(lamb_db_t *db, lamb_gateways_t *gateways, int size) {
     int rows = 0;
     char *column;
     char sql[256];
     PGresult *res = NULL;
-    
+
+    gateways->len = 0;
     column = "id, type, host, port, username, password, spid, spcode, encoded, concurrent";
     sprintf(sql, "SELECT %s FROM channel ORDER BY id", column);
     res = PQexec(db->conn, sql);
@@ -62,11 +63,10 @@ int lamb_gateway_get_all(lamb_db_t *db, lamb_gateway_t *gateways[], size_t size)
         return 2;
     }
 
-    for (int i = 0; (i < rows) && (i < size); i++) {
-        lamb_gateway_t *g= NULL;
-        g = (lamb_gateway_t *)malloc(sizeof(lamb_gateway_t));
+    for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
+        lamb_gateway_t *g = NULL;
+        g = (lamb_gateway_t *)calloc(1, sizeof(lamb_gateway_t));
         if (g != NULL) {
-            memset(g, 0, sizeof(lamb_gateway_t));
             g->id = atoi(PQgetvalue(res, i, 0));
             g->type = atoi(PQgetvalue(res, i, 1));
             strncpy(g->host, PQgetvalue(res, i, 2), 15);
@@ -77,7 +77,12 @@ int lamb_gateway_get_all(lamb_db_t *db, lamb_gateway_t *gateways[], size_t size)
             strncpy(g->spcode, PQgetvalue(res, i, 7), 20);
             g->encoded = atoi(PQgetvalue(res, i, 8));
             g->concurrent = atoi(PQgetvalue(res, i, 9));
-            gateways[i] = g;
+            gateways->list[j] = g;
+            gateways->len++;
+        } else {
+            if (j > 0) {
+                j--;
+            }
         }
     }
 
