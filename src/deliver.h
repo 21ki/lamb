@@ -14,19 +14,13 @@
 #define LAMB_BLACKLIST 1
 #define LAMB_WHITELIST 2
 
-#define LAMB_SENDER_QUEUE  "/sender.queue"
-#define LAMB_DELIVER_QUEUE "/deliver.queue"
-
 typedef struct {
     int id;
     bool debug;
     bool daemon;
-    char logfile[128];
-    int sender;
-    int deliver;
+    int work_queue;
     int work_threads;
-    long long sender_queue;
-    long long deliver_queue;
+    char logfile[128];
     char redis_host[16];
     int redis_port;
     char redis_password[64];
@@ -39,11 +33,11 @@ typedef struct {
 } lamb_config_t;
 
 void lamb_event_loop(void);
-void lamb_sender_loop(void);
-void lamb_deliver_loop(void);
-void *lamb_sender_worker(void *val);
-void *lamb_deliver_worker(void *val);
+void *lamb_deliver_worker(void *data);
 int lamb_update_msgid(lamb_cache_t *cache, unsigned long long id, unsigned long long msgId);
+int lamb_report_update(lamb_db_t *db, lamb_report_t *report);
+int lamb_save_deliver(lamb_db_t *db, lamb_deliver_t *deliver);
 int lamb_read_config(lamb_config_t *conf, const char *file);
+bool lamb_is_online(lamb_cache_t *cache, int id);
 
 #endif

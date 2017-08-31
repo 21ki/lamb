@@ -69,3 +69,7 @@ int lamb_route_get_all(lamb_db_t *db, lamb_route_t *routes[], size_t size) {
     PQclear(res);
     return 0;
 }
+
+int lamb_route_query(lamb_db_t *db, char *spcode) {
+    return 0;
+}

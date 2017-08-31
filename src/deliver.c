@@ -19,8 +19,9 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <cmpp.h>
-#include "server.h"
+#include "deliver.h"
 #include "utils.h"
+#include "list.h"
 #include "config.h"
 #include "account.h"
 #include "company.h"
@@ -29,15 +30,15 @@
 #include "group.h"
 
 static lamb_db_t db;
+static lamb_list_t *queue;
 static lamb_cache_t cache;
-static lamb_keyword_t keys;
 static lamb_config_t config;
-static lamb_account_t *accounts[LAMB_MAX_CLIENT];
-static lamb_company_t *companys[LAMB_MAX_COMPANY];
-static lamb_group_t *groups[LAMB_MAX_GROUP];
-static lamb_gateway_t *gateways[LAMB_MAX_GATEWAY];
-static lamb_account_queue_t *cli_queue[LAMB_MAX_CLIENT];
-static lamb_gateway_queue_t *gw_queue[LAMB_MAX_GATEWAY];
+static lamb_routes_t routes;
+static lamb_accounts_t accounts;
+static lamb_companys_t companys;
+static lamb_gateways_t gateways;
+static lamb_account_queues_t cli_queue;
+static lamb_gateway_queues_t gw_queue;
 
 int main(int argc, char *argv[]) {
     char *file = "server.conf";
@@ -77,12 +78,19 @@ int main(int argc, char *argv[]) {
 void lamb_event_loop(void) {
     int err;
     pid_t pid;
-    lamb_queue_opt sopt,
-    lamb_queue_opt ropt;
-    struct mq_attr sattr;
-    struct mq_attr rattr;
+    lamb_queue_opt opt;
+    struct mq_attr attr;
     
-    /* Postgresql Database  */
+    lamb_set_process("lamb_deliverd");
+
+    /* Work Queue Initialization */
+    queue = lamb_list_new();
+    if (!queue) {
+        lamb_errlog(config.logfile, "Lmab work queue initialization failed", 0);
+        return;
+    }
+    
+    /* Postgresql Database Initialization */
     err = lamb_db_init(&db);
     if (err) {
         lamb_errlog(config.logfile, "Can't initialize postgresql database handle", 0);
@@ -95,7 +103,7 @@ void lamb_event_loop(void) {
         return;
     }
     
-    /* fetch all account */
+    /* Fetch All Account */
     memset(accounts, 0, sizeof(accounts));
     err = lamb_account_get_all(&db, accounts, LAMB_MAX_CLIENT);
     if (err) {
@@ -103,7 +111,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* fetch all company */
+    /* Fetch All Company */
     memset(companys, 0, sizeof(companys));
     err = lamb_company_get_all(&db, companys, LAMB_MAX_COMPANY);
     if (err) {
@@ -111,7 +119,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* fetch all gateway */
+    /* Fetch All Gateway */
     memset(gateways, 0, sizeof(gateways));
     err = lamb_gateway_get_all(&db, gateways, LAMB_MAX_GATEWAY);
     if (err) {
@@ -119,30 +127,22 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* fetch all group and channels */
-    memset(groups, 0, sizeof(groups));
-    err = lamb_group_get_all(&db, groups, LAMB_MAX_GROUP);
+    /* Open All Client Queue */
+    opt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
+    attr.mq_maxmsg = 5;
+    attr.mq_msgsize = sizeof(lamb_message_t);
+    opt.attr = &attr;
+
+    memset(cli_queue, 0, sizeof(cli_queue));
+    err = lamb_account_queue_open(cli_queue, LAMB_MAX_CLIENT, accounts, LAMB_MAX_CLIENT, &sopt, &ropt);
     if (err) {
-        lamb_errlog(config.logfile, "Can't fetch group information", 0);
+        lamb_errlog(config.logfile, "Can't open all client queue failed", 0);
         return;
     }
 
-    memset(&keys, 0, sizeof(keys));
-    err = lamb_keyword_get_all(&db, keys, LAMB_MAX_KEYWORD);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
-    }
-    
-    /* Open all gateway queue */
-    sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    sattr.mq_maxmsg = 1024;
-    sattr.mq_msgsize = sizeof(lamb_message_t);
-    sopt.attr = &sattr;
-
-    ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
-    rattr.mq_maxmsg = 5;
-    rattr.mq_msgsize = sizeof(lamb_message_t);
-    ropt.attr = &rattr;
+    /* Open All Gateway Queue */
+    opt.flag = O_RDWR | O_NONBLOCK;
+    opt.attr = NULL;
     
     memset(gw_queue, 0, sizeof(gw_queue));
     err = lamb_gateway_queue_open(gw_queue, LAMB_MAX_GATEWAY, gateways, LAMB_MAX_GATEWAY, &sopt, &ropt);
@@ -151,132 +151,6 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Open all client queue */
-    sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    sattr.mq_maxmsg = 1024;
-    sattr.mq_msgsize = sizeof(lamb_message_t);
-    sopt.attr = &sattr;
-
-    ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
-    rattr.mq_maxmsg = 5;
-    rattr.mq_msgsize = sizeof(lamb_message_t);
-    ropt.attr = &rattr;
-
-    memset(cli_queue, 0, sizeof(cli_queue));
-    err = lamb_account_queue_open(cli_queue, LAMB_MAX_CLIENT, accounts, LAMB_MAX_CLIENT, &sopt, &ropt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open all client queue failed", 0);
-        return;
-    }
-    
-    /* Start sender process */
-    for (int i = 0; i < config.sender; i++) {
-        pid = fork();
-        if (pid < 0) {
-            lamb_errlog(config.logfile, "Can't fork sender child process", 0);
-            return;
-        } else if (pid == 0) {
-            lamb_set_process("lamb-sender");
-            lamb_sender_loop();
-            return;
-        }
-    }
-
-    /* Start deliver process */
-    for (int i = 0; i < config.deliver; i++) {
-        pid = fork();
-        if (pid < 0) {
-            lamb_errlog(config.logfile, "Can't fork deliver child process", 0);
-            return;
-        } else if (pid == 0) {
-            lamb_set_process("lamb-deliver");
-            lamb_deliver_loop();
-            return;
-        }
-    }
-
-    lamb_set_process("lamb_server");
-    
-    while (true) {
-        sleep(3);
-    }
-
-    return;
-}
-
-void lamb_sender_loop(void) {
-    int err;
-
-    /* Redis Initialization */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
-        return;
-    }
-
-    /* client queue fd */
-    ssize_t ret;
-    int epfd, nfds;
-    struct epoll_event ev, events[32];
-
-    epfd = epoll_create1(0);
-    err = lamb_account_epoll_add(epfd, &ev, cli_queue, LAMB_MAX_CLIENT, LAMB_QUEUE_SEND);
-    if (err) {
-        lamb_errlog(config.logfile, "Lamb epoll add client sender queue failed", 0);
-        return;
-    }
-
-    /* Create Sender Wrok Queue */
-    lamb_queue_t queue;
-    lamb_queue_opt opt;
-    struct mq_attr attr;
-    
-    opt.flag = O_CREAT | O_WRONLY;
-    attr.mq_maxmsg = config.sender_queue;
-    attr.mq_msgsize = sizeof(lamb_message_t);
-    opt.attr = &attr;
-
-    err = lamb_queue_open(&queue, LAMB_SENDER_QUEUE, &opt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open sender work queue", 0);
-        return;
-    }
-    
-    /* Start sender worker threads */
-    lamb_start_thread(lamb_sender_worker, NULL, config.work_threads);
-
-    lamb_message_t *message;
-    message = malloc(sizeof(lamb_message_t));
-
-    /* Read queue message */
-    while (true) {
-        nfds = epoll_wait(epfd, events, 32, -1);
-
-        if (nfds > 0) {
-            for (int i = 0; i < nfds; i++) {
-                if (events[i].events & EPOLLIN) {
-                    memset(message, 0, sizeof(lamb_message_t));
-                    ret = mq_receive(events[i].data.fd, (char *)message, sizeof(lamb_message_t), 0);
-                    if (ret > 0) {
-                        lamb_queue_send(&queue, (char *)message, sizeof(lamb_message_t), 0);
-                    }
-                }
-            }
-        }
-    }
-}
-
-void lamb_deliver_loop(void) {
-    int err;
-
-    /* Redis Initialization */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
-        return;
-    }
-
-    /* client queue fd */
     ssize_t ret;
     int epfd, nfds;
     struct epoll_event ev, events[32];
@@ -287,37 +161,25 @@ void lamb_deliver_loop(void) {
         lamb_errlog(config.logfile, "Lamb epoll add delvier queue failed", 0);
         return;
     }
-
-    /* Create Sender Wrok Queue */
-    lamb_queue_t queue;
-    lamb_queue_opt opt;
-    struct mq_attr attr;
     
-    opt.flag = O_CREAT | O_RDWR;
-    attr.mq_maxmsg = config.deliver_queue;
-    attr.mq_msgsize = sizeof(lamb_message_t);
-    opt.attr = &attr;
-
-    err = lamb_queue_open(&queue, LAMB_DELIVER_QUEUE, &opt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open deliver work queue", 0);
-        return;
-    }
-
     /* Start sender worker threads */
     lamb_start_thread(lamb_deliver_worker, NULL, config.work_threads);
 
-    lamb_message_t *message;
-    message = malloc(sizeof(lamb_message_t));
-
     /* Read queue message */
+    lamb_message_t *message;
+
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
 
         if (nfds > 0) {
             for (int i = 0; i < nfds; i++) {
-                if (events[i].events & EPOLLIN) {
-                    memset(message, 0, sizeof(lamb_message_t));
+                if ((events[i].events & EPOLLIN) && (queue->len < config.work_queue)) {
+                    message = (lamb_message_t *)calloc(1, sizeof(lamb_message_t));
+                    if (!message) {
+                        lamb_errlog(config.logfile, "Lamb message queue failed to allocate memory", 0);
+                        continue;
+                    }
+
                     ret = mq_receive(events[i].data.fd, (char *)message, sizeof(lamb_message_t), 0);
                     if (ret > 0) {
                         lamb_queue_send(&queue, (char *)message, sizeof(lamb_message_t), 0);
@@ -326,137 +188,61 @@ void lamb_deliver_loop(void) {
             }
         }
     }
+
+    return;
 }
 
-void *lamb_sender_worker(void *val) {
+void *lamb_deliver_worker(void *data) {
     int err;
-    ssize_t ret;
-    lamb_queue_t queue;
-    lamb_queue_opt opt;
-    lamb_message_t message;
-    lamb_submit_t *msg;
-
-    lamb_account_t *account;
-    lamb_company_t *company;
-    lamb_templates_t *template;
-    
-    opt.flag = O_RDWR;
-    opt.attr = NULL;
-    err = lamb_queue_open(&queue, LAMB_SENDER_QUEUE, &opt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open sender work queue", 0);
-        goto exit;
-    }
-
-    while (true) {
-        memset(&message, 0, sizeof(lamb_message_t));
-        ret = lamb_queue_receive(&queue, (char *)&message, sizeof(lamb_message_t), 0);
-        if (ret > 0) {
-            msg = (lamb_submit_t *)&(message.data);
-            /* 
-            printf("-> id: %llu, ", msg->id);
-            printf("phone: %s, ", msg->phone);
-            printf("spcode: %s, ", msg->spcode);
-            printf("content: %s\n, ", msg->content);
-            */
-
-            /* Blacklist and Whitelist */
-            if (account->policy != LAMB_POL_EMPTY) {
-                if (lamb_security_check(list, account->policy, submit->phone)) {
-                    continue;
-                }
-            }
-
-            /* SpCode Processing  */
-            if (account->extended) {
-                lamb_account_spcode_process(account->spcode, submit->spcode, 20);
-            } else {
-                strcpy(submit->spcode, account->spcode);
-            }
-
-            /* Template Processing */
-            if (account->check_template) {
-                if (!lamb_template_check(template, submit->content, submit->length)) {
-                    continue;
-                }
-            }
-
-            /* Keywords Filtration */
-            if (account->check_keyword) {
-                if (lamb_keyword_check(&keys, submit->content)) {
-                    continue;
-                }
-            }
-
-        schedul:
-            /* Routing Scheduling */
-            gw = lamb_route_schedul(account->route, groups);
-
-        submit:
-            err = lamb_queue_send(gw_queue[gw]->send, (char *)&message, sizeof(message), 0);
-            if (err) {
-                lamb_sleep(10);
-                gw = lamb_route_schedul(account->route, groups);
-                goto submit;
-            }
-
-            /* Write Message Id to Cache */
-            err = lamb_write_msgid(&cache, msg.id);
-            if (err) {
-                lamb_errlog(config.logfile, "Can't write message id to redis database", 0);
-            }
-
-            /* Billing and Billing Methods */
-            if (account->charge_type == LAMB_CHARGE_SUBMIT) {
-                lamb_company_billing(company->id, 1);
-            }
-        }
-    }
-
-exit:
-    pthread_exit(NULL);
-    return NULL;
-}
-
-void *lamb_deliver_worker(void *val) {
-    int err;
-    ssize_t ret;
-    lamb_queue_t queue;
-    lamb_queue_opt opt;
-    lamb_message_t message;
+    lamb_list_node_t *node;
+    lamb_message_t *message;
     lamb_update_t *update;
-    lamb_deliver_t *deliver;
     lamb_report_t *report;
-
-    opt.flag = O_RDWR;
-    opt.attr = NULL;
-    err = lamb_queue_open(&queue, LAMB_DELIVER_QUEUE, &opt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open deliver work queue", 0);
-        goto exit;
-    }
+    lamb_deliver_t *deliver;
 
     while (true) {
-        memset(message, 0, sizeof(lamb_message_t));
-        ret = lamb_queue_receive(&queue, (char *)message, sizeof(lamb_message_t), 0);
-        if (ret > 0) {
-            switch (message.type) {
-                case LAMB_UPDATE:
-                    update = (lamb_update_t *)&message.data;
-                    err = lamb_update_msgid(&cache, update.id, update.msgId);
-                    if (err) {
-                        lamb_errlog(config.logfile, "Can't write update message id", 0);
-                    }
-                    break;
-                case LAMB_REPORT:
-                case LAMB_DELIVER:
-            }
+        pthread_mutex_lock(&queue->lock);
+        node = lamb_list_lpop(queue);
+        pthread_mutex_unlock(&queue->lock);
+        
+        if (!node) {
+            lamb_sleep(10);
+            continue;
         }
+
+        message = (lamb_message_t *)node->val;
+        switch (message.type) {
+        case LAMB_UPDATE:
+            update = (lamb_update_t *)&(message->data);
+            err = lamb_update_msgid(&cache, update->id, update->msgId);
+            if (err) {
+                lamb_errlog(config.logfile, "Can't write update messsage id", 0);
+            }
+            break;
+        case LAMB_REPORT:
+            report = (lamb_report_t *)&(message->data);
+            err = lamb_report_update(&db, report);
+            if (err) {
+                lamb_errlog(config.logfile, "Can't update message status report", 0);
+            }
+            break;
+        case LAMB_DELIVER:;
+            deliver = (lamb_deliver_t *)&(message->data);
+            id = lamb_route_query(&cache, deliver->spcode);
+            if (lamb_is_online(&cache, id)) {
+                lamb_queue_send(cli_queue[id], (char *)message, sizeof(lamb_message_t));
+            } else {
+                lamb_save_deliver(&db, deliver);
+            }
+            break;
+        }
+
+        free(node);
+        free(message);
     }
     
-exit:
+    
     pthread_exit(NULL);
-    return NULL;
 }
 
 int lamb_update_msgid(lamb_cache_t *cache, unsigned long long id, unsigned long long msgId) {
@@ -469,6 +255,18 @@ int lamb_update_msgid(lamb_cache_t *cache, unsigned long long id, unsigned long 
 
     freeReplyObject(reply);
     return 0;
+}
+
+int lamb_report_update(lamb_db_t *db, lamb_report_t *report) {
+    return 0;
+}
+
+int lamb_save_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
+    return 0;
+}
+
+bool lamb_is_online(lamb_cache_t *cache, int id) {
+    return true;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

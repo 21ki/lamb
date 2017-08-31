@@ -4,7 +4,7 @@ CFLAGS = -std=c99 -Wall -pedantic
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lpq -lhiredis -lrt -lpcre
 
-all: sp ismg server
+all: sp ismg server deliver
 
 sp: src/sp.c src/sp.h $(OBJS)
 	$(CC) $(CFLAGS) src/sp.c $(OBJS) $(LIBS) -o sp
@@ -14,6 +14,9 @@ ismg: src/ismg.c src/ismg.h $(OBJS)
 
 server: src/server.c src/server.h $(OBJS)
 	$(CC) $(CFLAGS) src/server.c $(OBJS) $(LIBS) -o server
+
+deliver: src/deliver.c src/deliver.h $(OBJS)
+	$(CC) $(CFLAGS) src/deliver.c $(OBJS) $(LIBS) -o deliver
 
 src/account.o: src/account.c src/account.h
 	$(CC) $(CFLAGS) -c src/account.c -o src/account.o

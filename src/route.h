@@ -20,5 +20,6 @@ typedef struct {
 
 int lamb_route_get(lamb_db_t *db, int id, lamb_route_t *route);
 int lamb_route_get_all(lamb_db_t *db, lamb_route_t *routes[], size_t size);
+int lamb_route_query(lamb_db_t *db, char *spcode);
 
 #endif

@@ -263,7 +263,7 @@ void *lamb_worker_loop(void *data) {
         lamb_list_node_t *node;
 
         pthread_mutex_lock(&queue->lock);
-        node = lamb_list_lpop(queue, (char *)&message, sizeof(lamb_message_t), 0);
+        node = lamb_list_lpop(queue);
         pthread_mutex_unlock(&queue->lock);
 
         if (node != NULL) {

@@ -14,19 +14,14 @@
 #define LAMB_BLACKLIST 1
 #define LAMB_WHITELIST 2
 
-#define LAMB_SENDER_QUEUE  "/sender.queue"
-#define LAMB_DELIVER_QUEUE "/deliver.queue"
-
 typedef struct {
     int id;
     bool debug;
     bool daemon;
-    char logfile[128];
-    int sender;
-    int deliver;
+    int queue;
+    int work_queue;
     int work_threads;
-    long long sender_queue;
-    long long deliver_queue;
+    char logfile[128];
     char redis_host[16];
     int redis_port;
     char redis_password[64];
