@@ -85,7 +85,7 @@ int lamb_gateway_get_all(lamb_db_t *db, lamb_gateway_t *gateways[], size_t size)
     return 0;
 }
 
-int lamb_gateway_queue_open(lamb_gateway_queue_t *queues[], size_t qlen, lamb_gateway_t *gateways[], size_t glen, lamb_queue_opt *ropt, lamb_queue_opt *sopt) {
+int lamb_gateway_queue_open(lamb_gateway_queues_t *queue, int qlen, lamb_gateway_t *gateways[], int glen, lamb_queue_opt *opt, int type) {
     int err;
     char name[128];
 
@@ -99,25 +99,20 @@ int lamb_gateway_queue_open(lamb_gateway_queue_t *queues[], size_t qlen, lamb_ga
             q->id = gateways[i]->id;
 
             /* Open send queue */
-            sprintf(name, "/gw.%d.message", gateways[i]->id);
-            err = lamb_queue_open(&(q->send), name, ropt);
+            if (type == LAMB_QUEUE_SEND) {
+                sprintf(name, "/gw.%d.message", gateways[i]->id);
+            } else {
+                sprintf(name, "/gw.%d.deliver", gateways[i]->id);
+            }
+
+            err = lamb_queue_open(&(q->send), name, opt);
             if (err) {
                 j--;
                 free(q);
                 continue;
             }
-
-            /* Open recv queue */
-            sprintf(name, "/gw.%d.deliver", gateways[i]->id);
-            err = lamb_queue_open(&(q->recv), name, sopt);
-
-            if (err) {
-                j--;
-                free(q);
-                continue;
-            }
-
-            queues[j] = q;
+            queue->list[j] = q;
+            queue->len++;
         } else {
             j--;
         }

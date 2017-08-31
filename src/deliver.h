@@ -38,15 +38,6 @@ typedef struct {
     char db_name[64];
 } lamb_config_t;
 
-typedef struct {
-    lamb_list_t *queue;
-    lamb_queue_t *client;
-    lamb_account_t *account;
-    lamb_group_t *group;
-    lamb_company_t *company;
-    lamb_templates_t *template;
-} lamb_work_object_t;
-
 void lamb_event_loop(void);
 void lamb_sender_loop(void);
 void lamb_deliver_loop(void);
