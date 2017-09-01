@@ -12,8 +12,6 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <arpa/inet.h>
-#include <nanomsg/nn.h>
-#include <nanomsg/pubsub.h>
 #include <cmpp.h>
 #include "sp.h"
 #include "utils.h"
