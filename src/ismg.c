@@ -172,7 +172,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         continue;
                     }
 
-                    lamb_errlog(config.logfile, "Receive packet error from client %s", inet_ntoa(clientaddr.sin_addr));
+                    lamb_errlog(config.logfile, "Incorrect packet format from client %s", inet_ntoa(clientaddr.sin_addr));
                     continue;
                 }
 

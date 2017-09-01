@@ -279,14 +279,16 @@ void *lamb_cmpp_keepalive(void *data) {
     unsigned int sequenceId;
 
     while (true) {
-        heartbeat.count++;
+        
         sequenceId = heartbeat.sequenceId = cmpp_sequence();
         err = cmpp_active_test(&cmpp.sock, sequenceId);
         if (err) {
             lamb_errlog(config.logfile, "sending 'cmpp_active_test' to %s gateway failed", config.host);
         }
 
-        if (heartbeat.count > 3) {
+        heartbeat.count++;
+        
+        if (heartbeat.count >= config.retry) {
             cmpp_sp_close(&cmpp);
             lamb_cmpp_reconnect(&cmpp, &config);
             heartbeat.count = 0;
@@ -301,7 +303,6 @@ void *lamb_cmpp_keepalive(void *data) {
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
     lamb_errlog(config->logfile, "Reconnecting to gateway %s ...", config->host);
     while (lamb_cmpp_init(cmpp, config) != 0) {
-        lamb_errlog(config->logfile, "Can't connect to gateway %s", config->host);
         lamb_sleep(config->interval);
     }
 

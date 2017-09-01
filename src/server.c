@@ -283,13 +283,12 @@ void *lamb_worker_loop(void *data) {
             message = (lamb_message_t *)node->val;
             submit = (lamb_submit_t *)&message->data;
 
-            printf("-> id: %llu, ", submit->id);
-            printf("phone: %s, ", submit->phone);
-            printf("spcode: %s, ", submit->spcode);
-            printf("content: %s\n", submit->content);
+            /* 
+            printf("-> id: %llu, phone: %s, spcode: %s, content: %s\n", submit->id, submit->phone, submit->spcode, submit->content);
             free(message);
             free(node);
             continue;
+             */
             
             /* Blacklist and Whitelist */
             void *seclist = NULL;
