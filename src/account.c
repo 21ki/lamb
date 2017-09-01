@@ -10,8 +10,6 @@
 #include <string.h>
 #include <hiredis/hiredis.h>
 #include "account.h"
-#include "db.h"
-#include "queue.h"
 
 int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account) {
     char sql[512];
@@ -48,12 +46,14 @@ int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account) {
 }
 
 int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
-    int rows = 0;
-    char *sql = NULL;
+    int rows;
+    char *column;
+    char sql[512];
     PGresult *res = NULL;
 
     accounts->len = 0;
-    sql = "SELECT id, username, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword FROM account ORDER BY id";
+    column = "id, username, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword";
+    sprintf(sql, "SELECT %s FROM account ORDER BY id", column);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -94,68 +94,61 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
     return 0;
 }
 
-int lamb_account_queue_open(lamb_account_queue_t *queues[], size_t qlen, lamb_account_t *accounts[], size_t alen, lamb_queue_opt *ropt, lamb_queue_opt *sopt) {
+int lamb_account_queue_open(lamb_account_queues_t *queues, int qlen, lamb_accounts_t *accounts, int alen, lamb_queue_opt *opt, int type) {
     int err;
     char name[128];
 
+    queues->len = 0;
     memset(name, 0, sizeof(name));
 
-    for (int i = 0, j = 0; (i < alen) && (i < qlen) && (accounts[i] != NULL); i++, j++) {
+    for (int i = 0, j = 0; (i < alen) && (i < qlen) && (accounts->list[i] != NULL); i++, j++) {
         lamb_account_queue_t *q = NULL;
-        q = malloc(sizeof(lamb_account_queue_t));
+        q = (lamb_account_queue_t *)calloc(1, sizeof(lamb_account_queue_t));
         if (q != NULL) {
-            memset(q, 0, sizeof(lamb_account_queue_t));
-            q->id = accounts[i]->id;
+            q->id = accounts->list[i]->id;
 
             /* Open send queue */
-            sprintf(name, "/cli.%d.message", accounts[i]->id);
-            err = lamb_queue_open(&(q->send), name, ropt);
+            if (type == LAMB_QUEUE_SEND) {
+                sprintf(name, "/cli.%d.message", accounts->list[i]->id);
+            } else {
+                sprintf(name, "/cli.%d.deliver", accounts->list[i]->id);
+            }
+            
+            err = lamb_queue_open(&(q->queue), name, opt);
             if (err) {
                 j--;
                 free(q);
                 continue;
             }
 
-            /* Open recv queue */
-            sprintf(name, "/cli.%d.deliver", accounts[i]->id);
-            err = lamb_queue_open(&(q->recv), name, sopt);
-
-            if (err) {
-                j--;
-                free(q);
-                continue;
-            }
-
-            queues[j] = q;
+            queues->list[j] = q;
         } else {
-            j--;
+            if (j > 0) {
+                j--;
+            }
         }
     }
 
     return 0;
 }
 
-int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_queue_t *queues[], size_t len, int type) {
+int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_queues_t *queues, int len, int type) {
     int err;
 
-    for (int i = 0; i < len && (queues[i] != NULL); i++) {
+    for (int i = 0; (i < queues->len) && (i < len) && (queues->list[i] != NULL); i++) {
         switch (type) {
         case LAMB_QUEUE_SEND:
-            event->data.fd = queues[i]->send.mqd;
             event->events = EPOLLIN;
-            err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues[i]->send.mqd, event);
-            if (err == -1) {
-                return 1;
-            }
             break;
         case LAMB_QUEUE_RECV:
-            event->data.fd = queues[i]->recv.mqd;
             event->events = EPOLLOUT;
-            err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues[i]->recv.mqd, event);
-            if (err == -1) {
-                return 1;
-            }
             break;
+        }
+
+        event->data.fd = queues->list[i]->queue.mqd;
+        err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues->list[i]->queue.mqd, event);
+        if (err == -1) {
+            return 1;
         }
     }
 

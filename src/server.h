@@ -8,6 +8,14 @@
 #ifndef _LAMB_SERVER_H
 #define _LAMB_SERVER_H
 
+#include "cache.h"
+#include "queue.h"
+#include "list.h"
+#include "group.h"
+#include "account.h"
+#include "company.h"
+#include "template.h"
+
 #define LAMB_CLIENT       1
 #define LAMB_GATEWAY      2
 
@@ -43,11 +51,10 @@ typedef struct {
 } lamb_work_object_t;
 
 void lamb_event_loop(void);
-void lamb_sender_loop(void);
-void lamb_deliver_loop(void);
-void *lamb_sender_worker(void *val);
-void *lamb_deliver_worker(void *val);
-int lamb_update_msgid(lamb_cache_t *cache, unsigned long long id, unsigned long long msgId);
+void lamb_work_loop(lamb_account_t *account);
+void *lamb_worker_loop(void *data);
+int lamb_write_msgid(lamb_cache_t *cache, unsigned long long msgId);
+int lamb_route_schedul(int id, lamb_group_t *group);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

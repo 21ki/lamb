@@ -5,12 +5,10 @@
  * Update: 2017-08-24
  */
 
+#include <stdio.h>
 #include "security.h"
 
-bool lamb_security_check(struct hsearch_data *htab, int type, char *phone) {
-    int err;
-    ENTRY e, *ep;
-
-    e.key = phone
+bool lamb_security_check(void *htab, int type, char *phone) {
+    printf("-> lamb_security_check() type: %d\n", type);
+    return false;
 }
-

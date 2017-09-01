@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Start Main Event Thread */
-    lamb_set_process("lamb_ismg");
+    lamb_set_process("lamb-ismgd");
     lamb_event_loop(&cmpp);
 
     return 0;
@@ -352,12 +352,11 @@ void lamb_work_loop(lamb_client_t *client) {
                 cmpp_pack_set_integer(&pack, cmpp_submit_msg_id, msgId, 8);
 
                 /* Message Write Queue */
-                unsigned char len;
                 memset(&message, 0, sizeof(message));
                 message.type = LAMB_SUBMIT;
                 submit = (lamb_submit_t *)&message.data;
                 submit->id = msgId;
-                strcpy(submit->spid, clilen->account.user);
+                strcpy(submit->spid, client->account->user);
                 cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit->phone, 24, 21);
                 cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit->spcode, 24, 21);
                 cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit->length, 1);
@@ -572,11 +571,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_int64(&cfg, "SendTimeout", &conf->send_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_string(&cfg, "Queue", conf->queue, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Queue' parameter\n");
         goto error;
     }
 

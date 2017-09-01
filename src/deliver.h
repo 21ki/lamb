@@ -8,6 +8,11 @@
 #ifndef _LAMB_SERVER_H
 #define _LAMB_SERVER_H
 
+#include "db.h"
+#include "cache.h"
+#include "utils.h"
+#include "route.h"
+
 #define LAMB_CLIENT       1
 #define LAMB_GATEWAY      2
 

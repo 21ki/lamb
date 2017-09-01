@@ -15,7 +15,7 @@ int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company) {
     PGresult *res = NULL;
 
     column = "id, paytype";
-    sprintf(sql, "SELECT %s FROM groups WHERE id = %d", column, id);
+    sprintf(sql, "SELECT %s FROM company WHERE id = %d", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -33,7 +33,7 @@ int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company) {
     return 0;
 }
 
-int lamb_company_get_all(lamb_db_t *db, lamb_companys_t companys, int size) {
+int lamb_company_get_all(lamb_db_t *db, lamb_companys_t *companys, int size) {
     int rows = 0;
     char *sql = NULL;
     PGresult *res = NULL;
@@ -71,5 +71,6 @@ int lamb_company_get_all(lamb_db_t *db, lamb_companys_t companys, int size) {
 }
 
 int lamb_company_billing(int company, int count) {
+    printf("-> lamb_company_billing() company: %d, count: %d\n", company, count);
     return 0;
 }

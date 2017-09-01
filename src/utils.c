@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
+#include <pcre.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/prctl.h>
@@ -162,7 +163,7 @@ unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId) {
 }
 
 void lamb_set_process(char *name) {
-    prctl(PR_SET_NAME, "lamb-server", 0, 0, 0);
+    prctl(PR_SET_NAME, name, 0, 0, 0);
     return;
 }
 

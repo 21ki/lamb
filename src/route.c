@@ -75,6 +75,6 @@ int lamb_route_get_all(lamb_db_t *db, lamb_routes_t *routes, int size) {
     return 0;
 }
 
-int lamb_route_query(lamb_db_t *db, char *spcode) {
+int lamb_route_query(lamb_routes_t *routes, char *spcode) {
     return 0;
 }

@@ -10,13 +10,10 @@
 
 #include <stdbool.h>
 
-#define _GNU_SOURCE
-#include <search.h>
-
 #define LAMB_POL_EMPTY 0
 #define LAMB_BLACKLIST 1
 #define LAMB_WHITELIST 2
 
-bool lamb_security_check(struct hsearch_data *htab, int type, char *phone);
+bool lamb_security_check(void *htab, int type, char *phone);
 
 #endif

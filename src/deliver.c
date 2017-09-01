@@ -20,7 +20,6 @@
 #include <errno.h>
 #include <cmpp.h>
 #include "deliver.h"
-#include "utils.h"
 #include "list.h"
 #include "config.h"
 #include "account.h"
@@ -77,7 +76,6 @@ int main(int argc, char *argv[]) {
 
 void lamb_event_loop(void) {
     int err;
-    pid_t pid;
     lamb_queue_opt opt;
     struct mq_attr attr;
     
@@ -104,24 +102,24 @@ void lamb_event_loop(void) {
     }
     
     /* Fetch All Account */
-    memset(accounts, 0, sizeof(accounts));
-    err = lamb_account_get_all(&db, accounts, LAMB_MAX_CLIENT);
+    memset(&accounts, 0, sizeof(accounts));
+    err = lamb_account_get_all(&db, &accounts, LAMB_MAX_CLIENT);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch account information", 0);
         return;
     }
 
     /* Fetch All Company */
-    memset(companys, 0, sizeof(companys));
-    err = lamb_company_get_all(&db, companys, LAMB_MAX_COMPANY);
+    memset(&companys, 0, sizeof(companys));
+    err = lamb_company_get_all(&db, &companys, LAMB_MAX_COMPANY);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch company information", 0);
         return;
     }
 
     /* Fetch All Gateway */
-    memset(gateways, 0, sizeof(gateways));
-    err = lamb_gateway_get_all(&db, gateways, LAMB_MAX_GATEWAY);
+    memset(&gateways, 0, sizeof(gateways));
+    err = lamb_gateway_get_all(&db, &gateways, LAMB_MAX_GATEWAY);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch gateway information", 0);
         return;
@@ -133,8 +131,8 @@ void lamb_event_loop(void) {
     attr.mq_msgsize = sizeof(lamb_message_t);
     opt.attr = &attr;
 
-    memset(cli_queue, 0, sizeof(cli_queue));
-    err = lamb_account_queue_open(cli_queue, LAMB_MAX_CLIENT, accounts, LAMB_MAX_CLIENT, &sopt, &ropt);
+    memset(&cli_queue, 0, sizeof(cli_queue));
+    err = lamb_account_queue_open(&cli_queue, LAMB_MAX_CLIENT, &accounts, LAMB_MAX_CLIENT, &opt, LAMB_QUEUE_SEND);
     if (err) {
         lamb_errlog(config.logfile, "Can't open all client queue failed", 0);
         return;
@@ -144,8 +142,8 @@ void lamb_event_loop(void) {
     opt.flag = O_RDWR | O_NONBLOCK;
     opt.attr = NULL;
     
-    memset(gw_queue, 0, sizeof(gw_queue));
-    err = lamb_gateway_queue_open(gw_queue, LAMB_MAX_GATEWAY, gateways, LAMB_MAX_GATEWAY, &sopt, &ropt);
+    memset(&gw_queue, 0, sizeof(gw_queue));
+    err = lamb_gateway_queue_open(&gw_queue, LAMB_MAX_GATEWAY, &gateways, LAMB_MAX_GATEWAY, &opt, LAMB_QUEUE_RECV);
     if (err) {
         lamb_errlog(config.logfile, "Can't open all gateway queue", 0);
         return;
@@ -156,7 +154,7 @@ void lamb_event_loop(void) {
     struct epoll_event ev, events[32];
 
     epfd = epoll_create1(0);
-    err = lamb_gateway_epoll_add(epfd, &ev, gw_queue, LAMB_MAX_GATEWAY, LAMB_QUEUE_RECV);
+    err = lamb_gateway_epoll_add(epfd, &ev, &gw_queue, LAMB_MAX_GATEWAY, LAMB_QUEUE_RECV);
     if (err) {
         lamb_errlog(config.logfile, "Lamb epoll add delvier queue failed", 0);
         return;
@@ -182,7 +180,7 @@ void lamb_event_loop(void) {
 
                     ret = mq_receive(events[i].data.fd, (char *)message, sizeof(lamb_message_t), 0);
                     if (ret > 0) {
-                        lamb_queue_send(&queue, (char *)message, sizeof(lamb_message_t), 0);
+                        lamb_list_rpush(queue, lamb_list_node_new(message));
                     }
                 }
             }
@@ -211,7 +209,7 @@ void *lamb_deliver_worker(void *data) {
         }
 
         message = (lamb_message_t *)node->val;
-        switch (message.type) {
+        switch (message->type) {
         case LAMB_UPDATE:
             update = (lamb_update_t *)&(message->data);
             err = lamb_update_msgid(&cache, update->id, update->msgId);
@@ -227,10 +225,11 @@ void *lamb_deliver_worker(void *data) {
             }
             break;
         case LAMB_DELIVER:;
+            int id;
             deliver = (lamb_deliver_t *)&(message->data);
-            id = lamb_route_query(&cache, deliver->spcode);
+            id = lamb_route_query(&routes, deliver->spcode);
             if (lamb_is_online(&cache, id)) {
-                lamb_queue_send(cli_queue[id], (char *)message, sizeof(lamb_message_t));
+                lamb_queue_send(&(cli_queue.list[id]->queue), (char *)message, sizeof(lamb_message_t), 0);
             } else {
                 lamb_save_deliver(&db, deliver);
             }
@@ -258,14 +257,17 @@ int lamb_update_msgid(lamb_cache_t *cache, unsigned long long id, unsigned long 
 }
 
 int lamb_report_update(lamb_db_t *db, lamb_report_t *report) {
+    printf("-> lamb_report_update()\n");
     return 0;
 }
 
 int lamb_save_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
+    printf("-> lamb_save_deliver()\n");
     return 0;
 }
 
 bool lamb_is_online(lamb_cache_t *cache, int id) {
+    printf("-> lamb_is_online()\n");
     return true;
 }
 
@@ -295,28 +297,13 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "Sender", &conf->sender) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Sender' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "Deliver", &conf->deliver) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Deliver' parameter\n");
+    if (lamb_get_int(&cfg, "WorkQueue", &conf->work_queue) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'WorkQueue' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "WorkThreads", &conf->work_threads) != 0) {
         fprintf(stderr, "ERROR: Can't read 'WorkThreads' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int64(&cfg, "SenderQueue", &conf->sender_queue) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'SenderQueue' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int64(&cfg, "DeliverQueue", &conf->deliver_queue) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DeliverQueue' parameter\n");
         goto error;
     }
     

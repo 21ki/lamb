@@ -1,7 +1,7 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
-OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o
+OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lpq -lhiredis -lrt -lpcre
 
 all: sp ismg server deliver
@@ -49,7 +49,19 @@ src/utils.o: src/utils.c src/utils.h
 	$(CC) $(CFLAGS) -c src/utils.c -o src/utils.o
 
 src/security.o: src/security.c src/security.h
-	$(CC) $(CFLAGS) -D_GNU_SOURCE -c src/security.c -o src/security.o
+	$(CC) $(CFLAGS) -c src/security.c -o src/security.o
+
+src/list.o: src/list.c src/list.h
+	$(CC) $(CFLAGS) -c src/list.c -o src/list.o
+
+src/keyword.o: src/keyword.c src/keyword.h
+	$(CC) $(CFLAGS) -c src/keyword.c -o src/keyword.o
+
+src/template.o: src/template.c src/template.h
+	$(CC) $(CFLAGS) -c src/template.c -o src/template.o
+
+src/route.o: src/route.c src/route.h
+	$(CC) $(CFLAGS) -c src/route.c -o src/route.o
 
 .PHONY: install clean
 
@@ -58,6 +70,5 @@ install:
 
 clean:
 	rm -f src/*.o
-	rm -f client
-	rm -f server
+	rm -f ismg server ismg sp
 

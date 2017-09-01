@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pcre.h>
+#include "utils.h"
 #include "template.h"
 
 int lamb_template_get(lamb_db_t *db, int id, lamb_template_t *template) {
@@ -83,7 +84,6 @@ bool lamb_template_check(lamb_templates_t *templates, char *content, int len) {
     for (int i = 0; (i < templates->len) && (templates->list[i] != NULL); i++) {
         memset(pattern, 0, sizeof(pattern));
         sprintf(pattern, "【%s】%s", templates->list[i]->name, templates->list[i]->contents);
-        printf("-> %s\n", pattern);
         if (lamb_pcre_regular(pattern, content, len)) {
             return true;
         }

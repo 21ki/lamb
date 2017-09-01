@@ -73,9 +73,13 @@ void lamb_event_loop(void) {
     /* Message queue initialization */
     char name[64];
     lamb_queue_opt opt;
-    opt.flag =  O_RDWR | O_NONBLOCK;
-    opt.attr = NULL;
+    struct mq_attr attr;
 
+    opt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
+    attr.mq_maxmsg = config.send_queue;
+    attr.mq_msgsize = sizeof(lamb_message_t);
+    opt.attr = &attr;
+    
     sprintf(name, "/gw.%d.message", config.id);
     err = lamb_queue_open(&send_queue, name, &opt);
     if (err) {
@@ -83,7 +87,11 @@ void lamb_event_loop(void) {
         return;
     }
 
-    opt.flag = O_WRONLY | O_NONBLOCK;
+    opt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
+    attr.mq_maxmsg = config.recv_queue;
+    attr.mq_msgsize = sizeof(lamb_message_t);
+    opt.attr = &attr;
+    
     sprintf(name, "/gw.%d.deliver", config.id);
     err = lamb_queue_open(&recv_queue, name, &opt);
     if (err) {
@@ -173,6 +181,8 @@ void *lamb_sender_loop(void *data) {
                 goto submit;
             }
             pthread_mutex_unlock(&mutex);
+        } else {
+            lamb_sleep(10);
         }
     }
 
@@ -197,6 +207,7 @@ void *lamb_deliver_loop(void *data) {
         err = cmpp_recv_timeout(&cmpp.sock, &pack, sizeof(pack), 60000);
 
         if (err) {
+            lamb_sleep(10);
             continue;
         }
 
@@ -232,7 +243,6 @@ void *lamb_deliver_loop(void *data) {
                 report = (lamb_report_t *)&(message.data);
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &report->id, 8);
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_stat, report->status, 8, 7);
-                cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, report->spcode, 24, 21);
 
                 while (!lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0)) {
                     lamb_sleep(10);
@@ -245,8 +255,8 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, deliver->spcode, 24, 21);
                 cmpp_pack_get_string(&pack, cmpp_deliver_service_id, deliver->serviceId, 16, 10);
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_fmt, &deliver->msgFmt, 1);
-                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_length, &deliver->msgLength, 1);
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->msgContent, 160, deliver->msgLength);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_length, &deliver->length, 1);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->content, 160, deliver->length);
 
                 while (!lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0)) {
                     lamb_sleep(10);
@@ -289,9 +299,10 @@ void *lamb_cmpp_keepalive(void *data) {
 }
 
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
-
+    lamb_errlog(config->logfile, "Reconnecting to gateway %s ...", config->host);
     while (lamb_cmpp_init(cmpp, config) != 0) {
         lamb_errlog(config->logfile, "Can't connect to gateway %s", config->host);
+        lamb_sleep(config->interval);
     }
 
     pthread_mutex_unlock(&cmpp->lock);
@@ -321,13 +332,13 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     sequenceId = cmpp_sequence();
     err = cmpp_connect(&cmpp->sock, sequenceId, config->user, config->password);
     if (err) {
-        lamb_errlog(config->logfile, "Sending connection request failed", 0);
+        lamb_errlog(config->logfile, "Sending connection request to %s failed", config->host);
         return 2;
     }
 
     err = cmpp_recv(&cmpp->sock, &pack, sizeof(pack));
     if (err) {
-        lamb_errlog(config->logfile, "Receive gateway response packet failed", 0);
+        lamb_errlog(config->logfile, "Receive gateway response packet from %s failed", config->host);
         return 3;
     }
 
@@ -418,7 +429,17 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
         goto error;
     }
-    
+
+    if (lamb_get_int(&cfg, "SendQueue", &conf->send_queue) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'SendQueue' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "RecvQueue", &conf->recv_queue) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RecvQueue' parameter\n");
+        goto error;
+    }
+
     if (lamb_get_string(&cfg, "Host", conf->host, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid host IP address\n");
         goto error;

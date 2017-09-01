@@ -10,8 +10,7 @@
 #include "utils.h"
 #include "keyword.h"
 
-int lamb_keyword_get_all(lamb_db_t *db, lamb_keyword_t *keys, size_t size) {
-    int len;
+int lamb_keyword_get_all(lamb_db_t *db, lamb_keyword_t *keys, int size) {
     int rows = 0;
     char *column;
     char sql[256];
