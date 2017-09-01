@@ -10,6 +10,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include <errno.h>
 #include <getopt.h>
 #include <arpa/inet.h>
 #include <pthread.h>
