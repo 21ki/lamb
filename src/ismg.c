@@ -166,7 +166,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     if (err == -1) {
-                        lamb_errlog(config.logfile, "Connection is closed by the client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_errlog(config.logfile, "Client closed the connection from %s", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                         close(sockfd);
                         continue;
@@ -368,7 +368,7 @@ void lamb_work_loop(lamb_client_t *client) {
                     lamb_errlog(config.logfile, "Write %s message queue failed", name);
                 }
 
-                /* Ack Response */
+                /* Submit Response */
                 cmpp_submit_resp(client->sock, sequenceId, msgId, result);
                 break;
             case CMPP_DELIVER_RESP:;
@@ -428,7 +428,7 @@ void *lamb_deliver_loop(void *data) {
             switch (message.type) {
             case LAMB_DELIVER:;
                 sequenceId = sequence = cmpp_sequence();
-                deliver = (lamb_deliver_t *)(&message.data);
+                deliver = (lamb_deliver_t *)&message.data;
             deliver:
                 err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, 8);
                 if (err) {
@@ -439,7 +439,7 @@ void *lamb_deliver_loop(void *data) {
                 break;
             case LAMB_REPORT:;
                 sequenceId = sequence = cmpp_sequence();
-                report = (lamb_report_t *)(&message.data);
+                report = (lamb_report_t *)&message.data;
             report:
                 err = cmpp_report(client->sock, sequenceId, report->id, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
@@ -489,7 +489,7 @@ void *lamb_client_online(void *data) {
     /* Redis Cache */
     err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to redis server", 0);
+        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
         return NULL;
     }
 
