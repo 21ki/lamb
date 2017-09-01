@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include <cmpp.h>
 #include "sp.h"
 #include "utils.h"
