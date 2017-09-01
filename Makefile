@@ -70,5 +70,5 @@ install:
 
 clean:
 	rm -f src/*.o
-	rm -f ismg server ismg sp
+	rm -f ismg server deliver sp
 
