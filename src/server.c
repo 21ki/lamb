@@ -317,11 +317,9 @@ void *lamb_worker_loop(void *data) {
             continue;
              */
             
-            /* Blacklist and Whitelist */
-            void *seclist = NULL;
-            
+            /* Blacklist and Whitelist */            
             if (account->policy != LAMB_POL_EMPTY) {
-                if (lamb_security_check(seclist, account->policy, submit->phone)) {
+                if (lamb_security_check(&cache, account->policy, submit->phone)) {
                     continue;
                 }
             }
