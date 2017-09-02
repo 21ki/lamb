@@ -19,11 +19,11 @@ int lamb_route_get(lamb_db_t *db, int id, lamb_route_t *route) {
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
     if (PQntuples(res) < 1) {
-        return 2;
+        return 1;
     }
 
     route->id = atoi(PQgetvalue(res, 0, 0));
@@ -47,13 +47,10 @@ int lamb_route_get_all(lamb_db_t *db, lamb_routes_t *routes, int size) {
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
     rows = PQntuples(res);
-    if (rows < 1) {
-        return 2;
-    }
 
     for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
         lamb_route_t *r = NULL;

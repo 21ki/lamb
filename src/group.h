@@ -16,7 +16,7 @@
 typedef struct {
     int id;
     int len;
-    lamb_channel_t *channels[1024];
+    lamb_channels_t *channels;
 } lamb_group_t;
 
 typedef struct {

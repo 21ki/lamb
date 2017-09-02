@@ -19,11 +19,11 @@ int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company) {
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
     if (PQntuples(res) < 1) {
-        return 2;
+        return 1;
     }
 
     company->id = atoi(PQgetvalue(res, 0, 0));
@@ -43,13 +43,10 @@ int lamb_company_get_all(lamb_db_t *db, lamb_companys_t *companys, int size) {
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
     rows = PQntuples(res);
-    if (rows < 1) {
-        return 2;
-    }
 
     for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
         lamb_company_t *c = NULL;

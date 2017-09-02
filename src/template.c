@@ -44,18 +44,16 @@ int lamb_template_get_all(lamb_db_t *db, int id, lamb_templates_t *templates, in
     char sql[256];
     PGresult *res = NULL;
     
+    templates->len = 0;
     column = "id, name, contents, account";
     sprintf(sql, "SELECT %s FROM template WHERE account = %d ORDER BY id", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
     rows = PQntuples(res);
-    if (rows < 1) {
-        return 2;
-    }
 
     for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
         lamb_template_t *t = NULL;

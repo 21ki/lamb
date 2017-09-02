@@ -20,11 +20,11 @@ int lamb_gateway_get(lamb_db_t *db, int id, lamb_gateway_t *gateway) {
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
     if (PQntuples(res) < 1) {
-        return 2;
+        return 1;
     }
 
     gateway->id = atoi(PQgetvalue(res, 0, 0));
@@ -55,13 +55,10 @@ int lamb_gateway_get_all(lamb_db_t *db, lamb_gateways_t *gateways, int size) {
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
     rows = PQntuples(res);
-    if (rows < 1) {
-        return 2;
-    }
 
     for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
         lamb_gateway_t *g = NULL;
@@ -101,8 +98,6 @@ int lamb_gateway_queue_open(lamb_gateway_queues_t *queues, int qlen, lamb_gatewa
         lamb_gateway_queue_t *q = NULL;
         q = (lamb_gateway_queue_t *)calloc(1, sizeof(lamb_gateway_queue_t));
         if (q != NULL) {
-            q->id = gateways->list[i]->id;
-
             /* Open send queue */
             if (type == LAMB_QUEUE_SEND) {
                 sprintf(name, "/gw.%d.message", gateways->list[i]->id);
@@ -116,6 +111,8 @@ int lamb_gateway_queue_open(lamb_gateway_queues_t *queues, int qlen, lamb_gatewa
                 free(q);
                 continue;
             }
+
+            q->id = gateways->list[i]->id;
             queues->list[j] = q;
             queues->len++;
         } else {

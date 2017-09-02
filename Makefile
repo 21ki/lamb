@@ -1,7 +1,7 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
-OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o
+OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/message.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lpq -lhiredis -lrt -lpcre
 
 all: sp ismg server deliver
@@ -62,6 +62,9 @@ src/template.o: src/template.c src/template.h
 
 src/route.o: src/route.c src/route.h
 	$(CC) $(CFLAGS) -c src/route.c -o src/route.o
+
+src/message.o: src/message.c src/message.h
+	$(CC) $(CFLAGS) -c src/message.c -o src/message.o
 
 .PHONY: install clean
 

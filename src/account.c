@@ -21,11 +21,11 @@ int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account) {
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
     if (PQntuples(res) < 1) {
-        return 2;
+        return 1;
     }
 
     account->id = atoi(PQgetvalue(res, 0, 0));
@@ -57,13 +57,10 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
     rows = PQntuples(res);
-    if (rows < 1) {
-        return 2;
-    }
 
     for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
         lamb_account_t *a = NULL;

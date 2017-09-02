@@ -18,7 +18,7 @@ int lamb_queue_open(lamb_queue_t *queue, char *name, lamb_queue_opt *opt) {
     if (queue->mqd < 0) {
         return -1;
     }
-    
+
     return 0;
 }
 

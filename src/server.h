@@ -43,7 +43,7 @@ typedef struct {
 
 typedef struct {
     lamb_list_t *queue;
-    lamb_queue_t *client;
+    lamb_list_t *storage;
     lamb_account_t *account;
     lamb_group_t *group;
     lamb_company_t *company;

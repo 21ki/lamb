@@ -25,10 +25,11 @@
 #include "gateway.h"
 #include "keyword.h"
 #include "security.h"
+#include "message.h"
 
 static lamb_db_t db;
 static lamb_cache_t cache;
-static lamb_keyword_t keys;
+static lamb_keywords_t keys;
 static lamb_config_t config;
 static lamb_gateways_t gateways;
 static lamb_gateway_queues_t gw_queue;
@@ -95,6 +96,12 @@ void lamb_event_loop(void) {
         return;
     }
 
+    memset(&keys, 0, sizeof(keys));
+    err = lamb_keyword_get_all(&db, &keys, LAMB_MAX_KEYWORD);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
+    }
+
     /* Start work process */
     for (int i = 0; (i < accounts.len) && (i < LAMB_MAX_CLIENT) && (accounts.list[i] != NULL); i++) {
         pid = fork();
@@ -102,7 +109,6 @@ void lamb_event_loop(void) {
             lamb_errlog(config.logfile, "Can't fork id %d work child process", accounts.list[i]->id);
             return;
         } else if (pid == 0) {
-            lamb_set_process("lamb-workd");
             lamb_work_loop(accounts.list[i]);
             return;
         }
@@ -121,15 +127,24 @@ void lamb_event_loop(void) {
 void lamb_work_loop(lamb_account_t *account) {
     int err, ret;
     lamb_list_t *queue;
+    lamb_list_t *storage;
     lamb_group_t group;
     lamb_company_t company;
     lamb_templates_t template;
-    lamb_work_object_t object;
+
+    lamb_set_process("lamb-workd");
 
     /* Work Queue Initialization */
     queue = lamb_list_new();
     if (queue == NULL) {
         lamb_errlog(config.logfile, "Lamb work queue initialization failed ", 0);
+        return;
+    }
+
+    /* Storage Queue Initialization */
+    storage = lamb_list_new();
+    if (storage == NULL) {
+        lamb_errlog(config.logfile, "Lamb storage queue initialization failed ", 0);
         return;
     }
 
@@ -143,7 +158,7 @@ void lamb_work_loop(lamb_account_t *account) {
     /* Postgresql Database Initialization */
     err = lamb_db_init(&db);
     if (err) {
-        lamb_errlog(config.logfile, "Can't initialize postgresql database handle", 0);
+        lamb_errlog(config.logfile, "Postgresql database handle initialize failed", 0);
         return;
     }
 
@@ -179,9 +194,18 @@ void lamb_work_loop(lamb_account_t *account) {
     }
 
     /* Fetch template information */
+    memset(&template, 0, sizeof(template));
     err = lamb_template_get_all(&db, account->id, &template, LAMB_MAX_TEMPLATE);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch template information", 0);
+        return;
+    }
+
+    /* Fetch group information */
+    memset(&group, 0, sizeof(group));
+    err = lamb_group_get(&db, account->route, &group);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't fetch group information", 0);
         return;
     }
 
@@ -206,15 +230,11 @@ void lamb_work_loop(lamb_account_t *account) {
         return;
     }
 
-    err = lamb_group_get(&db, account->route, &group);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't fetch group information", 0);
-        return;
-    }
-
     /* Start sender worker threads */
+    lamb_work_object_t object;
+
     object.queue = queue;
-    object.client = &client;
+    object.storage = storage;
     object.group = &group;
     object.account = account;
     object.company = &company;
@@ -222,13 +242,17 @@ void lamb_work_loop(lamb_account_t *account) {
     
     lamb_start_thread(lamb_worker_loop, (void *)&object, config.work_threads);
 
+    /* Start Billing and Update thread */
+    lamb_start_thread(lamb_billing_loop, (void *)&object, 1);
+
     /* Read queue message */
+    lamb_list_node_t *node;
     lamb_message_t *message;
 
     while (true) {
         message = (lamb_message_t *)calloc(1 , sizeof(lamb_message_t));
         if (!message) {
-            lamb_errlog(config.logfile, "Lamb message queue failed to allocate memory", 0);
+            lamb_errlog(config.logfile, "Lamb message queue allocate memory failed", 0);
             lamb_sleep(1000);
             continue;
         }
@@ -243,8 +267,12 @@ void lamb_work_loop(lamb_account_t *account) {
         while (true) {
             if (queue->len < config.work_queue) {
                 pthread_mutex_lock(&queue->lock);
-                lamb_list_rpush(queue, lamb_list_node_new(message));
+                node = lamb_list_rpush(queue, lamb_list_node_new(message));
                 pthread_mutex_unlock(&queue->lock);
+                if (node == NULL) {
+                    lamb_errlog(config.logfile, "Memory cannot be allocated for the workd queue", 0);
+                    lamb_sleep(3000);
+                }
                 break;
             }
 
@@ -257,6 +285,7 @@ void lamb_work_loop(lamb_account_t *account) {
 void *lamb_worker_loop(void *data) {
     int err;
     lamb_list_t *queue;
+    lamb_list_t *storage;
     lamb_group_t *group;
     lamb_account_t *account;
     lamb_company_t *company;
@@ -267,6 +296,7 @@ void *lamb_worker_loop(void *data) {
 
     object = (lamb_work_object_t *)data;
     queue = object->queue;
+    storage = object->storage;
     account = object->account;
     company = object->company;
     template = object->template;
@@ -321,23 +351,26 @@ void *lamb_worker_loop(void *data) {
             }
 
             /* Routing Scheduling */
-            int gw;
-            gw = lamb_route_schedul(account->route, group);
-
-            err = lamb_queue_send(&(gw_queue.list[gw]->queue), (char *)&message, sizeof(message), 0);
-            if (err) {
-                lamb_errlog(config.logfile, "Can't write message id to redis database", 0);
+            lamb_queue_t *gw;
+        schedul:
+            while ((gw = lamb_route_schedul(group, &gw_queue, 8)) == NULL) {
+                lamb_sleep(10);
             }
 
-            /* Write Message Id to Cache */
-            err = lamb_write_msgid(&cache, submit->id);
+            err = lamb_queue_send(gw->queue, (char *)&message, sizeof(message), 0);
             if (err) {
-                lamb_errlog(config.logfile, "Can't write message id to redis database", 0);
+                lamb_errlog(config.logfile, "Write message to gw.%d.message queue error", gw->id);
+                lamb_sleep(10);
+                goto schedul;
             }
 
-            /* Billing and Billing Methods */
-            if (account->charge_type == LAMB_CHARGE_SUBMIT) {
-                lamb_company_billing(company->id, 1);
+            /* Send Message to Storage */
+            pthread_mutex_lock(&storage->lock);
+            node = lamb_list_rpush(storage, lamb_list_node_new(submit));
+            pthread_mutex_unlock(&storage->lock);
+            if (node == NULL) {
+                lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
+                lamb_sleep(3000);
             }
         } else {
             lamb_sleep(10);
@@ -347,14 +380,88 @@ void *lamb_worker_loop(void *data) {
     pthread_exit(NULL);
 }
 
-int lamb_write_msgid(lamb_cache_t *cache, unsigned long long msgId) {
-    printf("-> lamb_write_msgid() msgId: %llu\n", msgId);
-    return 0;
+lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit) {
+    if ((group->len < 1) || (queues-> len < 1) {
+        return NULL;
+    }
+
+    int err;
+    struct mq_attr attr;
+    lamb_gateway_queue_t *q;
+
+    for (int i = 0; i < (group->len) && (group->channels->list[i] != NULL); i++) {
+            q = lamb_find_queue(group->channels->list[i]->id, queues);
+            if (q != NULL) {
+                err = mq_getattr(q->queue.mqd, &attr);
+                if (err) {
+                    continue;
+                }
+
+                if (attr.mq_curmsgs < limit) {
+                    return q;
+                }
+            }
+        }
+    }
+
+    return NULL;
 }
 
-int lamb_route_schedul(int id, lamb_group_t *group) {
-    printf("-> lamb_route_schedu() routeId: %d\n", id);
-    return 1;
+lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues) {
+    for (int i = 0; (i < queues->len) && (queues->list[i] != NULL); i++) {
+        if (queues->list[i]->id == id) {
+            return queues->list[i];
+        }
+    }
+
+    return NULL;
+}
+
+void *lamb_billing_loop(void *data) {
+    int err;
+    lamb_list_t *storage;
+    lamb_account_t *account;
+    lamb_company_t *company;
+    lamb_work_object_t *object;
+
+    object = (lamb_work_object_t *)data;
+    storage = object->storage;
+    account = object->account;
+    company = object->company;
+
+    lamb_submit_t *submit;
+    lamb_list_node_t *node;
+
+    while (true) {
+        pthread_mutex_lock(&storage->lock);
+        node = lamb_list_lpop(storage);
+        pthread_mutex_unlock(&storage->lock);
+
+        if (node == NULL) {
+            lamb_sleep(10);
+            continue;
+        }
+
+        /* Billing Processing */
+        if (account->charge_type == LAMB_CHARGE_SUBMIT) {
+            err = lamb_company_billing(company->id, 1);
+            if (err) {
+                lamb_errlog(config.logfile, "Lamb Account %d chargeback failure", company->id);
+            }
+        }
+
+        /* Write Message to Database */
+        submit = (lamb_submit_t *)node->val;
+        err = lamb_write_message(&db, account->id, company->id, submit);
+        if (err) {
+            lamb_errlog(config.logfile, "Lamb write message to database failure", 0);
+        }
+
+        free(submit);
+        free(node);
+    }
+
+    pthread_exit(NULL);
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
