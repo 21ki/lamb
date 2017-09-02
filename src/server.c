@@ -378,10 +378,6 @@ void *lamb_worker_loop(void *data) {
 }
 
 lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit) {
-    if ((group->len < 1) || (queues-> len < 1)) {
-        return NULL;
-    }
-
     int err;
     struct mq_attr attr;
     lamb_gateway_queue_t *q;
