@@ -8,15 +8,14 @@
 #include "message.h"
 
 int lamb_write_message(lamb_db_t *db, int account, int company, lamb_submit_t *message) {
-    int err;
     char *column;
     char sql[256];
     PGresult *res = NULL;
 
     if (message != NULL) {
         column = "id, msgid, spid, spcode, phone, content, status, account, company";
-        sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, %lld, '%s', '%s', '%s', '%s', %d, %d, %d)",
-            message->id, 0, message->spid, message->spcode, message->phone, message->content, 0, account, company);
+        sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, %u, '%s', '%s', '%s', '%s', %d, %d, %d)", column,
+            (long long int)message->id, 0, message->spid, message->spcode, message->phone, message->content, 0, account, company);
         res = PQexec(db->conn, sql);
         if (PQresultStatus(res) != PGRES_TUPLES_OK) {
             PQclear(res);

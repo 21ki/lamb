@@ -23,6 +23,6 @@ typedef struct {
     lamb_channel_t *list[LAMB_MAX_CHANNEL];
 } lamb_channels_t;
 
-int lamb_channel_get(lamb_db_t *db, int gid, lamb_channel_t *channels[], size_t size);
+int lamb_get_channels(lamb_db_t *db, int gid, lamb_channels_t *channels, int size);
 
 #endif

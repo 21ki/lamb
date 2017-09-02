@@ -15,6 +15,7 @@
 #include "account.h"
 #include "company.h"
 #include "template.h"
+#include "gateway.h"
 
 #define LAMB_CLIENT       1
 #define LAMB_GATEWAY      2
@@ -53,8 +54,9 @@ typedef struct {
 void lamb_event_loop(void);
 void lamb_work_loop(lamb_account_t *account);
 void *lamb_worker_loop(void *data);
-int lamb_write_msgid(lamb_cache_t *cache, unsigned long long msgId);
-int lamb_route_schedul(int id, lamb_group_t *group);
+lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit);
+lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues);
+void *lamb_billing_loop(void *data);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

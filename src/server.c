@@ -22,7 +22,6 @@
 #include "server.h"
 #include "utils.h"
 #include "config.h"
-#include "gateway.h"
 #include "keyword.h"
 #include "security.h"
 #include "message.h"

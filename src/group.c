@@ -37,7 +37,7 @@ int lamb_group_get(lamb_db_t *db, int id, lamb_group_t *group) {
         return 2;
     }
 
-    group->len = channels->len;    
+    group->len = group->channels->len;    
     return 0;
 }
 

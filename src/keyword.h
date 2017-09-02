@@ -18,6 +18,6 @@ typedef struct {
 } lamb_keywords_t;
 
 int lamb_keyword_get_all(lamb_db_t *db, lamb_keywords_t *keys, int size);
-bool lamb_keyword_check(lamb_keyword_t *keys, char *content);
+bool lamb_keyword_check(lamb_keywords_t *keys, char *content);
 
 #endif

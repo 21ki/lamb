@@ -28,7 +28,7 @@ int lamb_get_channels(lamb_db_t *db, int gid, lamb_channels_t *channels, int siz
 
     for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
         lamb_channel_t *c = NULL;
-        c = (lamb_channel_t)calloc(1, sizeof(lamb_channel_t));
+        c = (lamb_channel_t *)calloc(1, sizeof(lamb_channel_t));
         if (c != NULL) {
             c->id = atoi(PQgetvalue(res, i, 0));
             c->gid = atoi(PQgetvalue(res, i, 1));
@@ -44,5 +44,5 @@ int lamb_get_channels(lamb_db_t *db, int gid, lamb_channels_t *channels, int siz
 
     PQclear(res);
 
-    return count;
+    return 0;
 }
