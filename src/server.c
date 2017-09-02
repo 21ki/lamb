@@ -287,7 +287,6 @@ void *lamb_worker_loop(void *data) {
     lamb_list_t *storage;
     lamb_group_t *group;
     lamb_account_t *account;
-    lamb_company_t *company;
     lamb_templates_t *template;
     lamb_work_object_t *object;
     lamb_message_t *message;
@@ -297,7 +296,6 @@ void *lamb_worker_loop(void *data) {
     queue = object->queue;
     storage = object->storage;
     account = object->account;
-    company = object->company;
     template = object->template;
     group = object->group;
     
@@ -350,7 +348,7 @@ void *lamb_worker_loop(void *data) {
             }
 
             /* Routing Scheduling */
-            lamb_queue_t *gw;
+            lamb_gateway_queue_t *gw;
         schedul:
             while ((gw = lamb_route_schedul(group, &gw_queue, 8)) == NULL) {
                 lamb_sleep(10);
@@ -380,7 +378,7 @@ void *lamb_worker_loop(void *data) {
 }
 
 lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit) {
-    if ((group->len < 1) || (queues-> len < 1) {
+    if ((group->len < 1) || (queues-> len < 1)) {
         return NULL;
     }
 
