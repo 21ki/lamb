@@ -354,7 +354,7 @@ void *lamb_worker_loop(void *data) {
                 lamb_sleep(10);
             }
 
-            err = lamb_queue_send(gw->queue, (char *)&message, sizeof(message), 0);
+            err = lamb_queue_send(&gw->queue, (char *)&message, sizeof(message), 0);
             if (err) {
                 lamb_errlog(config.logfile, "Write message to gw.%d.message queue error", gw->id);
                 lamb_sleep(10);
@@ -387,16 +387,15 @@ lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queue
     lamb_gateway_queue_t *q;
 
     for (int i = 0; i < (group->len) && (group->channels->list[i] != NULL); i++) {
-            q = lamb_find_queue(group->channels->list[i]->id, queues);
-            if (q != NULL) {
-                err = mq_getattr(q->queue.mqd, &attr);
-                if (err) {
-                    continue;
-                }
-
-                if (attr.mq_curmsgs < limit) {
-                    return q;
-                }
+        q = lamb_find_queue(group->channels->list[i]->id, queues);
+        if (q != NULL) {
+            err = mq_getattr(q->queue.mqd, &attr);
+            if (err) {
+                continue;
+            }
+            
+            if (attr.mq_curmsgs < limit) {
+                return q;
             }
         }
     }
