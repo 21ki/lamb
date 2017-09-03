@@ -87,7 +87,14 @@ void lamb_event_loop(void) {
         lamb_errlog(config.logfile, "Lmab work queue initialization failed", 0);
         return;
     }
-    
+
+    /* Redis Database Initialization */
+    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to redis database", 0);
+        return;
+    }
+
     /* Postgresql Database Initialization */
     err = lamb_db_init(&db);
     if (err) {
@@ -126,13 +133,13 @@ void lamb_event_loop(void) {
     }
 
     /* Open All Client Queue */
-    opt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
+    opt.flag = O_WRONLY | O_NONBLOCK;
     attr.mq_maxmsg = 5;
     attr.mq_msgsize = sizeof(lamb_message_t);
     opt.attr = &attr;
 
     memset(&cli_queue, 0, sizeof(cli_queue));
-    err = lamb_account_queue_open(&cli_queue, LAMB_MAX_CLIENT, &accounts, LAMB_MAX_CLIENT, &opt, LAMB_QUEUE_SEND);
+    err = lamb_account_queue_open(&cli_queue, LAMB_MAX_CLIENT, &accounts, LAMB_MAX_CLIENT, &opt, LAMB_QUEUE_RECV);
     if (err) {
         lamb_errlog(config.logfile, "Can't open all client queue failed", 0);
         return;
@@ -164,6 +171,7 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_deliver_worker, NULL, config.work_threads);
 
     /* Read queue message */
+    lamb_list_node_t *node;
     lamb_message_t *message;
 
     while (true) {
@@ -174,13 +182,18 @@ void lamb_event_loop(void) {
                 if ((events[i].events & EPOLLIN) && (queue->len < config.work_queue)) {
                     message = (lamb_message_t *)calloc(1, sizeof(lamb_message_t));
                     if (!message) {
-                        lamb_errlog(config.logfile, "Lamb message queue failed to allocate memory", 0);
+                        lamb_errlog(config.logfile, "Lamb can't allocate memory for message", 0);
+                        lamb_sleep(3000);
                         continue;
                     }
 
                     ret = mq_receive(events[i].data.fd, (char *)message, sizeof(lamb_message_t), 0);
                     if (ret > 0) {
-                        lamb_list_rpush(queue, lamb_list_node_new(message));
+                        node = lamb_list_rpush(queue, lamb_list_node_new(message));
+                        if (node == NULL) {
+                            lamb_errlog(config.logfile, "Lamb can't allocate memory for queue", 0);
+                            lamb_sleep(3000);
+                        }
                     }
                 }
             }
@@ -212,9 +225,10 @@ void *lamb_deliver_worker(void *data) {
         switch (message->type) {
         case LAMB_UPDATE:
             update = (lamb_update_t *)&(message->data);
-            err = lamb_update_msgid(&cache, update->id, update->msgId);
+            err = lamb_update_message(&cache, update);
             if (err) {
-                lamb_errlog(config.logfile, "Can't write update messsage id", 0);
+                lamb_errlog(config.logfile, "Lamb can't update messsage", 0);
+                lamb_sleep(1000);
             }
             break;
         case LAMB_REPORT:

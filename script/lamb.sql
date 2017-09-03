@@ -72,7 +72,7 @@ CREATE TABLE channel (
 CREATE TABLE routes (
     id serial PRIMARY KEY NOT NULL,
     spcode varchar(32) NOT NULL,
-    account varchar(32) NOT NULL,
+    account int NOT NULL,
     description varchar(64) NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
