@@ -159,7 +159,7 @@ void *lamb_sender_loop(void *data) {
             err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, submit->content, msgFmt, true);
             if (err) {
                 lamb_errlog(config.logfile, "Unable to receive packets from %s gateway", config.host);
-                lamb_sleep(config.interval);
+                lamb_sleep(config.interval * 1000);
                 if (!cmpp.ok) {
                     continue;
                 }
@@ -170,13 +170,16 @@ void *lamb_sender_loop(void *data) {
             struct timespec timeout;
 
             gettimeofday(&now, NULL);
-            timeout.tv_sec = now.tv_sec + config.timeout;
+            timeout.tv_sec = now.tv_sec;
+            timeout.tv_nsec = now.tv_usec * 1000;
+            timeout.tv_sec += config.timeout;
+            
             pthread_mutex_lock(&mutex);
             err = pthread_cond_timedwait(&cond, &mutex, &timeout);
 
             if (err == ETIMEDOUT) {
                 lamb_errlog(config.logfile, "Receive submit message response timeout from %s", config.host);
-                lamb_sleep(config.interval);
+                lamb_sleep(config.interval * 1000);
                 pthread_mutex_unlock(&mutex);
                 goto submit;
             }
@@ -303,7 +306,7 @@ void *lamb_cmpp_keepalive(void *data) {
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
     lamb_errlog(config->logfile, "Reconnecting to gateway %s ...", config->host);
     while (lamb_cmpp_init(cmpp, config) != 0) {
-        lamb_sleep(config->interval);
+        lamb_sleep(config->interval * 1000);
     }
 
     pthread_mutex_unlock(&cmpp->lock);
@@ -318,7 +321,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     unsigned int responseId;
 
     /* setting cmpp socket parameter */
-    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_CONTIMEOUT, config->timeout);
+    cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_CONTIMEOUT, config->timeout * 1000);
     cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_SENDTIMEOUT, config->send_timeout);
     cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_RECVTIMEOUT, config->recv_timeout);
 
