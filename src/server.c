@@ -26,7 +26,6 @@
 #include "security.h"
 #include "message.h"
 
-static lamb_cache_t cache;
 static lamb_keywords_t keys;
 static lamb_config_t config;
 static lamb_gateways_t gateways;
@@ -124,6 +123,8 @@ void lamb_event_loop(void) {
 
 void lamb_work_loop(lamb_account_t *account) {
     int err, ret;
+    lamb_cache_t rdb;
+    lamb_cache_t cache;
     lamb_list_t *queue;
     lamb_list_t *storage;
     lamb_group_t group;
@@ -147,9 +148,16 @@ void lamb_work_loop(lamb_account_t *account) {
     }
 
     /* Redis Initialization */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
         lamb_errlog(config.logfile, "Can't connect to redis server", 0);
+        return;
+    }
+
+    /* Cache Initialization */
+    err = lamb_cache_connect(&cache, config.cache_host, config.cache_port, NULL, config.cache_db);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to cache server", 0);
         return;
     }
 
@@ -234,6 +242,8 @@ void lamb_work_loop(lamb_account_t *account) {
     lamb_work_object_t object;
 
     object.db = &db;
+    object.rdb = &rdb;
+    object.cache = &cache;
     object.queue = queue;
     object.storage = storage;
     object.group = &group;
@@ -244,7 +254,7 @@ void lamb_work_loop(lamb_account_t *account) {
     lamb_start_thread(lamb_worker_loop, (void *)&object, config.work_threads);
 
     /* Start Billing and Update thread */
-    lamb_start_thread(lamb_billing_loop, (void *)&object, 1);
+    lamb_start_thread(lamb_storage_billing, (void *)&object, 1);
 
     /* Read queue message */
     lamb_list_node_t *node;
@@ -285,6 +295,7 @@ void lamb_work_loop(lamb_account_t *account) {
 
 void *lamb_worker_loop(void *data) {
     int err;
+    lamb_cache_t *cache;
     lamb_list_t *queue;
     lamb_list_t *storage;
     lamb_group_t *group;
@@ -295,6 +306,7 @@ void *lamb_worker_loop(void *data) {
     lamb_submit_t *submit;
 
     object = (lamb_work_object_t *)data;
+    cache = object->cache;
     queue = object->queue;
     storage = object->storage;
     account = object->account;
@@ -312,16 +324,11 @@ void *lamb_worker_loop(void *data) {
             message = (lamb_message_t *)node->val;
             submit = (lamb_submit_t *)&message->data;
 
-            /* 
-            printf("-> id: %llu, phone: %s, spcode: %s, content: %s\n", submit->id, submit->phone, submit->spcode, submit->content);
-            free(message);
-            free(node);
-            continue;
-             */
-            
-            /* Blacklist and Whitelist */            
+            //printf("-> id: %llu, phone: %s, spcode: %s, content: %s\n", submit->id, submit->phone, submit->spcode, submit->content);
+
+            /* Blacklist and Whitelist */
             if (account->policy != LAMB_POL_EMPTY) {
-                if (lamb_security_check(&cache, account->policy, submit->phone)) {
+                if (lamb_security_check(cache, account->policy, submit->phone)) {
                     continue;
                 }
             }
@@ -354,7 +361,8 @@ void *lamb_worker_loop(void *data) {
                 lamb_sleep(10);
             }
 
-            err = lamb_queue_send(&gw->queue, (char *)&message, sizeof(message), 0);
+            printf("-> lamb_queue_send\n");
+            err = lamb_queue_send(&gw->queue, (char *)message, sizeof(lamb_message_t), 0);
             if (err) {
                 lamb_errlog(config.logfile, "Write message to gw.%d.message queue error", gw->id);
                 lamb_sleep(10);
@@ -363,7 +371,7 @@ void *lamb_worker_loop(void *data) {
 
             /* Send Message to Storage */
             pthread_mutex_lock(&storage->lock);
-            node = lamb_list_rpush(storage, lamb_list_node_new(submit));
+            node = lamb_list_rpush(storage, node);
             pthread_mutex_unlock(&storage->lock);
             if (node == NULL) {
                 lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
@@ -409,9 +417,10 @@ lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues) {
     return NULL;
 }
 
-void *lamb_billing_loop(void *data) {
+void *lamb_storage_billing(void *data) {
     int err;
     lamb_db_t *db;
+    lamb_cache_t *cache;
     lamb_list_t *storage;
     lamb_account_t *account;
     lamb_company_t *company;
@@ -419,13 +428,15 @@ void *lamb_billing_loop(void *data) {
 
     object = (lamb_work_object_t *)data;
     db = object->db;
+    cache = object->cache;
     storage = object->storage;
     account = object->account;
     company = object->company;
 
     lamb_submit_t *submit;
     lamb_list_node_t *node;
-
+    lamb_message_t *message;
+    
     while (true) {
         pthread_mutex_lock(&storage->lock);
         node = lamb_list_lpop(storage);
@@ -444,15 +455,25 @@ void *lamb_billing_loop(void *data) {
             }
         }
 
-        /* Write Message to Database */
-        submit = (lamb_submit_t *)node->val;
-        err = lamb_write_message(db, account->id, company->id, submit);
+        /* Write Message to Cache */
+        message = (lamb_message_t *)node->val;
+        submit = (lamb_submit_t *)&(message->data);
+        err = lamb_cache_message(cache, account->id, company->id, submit);
         if (err) {
-            lamb_errlog(config.logfile, "Lamb write message to database failure", 0);
+            lamb_errlog(config.logfile, "Write submit message to cache failure", 0);
+            lamb_sleep(1000);
         }
 
-        free(submit);
+        /* Write Message to Database */
+        err = lamb_write_message(db, account->id, company->id, submit);
+        if (err) {
+            lamb_errlog(config.logfile, "Write submit message to database failure", 0);
+            lamb_sleep(1000);
+        }
+
         free(node);
+        free(message);
+        
     }
 
     pthread_exit(NULL);
@@ -529,8 +550,33 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (conf->redis_db < 0 || conf->redis_db > 65535) {
-        fprintf(stderr, "ERROR: Invalid redis database name\n");
+    if (lamb_get_string(&cfg, "CacheHost", conf->cache_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'CacheHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "CachePort", &conf->cache_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'CachePort' parameter\n");
+        goto error;
+    }
+
+    if (conf->cache_port < 1 || conf->cache_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid cache port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "CachePassword", conf->cache_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'CachePassword' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "CacheDb", &conf->cache_db) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'CacheDb' parameter\n");
+        goto error;
+    }
+    
+    if (conf->cache_db < 0 || conf->cache_db > 65535) {
+        fprintf(stderr, "ERROR: Invalid cache database name\n");
         goto error;
     }
 

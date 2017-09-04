@@ -35,6 +35,7 @@ int lamb_cache_connect(lamb_cache_t *cache, char *host, int port, char *password
     if (reply != NULL) {
         if ((reply->type == REDIS_REPLY_STATUS) && (strcmp(reply->str, "OK") == 0)) {
             freeReplyObject(reply);
+            pthread_mutex_init(&cache->lock, NULL);
             return 0;
         }
         freeReplyObject(reply);
@@ -66,6 +67,7 @@ bool lamb_cache_check_connect(lamb_cache_t *cache) {
 int lamb_cache_close(lamb_cache_t *cache) {
     if (cache->handle) {
         redisFree(cache->handle);
+        pthread_mutex_destroy(&cache->lock);
     }
 
     return 0;

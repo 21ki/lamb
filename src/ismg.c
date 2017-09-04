@@ -365,7 +365,6 @@ void lamb_work_loop(lamb_client_t *client) {
                 err = lamb_queue_send(&queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
                     result = 11;
-                    lamb_errlog(config.logfile, "Write %s message queue failed", name);
                 }
 
                 /* Submit Response */

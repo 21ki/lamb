@@ -110,7 +110,7 @@ class RouteModel {
                 $res['spcode'] = Filter::alpha($val, null, 1, 32);
                 break;
             case 'account':
-                $res['account'] = Filter::alpha($val, null, 1, 32);
+                $res['account'] = Filter::number($val, null);
                 break;
             case 'description':
                 $res['description'] = Filter::string($val, 'no description', 1, 64);

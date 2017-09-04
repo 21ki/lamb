@@ -27,10 +27,12 @@
 #include "gateway.h"
 #include "template.h"
 #include "group.h"
+#include "message.h"
 
 static lamb_db_t db;
-static lamb_list_t *queue;
+static lamb_cache_t rdb;
 static lamb_cache_t cache;
+static lamb_list_t *queue;
 static lamb_config_t config;
 static lamb_routes_t routes;
 static lamb_accounts_t accounts;
@@ -79,7 +81,7 @@ void lamb_event_loop(void) {
     lamb_queue_opt opt;
     struct mq_attr attr;
     
-    lamb_set_process("lamb_deliverd");
+    lamb_set_process("lamb-deliverd");
 
     /* Work Queue Initialization */
     queue = lamb_list_new();
@@ -89,9 +91,16 @@ void lamb_event_loop(void) {
     }
 
     /* Redis Database Initialization */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
         lamb_errlog(config.logfile, "Can't connect to redis database", 0);
+        return;
+    }
+
+    /* Cache Database Initialization */
+    err = lamb_cache_connect(&cache, config.cache_host, config.cache_port, NULL, config.cache_db);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to cache database", 0);
         return;
     }
 
@@ -205,10 +214,10 @@ void lamb_event_loop(void) {
 
 void *lamb_deliver_worker(void *data) {
     int err;
-    lamb_list_node_t *node;
-    lamb_message_t *message;
     lamb_update_t *update;
     lamb_report_t *report;
+    lamb_list_node_t *node;
+    lamb_message_t *message;
     lamb_deliver_t *deliver;
 
     while (true) {
@@ -225,11 +234,23 @@ void *lamb_deliver_worker(void *data) {
         switch (message->type) {
         case LAMB_UPDATE:
             update = (lamb_update_t *)&(message->data);
-            err = lamb_update_message(&cache, update);
+            pthread_mutex_lock(&cache.lock);
+            err = lamb_cache_update_message(&cache, update);
+            pthread_mutex_unlock(&cache.lock);
             if (err) {
-                lamb_errlog(config.logfile, "Lamb can't update messsage", 0);
+                lamb_errlog(config.logfile, "Lamb can't update messsage to cache", 0);
                 lamb_sleep(1000);
             }
+
+            /* 
+            pthread_mutex_lock(&db.lock);
+            err = lamb_update_message(&db, update);
+            pthread_mutex_unlock(&db.lock);
+            if (err) {
+                lamb_errlog(config.logfile, "Lamb can't update messsage to database", 0);
+                lamb_sleep(1000);
+            }
+            */
             break;
         case LAMB_REPORT:
             report = (lamb_report_t *)&(message->data);
@@ -258,16 +279,9 @@ void *lamb_deliver_worker(void *data) {
     pthread_exit(NULL);
 }
 
-int lamb_update_msgid(lamb_cache_t *cache, unsigned long long id, unsigned long long msgId) {
-    redisReply *reply;
-
-    reply = redisCommand(cache->handle, "SET %llu %llu", id , msgId);
-    if (reply == NULL) {
-        return -1;
-    }
-
-    freeReplyObject(reply);
-    return 0;
+bool lamb_is_online(lamb_cache_t *cache, int id) {
+    printf("-> lamb_is_online()\n");
+    return true;
 }
 
 int lamb_report_update(lamb_db_t *db, lamb_report_t *report) {
@@ -278,11 +292,6 @@ int lamb_report_update(lamb_db_t *db, lamb_report_t *report) {
 int lamb_save_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
     printf("-> lamb_save_deliver()\n");
     return 0;
-}
-
-bool lamb_is_online(lamb_cache_t *cache, int id) {
-    printf("-> lamb_is_online()\n");
-    return true;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
@@ -351,8 +360,33 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (conf->redis_db < 0 || conf->redis_db > 65535) {
-        fprintf(stderr, "ERROR: Invalid redis database name\n");
+    if (lamb_get_string(&cfg, "CacheHost", conf->cache_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'CacheHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "CachePort", &conf->cache_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'CachePort' parameter\n");
+        goto error;
+    }
+
+    if (conf->cache_port < 1 || conf->cache_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid cache port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "CachePassword", conf->cache_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'CachePassword' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "CacheDb", &conf->cache_db) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'CacheDb' parameter\n");
+        goto error;
+    }
+
+    if (conf->cache_db < 0 || conf->cache_db > 65535) {
+        fprintf(stderr, "ERROR: Invalid cache database name\n");
         goto error;
     }
 

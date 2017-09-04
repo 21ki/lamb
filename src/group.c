@@ -32,8 +32,10 @@ int lamb_group_get(lamb_db_t *db, int id, lamb_group_t *group) {
 
     PQclear(res);
 
+    group->channels = (lamb_channels_t *)calloc(1, sizeof(lamb_channels_t));
     err = lamb_get_channels(db, id, group->channels, LAMB_MAX_CHANNEL);
     if (err) {
+        free(group->channels);
         return 2;
     }
 

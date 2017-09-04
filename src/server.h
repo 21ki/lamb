@@ -36,6 +36,10 @@ typedef struct {
     int redis_port;
     char redis_password[64];
     int redis_db;
+    char cache_host[16];
+    int cache_port;
+    char cache_password[64];
+    int cache_db;
     char db_host[16];
     int db_port;
     char db_user[64];
@@ -45,6 +49,8 @@ typedef struct {
 
 typedef struct {
     lamb_db_t *db;
+    lamb_cache_t *rdb;
+    lamb_cache_t *cache;
     lamb_list_t *queue;
     lamb_list_t *storage;
     lamb_account_t *account;
@@ -58,7 +64,7 @@ void lamb_work_loop(lamb_account_t *account);
 void *lamb_worker_loop(void *data);
 lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit);
 lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues);
-void *lamb_billing_loop(void *data);
+void *lamb_storage_billing(void *data);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

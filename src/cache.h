@@ -9,10 +9,12 @@
 #define _LAMB_CACHE_H
 
 #include <stdbool.h>
+#include <pthread.h>
 #include <hiredis/hiredis.h>
 
 typedef struct {
     redisContext *handle;
+    pthread_mutex_t lock;
 } lamb_cache_t;
 
 int lamb_cache_connect(lamb_cache_t *cache, char *host, int port, char *password, int db);

@@ -30,6 +30,10 @@ typedef struct {
     int redis_port;
     char redis_password[64];
     int redis_db;
+    char cache_host[16];
+    int cache_port;
+    char cache_password[64];
+    int cache_db;
     char db_host[16];
     int db_port;
     char db_user[64];

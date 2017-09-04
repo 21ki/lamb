@@ -28,7 +28,7 @@ int lamb_keyword_get_all(lamb_db_t *db, lamb_keywords_t *keys, int size) {
     rows = PQntuples(res);
 
     for (int i = 0; (i < rows) && (i < size); i++) {
-        keys->list[i] = lamb_strdup(PQgetvalue(res, i, 1));
+        keys->list[i] = lamb_strdup(PQgetvalue(res, i, 0));
         keys->len++;
     }
 
