@@ -9,7 +9,6 @@
 #include "security.h"
 
 bool lamb_security_check(lamb_cache_t *cache, int type, char *phone) {
-    int err;
     char cmd[128];
     bool r = false;
     redisReply *reply = NULL;

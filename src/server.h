@@ -11,6 +11,7 @@
 #include "cache.h"
 #include "queue.h"
 #include "list.h"
+#include "db.h"
 #include "group.h"
 #include "account.h"
 #include "company.h"
@@ -43,6 +44,7 @@ typedef struct {
 } lamb_config_t;
 
 typedef struct {
+    lamb_db_t *db;
     lamb_list_t *queue;
     lamb_list_t *storage;
     lamb_account_t *account;

@@ -124,7 +124,6 @@ void lamb_event_loop(void) {
 
 void lamb_work_loop(lamb_account_t *account) {
     int err, ret;
-    lamb_db_t db;
     lamb_list_t *queue;
     lamb_list_t *storage;
     lamb_group_t group;
@@ -155,6 +154,8 @@ void lamb_work_loop(lamb_account_t *account) {
     }
 
     /* Postgresql Database Initialization */
+    lamb_db_t db;
+
     err = lamb_db_init(&db);
     if (err) {
         lamb_errlog(config.logfile, "Postgresql database handle initialize failed", 0);
@@ -232,6 +233,7 @@ void lamb_work_loop(lamb_account_t *account) {
     /* Start sender worker threads */
     lamb_work_object_t object;
 
+    object.db = &db;
     object.queue = queue;
     object.storage = storage;
     object.group = &group;
@@ -409,12 +411,14 @@ lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues) {
 
 void *lamb_billing_loop(void *data) {
     int err;
+    lamb_db_t *db;
     lamb_list_t *storage;
     lamb_account_t *account;
     lamb_company_t *company;
     lamb_work_object_t *object;
 
     object = (lamb_work_object_t *)data;
+    db = object->db;
     storage = object->storage;
     account = object->account;
     company = object->company;
@@ -442,7 +446,7 @@ void *lamb_billing_loop(void *data) {
 
         /* Write Message to Database */
         submit = (lamb_submit_t *)node->val;
-        err = lamb_write_message(&db, account->id, company->id, submit);
+        err = lamb_write_message(db, account->id, company->id, submit);
         if (err) {
             lamb_errlog(config.logfile, "Lamb write message to database failure", 0);
         }
