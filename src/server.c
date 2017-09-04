@@ -26,7 +26,6 @@
 #include "security.h"
 #include "message.h"
 
-static lamb_db_t db;
 static lamb_cache_t cache;
 static lamb_keywords_t keys;
 static lamb_config_t config;
@@ -125,6 +124,7 @@ void lamb_event_loop(void) {
 
 void lamb_work_loop(lamb_account_t *account) {
     int err, ret;
+    lamb_db_t db;
     lamb_list_t *queue;
     lamb_list_t *storage;
     lamb_group_t group;
