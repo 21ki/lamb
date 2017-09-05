@@ -61,6 +61,9 @@ typedef struct {
 void lamb_signal(void);
 void lamb_daemon(void);
 void lamb_sleep(unsigned long long milliseconds);
+void lamb_msleep(unsigned long long microsecond);
+unsigned long long lamb_now_microsecond(void);
+void lamb_flow_limit(unsigned long long *start, unsigned long long *now, unsigned long long *next, int *count, int limit);
 void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, ...);
 unsigned short lamb_sequence(void);
 char *lamb_strdup(const char *str);

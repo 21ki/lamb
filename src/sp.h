@@ -28,6 +28,7 @@ typedef struct {
     long long recv_timeout;
     int send_queue;
     int recv_queue;
+    int concurrent;
     char logfile[128];
 } lamb_config_t;
 

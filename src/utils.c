@@ -90,6 +90,48 @@ void lamb_sleep(unsigned long long milliseconds) {
     return;
 }
 
+void lamb_msleep(unsigned long long microsecond) {
+    struct timeval timeout;
+
+    timeout.tv_sec = microsecond / 1000000;
+    timeout.tv_usec = microsecond  % 1000000;
+    select(0, NULL, NULL, NULL, &timeout);
+
+    return;
+}
+
+unsigned long long lamb_now_microsecond(void) {
+    unsigned long long now;
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    now = (unsigned long long)tv.tv_sec * 1000000 + (unsigned long long)tv.tv_usec;
+    return now;
+}
+
+void lamb_flow_limit(unsigned long long *start, unsigned long long *now, unsigned long long *next, int *count, int limit) {
+    if (limit < 1) {
+        return;
+    }
+    
+    if (*now > *next) {
+        *next += 1000000;
+    }
+
+    while (((*count * 1000000.0) / (*now - *start)) > limit) {
+        lamb_msleep(1000);
+        *now = lamb_now_microsecond();
+    }
+
+    if ((*count % 100000000) == 0) {
+        *count = 0;
+        *start = lamb_now_microsecond();
+        *next = *start + 1000000;
+    }
+
+    return;
+}
+
 void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, ...) {
     char buff[512];
     time_t rawtime;

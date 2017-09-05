@@ -126,13 +126,17 @@ void lamb_event_loop(void) {
 
 void *lamb_sender_loop(void *data) {
     int err;
+    int retry;
     int msgFmt;
     ssize_t ret;
+    char spcode[21];
     lamb_submit_t *submit;
     lamb_message_t message;
     unsigned int sequenceId;
-    char spcode[21];
-        
+
+    retry = 0;
+    memset(spcode, 0, sizeof(spcode));
+    
     if (strcasecmp(config.encoding, "ASCII") == 0) {
         msgFmt = 0;
     } else if (strcasecmp(config.encoding, "UCS-2") == 0) {
@@ -143,22 +147,37 @@ void *lamb_sender_loop(void *data) {
         msgFmt = 0;
     }
 
+    int count = 0;
+    unsigned long long start_time;
+    unsigned long long next_summary_time;
+
+    start_time = lamb_now_microsecond();
+    next_summary_time = start_time + 1000000;
+    
     while (true) {
         if (!cmpp.ok) {
+            count = 0;
             lamb_sleep(1000);
+            start_time = lamb_now_microsecond();
             continue;
         }
 
         ret = lamb_queue_receive(&send_queue, (char *)&message, sizeof(message), 0);
         if (ret > 0) {
+            unsigned long long now_time;
             submit = (lamb_submit_t *)&(message.data);
-            sequenceId = table.sequenceId = cmpp_sequence();
             table.msgId = submit->id;
             sprintf(spcode, "%s%s", config.spcode, submit->spcode);
+            now_time = lamb_now_microsecond();
         submit:
+            if (retry >= config.retry) {
+                retry = 0;
+                continue;
+            }
+
+            sequenceId = table.sequenceId = cmpp_sequence();
             err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, submit->content, msgFmt, true);
             if (err) {
-                lamb_errlog(config.logfile, "Unable to receive packets from %s gateway", config.host);
                 lamb_sleep(config.interval * 1000);
                 if (!cmpp.ok) {
                     continue;
@@ -166,6 +185,8 @@ void *lamb_sender_loop(void *data) {
                 goto submit;
             }
 
+            count++;
+            
             struct timeval now;
             struct timespec timeout;
 
@@ -178,12 +199,16 @@ void *lamb_sender_loop(void *data) {
             err = pthread_cond_timedwait(&cond, &mutex, &timeout);
 
             if (err == ETIMEDOUT) {
-                lamb_errlog(config.logfile, "Receive submit message response timeout from %s", config.host);
-                lamb_sleep(config.interval * 1000);
+                retry++;
                 pthread_mutex_unlock(&mutex);
+                lamb_errlog(config.logfile, "Lamb submit message to %s timeout", config.host);
+                lamb_sleep(config.interval * 1000);
                 goto submit;
             }
             pthread_mutex_unlock(&mutex);
+
+            /* Flow Monitoring And Control */
+            lamb_flow_limit(&start_time, &now_time, &next_summary_time, &count, config.concurrent);
         } else {
             lamb_sleep(10);
         }
@@ -207,7 +232,12 @@ void *lamb_deliver_loop(void *data) {
     
     
     while (true) {
-        err = cmpp_recv_timeout(&cmpp.sock, &pack, sizeof(pack), 60000);
+        if (!cmpp.ok) {
+            lamb_sleep(10);
+            continue;
+        }
+
+        err = cmpp_recv_timeout(&cmpp.sock, &pack, sizeof(pack), config.recv_timeout);
 
         if (err) {
             lamb_sleep(10);
@@ -308,8 +338,7 @@ void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
     while (lamb_cmpp_init(cmpp, config) != 0) {
         lamb_sleep(config->interval * 1000);
     }
-
-    pthread_mutex_unlock(&cmpp->lock);
+    lamb_errlog(config->logfile, "Connect to gateway %s successfull", config->host);
     return;
 }
 
@@ -482,6 +511,10 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     if (lamb_get_string(&cfg, "Encoding", conf->encoding, 32) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Encoding' parameter\n");
         goto error;
+    }
+
+    if (lamb_get_int(&cfg, "Concurrent", &conf->concurrent) != 0) {
+      fprintf(stderr, "ERROR: Can't read 'Concurrent' parameter\n");
     }
 
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
