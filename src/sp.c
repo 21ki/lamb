@@ -172,6 +172,8 @@ void *lamb_sender_loop(void *data) {
         submit:
             if (retry >= config.retry) {
                 retry = 0;
+                count = 0;
+                start_time = lamb_now_microsecond();
                 continue;
             }
 
