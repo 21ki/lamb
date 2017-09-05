@@ -72,28 +72,28 @@ void lamb_event_loop(void) {
 
     /* Message queue initialization */
     char name[64];
-    lamb_queue_opt opt;
-    struct mq_attr attr;
+    lamb_queue_opt sopt, ropt;
+    struct mq_attr sattr, rattr;
 
-    opt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    attr.mq_maxmsg = config.send_queue;
-    attr.mq_msgsize = sizeof(lamb_message_t);
-    opt.attr = &attr;
+    sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
+    sattr.mq_maxmsg = config.send_queue;
+    sattr.mq_msgsize = sizeof(lamb_message_t);
+    sopt.attr = &sattr;
     
     sprintf(name, "/gw.%d.message", config.id);
-    err = lamb_queue_open(&send_queue, name, &opt);
+    err = lamb_queue_open(&send_queue, name, &sopt);
     if (err) {
         lamb_errlog(config.logfile, "Can't open %s queue", name);
         return;
     }
 
-    opt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
-    attr.mq_maxmsg = config.recv_queue;
-    attr.mq_msgsize = sizeof(lamb_message_t);
-    opt.attr = &attr;
+    ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
+    rattr.mq_maxmsg = config.recv_queue;
+    rattr.mq_msgsize = sizeof(lamb_message_t);
+    ropt.attr = &rattr;
     
     sprintf(name, "/gw.%d.deliver", config.id);
-    err = lamb_queue_open(&recv_queue, name, &opt);
+    err = lamb_queue_open(&recv_queue, name, &ropt);
     if (err) {
         lamb_errlog(config.logfile, "Can't open %s queue", name);
         return;
@@ -253,9 +253,11 @@ void *lamb_deliver_loop(void *data) {
         switch (commandId) {
         case CMPP_SUBMIT_RESP:;
             /* Cmpp Submit Resp */
+            int result = 0;
             message.type = LAMB_UPDATE;
             update = (lamb_update_t *)&(message.data);
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, &msgId, 8);
+            cmpp_pack_get_integer(&pack, cmpp_submit_resp_result, &result, 1);
 
             if (table.sequenceId == sequenceId) {
                 pthread_mutex_lock(&mutex);
@@ -264,9 +266,11 @@ void *lamb_deliver_loop(void *data) {
                 update->id = table.msgId;
                 update->msgId = msgId;
 
+                /* 
                 while (!lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0)) {
                     lamb_sleep(10);
                 }
+                */
             }
             break;
         case CMPP_DELIVER:;
@@ -279,7 +283,8 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &report->id, 8);
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_stat, report->status, 8, 7);
 
-                while (!lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0)) {
+                printf("-> [deliver] msgId: %llu, stat: %s\n", report->id, report->status);
+                while (lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0) != 0) {
                     lamb_sleep(10);
                 }
             } else {

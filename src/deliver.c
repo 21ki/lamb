@@ -234,6 +234,9 @@ void *lamb_deliver_worker(void *data) {
         switch (message->type) {
         case LAMB_UPDATE:
             update = (lamb_update_t *)&(message->data);
+            printf("-> [update] id: %llu, msgId: %llu\n", update->id, update->msgId);
+            
+            /*             
             pthread_mutex_lock(&cache.lock);
             err = lamb_cache_update_message(&cache, update);
             pthread_mutex_unlock(&cache.lock);
@@ -242,7 +245,7 @@ void *lamb_deliver_worker(void *data) {
                 lamb_sleep(1000);
             }
 
-            /* 
+
             pthread_mutex_lock(&db.lock);
             err = lamb_update_message(&db, update);
             pthread_mutex_unlock(&db.lock);
@@ -254,10 +257,13 @@ void *lamb_deliver_worker(void *data) {
             break;
         case LAMB_REPORT:
             report = (lamb_report_t *)&(message->data);
+            printf("-> [report] msgId: %llu, status: %s\n", report->id, report->status);
+            /* 
             err = lamb_report_update(&db, report);
             if (err) {
                 lamb_errlog(config.logfile, "Can't update message status report", 0);
             }
+            */
             break;
         case LAMB_DELIVER:;
             int id;
