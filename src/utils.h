@@ -72,5 +72,8 @@ unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId);
 void lamb_set_process(char *name);
 bool lamb_pcre_regular(char *pattern, char *message, int len);
 int lamb_mqd_writable(int fd, long long millisecond);
+int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, const char* fromcode, const char* tocode);
+size_t lamb_ucs2_strlen(const char *str);
+size_t lamb_gbk_strlen(const char *str);
 
 #endif

@@ -247,9 +247,9 @@ int lamb_mqd_writable(int fd, long long millisecond) {
     return ret;
 }
 
-int lamb_encoding_conversion(char *content, size_t size, const char *fromcode, const char *tocode) {
+int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, const char* fromcode, const char* tocode) {
     iconv_t cd;
-    char *inbuf = (char *)content;
+    char *inbuf = (char *)src;
     size_t *inbytesleft = &slen;
     char *outbuf = dst;
     size_t *outbytesleft = &dlen;
@@ -262,4 +262,32 @@ int lamb_encoding_conversion(char *content, size_t size, const char *fromcode, c
     }
 
     return -1;
+}
+
+size_t lamb_ucs2_strlen(const char *str) {
+    int i = 0;
+
+    while (i < 140) {
+        if ((str[i] + str[i + 1]) != 0) {
+            i += 2;
+        } else {
+            break;
+        }
+    }
+
+    return i;
+}
+
+size_t lamb_gbk_strlen(const char *str) {  
+    const char *ptr = str;
+    while (*ptr) {
+        if ((*ptr < 0) && (*(ptr + 1) < 0 || *(ptr + 1) > 63)) {
+            str++;
+            ptr += 2;
+        } else {
+            ptr++;  
+        }  
+    }
+
+    return (size_t)(ptr - str);
 }
