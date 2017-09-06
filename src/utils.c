@@ -19,6 +19,7 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <pthread.h>
+#include <iconv.h>
 #include <cmpp.h>
 #include "utils.h"
 
@@ -123,7 +124,7 @@ void lamb_flow_limit(unsigned long long *start, unsigned long long *now, unsigne
         *now = lamb_now_microsecond();
     }
 
-    if ((*count % 100000000) == 0) {
+    if ((*count % 8) == 0) {
         *count = 0;
         *start = lamb_now_microsecond();
         *next = *start + 1000000;
@@ -229,4 +230,36 @@ bool lamb_pcre_regular(char *pattern, char *content, int len) {
 
     pcre_free(re);
     return true;
+}
+
+int lamb_mqd_writable(int fd, long long millisecond) {
+    int ret;
+    fd_set wset;
+    struct timeval timeout;
+
+    timeout.tv_sec = millisecond / 1000;
+    timeout.tv_usec = (millisecond % 1000) * 1000;
+
+    FD_ZERO(&wset);
+    FD_SET(fd, &wset);
+    ret = select(fd + 1, NULL, &wset, NULL, (millisecond != 0) ? &timeout : 0);
+
+    return ret;
+}
+
+int lamb_encoding_conversion(char *content, size_t size, const char *fromcode, const char *tocode) {
+    iconv_t cd;
+    char *inbuf = (char *)content;
+    size_t *inbytesleft = &slen;
+    char *outbuf = dst;
+    size_t *outbytesleft = &dlen;
+    
+    cd = iconv_open(tocode, fromcode);
+    if (cd != (iconv_t)-1) {
+        iconv(cd, &inbuf, inbytesleft, &outbuf, outbytesleft);
+        iconv_close(cd);
+        return 0;
+    }
+
+    return -1;
 }

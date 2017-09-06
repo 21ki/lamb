@@ -28,8 +28,6 @@
 
 static lamb_keywords_t keys;
 static lamb_config_t config;
-static lamb_gateways_t gateways;
-static lamb_gateway_queues_t gw_queue;
 
 int main(int argc, char *argv[]) {
     char *file = "server.conf";
@@ -127,6 +125,7 @@ void lamb_work_loop(lamb_account_t *account) {
     lamb_cache_t cache;
     lamb_list_t *queue;
     lamb_list_t *storage;
+    lamb_queues_t channel;
     lamb_group_t group;
     lamb_company_t company;
     lamb_templates_t template;
@@ -211,31 +210,23 @@ void lamb_work_loop(lamb_account_t *account) {
 
     /* Fetch group information */
     memset(&group, 0, sizeof(group));
-    err = lamb_group_get(&db, account->route, &group);
+    err = lamb_group_get(&db, account->route, &group, LAMB_MAX_CHANNEL);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch group information", 0);
         return;
     }
 
-    /* Fetch all gateway */
-    memset(&gateways, 0, sizeof(gateways));
-    err = lamb_gateway_get_all(&db, &gateways, LAMB_MAX_GATEWAY);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't fetch gateway information", 0);
-        return;
-    }
-
-    /* Open all gateway queue */
+    /* Fetch Channel Queue*/
     lamb_queue_opt gopt;
-
     gopt.flag = O_WRONLY | O_NONBLOCK;
     gopt.attr = NULL;
-    
-    memset(&gw_queue, 0, sizeof(gw_queue));
-    err = lamb_gateway_queue_open(&gw_queue, LAMB_MAX_GATEWAY, &gateways, LAMB_MAX_GATEWAY, &gopt, LAMB_QUEUE_SEND);
+
+    memset(&channel, 0, sizeof(channel));
+    err = lamb_each_queue(&group, &gopt, &channel, LAMB_MAX_CHANNEL);
     if (err) {
-        lamb_errlog(config.logfile, "Can't open all gateway queue", 0);
-        return;
+        if (channel.len < 1) {
+            return;
+        }
     }
 
     /* Start sender worker threads */
@@ -245,8 +236,8 @@ void lamb_work_loop(lamb_account_t *account) {
     object.rdb = &rdb;
     object.cache = &cache;
     object.queue = queue;
+    object.channel = &channel;
     object.storage = storage;
-    object.group = &group;
     object.account = account;
     object.company = &company;
     object.template = &template;
@@ -297,8 +288,8 @@ void *lamb_worker_loop(void *data) {
     int err;
     lamb_cache_t *cache;
     lamb_list_t *queue;
-    lamb_list_t *storage;
-    lamb_group_t *group;
+    lamb_queues_t *channel;
+    //lamb_list_t *storage;
     lamb_account_t *account;
     lamb_templates_t *template;
     lamb_work_object_t *object;
@@ -308,10 +299,10 @@ void *lamb_worker_loop(void *data) {
     object = (lamb_work_object_t *)data;
     cache = object->cache;
     queue = object->queue;
-    storage = object->storage;
+    channel = object->channel;
+    //storage = object->storage;
     account = object->account;
     template = object->template;
-    group = object->group;
     
     while (true) {
         lamb_list_node_t *node;
@@ -324,16 +315,22 @@ void *lamb_worker_loop(void *data) {
             message = (lamb_message_t *)node->val;
             submit = (lamb_submit_t *)&message->data;
 
-            //printf("-> id: %llu, phone: %s, spcode: %s, content: %s\n", submit->id, submit->phone, submit->spcode, submit->content);
-
+            printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d, strlen: %zd\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length, strlen(submit->content));
+            
             /* Blacklist and Whitelist */
+
+            lamb_encoding_conversion(fromcode, tocode, submit->content, submit->length);
+            
             if (account->policy != LAMB_POL_EMPTY) {
                 if (lamb_security_check(cache, account->policy, submit->phone)) {
+                    printf("-> [policy] check message policy deny\n");
                     continue;
                 }
+                printf("-> [policy] check message policy allow\n");
             }
 
             /* SpCode Processing  */
+            printf("-> [extended] check message spcode extended\n");
             if (account->extended) {
                 lamb_account_spcode_process(account->spcode, submit->spcode, 20);
             } else {
@@ -341,35 +338,63 @@ void *lamb_worker_loop(void *data) {
             }
 
             /* Template Processing */
+            
             if (account->check_template) {
                 if (!lamb_template_check(template, submit->content, submit->length)) {
+                    printf("-> [] check message template deny\n");
                     continue;
                 }
+                printf("-> [template] check message template OK\n");
             }
 
             /* Keywords Filtration */
             if (account->check_keyword) {
                 if (lamb_keyword_check(&keys, submit->content)) {
+                    printf("-> [keyword] check message keyword deny\n");
                     continue;
                 }
+                printf("-> [keyword] check message keyword OK\n");
             }
 
             /* Routing Scheduling */
-            lamb_gateway_queue_t *gw;
-        schedul:
-            while ((gw = lamb_route_schedul(group, &gw_queue, 8)) == NULL) {
-                lamb_sleep(10);
+            //lamb_gateway_queue_t *gw;
+            //schedul:
+            /* 
+               while ((gw = lamb_route_schedul(group, &gw_queue, 8)) == NULL) {
+               lamb_sleep(10);
+               }
+            */
+
+            if (channel->len < 1) {
+                printf("-> [channel] No gateway channels available");
+                lamb_errlog(config.logfile, "Lamb No gateway channels available", 0);
+                lamb_sleep(3000);
+            }
+            
+            for (int i = 0; i < channel->len; i++) {
+                err = lamb_queue_send(channel->queues[i], (char *)message, sizeof(lamb_message_t), 0);
+                if (!err) {
+                    break;
+                }
+
+                if ((i + 1) == channel->len) {
+                    i = 0;
+                }
             }
 
-            printf("-> lamb_queue_send\n");
+            /* 
+            printf("-> [schedul] the %d gateway is selected\n", gw->id);
+
             err = lamb_queue_send(&gw->queue, (char *)message, sizeof(lamb_message_t), 0);
             if (err) {
                 lamb_errlog(config.logfile, "Write message to gw.%d.message queue error", gw->id);
                 lamb_sleep(10);
                 goto schedul;
             }
-
+            */
+            
             /* Send Message to Storage */
+            /* 
             pthread_mutex_lock(&storage->lock);
             node = lamb_list_rpush(storage, node);
             pthread_mutex_unlock(&storage->lock);
@@ -377,6 +402,7 @@ void *lamb_worker_loop(void *data) {
                 lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
                 lamb_sleep(3000);
             }
+            */
         } else {
             lamb_sleep(10);
         }
@@ -385,6 +411,7 @@ void *lamb_worker_loop(void *data) {
     pthread_exit(NULL);
 }
 
+/* 
 lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit) {
     int err;
     struct mq_attr attr;
@@ -406,6 +433,7 @@ lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queue
 
     return NULL;
 }
+ */
 
 lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues) {
     for (int i = 0; (i < queues->len) && (queues->list[i] != NULL); i++) {
@@ -477,6 +505,35 @@ void *lamb_storage_billing(void *data) {
     }
 
     pthread_exit(NULL);
+}
+
+int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *list, int size) {
+    int err;
+    char name[128];
+    lamb_queue_t *queue;
+
+    list->len = 0;
+
+    for (int i = 0, j = 0; (i < group->len) && (group->channels[i] != NULL) && (i < size); i++, j++) {
+        queue = (lamb_queue_t *)calloc(1, sizeof(lamb_queue_t));
+        if (queue != NULL) {
+            sprintf(name, "/gw.%d.message", group->channels[i]->id);
+            err = lamb_queue_open(queue, name, opt);
+            if (err) {
+                j--;
+                lamb_errlog(config.logfile, "Can't open %s gateway queue", name);
+                continue;
+            }
+
+            list->queues[j] = queue;
+            list->len++;
+        } else {
+            return -1;
+        }
+        
+    }
+
+    return 0;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

@@ -71,5 +71,6 @@ void lamb_start_thread(void *(*func)(void *), void *arg, int count);
 unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId);
 void lamb_set_process(char *name);
 bool lamb_pcre_regular(char *pattern, char *message, int len);
+int lamb_mqd_writable(int fd, long long millisecond);
 
 #endif

@@ -29,6 +29,7 @@ typedef struct {
     int send_queue;
     int recv_queue;
     int concurrent;
+    char backfile[128];
     char logfile[128];
 } lamb_config_t;
 
@@ -48,6 +49,7 @@ void *lamb_deliver_loop(void *data);
 void *lamb_cmpp_keepalive(void *data);
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config);
 int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config);
+int lamb_save_logfile(char *file, void *data);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

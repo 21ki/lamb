@@ -232,7 +232,6 @@ void *lamb_deliver_loop(void *data) {
     unsigned int sequenceId;
     unsigned long long msgId;
     
-    
     while (true) {
         if (!cmpp.ok) {
             lamb_sleep(10);
@@ -249,7 +248,8 @@ void *lamb_deliver_loop(void *data) {
         chp = (cmpp_head_t *)&pack;
         commandId = ntohl(chp->commandId);
         sequenceId = ntohl(chp->sequenceId);
-
+        memset(&message, 0, sizeof(message));
+        
         switch (commandId) {
         case CMPP_SUBMIT_RESP:;
             /* Cmpp Submit Resp */
@@ -259,19 +259,22 @@ void *lamb_deliver_loop(void *data) {
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, &msgId, 8);
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_result, &result, 1);
 
-            if (table.sequenceId == sequenceId) {
-                pthread_mutex_lock(&mutex);
-                pthread_cond_signal(&cond);
-                pthread_mutex_unlock(&mutex);
-                update->id = table.msgId;
-                update->msgId = msgId;
-
-                /* 
-                while (!lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0)) {
-                    lamb_sleep(10);
-                }
-                */
+            if ((table.sequenceId != sequenceId) || (result != 0)) {
+                break;
             }
+
+            pthread_cond_signal(&cond);
+
+            update->id = table.msgId;
+            update->msgId = msgId;
+
+            printf("-> [update] sequenceId: %u, msgId: %llu\n", sequenceId, update->msgId);
+
+            err = lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0);
+            if (err) {
+                lamb_save_logfile(config.backfile, &message);
+            }
+
             break;
         case CMPP_DELIVER:;
             /* Cmpp Deliver */
@@ -280,32 +283,66 @@ void *lamb_deliver_loop(void *data) {
             if (registered_delivery == 1) {
                 message.type = LAMB_REPORT;
                 report = (lamb_report_t *)&(message.data);
+
+                /* Msg_Id */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &report->id, 8);
+
+                /* Src_Terminal_Id */
+                cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, report->phone, 24, 20);
+
+                /* Stat */
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_stat, report->status, 8, 7);
 
-                printf("-> [deliver] msgId: %llu, stat: %s\n", report->id, report->status);
-                while (lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0) != 0) {
-                    lamb_sleep(10);
+                /* Submit_Time */
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_submit_time, report->submitTime, 16, 10);
+
+                /* Done_Time */
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_done_time, report->doneTime, 16, 10);
+                
+                printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
+                       report->id, report->phone, report->status, report->submitTime, report->doneTime);
+                
+                err = lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0);
+                if (err) {
+                    lamb_save_logfile(config.backfile, &message);
                 }
             } else {
                 message.type = LAMB_DELIVER;
                 deliver = (lamb_deliver_t *)&(message.data);
+                /* Msg_Id */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_id, &deliver->id, 8);
+
+                /* Src_Terminal_Id */
                 cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, deliver->phone, 24, 21);
+
+                /* Dest_Id */
                 cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, deliver->spcode, 24, 21);
+
+                /* Service_Id */
                 cmpp_pack_get_string(&pack, cmpp_deliver_service_id, deliver->serviceId, 16, 10);
+
+                /* Msg_Fmt */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_fmt, &deliver->msgFmt, 1);
+
+                /* Msg_Length */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_length, &deliver->length, 1);
+
+                /* Msg_Content */
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->content, 160, deliver->length);
 
-                while (!lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0)) {
-                    lamb_sleep(10);
+                printf("-> [deliver] msgId: %llu, phone: %s, spcode: %s, serviceId: %s, msgFmt: %d, length: %d\n",
+                       deliver->id, deliver->phone, deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length);
+
+                err = lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0);
+                if (err) {
+                    lamb_save_logfile(config.backfile, &message);
                 }
             }
             break;
         case CMPP_ACTIVE_TEST_RESP:
             if (heartbeat.sequenceId == sequenceId) {
                 heartbeat.count = 0;
+                printf("-> [active] sequenceId: %u keepalive response\n", sequenceId);
             }
             break;
         }
@@ -419,6 +456,43 @@ success:
     return 0;
 }
 
+int lamb_save_logfile(char *file, void *data) {
+    FILE *fp;
+    
+    fp = fopen(file, "a");
+    if (!fp) {
+        return -1;
+    }
+
+    lamb_update_t *update;
+    lamb_report_t *report;
+    lamb_deliver_t *deliver;
+    lamb_message_t *message;
+
+    message = (lamb_message_t *)data;
+
+    switch (message->type) {
+    case LAMB_UPDATE:
+        update = (lamb_update_t *)&message->data;
+        fprintf(fp, "%d,%llu,%llu\n", LAMB_UPDATE, update->id, update->msgId);
+        break;
+    case LAMB_REPORT:
+        report = (lamb_report_t *)&message->data;
+        fprintf(fp, "%d,%llu,%s,%s,%s,%s\n", LAMB_REPORT, report->id, report->phone, report->status,
+                report->submitTime, report->doneTime);
+        break;
+    case LAMB_DELIVER:
+        deliver = (lamb_deliver_t *)&message->data;
+        fprintf(fp, "%d,%llu,%s,%s,%s,%d,%d,%s\n", LAMB_DELIVER, deliver->id, deliver->phone,
+                deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length, deliver->content);
+        break;
+    }
+
+    fclose(fp);
+
+    return 0;
+}
+
 int lamb_read_config(lamb_config_t *conf, const char *file) {
     if (!conf) {
         return -1;
@@ -521,9 +595,14 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     }
 
     if (lamb_get_int(&cfg, "Concurrent", &conf->concurrent) != 0) {
-      fprintf(stderr, "ERROR: Can't read 'Concurrent' parameter\n");
+        fprintf(stderr, "ERROR: Can't read 'Concurrent' parameter\n");
     }
 
+    if (lamb_get_string(&cfg, "BackFile", conf->backfile, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'BackFile' parameter\n");
+        goto error;
+    }
+    
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;

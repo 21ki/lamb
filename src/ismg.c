@@ -362,6 +362,8 @@ void lamb_work_loop(lamb_client_t *client) {
                 cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit->length, 1);
                 cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit->content, 160, submit->length);
 
+                printf("-> [submit] msgId: %llu, content: %s, length: %d, strlen: %zd\n", submit->id, submit->content, submit->length, strlen(submit->content));
+                
                 err = lamb_queue_send(&queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
                     result = 11;

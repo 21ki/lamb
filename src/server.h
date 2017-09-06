@@ -53,6 +53,7 @@ typedef struct {
     lamb_cache_t *cache;
     lamb_list_t *queue;
     lamb_list_t *storage;
+    lamb_queues_t *channel;
     lamb_account_t *account;
     lamb_group_t *group;
     lamb_company_t *company;
@@ -62,9 +63,10 @@ typedef struct {
 void lamb_event_loop(void);
 void lamb_work_loop(lamb_account_t *account);
 void *lamb_worker_loop(void *data);
-lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit);
+//lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit);
 lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues);
 void *lamb_storage_billing(void *data);
+int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *list, int size);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

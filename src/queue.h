@@ -13,9 +13,16 @@
 #define LAMB_QUEUE_SEND 1
 #define LAMB_QUEUE_RECV 2
 
+#define LAMB_MAX_QUEUE 1024
+
 typedef struct {
     mqd_t mqd;
 } lamb_queue_t;
+
+typedef struct {
+    int len;
+    lamb_queue_t *queues[LAMB_MAX_QUEUE];
+} lamb_queues_t;
 
 typedef struct {
     int flag;

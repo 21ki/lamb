@@ -231,9 +231,10 @@ void *lamb_deliver_worker(void *data) {
         }
 
         message = (lamb_message_t *)node->val;
+
         switch (message->type) {
         case LAMB_UPDATE:
-            update = (lamb_update_t *)&(message->data);
+            update = (lamb_update_t *)&message->data;
             printf("-> [update] id: %llu, msgId: %llu\n", update->id, update->msgId);
             
             /*             
@@ -256,8 +257,9 @@ void *lamb_deliver_worker(void *data) {
             */
             break;
         case LAMB_REPORT:
-            report = (lamb_report_t *)&(message->data);
-            printf("-> [report] msgId: %llu, status: %s\n", report->id, report->status);
+            report = (lamb_report_t *)&message->data;
+            printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
+                   report->id, report->phone, report->status, report->submitTime, report->doneTime);
             /* 
             err = lamb_report_update(&db, report);
             if (err) {
@@ -266,14 +268,19 @@ void *lamb_deliver_worker(void *data) {
             */
             break;
         case LAMB_DELIVER:;
+            deliver = (lamb_deliver_t *)&message->data;
+            printf("-> [deliver] msgId: %llu, phone: %s, spcode: %s, serviceId: %s, msgFmt: %d, length: %d\n",
+                   deliver->id, deliver->phone, deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length);
+
+            /* 
             int id;
-            deliver = (lamb_deliver_t *)&(message->data);
             id = lamb_route_query(&routes, deliver->spcode);
             if (lamb_is_online(&cache, id)) {
                 lamb_queue_send(&(cli_queue.list[id]->queue), (char *)message, sizeof(lamb_message_t), 0);
             } else {
                 lamb_save_deliver(&db, deliver);
             }
+            */
             break;
         }
 

@@ -10,49 +10,16 @@
 #include "group.h"
 #include "channel.h"
 
-int lamb_group_get(lamb_db_t *db, int id, lamb_group_t *group) {
-    int err;
+int lamb_group_get(lamb_db_t *db, int id, lamb_group_t *group, int size) {
+    int rows;
     char *column;
     char sql[256];
     PGresult *res = NULL;
 
     group->id = id;
     group->len = 0;
-    column = "id";
-    sprintf(sql, "SELECT %s FROM groups WHERE id = %d", column, id);
-    res = PQexec(db->conn, sql);
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        PQclear(res);
-        return -1;
-    }
-
-    if (PQntuples(res) < 1) {
-        return 1;
-    }
-
-    PQclear(res);
-
-    group->channels = (lamb_channels_t *)calloc(1, sizeof(lamb_channels_t));
-    err = lamb_get_channels(db, id, group->channels, LAMB_MAX_CHANNEL);
-    if (err) {
-        free(group->channels);
-        return 2;
-    }
-
-    group->len = group->channels->len;    
-    return 0;
-}
-
-int lamb_group_get_all(lamb_db_t *db, lamb_groups_t *groups, int size) {
-    int err;
-    int rows;
-    char *column;
-    char sql[256];
-    PGresult *res = NULL;
-
-    groups->len = 0;
-    column = "id";
-    sprintf(sql, "SELECT %s FROM groups ORDER BY id", column);
+    column = "id, gid, weight";
+    sprintf(sql, "SELECT %s FROM channels WHERE gid = %d ORDER BY weight ASC", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -60,17 +27,20 @@ int lamb_group_get_all(lamb_db_t *db, lamb_groups_t *groups, int size) {
     }
 
     rows = PQntuples(res);
+    if (rows < 1) {
+        return 1;
+    }
 
     for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
-        lamb_group_t *g = NULL;
-        g = (lamb_group_t *)calloc(1, sizeof(lamb_group_t));
-        if (g != NULL) {
-            int gid = atoi(PQgetvalue(res, i, 0));
-            err = lamb_group_get(db, gid, g);
-            if (!err) {
-                groups->list[j] = g;
-                groups->len++;
-            }
+        lamb_channel_t *channel;
+        channel = (lamb_channel_t *)calloc(1, sizeof(lamb_channel_t));
+        if (channel != NULL) {
+            channel->id = atoi(PQgetvalue(res, i, 0));
+            channel->gid = atoi(PQgetvalue(res, i, 1));
+            channel->weight = atoi(PQgetvalue(res, i, 2));
+
+            group->channels[j] = channel;
+            group->len++;
         } else {
             if (j > 0) {
                 j--;
@@ -81,3 +51,4 @@ int lamb_group_get_all(lamb_db_t *db, lamb_groups_t *groups, int size) {
     PQclear(res);
     return 0;
 }
+
