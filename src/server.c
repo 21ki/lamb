@@ -391,21 +391,14 @@ void *lamb_worker_loop(void *data) {
                 printf("-> [keyword] The keyword check OK\n");
             }
 
-            /* Routing Scheduling */
-            //lamb_gateway_queue_t *gw;
-            //schedul:
-            /* 
-               while ((gw = lamb_route_schedul(group, &gw_queue, 8)) == NULL) {
-               lamb_sleep(10);
-               }
-            */
 
             if (channel->len < 1) {
                 printf("-> [channel] No gateway channels available");
                 lamb_errlog(config.logfile, "Lamb No gateway channels available", 0);
                 lamb_sleep(3000);
             }
-            
+
+            /* Routing Scheduling */
             for (int i = 0; i < channel->len; i++) {
                 err = lamb_queue_send(channel->queues[i], (char *)message, sizeof(lamb_message_t), 0);
                 if (!err) {
@@ -417,26 +410,15 @@ void *lamb_worker_loop(void *data) {
                 }
             }
 
-            /* 
-            printf("-> [schedul] the %d gateway is selected\n", gw->id);
-
-            err = lamb_queue_send(&gw->queue, (char *)message, sizeof(lamb_message_t), 0);
-            if (err) {
-                lamb_errlog(config.logfile, "Write message to gw.%d.message queue error", gw->id);
-                lamb_sleep(10);
-                goto schedul;
-            }
-            */
-            
             /* Send Message to Storage */
             /* 
-            pthread_mutex_lock(&storage->lock);
-            node = lamb_list_rpush(storage, node);
-            pthread_mutex_unlock(&storage->lock);
-            if (node == NULL) {
-                lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
-                lamb_sleep(3000);
-            }
+               pthread_mutex_lock(&storage->lock);
+               node = lamb_list_rpush(storage, node);
+               pthread_mutex_unlock(&storage->lock);
+               if (node == NULL) {
+               lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
+               lamb_sleep(3000);
+               }
             */
 
             free(node);
@@ -447,40 +429,6 @@ void *lamb_worker_loop(void *data) {
     }
 
     pthread_exit(NULL);
-}
-
-/* 
-lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit) {
-    int err;
-    struct mq_attr attr;
-    lamb_gateway_queue_t *q;
-
-    for (int i = 0; i < (group->len) && (group->channels->list[i] != NULL); i++) {
-        q = lamb_find_queue(group->channels->list[i]->id, queues);
-        if (q != NULL) {
-            err = mq_getattr(q->queue.mqd, &attr);
-            if (err) {
-                continue;
-            }
-            
-            if (attr.mq_curmsgs < limit) {
-                return q;
-            }
-        }
-    }
-
-    return NULL;
-}
- */
-
-lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues) {
-    for (int i = 0; (i < queues->len) && (queues->list[i] != NULL); i++) {
-        if (queues->list[i]->id == id) {
-            return queues->list[i];
-        }
-    }
-
-    return NULL;
 }
 
 void *lamb_storage_billing(void *data) {
