@@ -390,7 +390,6 @@ void lamb_work_loop(lamb_client_t *client) {
 
                 /* Submit Response */
             response:
-                printf("- [response] result: %d\n", result);
                 cmpp_submit_resp(client->sock, sequenceId, msgId, result);
                 break;
             case CMPP_DELIVER_RESP:;
