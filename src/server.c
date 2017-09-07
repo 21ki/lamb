@@ -17,6 +17,7 @@
 #include <pthread.h>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
+#include <signal.h>
 #include <errno.h>
 #include <cmpp.h>
 #include "server.h"
@@ -70,6 +71,10 @@ void lamb_event_loop(void) {
     lamb_db_t db;
     lamb_accounts_t accounts;
 
+    if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
+        printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
+    }
+
     /* Postgresql Database  */
     err = lamb_db_init(&db);
     if (err) {
@@ -111,11 +116,19 @@ void lamb_event_loop(void) {
 
     /* Master process event monitor */
     lamb_set_process("lamb-server");
-    
+
     while (true) {
-        sleep(3);
+        sleep(1);
     }
 
+    return;
+}
+
+void lamb_reload(int signum) {
+    if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
+        printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
+    }
+    printf("lamb reload configuration file success!\n");
     return;
 }
 

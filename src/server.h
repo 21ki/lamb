@@ -68,5 +68,6 @@ lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues);
 void *lamb_storage_billing(void *data);
 int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *list, int size);
 int lamb_read_config(lamb_config_t *conf, const char *file);
+void lamb_reload(int signum);
 
 #endif
