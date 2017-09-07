@@ -34,6 +34,7 @@ typedef struct {
     char spid[8];
     char spcode[24];
     char phone[24];
+    int msgFmt;
     int length;
     char content[160];
 } lamb_submit_t;
@@ -72,8 +73,9 @@ unsigned long long lamb_gen_msgid(int gid, unsigned short sequenceId);
 void lamb_set_process(char *name);
 bool lamb_pcre_regular(char *pattern, char *message, int len);
 int lamb_mqd_writable(int fd, long long millisecond);
-int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, const char* fromcode, const char* tocode);
+int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, const char* fromcode, const char* tocode, int *length);
 size_t lamb_ucs2_strlen(const char *str);
 size_t lamb_gbk_strlen(const char *str);
+bool lamb_check_msgfmt(int coded, int list[], size_t len);
 
 #endif

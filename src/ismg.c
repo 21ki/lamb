@@ -351,7 +351,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 msgId = lamb_gen_msgid(gid, lamb_sequence());
                 cmpp_pack_set_integer(&pack, cmpp_submit_msg_id, msgId, 8);
 
-                /* Message Write Queue */
+                /* Message Resolution */
                 memset(&message, 0, sizeof(message));
                 message.type = LAMB_SUBMIT;
                 submit = (lamb_submit_t *)&message.data;
@@ -359,17 +359,38 @@ void lamb_work_loop(lamb_client_t *client) {
                 strcpy(submit->spid, client->account->user);
                 cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit->phone, 24, 21);
                 cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit->spcode, 24, 21);
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_fmt, &submit->msgFmt, 1);
+
+                /* Check Message Encoded */
+                int codeds[] = {0, 8, 11, 15};
+                if (!lamb_check_msgfmt(submit->msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
+                    result = 11;
+                    printf("-> [submit] check message encoded %d not support\n", submit->msgFmt);
+                    goto response;
+                }
+                
                 cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit->length, 1);
+
+                /* Check Message Length */
+                if (submit->length > 159) {
+                    result = 4;
+                    printf("-> [submit] check message length is incorrect\n");
+                    goto response;
+                }
+                
                 cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit->content, 160, submit->length);
 
-                printf("-> [submit] msgId: %llu, content: %s, length: %d, strlen: %zd\n", submit->id, submit->content, submit->length, strlen(submit->content));
-                
+                printf("-> [submit] msgId: %llu, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->msgFmt, submit->content, submit->length);
+
+                /* Message Write Queue */
                 err = lamb_queue_send(&queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
-                    result = 11;
+                    result = 12;
                 }
 
                 /* Submit Response */
+            response:
+                printf("- [response] result: %d\n", result);
                 cmpp_submit_resp(client->sock, sequenceId, msgId, result);
                 break;
             case CMPP_DELIVER_RESP:;
@@ -431,7 +452,7 @@ void *lamb_deliver_loop(void *data) {
                 sequenceId = sequence = cmpp_sequence();
                 deliver = (lamb_deliver_t *)&message.data;
             deliver:
-                err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, 8);
+                err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
                 if (err) {
                     lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet to client %s failed", client->addr);
                     lamb_sleep(3000);

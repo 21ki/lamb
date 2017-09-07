@@ -141,6 +141,8 @@ void *lamb_sender_loop(void *data) {
         msgFmt = 0;
     } else if (strcasecmp(config.encoding, "UCS-2") == 0) {
         msgFmt = 8;
+    } else if (strcasecmp(config.encoding, "UTF-8") == 0) {
+        msgFmt = 11;
     } else if (strcasecmp(config.encoding, "GBK") == 0) {
         msgFmt = 15;
     } else {
@@ -169,6 +171,17 @@ void *lamb_sender_loop(void *data) {
             table.msgId = submit->id;
             sprintf(spcode, "%s%s", config.spcode, submit->spcode);
             now_time = lamb_now_microsecond();
+
+            /* Message Encode Convert */
+            int length;
+            char content[256];
+            memset(content, 0, sizeof(content));
+            err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), "UTF-8", config.encoding, &length);
+            if (err || (length == 0)) {
+                printf("-> [encoded] Message encoding conversion failed\n");
+                continue;
+            }
+            printf("-> [encoded] Message encoding conversion successfull, length: %d\n", length);
         submit:
             if (retry >= config.retry) {
                 retry = 0;
@@ -178,7 +191,7 @@ void *lamb_sender_loop(void *data) {
             }
 
             sequenceId = table.sequenceId = cmpp_sequence();
-            err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, submit->content, msgFmt, true);
+            err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, content, length, msgFmt, true);
             if (err) {
                 lamb_sleep(config.interval * 1000);
                 if (!cmpp.ok) {
@@ -186,6 +199,8 @@ void *lamb_sender_loop(void *data) {
                 }
                 goto submit;
             }
+
+            printf("-> [submit] msgId: %llu, phone: %s, msgFmt: %d, length: %d\n", submit->id, submit->phone, msgFmt, length);
 
             count++;
             

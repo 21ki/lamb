@@ -315,22 +315,57 @@ void *lamb_worker_loop(void *data) {
             message = (lamb_message_t *)node->val;
             submit = (lamb_submit_t *)&message->data;
 
-            printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d, strlen: %zd\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length, strlen(submit->content));
-            
-            /* Blacklist and Whitelist */
+            printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
 
-            lamb_encoding_conversion(fromcode, tocode, submit->content, submit->length);
+            /* Check Message Encoded Convert */
+            int codeds[] = {0, 8, 11, 15};
+            if (!lamb_check_msgfmt(submit->msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
+                continue;
+            }
+
+            char *fromcode;
+            char content[256];
+
+            if (submit->msgFmt == 0) {
+                fromcode = "ASCII";
+            } else if (submit->msgFmt == 8) {
+                fromcode = "UCS-2";
+            } else if (submit->msgFmt == 11) {
+                fromcode = NULL;
+            } else if (submit->msgFmt == 15) {
+                fromcode = "GBK";
+            } else {
+                printf("-> [encoded] message encoded %d not support\n", submit->msgFmt);
+                continue;
+            }
             
-            if (account->policy != LAMB_POL_EMPTY) {
-                if (lamb_security_check(cache, account->policy, submit->phone)) {
-                    printf("-> [policy] check message policy deny\n");
+            if (fromcode != NULL) {
+                memset(content, 0, sizeof(content));
+                err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), fromcode, "UTF-8", &submit->length);
+                if (err || (submit->length == 0)) {
+                    printf("-> [encoded] Message encoding conversion failed\n");
                     continue;
                 }
-                printf("-> [policy] check message policy allow\n");
+
+                submit->msgFmt = 11;
+                memset(submit->content, 0, 160);
+                memcpy(submit->content, content, submit->length);
+                printf("-> [encoded] Message encoding conversion successfull\n");
+            }
+
+            printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
+                        
+            /* Blacklist and Whitelist */
+            if (account->policy != LAMB_POL_EMPTY) {
+                if (lamb_security_check(cache, account->policy, submit->phone)) {
+                    printf("-> [policy] The security check will not pass\n");
+                    continue;
+                }
+                printf("-> [policy] The Security check OK\n");
             }
 
             /* SpCode Processing  */
-            printf("-> [extended] check message spcode extended\n");
+            printf("-> [spcode] check message spcode extended\n");
             if (account->extended) {
                 lamb_account_spcode_process(account->spcode, submit->spcode, 20);
             } else {
@@ -341,19 +376,19 @@ void *lamb_worker_loop(void *data) {
             
             if (account->check_template) {
                 if (!lamb_template_check(template, submit->content, submit->length)) {
-                    printf("-> [] check message template deny\n");
+                    printf("-> [template] The template check will not pass\n");
                     continue;
                 }
-                printf("-> [template] check message template OK\n");
+                printf("-> [template] The template check OK\n");
             }
 
             /* Keywords Filtration */
             if (account->check_keyword) {
                 if (lamb_keyword_check(&keys, submit->content)) {
-                    printf("-> [keyword] check message keyword deny\n");
+                    printf("-> [keyword] The keyword check will not pass\n");
                     continue;
                 }
-                printf("-> [keyword] check message keyword OK\n");
+                printf("-> [keyword] The keyword check OK\n");
             }
 
             /* Routing Scheduling */

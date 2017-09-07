@@ -247,16 +247,19 @@ int lamb_mqd_writable(int fd, long long millisecond) {
     return ret;
 }
 
-int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, const char* fromcode, const char* tocode) {
+int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, const char* fromcode, const char* tocode, int *length) {
     iconv_t cd;
+    size_t len = dlen;
     char *inbuf = (char *)src;
     size_t *inbytesleft = &slen;
     char *outbuf = dst;
     size_t *outbytesleft = &dlen;
-    
+
+
     cd = iconv_open(tocode, fromcode);
     if (cd != (iconv_t)-1) {
         iconv(cd, &inbuf, inbytesleft, &outbuf, outbytesleft);
+        *length = len - *outbytesleft;
         iconv_close(cd);
         return 0;
     }
@@ -290,4 +293,14 @@ size_t lamb_gbk_strlen(const char *str) {
     }
 
     return (size_t)(ptr - str);
+}
+
+bool lamb_check_msgfmt(int coded, int list[], size_t len) {
+    for (int i = 0; i < len; i++) {
+        if (list[i] == coded) {
+            return true;
+        }
+    }
+
+    return false;
 }
