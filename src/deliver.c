@@ -198,7 +198,9 @@ void lamb_event_loop(void) {
 
                     ret = mq_receive(events[i].data.fd, (char *)message, sizeof(lamb_message_t), 0);
                     if (ret > 0) {
+                        pthread_mutex_lock(&queue->lock);
                         node = lamb_list_rpush(queue, lamb_list_node_new(message));
+                        pthread_mutex_unlock(&queue->lock);
                         if (node == NULL) {
                             lamb_errlog(config.logfile, "Lamb can't allocate memory for queue", 0);
                             lamb_sleep(3000);

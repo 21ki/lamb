@@ -438,6 +438,9 @@ void *lamb_worker_loop(void *data) {
                 lamb_sleep(3000);
             }
             */
+
+            free(node);
+            free(message);
         } else {
             lamb_sleep(10);
         }
