@@ -33,16 +33,20 @@ static lamb_keywords_t keys;
 static lamb_config_t config;
 
 int main(int argc, char *argv[]) {
+    bool daemon = false;
     char *file = "server.conf";
-
+        
     int opt = 0;
-    char *optstring = "c:";
+    char *optstring = "c:d";
     opt = getopt(argc, argv, optstring);
 
     while (opt != -1) {
         switch (opt) {
         case 'c':
             file = optarg;
+            break;
+        case 'd':
+            daemon = true;
             break;
         }
         opt = getopt(argc, argv, optstring);
@@ -54,8 +58,8 @@ int main(int argc, char *argv[]) {
     }
 
     /* Daemon mode */
-    if (config.daemon) {
-        //lamb_daemon();
+    if (daemon) {
+        lamb_daemon();
     }
 
     /* Signal event processing */
