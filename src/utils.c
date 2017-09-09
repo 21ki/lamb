@@ -11,21 +11,46 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
+#include <errno.h>
 #include <pcre.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/prctl.h>
 #include <time.h>
 #include <sys/time.h>
-#include <signal.h>
 #include <pthread.h>
 #include <iconv.h>
 #include <cmpp.h>
 #include "utils.h"
 
-void lamb_signal(void) {
-    signal(SIGCHLD, SIG_IGN);
-    signal(SIGPIPE, SIG_IGN);
+int lamb_signal(int sig, void (*handler)(int)) {
+    struct sigaction sa;
+
+    sa.sa_handler = handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(sig, &sa, NULL) == -1) {
+        return -1;
+    }
+
+    return 0;
+}
+
+void lamb_signal_processing(void) {
+    int err;
+    
+    err = lamb_signal(SIGCHLD, SIG_IGN);
+    if (err) {
+        fprintf(stderr, "setting SIGCHLD signal processor failed\n");
+    }
+    
+    err = lamb_signal(SIGPIPE, SIG_IGN);
+    if (err) {
+        fprintf(stderr, "setting SIGPIPE signal processor failed\n");
+    }
+    
     return;
 }
 

@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Signal event processing */
-    lamb_signal();
+    lamb_signal_processing();
 
     int err;
 

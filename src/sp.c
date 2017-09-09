@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Signal event processing */
-    lamb_signal();
+    lamb_signal_processing();
 
     /* Start main event processing */
     lamb_set_process("lamb-gateway");

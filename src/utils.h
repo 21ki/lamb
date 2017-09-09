@@ -59,7 +59,8 @@ typedef struct {
 
 #pragma pack()
 
-void lamb_signal(void);
+int lamb_signal(int sig, void (*handler)(int));
+void lamb_signal_processing(void);
 void lamb_daemon(void);
 void lamb_sleep(unsigned long long milliseconds);
 void lamb_msleep(unsigned long long microsecond);

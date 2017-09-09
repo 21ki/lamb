@@ -1,70 +1,74 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
+MACRO = -D_POSIX_C_SOURCE=200112L
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/message.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lpq -lhiredis -lrt -lpcre
 
-all: sp ismg server deliver
+all: sp ismg server deliver lamb
 
 sp: src/sp.c src/sp.h $(OBJS)
-	$(CC) $(CFLAGS) src/sp.c $(OBJS) $(LIBS) -o sp
+	$(CC) $(CFLAGS) $(MACRO) src/sp.c $(OBJS) $(LIBS) -o sp
 
 ismg: src/ismg.c src/ismg.h $(OBJS)
-	$(CC) $(CFLAGS) src/ismg.c $(OBJS) $(LIBS) -o ismg
+	$(CC) $(CFLAGS) $(MACRO) src/ismg.c $(OBJS) $(LIBS) -o ismg
 
 server: src/server.c src/server.h $(OBJS)
-	$(CC) $(CFLAGS) src/server.c $(OBJS) $(LIBS) -o server
+	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -lnanomsg -o server
 
 deliver: src/deliver.c src/deliver.h $(OBJS)
-	$(CC) $(CFLAGS) src/deliver.c $(OBJS) $(LIBS) -o deliver
+	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) $(LIBS) -o deliver
+
+lamb: src/lamb.c src/lamb.h src/linenoise.c src/linenoise.h
+	$(CC) src/lamb.c src/linenoise.c -lnanomsg -pthread -o lamb
 
 src/account.o: src/account.c src/account.h
-	$(CC) $(CFLAGS) -c src/account.c -o src/account.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/account.c -o src/account.o
 
 src/cache.o: src/cache.c src/cache.h
-	$(CC) $(CFLAGS) -c src/cache.c -o src/cache.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/cache.c -o src/cache.o
 
 src/channel.o: src/channel.c src/channel.h
-	$(CC) $(CFLAGS) -c src/channel.c -o src/channel.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/channel.c -o src/channel.o
 
 src/company.o: src/company.c src/company.h
-	$(CC) $(CFLAGS) -c src/company.c -o src/company.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/company.c -o src/company.o
 
 src/config.o: src/config.c src/config.h
-	$(CC) $(CFLAGS) -c src/config.c -o src/config.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/config.c -o src/config.o
 
 src/db.o: src/db.c src/db.h
-	$(CC) $(CFLAGS) -c src/db.c -o src/db.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/db.c -o src/db.o
 
 src/gateway.o: src/gateway.c src/gateway.h
-	$(CC) $(CFLAGS) -c src/gateway.c -o src/gateway.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/gateway.c -o src/gateway.o
 
 src/group.o: src/group.c src/group.h
-	$(CC) $(CFLAGS) -c src/group.c -o src/group.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/group.c -o src/group.o
 
 src/queue.o: src/queue.c src/queue.h
-	$(CC) $(CFLAGS) -c src/queue.c -o src/queue.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/queue.c -o src/queue.o
 
 src/utils.o: src/utils.c src/utils.h
-	$(CC) $(CFLAGS) -c src/utils.c -o src/utils.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/utils.c -o src/utils.o
 
 src/security.o: src/security.c src/security.h
-	$(CC) $(CFLAGS) -c src/security.c -o src/security.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/security.c -o src/security.o
 
 src/list.o: src/list.c src/list.h
-	$(CC) $(CFLAGS) -c src/list.c -o src/list.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/list.c -o src/list.o
 
 src/keyword.o: src/keyword.c src/keyword.h
-	$(CC) $(CFLAGS) -c src/keyword.c -o src/keyword.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/keyword.c -o src/keyword.o
 
 src/template.o: src/template.c src/template.h
-	$(CC) $(CFLAGS) -c src/template.c -o src/template.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/template.c -o src/template.o
 
 src/route.o: src/route.c src/route.h
-	$(CC) $(CFLAGS) -c src/route.c -o src/route.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/route.c -o src/route.o
 
 src/message.o: src/message.c src/message.h
-	$(CC) $(CFLAGS) -c src/message.c -o src/message.o
+	$(CC) $(CFLAGS) $(MACRO) -c src/message.c -o src/message.o
 
 .PHONY: install clean
 
