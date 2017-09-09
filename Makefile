@@ -19,8 +19,8 @@ server: src/server.c src/server.h $(OBJS)
 deliver: src/deliver.c src/deliver.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) $(LIBS) -o deliver
 
-lamb: src/lamb.c src/lamb.h src/linenoise.c src/linenoise.h
-	$(CC) src/lamb.c src/linenoise.c -lnanomsg -pthread -o lamb
+lamb: src/lamb.c src/lamb.h
+	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
 
 src/account.o: src/account.c src/account.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/account.c -o src/account.o
