@@ -19,6 +19,8 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <errno.h>
+#include <nanomsg/nn.h>
+#include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "server.h"
 #include "utils.h"
@@ -57,7 +59,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Signal event processing */
-    lamb_signal();
+    lamb_signal_processing();
     
     /* Start main event thread */
     lamb_event_loop();
@@ -71,7 +73,8 @@ void lamb_event_loop(void) {
     lamb_db_t db;
     lamb_accounts_t accounts;
 
-    if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
+    err = lamb_signal(SIGHUP, lamb_reload);
+    if (err) {
         printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
     }
 
@@ -115,10 +118,10 @@ void lamb_event_loop(void) {
     }
 
     /* Master process event monitor */
-    lamb_set_process("lamb-server");
+    lamb_set_process("lamb-master");
 
     while (true) {
-        sleep(1);
+        sleep(3);
     }
 
     return;
@@ -143,7 +146,7 @@ void lamb_work_loop(lamb_account_t *account) {
     lamb_company_t company;
     lamb_templates_t template;
 
-    lamb_set_process("lamb-workd");
+    lamb_set_process("lamb-server");
 
     /* Work Queue Initialization */
     queue = lamb_list_new();
