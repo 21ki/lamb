@@ -1,16 +1,16 @@
 <?php
 
 /*
- * The Channel Controller
+ * The Gateway Controller
  * Link http://github.com/typefo/lamb
  * Copyright (C) typefo <typefo@qq.com>
  */
 
 use Tool\Filter;
 
-class ChannelController extends Yaf\Controller_Abstract {
+class GatewayController extends Yaf\Controller_Abstract {
     public function indexAction() {
-        $channel = new ChannelModel();
+        $channel = new GatewayModel();
         $this->getView()->assign('channels', $channel->getAll());
         return true;
     }
@@ -19,7 +19,7 @@ class ChannelController extends Yaf\Controller_Abstract {
         $request =  $this->getRequest();
 
         if ($request->isPost()) {
-            $channel = new ChannelModel();
+            $channel = new GatewayModel();
             $channel->create($request->getPost());
             $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/channel';
             $response = $this->getResponse();
@@ -34,7 +34,7 @@ class ChannelController extends Yaf\Controller_Abstract {
 
     public function editAction() {
         $request = $this->getRequest();
-        $channel = new ChannelModel();
+        $channel = new GatewayModel();
 
         if ($request->isPost()) {
             $channel->change($request->getPost('id'), $request->getPost());
@@ -58,7 +58,7 @@ class ChannelController extends Yaf\Controller_Abstract {
         $request = $this->getRequest();
 
         if ($request->isPost()) {
-            $channel = new ChannelModel();
+            $channel = new GatewayModel();
             $channel->test($request->getPost('id'), $request->getPost('phone'), $request->getPost('message'));
         }
 
@@ -72,7 +72,7 @@ class ChannelController extends Yaf\Controller_Abstract {
     
     public function groupsAction() {
         $request = $this->getRequest();
-        $channel = new ChannelModel();
+        $channel = new GatewayModel();
         $group = new GroupModel();
         
         if ($request->isPost()) {

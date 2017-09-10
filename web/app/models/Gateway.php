@@ -8,10 +8,10 @@
 
 use Tool\Filter;
 
-class ChannelModel {
+class GatewayModel {
     public $db = null;
-    private $table = 'channel';
-    private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid', 'spcode', 'encoded', 'concurrent', 'description'];
+    private $table = 'gateway';
+    private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid', 'spcode', 'encoded', 'service', 'concurrent', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -162,6 +162,9 @@ class ChannelModel {
                 break;
             case 'encoded':
                 $res['encoded'] = Filter::number($val, null);
+                break;
+            case 'service':
+                $res['service'] = Filter::number($val, 0, 0, 4);
                 break;
             case 'concurrent':
                 $res['concurrent'] = Filter::number($val, null, 1);
