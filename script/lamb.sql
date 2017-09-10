@@ -52,6 +52,7 @@ CREATE TABLE gateway (
     spcode varchar(32) NOT NULL,
     encoded int NOT NULL,
     concurrent int NOT NULL,
+    service int NOT NULL,
     description varchar(64) NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
