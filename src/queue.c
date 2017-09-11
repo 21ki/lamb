@@ -43,3 +43,7 @@ int lamb_queue_getattr(lamb_queue_t *queue, lamb_queue_attr *qattr) {
 
     return 0;
 }
+
+int lamb_queue_close(lamb_queue_t *queue) {
+    return mq_close(queue->mqd);
+}

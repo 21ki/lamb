@@ -77,12 +77,12 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>公司名称</th><th>充值金额</th><th>操作员</th><th>记录 IP 地址</th><th>操作时间</th></tr>
+            <tr><th>#</th><th>公司名称</th><th>充值金额</th><th>操作员</th><th>备注说明</th><th>记录 IP 地址</th><th>操作时间</th></tr>
           </thead>
           <tbody>
             <?php
               foreach ($data as $l) {
-                echo '<tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>',lamb_output($l['company']),'</td><td>',$l['money'],'</td><td>',$l['operator'],'</td><td>',long2ip($l['ip_addr']),'</td><td>',$l['create_time'],'</td></tr>';
+                echo '<tr><td><span class="glyphicon glyphicon-exclamation-sign"></span></td><td>',lamb_output($l['company']),'</td><td>',$l['money'],'</td><td>',$l['operator'],'</td><td>',$l['description'],'</td><td>',long2ip($l['ip_addr']),'</td><td>',$l['create_time'],'</td></tr>';
               }
             ?>
           </tbody>

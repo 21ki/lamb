@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Read lamb configuration file */
+    memset(&config, 0, sizeof(config));
     if (lamb_read_config(&config, file) != 0) {
         return -1;
     }
@@ -168,8 +169,35 @@ void *lamb_sender_loop(void *data) {
         if (ret > 0) {
             unsigned long long now_time;
             submit = (lamb_submit_t *)&(message.data);
+
+            /* Check Operator */
+            int sp;
+            bool allow = false;
+            
+            for (int i = 0; i < 4; i++) {
+                sp = config.service[i];
+                if (sp != 0) {
+                    if (lamb_check_operator(sp, submit->phone, strlen(submit->phone))) {
+                        allow = true;
+                    }
+                }
+            }
+
+            if (allow) {
+                printf("-> [operator] Check phone %s successfull\n", submit->phone);
+            } else {
+                printf("-> [operator] Check phone %s does not pass\n", submit->phone);
+                continue;
+            }
+            
             table.msgId = submit->id;
-            sprintf(spcode, "%s%s", config.spcode, submit->spcode);
+
+            if (config.extended) {
+                sprintf(spcode, "%s%s", config.spcode, submit->spcode);
+            } else {
+                strcpy(spcode, config.spcode);
+            }
+            
             now_time = lamb_now_microsecond();
 
             /* Message Encode Convert */
@@ -613,6 +641,27 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'Concurrent' parameter\n");
     }
 
+    if (lamb_get_bool(&cfg, "Extended", &conf->extended) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Extended' parameter\n");
+        goto error;
+    }
+
+    char service[32];
+    if (lamb_get_string(&cfg, "Service", service, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Service' parameter\n");
+        goto error;
+    }
+
+    int i = 0;
+    char *delims = ",";
+    char *result = NULL;
+
+    result = strtok(service, delims);
+    while((result != NULL) && (i < 4)) {
+        conf->service[i++] = atoi(result);
+        result = strtok( NULL, delims );
+    }
+    
     if (lamb_get_string(&cfg, "BackFile", conf->backfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'BackFile' parameter\n");
         goto error;

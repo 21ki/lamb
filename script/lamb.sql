@@ -9,7 +9,7 @@ CREATE TABLE company (
     paytype int NOT NULL,
     contacts varchar(64) NOT NULL,
     telephone varchar(32) NOT NULL,
-    description varchar(128) NOT NULL,
+    description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
@@ -27,7 +27,7 @@ CREATE TABLE account (
     policy int NOT NULL,
     check_template int NOT NULL,
     check_keyword int NOT NULL,
-    description varchar(64) NOT NULL,
+    description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
@@ -36,7 +36,7 @@ CREATE TABLE template (
     name varchar(64) NOT NULL,
     contents varchar(512) NOT NULL,
     account int NOT NULL,
-    description varchar(64) NOT NULL,
+    description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
@@ -51,16 +51,17 @@ CREATE TABLE gateway (
     spid varchar(32) NOT NULL,
     spcode varchar(32) NOT NULL,
     encoded int NOT NULL,
+    extended int NOT NULL,
     concurrent int NOT NULL,
-    service int NOT NULL,
-    description varchar(64) NOT NULL,
+    service int[] NOT NULL,
+    description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
 CREATE TABLE groups (
     id serial PRIMARY KEY NOT NULL,
     name varchar(64) NOT NULL,
-    description varchar(64) NOT NULL,
+    description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
@@ -74,7 +75,7 @@ CREATE TABLE routes (
     id serial PRIMARY KEY NOT NULL,
     spcode varchar(32) NOT NULL,
     account int NOT NULL,
-    description varchar(64) NOT NULL,
+    description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
@@ -88,6 +89,7 @@ CREATE TABLE pay_logs (
     company varchar(64) NOT NULL,
     money bigint NOT NULL,
     operator varchar(64) NOT NULL,
+    description text NOT NULL,
     ip_addr bigint NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );

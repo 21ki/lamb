@@ -17,6 +17,10 @@
 #define LAMB_REPORT  3
 #define LAMB_UPDATE  4
 
+#define LAMB_CMCC    1
+#define LAMB_CTCC    2
+#define LAMB_CUCC    3
+
 #pragma pack(1)
 
 typedef struct {
@@ -78,5 +82,6 @@ int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, c
 size_t lamb_ucs2_strlen(const char *str);
 size_t lamb_gbk_strlen(const char *str);
 bool lamb_check_msgfmt(int coded, int list[], size_t len);
+bool lamb_check_operator(int sp, const char *phone, size_t len);
 
 #endif

@@ -329,3 +329,51 @@ bool lamb_check_msgfmt(int coded, int list[], size_t len) {
 
     return false;
 }
+
+bool lamb_check_operator(int sp, const char *phone, size_t len) {
+    int count;
+    char tmp[8];
+    int num;
+
+    if (len < 3) {
+        return false;
+    }
+
+    int lamb_cmcc[] = {134, 135, 136, 137, 138, 139, 147, 150, 151, 152, 157, 158, 159, 178, 182, 183, 184, 187, 188, 198};
+    int lamb_ctcc[] = {133, 149, 153, 173, 177, 180, 181, 189, 199};
+    int lamb_cucc[] = {130, 131, 132, 155, 156, 145, 175, 176, 185, 186, 166};
+
+    memset(tmp, 0, sizeof(tmp));
+    memcpy(tmp, phone, 3);
+    num = atoi(tmp);
+
+    switch (sp) {
+    case LAMB_CMCC:
+        count = sizeof(lamb_cmcc) / sizeof(lamb_cmcc[0]);
+        for (int i = 0; i < count; i++) {
+            if (num == lamb_cmcc[i]) {
+                return true;
+            }
+        }
+        break;
+    case LAMB_CTCC:
+        count = sizeof(lamb_ctcc) / sizeof(lamb_ctcc[0]);
+        for (int i = 0; i < count; i++) {
+            if (num == lamb_ctcc[i]) {
+                return true;
+            }
+        }
+        break;
+    case LAMB_CUCC:
+        count = sizeof(lamb_cucc) / sizeof(lamb_cucc[0]);
+        for (int i = 0; i < count; i++) {
+            if (num == lamb_cucc[i]) {
+                return true;
+            }
+        }
+        break;
+
+    }
+
+    return false;
+}

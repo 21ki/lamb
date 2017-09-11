@@ -10,8 +10,8 @@ use Tool\Filter;
 
 class GatewayController extends Yaf\Controller_Abstract {
     public function indexAction() {
-        $channel = new GatewayModel();
-        $this->getView()->assign('channels', $channel->getAll());
+        $gateway = new GatewayModel();
+        $this->getView()->assign('gateways', $gateway->getAll());
         return true;
     }
 
@@ -19,11 +19,19 @@ class GatewayController extends Yaf\Controller_Abstract {
         $request =  $this->getRequest();
 
         if ($request->isPost()) {
-            $channel = new GatewayModel();
-            $channel->create($request->getPost());
-            $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/channel';
+            $gateway = new GatewayModel();
+            $form = $request->getPost();
+
+            if (isset($form['service']) && is_array($form['service'])) {
+                array_walk($form['service'], 'str2int');
+                $form['service'] = array_unique($form['service']);
+            } else {
+                $form['service'] = [];
+            }
+
+            $gateway->create($form);
             $response = $this->getResponse();
-            $response->setRedirect($url);
+            $response->setRedirect('/gateway');
             $response->response();
             return false;
             
@@ -34,18 +42,28 @@ class GatewayController extends Yaf\Controller_Abstract {
 
     public function editAction() {
         $request = $this->getRequest();
-        $channel = new GatewayModel();
+        $gateway = new GatewayModel();
 
         if ($request->isPost()) {
-            $channel->change($request->getPost('id'), $request->getPost());
-            $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/channel';
+            $form = $request->getPost();
+
+            if (isset($form['service']) && is_array($form['service'])) {
+                array_walk($form['service'], 'str2int');
+                $form['service'] = array_unique($form['service']);
+            } else {
+                $form['service'] = [];
+            }
+            
+            $gateway->change($request->getPost('id'), $form);
             $response = $this->getResponse();
-            $response->setRedirect($url);
+            $response->setRedirect('/gateway');
             $response->response();
             return false;
         }
 
-        $this->getView()->assign('channel', $channel->get($request->getQuery('id')));
+        $data = $gateway->get($request->getQuery('id'));
+        $data['service'] = explode(',', trim($data['service'], '{}'));
+        $this->getView()->assign('gateway', $data);
         return true;
     }
 
@@ -62,9 +80,8 @@ class GatewayController extends Yaf\Controller_Abstract {
             $channel->test($request->getPost('id'), $request->getPost('phone'), $request->getPost('message'));
         }
 
-        $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/channel';
         $response = $this->getResponse();
-        $response->setRedirect($url);
+        $response->setRedirect('/gateway');
         $response->response();
 
         return false;

@@ -13,3 +13,7 @@ function lamb_output($val = null, $len = -1) {
     
     return htmlspecialchars($val, ENT_QUOTES);
 }
+
+function str2int(&$val) {
+    $val = intval($val);
+}

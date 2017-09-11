@@ -82,8 +82,8 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道名称:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="hidden" class="form-control" name="id" value="<?php echo $channel['id'];?>" />
-                <input type="text" class="form-control" name="name" value="<?php echo $channel['name'];?>" placeholder="Enter Name" required="required">
+                <input type="hidden" class="form-control" name="id" value="<?php echo $gateway['id'];?>" />
+                <input type="text" class="form-control" name="name" value="<?php echo $gateway['name'];?>" placeholder="Enter Name" required="required">
               </div>
               <div class="col-xs-2 col-sm-2">
                 <span class="help-block">落地通道名称</span>
@@ -103,7 +103,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">服务器地址:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="host" value="<?php echo $channel['host'];?>" placeholder="Enter IP Address" required="required">
+                <input type="text" class="form-control" name="host" value="<?php echo $gateway['host'];?>" placeholder="Enter IP Address" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道网关 IP 地址</span>
@@ -112,7 +112,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">端 口:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="number" class="form-control" name="port" min="1" max="65535" value="<?php echo $channel['port'];?>" placeholder="Enter Port" required="required">
+                <input type="number" class="form-control" name="port" min="1" max="65535" value="<?php echo $gateway['port'];?>" placeholder="Enter Port" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道网关端口</span>
@@ -121,7 +121,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">Account:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="username" value="<?php echo $channel['username'];?>" placeholder="Enter Username" required="required">
+                <input type="text" class="form-control" name="username" value="<?php echo $gateway['username'];?>" placeholder="Enter Username" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道账号</span>
@@ -130,7 +130,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">Password:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="password" class="form-control" name="password" value="<?php echo $channel['password'];?>" placeholder="Enter Password" required="required">
+                <input type="password" class="form-control" name="password" value="<?php echo $gateway['password'];?>" placeholder="Enter Password" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道密码</span>
@@ -139,7 +139,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">SPID:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="spid" value="<?php echo $channel['spid'];?>" placeholder="Enter SPID" required="required">
+                <input type="text" class="form-control" name="spid" value="<?php echo $gateway['spid'];?>" placeholder="Enter SPID" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道 SPID 号码</span>
@@ -148,7 +148,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">接入号码:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="spcode" value="<?php echo $channel['spcode'];?>" placeholder="Enter Access Code" required="required">
+                <input type="text" class="form-control" name="spcode" value="<?php echo $gateway['spcode'];?>" placeholder="Enter Access Code" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道接入号码</span>
@@ -158,10 +158,10 @@
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">短信编码:</label>
               <div class="col-xs-3 col-sm-3">
                 <select class="form-control" name="encoded">
-                  <option value="0"<?php if ($channel['encoded'] == 0) {echo ' selected="selected"';}?>>ASCII</option>
-                  <option value="8"<?php if ($channel['encoded'] == 8) {echo ' selected="selected"';}?>>UCS-2</option>
-                  <option value="8"<?php if ($channel['encoded'] == 11) {echo ' selected="selected"';}?>>UTF-8</option>
-                  <option value="15"<?php if ($channel['encoded'] == 15) {echo ' selected="selected"';}?>>GBK</option>
+                  <option value="0"<?php if ($gateway['encoded'] == 0) {echo ' selected="selected"';}?>>ASCII</option>
+                  <option value="8"<?php if ($gateway['encoded'] == 8) {echo ' selected="selected"';}?>>UCS-2</option>
+                  <option value="8"<?php if ($gateway['encoded'] == 11) {echo ' selected="selected"';}?>>UTF-8</option>
+                  <option value="15"<?php if ($gateway['encoded'] == 15) {echo ' selected="selected"';}?>>GBK</option>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
@@ -169,23 +169,36 @@
               </div>
             </div>
             <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">扩展码选项:</label>
+              <div class="col-xs-3 col-sm-3 col-md-3">
+                <div class="checkbox">
+                  <label>
+                    <input id="extended" type="checkbox" name="extended" value="1" <?php if ($gateway['extended'] == 1) {echo 'checked="checked" ';}?>/> 允许扩展码 (可选参数)
+                  </label>
+                </div>
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">允许自定义扩展子号码</span>
+              </div>
+            </div>
+            <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">运营商类型:</label>
               <div class="col-xs-3 col-sm-3 col-md-3">
                 <div class="checkbox">
                   <label>
-                    <input type="checkbox" name="service['cmcc']" /> 移动
+                    <input type="checkbox" name="service[]" value="1" <?php if (in_array(1, $gateway['service'])) {echo 'checked="checked" ';}?>/> 移动
                   </label>
-                  &nbsp;&nbsp;
+                  &nbsp;
                   <label>
-                    <input type="checkbox" name="service['ctcc']" /> 电信
+                    <input type="checkbox" name="service[]" value="2" <?php if (in_array(2, $gateway['service'])) {echo 'checked="checked" ';}?>/> 电信
                   </label>
-                  &nbsp;&nbsp;
+                  &nbsp;
                   <label>
-                    <input type="checkbox" name="service['cucc']" /> 联通
+                    <input type="checkbox" name="service[]" value="3" <?php if (in_array(3, $gateway['service'])) {echo 'checked="checked" ';}?>/> 联通
                   </label>
-                  &nbsp;&nbsp;
+                  &nbsp;
                   <label>
-                    <input type="checkbox" name="service['other']" /> 其他
+                    <input type="checkbox" name="service[]" value="4" <?php if (in_array(4, $gateway['service'])) {echo 'checked="checked" ';}?>/> 其他
                   </label>
                 </div>
               </div>
@@ -196,7 +209,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">最大并发:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="number" class="form-control" name="concurrent" min="1" value="<?php echo $channel['concurrent'];?>" placeholder="Enter Concurrent Number" required="required">
+                <input type="number" class="form-control" name="concurrent" min="1" value="<?php echo $gateway['concurrent'];?>" placeholder="Enter Concurrent Number" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道最大并发数</span>
@@ -205,7 +218,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">备注信息:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="description" value="<?php echo $channel['description'];?>" placeholder="Enter Description" />
+                <input type="text" class="form-control" name="description" value="<?php echo $gateway['description'];?>" placeholder="Enter Description" />
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">落地通道相关备注说明</span>

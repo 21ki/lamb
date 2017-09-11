@@ -28,7 +28,7 @@ class PaymentModel {
     }
     
     public function writeLogs(array $event) {
-        $sql = 'INSERT INTO ' . $this->table . '(company, money, operator, ip_addr) VALUES(:company, :money, :operator, :ip_addr)';
+        $sql = 'INSERT INTO ' . $this->table . '(company, money, operator, description, ip_addr) VALUES(:company, :money, :operator, :description, :ip_addr)';
         $sth = $this->db->prepare($sql);
         foreach ($event as $key => $val) {
             $sth->bindParam(':' . $key, $event[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);

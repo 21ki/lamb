@@ -5,7 +5,7 @@ MACRO = -D_POSIX_C_SOURCE=200112L
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/message.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lpq -lhiredis -lrt -lpcre
 
-all: sp ismg server deliver lamb
+all: sp ismg server deliver lamb test
 
 sp: src/sp.c src/sp.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/sp.c $(OBJS) $(LIBS) -o sp
@@ -21,6 +21,9 @@ deliver: src/deliver.c src/deliver.h $(OBJS)
 
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
+
+test: src/test.c src/test.h src/utils.o src/queue.o
+	$(CC) $(CFLAGS) $(MACRO) src/test.c src/utils.o src/queue.o $(LIBS) -o test
 
 src/account.o: src/account.c src/account.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/account.c -o src/account.o
@@ -73,7 +76,12 @@ src/message.o: src/message.c src/message.h
 .PHONY: install clean
 
 install:
-	echo complete
+	/usr/bin/mkdir -p /usr/local/lamb/bin
+	/usr/bin/install -m 750 ismg /usr/local/lamb/bin
+	/usr/bin/install -m 750 server /usr/local/lamb/bin
+	/usr/bin/install -m 750 deliver /usr/local/lamb/bin
+	/usr/bin/install -m 750 sp /usr/local/lamb/bin
+	/usr/bin/install -m 750 test /usr/local/lamb/bin
 
 clean:
 	rm -f src/*.o

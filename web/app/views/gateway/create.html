@@ -169,23 +169,36 @@
               </div>
             </div>
             <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">扩展码选项:</label>
+              <div class="col-xs-3 col-sm-3 col-md-3">
+                <div class="checkbox">
+                  <label>
+                    <input id="extended" type="checkbox" name="extended" value="1" /> 允许扩展码 (可选参数)
+                  </label>
+                </div>
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">允许自定义扩展子号码</span>
+              </div>
+            </div>
+            <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">运营商类型:</label>
               <div class="col-xs-3 col-sm-3 col-md-3">
                 <div class="checkbox">
                   <label>
-                    <input type="checkbox" name="service['cmcc']" /> 移动
+                    <input type="checkbox" name="service[]" value="1" /> 移动 
                   </label>
-                  &nbsp;&nbsp;
+                  &nbsp;
                   <label>
-                    <input type="checkbox" name="service['ctcc']" /> 电信
+                    <input type="checkbox" name="service[]" value="2" /> 电信 
                   </label>
-                  &nbsp;&nbsp;
+                  &nbsp;
                   <label>
-                    <input type="checkbox" name="service['cucc']" /> 联通
+                    <input type="checkbox" name="service[]" value="3" /> 联通 
                   </label>
-                  &nbsp;&nbsp;
+                  &nbsp;
                   <label>
-                    <input type="checkbox" name="service['other']" /> 其他
+                    <input type="checkbox" name="service[]" value="4" /> 其他
                   </label>
                 </div>
               </div>

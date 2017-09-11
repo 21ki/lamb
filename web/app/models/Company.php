@@ -121,6 +121,7 @@ class CompanyModel {
                 $event['company'] = $company['name'];
                 $event['money'] = intval($money);
                 $event['operator'] = 'admin';
+                $event['description'] = 'no description';
                 $event['ip_addr'] = ip2long($_SERVER['REMOTE_ADDR']);
                 $payment->writeLogs($event);
                 return true;

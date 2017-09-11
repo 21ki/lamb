@@ -11,7 +11,7 @@ use Tool\Filter;
 class GatewayModel {
     public $db = null;
     private $table = 'gateway';
-    private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid', 'spcode', 'encoded', 'service', 'concurrent', 'description'];
+    private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid', 'spcode', 'encoded', 'extended', 'service', 'concurrent', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -43,7 +43,6 @@ class GatewayModel {
 
     public function create(array $data = null) {
         $data = $this->checkArgs($data);
-
         $data['type'] = 1;
 
         if (isset($data['encoded'])) {
@@ -51,14 +50,26 @@ class GatewayModel {
                 return false;
             }
         }
-        
+
+        if (isset($data['extended'])) {
+            $data['extended'] = 1;
+        } else {
+            $data['extended'] = 0;
+        }
+
+        if (isset($data['service'])) {
+            $data['service'] = '{' . $data['service'] . '}';
+        } else {
+            $data['service'] = '{0}';
+        }
+
         if (count($data) == count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(name, type, host, port, username, password, spid, spcode, encoded, concurrent, description) ';
-            $sql .= 'VALUES(:name, :type, :host, :port, :username, :password, :spid, :spcode, :encoded, :concurrent, :description)';
+            $sql = 'INSERT INTO ' . $this->table . '(name, type, host, port, username, password, spid, spcode, encoded, extended, service, concurrent, description) ';
+            $sql .= 'VALUES(:name, :type, :host, :port, :username, :password, :spid, :spcode, :encoded, :extended, :service, :concurrent, :description)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
-                $sth->bindParam(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
             }
 
             if ($sth->execute()) {
@@ -81,6 +92,16 @@ class GatewayModel {
             if (!in_array($data['encoded'], [0, 8, 15], true)) {
                 unset($data['encoded']);
             }
+        }
+
+        if (!isset($data['extended'])) {
+            $data['extended'] = 0;
+        }
+        
+        if (isset($data['service'])) {
+            $data['service'] = '{' . $data['service'] . '}';
+        } else {
+            $data['service'] = '{0}';
         }
 
         $column = $this->keyAssembly($data);
@@ -163,8 +184,14 @@ class GatewayModel {
             case 'encoded':
                 $res['encoded'] = Filter::number($val, null);
                 break;
+            case 'extended':
+                $res['extended'] = Filter::number($val, 0, 0, 1);
+                break;
             case 'service':
-                $res['service'] = Filter::number($val, 0, 0, 4);
+                $res['service'] = '0';
+                if ($this->checkService($val)) {
+                    $res['service'] = implode(',', $val);
+                }
                 break;
             case 'concurrent':
                 $res['concurrent'] = Filter::number($val, null, 1);
@@ -193,5 +220,22 @@ class GatewayModel {
             }
         }
         return $text;
+    }
+
+    public function checkService(array $data) {
+        $len = count($data);
+        $service = [1, 2, 3, 4];
+        
+        if (!($len > 0 && $len <= count($service))) {
+            return false;
+        }
+
+        foreach ($data as $val) {
+            if (!in_array($val, $service, true)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

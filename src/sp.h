@@ -28,6 +28,8 @@ typedef struct {
     long long recv_timeout;
     int send_queue;
     int recv_queue;
+    bool extended;
+    int service[4];
     int concurrent;
     char backfile[128];
     char logfile[128];

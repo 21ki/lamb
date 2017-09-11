@@ -71,7 +71,7 @@
           <li><a href="/cdr">Home</a></li>
           <li><a href="/gateway">Gateway</a></li>
           <li class="active">Data</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="channel/create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><a class="btn btn-success btn-xs" href="gateway/create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
         </ol>
       </div>
       <div class="row">
@@ -81,12 +81,12 @@
           </thead>
           <tbody>
             <?php
-              foreach ($channels as $c) {
-                echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',lamb_output($c['name']),'</td><td>cmpp/2.0</td><td>',$c['host'],'</td><td>',$c['port'],'</td>';
-                echo '<td>',$c['concurrent'],'/s</td><td>',lamb_output($c['description']),'</td><td>',$c['create_time'],'</td>';
-                echo '<td><a href="javascript:void(0)" onclick="checkChannel(',$c['id'],')"><span class="glyphicon glyphicon-phone"></span> 测 试</a></td>';
-                echo '<td><button class="btn btn-default btn-xs" onclick="deleteChannel(',$c['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
-                echo '<td><a class="btn btn-default btn-xs" href="channel/edit?id=',$c['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
+              foreach ($gateways as $g) {
+                echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',lamb_output($g['name']),'</td><td>cmpp/2.0</td><td>',$g['host'],'</td><td>',$g['port'],'</td>';
+                echo '<td>',$g['concurrent'],'/s</td><td>',lamb_output($g['description']),'</td><td>',$g['create_time'],'</td>';
+                echo '<td><a href="javascript:void(0)" onclick="checkChannel(',$g['id'],')"><span class="glyphicon glyphicon-phone"></span> 测 试</a></td>';
+                echo '<td><button class="btn btn-default btn-xs" onclick="deleteChannel(',$g['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
+                echo '<td><a class="btn btn-default btn-xs" href="gateway/edit?id=',$g['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
               }
             ?>
           </tbody>
@@ -120,7 +120,7 @@
 
   function checkChannel(id) {
     var text = '<div class="container" style="width: 580px; height: 300px; padding: 20px">' +
-    '<form class="form-horizontal" action="/channel/test" method="post">' +
+    '<form class="form-horizontal" action="/gateway/test" method="post">' +
       '<div class="form-group">' +
         '<div class="col-xs-12 col-sm-12">' +
           '<input type="text" class="form-control" name="phone" placeholder="Enter Phone" required="required">' +
