@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>blacklist - lamb</title>
+    <title>blacklist and whitelist - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link type="text/css" rel="stylesheet" href="/css/blacklist.css">
@@ -50,8 +50,7 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/security/blacklist">黑名单库</a></li>
-                <li><a href="/security/whitelist">白名单库</a></li>
+                <li><a href="/security/lists">黑白名单库</a></li>
                 <li><a href="/security/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
@@ -69,23 +68,19 @@
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Blacklist</a></li>
+          <li><a href="#">Lists</a></li>
           <li class="active">Data</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="phoneImport()"><span class="glyphicon glyphicon-plus"></span> 添 加</a></li>
+          <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>手机号码</th><th>号码类型</th><th>号码归属地</th><th>创建时间</th><th>删 除</th></tr>
+            <tr><th>#</th><th>列表名称</th><th>数据类型</th><th>列表数量</th><th>创建时间</th><th>查 询</th><th>添 加</th><th>删 除</th><th>导 出</th></tr>
           </thead>
           <tbody>
-            <?php
-              foreach ($blacklist as $l) {
-              echo '<tr><td><span class="glyphicon glyphicon-phone"></span></td><td>',$l['phone'],'</td><td>黑名单</td><td>Unknown</td><td>1970-01-01 08:00:00</td>';
-              echo '<td><button class="btn btn-default btn-xs" onclick="deletePhone(',$l['phone'],')"><span class="glyphicon glyphicon-edit"></span> 删 除</button></td></tr>',"\n";
-              }
-              ?>
+            <tr><td><span class="glyphicon glyphicon-remove-sign"></span></td><td>黑名单</td><td>黑名单</td><td><?php echo $blacklist;?></td><td>2017-05-08 08:55:00</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('blacklist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="phoneImport('blacklist')"><span class="glyphicon glyphicon-plus-sign"></span> 添 加</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span> 导 出</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-ok-sign text-success"></span></td><td>白名单</td><td>白名单</td><td><?php echo $whitelist;?></td><td>2017-05-08 08:55:00</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('whitelist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="phoneImport('whitelist')"><span class="glyphicon glyphicon-plus-sign"></span> 添 加</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span> 导 出</a></td></tr>
           </tbody>
         </table>
       </div>
@@ -115,26 +110,21 @@
     });
   }
 
-  function hotkey() {  
-    var key=window.event.keyCode;
-    if(key == 119) {
-      layer.prompt({title: '请输入要查询的号码', formType: 0}, function(phone, index) {
-        layer.close(index);
-        var url = '/security/check?type=blacklist&phone=' + phone;
+  function query(type) {
+    layer.prompt({title: '请输入要查询的号码', formType: 0}, function(phone, index) {
+      layer.close(index);
+        var url = '/security/check?type=' + type + '&phone=' + phone;
         $.get(url, function(resp, status) {
           if (resp.message == "yes") {
             layer.msg('号码 ' + phone + ' 已存在!', {icon: 1, time: 3000});
           } else {
             layer.msg('号码 ' + phone + ' 不存在!', {icon: 2, time: 3000});
           }
-        });
       });
-    }
+    });
   }
 
-  document.onkeydown = hotkey;
-
-  function phoneImport(id) {
+  function phoneImport(type) {
     var text = '<div class="container" style="width:410px;height:200px;padding:40px 20px">' +
     '<form class="form-horizontal" action="/security/import" method="post" enctype="multipart/form-data">' +
       '<div class="form-group">' +
@@ -142,7 +132,7 @@
           '<label>号码文件:</label>' +
         '</div>' +
         '<div class="col-xs-8" style="margin-top:-5px">' +
-          '<input type="hidden" class="form-control" name="type" value="blacklist" />' +
+          '<input type="hidden" class="form-control" name="type" value="' + type + '" />' +
           '<input type="file" class="form-control" name="file" placeholder="Enter number file" required="required">' +
         '</div>' +
       '</div>' +

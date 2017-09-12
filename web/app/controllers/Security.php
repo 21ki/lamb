@@ -7,15 +7,10 @@
  */
 
 class SecurityController extends Yaf\Controller_Abstract {
-    public function blacklistAction() {
+    public function listsAction() {
         $security = new SecurityModel();
-        $this->getView()->assign('blacklist', $security->blacklist());
-        return true;
-    }
-
-    public function whitelistAction() {
-        $security = new SecurityModel();
-        $this->getView()->assign('whitelist', $security->whitelist());
+        $this->getView()->assign('blacklist', $security->total('blacklist'));
+        $this->getView()->assign('whitelist', $security->total('whitelist'));
         return true;
     }
 

@@ -313,7 +313,7 @@ void lamb_work_loop(lamb_client_t *client) {
     }
 
     /* Start Client Status Update Thread */
-    lamb_start_thread(lamb_client_online, client, 1);
+    lamb_start_thread(lamb_online_update, client, 1);
 
     /* Client Message Deliver */
     lamb_start_thread(lamb_deliver_loop, (void *)client, 1);
@@ -501,7 +501,7 @@ exit:
     return NULL;
 }
 
-void *lamb_client_online(void *data) {
+void *lamb_online_update(void *data) {
     int err;
     lamb_client_t *client;
 
@@ -517,10 +517,10 @@ void *lamb_client_online(void *data) {
     redisReply *reply = NULL;
 
     while (true) {
-        reply = redisCommand(cache.handle, "SET online.%s 1", client->account->user);
+        reply = redisCommand(cache.handle, "SET online.%d %u", client->account->id, getpid());
         if (reply != NULL) {
             freeReplyObject(reply);
-            reply = redisCommand(cache.handle, "EXPIRE online.%s 5", client->account->user);
+            reply = redisCommand(cache.handle, "EXPIRE online.%d 5", client->account->id);
             if (reply != NULL) {
                 freeReplyObject(reply);
             }

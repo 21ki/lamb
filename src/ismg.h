@@ -42,7 +42,7 @@ typedef struct {
 void lamb_event_loop(cmpp_ismg_t *cmpp);
 void lamb_work_loop(lamb_client_t *client);
 void *lamb_deliver_loop(void *data);
-void *lamb_client_online(void *data);
+void *lamb_online_update(void *data);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

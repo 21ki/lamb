@@ -37,6 +37,20 @@ class SecurityModel {
         return $result;
     }
 
+    public function total($type = null) {
+        $count = 0;
+        if (in_array($type, ['blacklist', 'whitelist'], true)) {
+            $sql = 'SELECT count(phone) FROM ' . $type;
+            $sth = $this->db->query($sql);
+            if ($sth) {
+                $result = $sth->fetch();
+                $count = $result['count'];
+            }
+        }
+
+        return $count;
+    }
+    
     public function delete($type = null, $phone = null) {
         if (in_array($type, ['blacklist', 'whitelist'], true)) {
             $sql = 'DELETE FROM ' . $type . ' WHERE phone = ' . intval($phone);
