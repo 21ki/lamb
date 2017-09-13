@@ -238,43 +238,39 @@ void *lamb_deliver_worker(void *data) {
         case LAMB_UPDATE:
             update = (lamb_update_t *)&message->data;
             printf("-> [update] id: %llu, msgId: %llu\n", update->id, update->msgId);
-            
-            /*             
+      
             pthread_mutex_lock(&cache.lock);
             err = lamb_cache_update_message(&cache, update);
             pthread_mutex_unlock(&cache.lock);
             if (err) {
-                lamb_errlog(config.logfile, "Lamb can't update messsage to cache", 0);
+                lamb_errlog(config.logfile, "Can't update messsage to cache", 0);
                 lamb_sleep(1000);
             }
-
 
             pthread_mutex_lock(&db.lock);
             err = lamb_update_message(&db, update);
             pthread_mutex_unlock(&db.lock);
             if (err) {
-                lamb_errlog(config.logfile, "Lamb can't update messsage to database", 0);
+                lamb_errlog(config.logfile, "Can't update messsage to database", 0);
                 lamb_sleep(1000);
             }
-            */
             break;
         case LAMB_REPORT:
             report = (lamb_report_t *)&message->data;
             printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
                    report->id, report->phone, report->status, report->submitTime, report->doneTime);
-            /* 
             err = lamb_report_update(&db, report);
             if (err) {
                 lamb_errlog(config.logfile, "Can't update message status report", 0);
+                lamb_sleep(1000);
             }
-            */
             break;
         case LAMB_DELIVER:;
             deliver = (lamb_deliver_t *)&message->data;
             printf("-> [deliver] msgId: %llu, phone: %s, spcode: %s, serviceId: %s, msgFmt: %d, length: %d\n",
                    deliver->id, deliver->phone, deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length);
 
-            /* 
+            /*
             int id;
             id = lamb_route_query(&routes, deliver->spcode);
             if (lamb_is_online(&cache, id)) {
@@ -289,8 +285,7 @@ void *lamb_deliver_worker(void *data) {
         free(node);
         free(message);
     }
-    
-    
+
     pthread_exit(NULL);
 }
 

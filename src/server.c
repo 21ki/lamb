@@ -261,6 +261,7 @@ void lamb_reload(int signum) {
 
 void *lamb_worker_loop(void *data) {
     int err;
+    bool allow;
     lamb_list_node_t *node;
     lamb_message_t *message;
     lamb_submit_t *submit;
@@ -317,8 +318,15 @@ void *lamb_worker_loop(void *data) {
             /* Blacklist and Whitelist */
             if (account.policy != LAMB_POL_EMPTY) {
                 if (lamb_security_check(&black, account.policy, submit->phone)) {
-                    printf("-> [policy] The security check not pass\n");
-                    continue;
+                    if (account.policy == LAMB_BLACKLIST) {
+                        printf("-> [policy] The security check not pass\n");
+                        continue;
+                    }
+                } else {
+                    if (account.policy == LAMB_WHITELIST) {
+                        printf("-> [policy] The security check not pass\n");
+                        continue;
+                    }
                 }
                 printf("-> [policy] The Security check OK\n");
             }
