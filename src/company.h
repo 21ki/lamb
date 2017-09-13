@@ -24,6 +24,6 @@ typedef struct {
 
 int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company);
 int lamb_company_get_all(lamb_db_t *db, lamb_companys_t *companys, int size);
-int lamb_company_billing(int company, int count);
+int lamb_company_billing(lamb_db_t *db, int company, int count);
 
 #endif
