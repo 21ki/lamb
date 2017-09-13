@@ -40,7 +40,7 @@ static lamb_group_t group;
 static lamb_account_t account;
 static lamb_company_t company;
 static lamb_templates_t template;
-static lamb_keywords_t keys;
+static lamb_keywords_t keywords;
 static lamb_config_t config;
 
 int main(int argc, char *argv[]) {
@@ -150,7 +150,7 @@ void lamb_event_loop(void) {
     memset(&account, 0, sizeof(account));
     err = lamb_account_fetch(&db, aid, &account);
     if (err) {
-        lamb_errlog(config.logfile, "Can't fetch account information", 0);
+        lamb_errlog(config.logfile, "Can't fetch account '%d' information", aid);
         return;
     }
 
@@ -182,9 +182,9 @@ void lamb_event_loop(void) {
     }
 
     /* Fetch keyword information */
-    memset(&keys, 0, sizeof(keys));
+    memset(&keywords, 0, sizeof(keywords));
     if (account.check_keyword) {
-        err = lamb_keyword_get_all(&db, &keys, LAMB_MAX_KEYWORD);
+        err = lamb_keyword_get_all(&db, &keywords, LAMB_MAX_KEYWORD);
         if (err) {
             lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
         }
@@ -342,7 +342,7 @@ void *lamb_worker_loop(void *data) {
 
             /* Keywords Filtration */
             if (account.check_keyword) {
-                if (lamb_keyword_check(&keys, submit->content)) {
+                if (lamb_keyword_check(&keywords, submit->content)) {
                     printf("-> [keyword] The keyword check not pass\n");
                     continue;
                 }
@@ -364,7 +364,6 @@ void *lamb_worker_loop(void *data) {
                 }
             } else {
                 printf("-> [channel] No gateway channels available\n");
-                lamb_errlog(config.logfile, "Lamb No gateway channels available", 0);
                 lamb_sleep(3000);
                 goto routing;
             }
@@ -377,9 +376,6 @@ void *lamb_worker_loop(void *data) {
                 lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
                 lamb_sleep(3000);
             }
-
-            free(node);
-            free(message);
         } else {
             lamb_sleep(10);
         }
@@ -430,7 +426,6 @@ void *lamb_storage_billing(void *data) {
 
         free(node);
         free(message);
-        
     }
 
     pthread_exit(NULL);
@@ -459,7 +454,6 @@ int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *lis
         } else {
             return -1;
         }
-        
     }
 
     return 0;
