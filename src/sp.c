@@ -350,7 +350,7 @@ void *lamb_deliver_loop(void *data) {
                     lamb_save_logfile(config.backfile, &message);
                 }
 
-                cmpp_deliver_resp(&cmpp.sock, sequenceId, report->msgId, 0);
+                cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
             } else {
                 message.type = LAMB_DELIVER;
                 deliver = (lamb_deliver_t *)&(message.data);

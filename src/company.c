@@ -72,7 +72,7 @@ int lamb_company_billing(lamb_db_t *db, int company, int count) {
     PGresult *res = NULL;
 
     sprintf(sql, "UPDATE company SET money = money - %d WHERE id = %d", count, company);
-    res = PGexec(db->conn, sql);
+    res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
         return -1;
