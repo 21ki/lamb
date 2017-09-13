@@ -45,6 +45,40 @@ int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account) {
     return 0;
 }
 
+int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account) {
+    char sql[512];
+    char *column = NULL;
+    PGresult *res = NULL;
+
+    column = "id, username, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword";
+    sprintf(sql, "SELECT %s FROM account WHERE id = %d", column, id);
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    if (PQntuples(res) < 1) {
+        return 1;
+    }
+
+    account->id = atoi(PQgetvalue(res, 0, 0));
+    strncpy(account->user, PQgetvalue(res, 0, 1), 7);
+    strncpy(account->spcode, PQgetvalue(res, 0, 2), 20);
+    account->company = atoi(PQgetvalue(res, 0, 3));
+    account->charge_type = atoi(PQgetvalue(res, 0, 4));
+    strncpy(account->ip_addr, PQgetvalue(res, 0, 5), 15);
+    account->concurrent = atoi(PQgetvalue(res, 0, 6));
+    account->route = atoi(PQgetvalue(res, 0, 7));
+    account->extended = atoi(PQgetvalue(res, 0, 8)) == 0 ? false : true;
+    account->policy = atoi(PQgetvalue(res, 0, 9));
+    account->check_template = atoi(PQgetvalue(res, 0, 10)) == 0 ? false : true;
+    account->check_keyword = atoi(PQgetvalue(res, 0, 11)) == 0 ? false : true;
+
+    PQclear(res);
+    return 0;
+}
+
 int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
     int rows;
     char *column;

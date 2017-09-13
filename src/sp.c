@@ -349,6 +349,8 @@ void *lamb_deliver_loop(void *data) {
                 if (err) {
                     lamb_save_logfile(config.backfile, &message);
                 }
+
+                cmpp_deliver_resp(&cmpp.sock, sequenceId, report->msgId, 0);
             } else {
                 message.type = LAMB_DELIVER;
                 deliver = (lamb_deliver_t *)&(message.data);
@@ -380,6 +382,8 @@ void *lamb_deliver_loop(void *data) {
                 if (err) {
                     lamb_save_logfile(config.backfile, &message);
                 }
+
+                cmpp_deliver_resp(&cmpp.sock, sequenceId, deliver->id, 0);
             }
             break;
         case CMPP_ACTIVE_TEST_RESP:

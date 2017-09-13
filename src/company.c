@@ -67,7 +67,19 @@ int lamb_company_get_all(lamb_db_t *db, lamb_companys_t *companys, int size) {
     return 0;
 }
 
-int lamb_company_billing(int company, int count) {
-    printf("-> lamb_company_billing() company: %d, count: %d\n", company, count);
+int lamb_company_billing(lamb_db_t *db, int company, int count) {
+    char sql[128];
+    PGresult *res = NULL;
+
+    sprintf(sql, "UPDATE company SET money = money - %d WHERE id = %d", count, company);
+    res = PGexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
+
     return 0;
 }
+

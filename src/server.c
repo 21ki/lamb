@@ -29,19 +29,22 @@
 #include "security.h"
 #include "message.h"
 
+static int aid = 0;
 static lamb_keywords_t keys;
 static lamb_config_t config;
 
 int main(int argc, char *argv[]) {
     bool daemon = false;
     char *file = "server.conf";
-        
+
     int opt = 0;
-    char *optstring = "c:d";
+    char *optstring = "a:c:d";
     opt = getopt(argc, argv, optstring);
 
     while (opt != -1) {
         switch (opt) {
+        case 'a':
+            aid = atoi(optarg);
         case 'c':
             file = optarg;
             break;
@@ -72,74 +75,6 @@ int main(int argc, char *argv[]) {
 }
 
 void lamb_event_loop(void) {
-    int err;
-    pid_t pid;
-    lamb_db_t db;
-    lamb_accounts_t accounts;
-
-    err = lamb_signal(SIGHUP, lamb_reload);
-    if (err) {
-        printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
-    }
-
-    /* Postgresql Database  */
-    err = lamb_db_init(&db);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't initialize postgresql database handle", 0);
-        return;
-    }
-
-    err = lamb_db_connect(&db, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to postgresql database", 0);
-        return;
-    }
-    
-    /* fetch all account */
-    memset(&accounts, 0, sizeof(accounts));
-    err = lamb_account_get_all(&db, &accounts, LAMB_MAX_CLIENT);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't fetch account information", 0);
-        return;
-    }
-
-    memset(&keys, 0, sizeof(keys));
-    err = lamb_keyword_get_all(&db, &keys, LAMB_MAX_KEYWORD);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
-    }
-
-    /* Start work process */
-    for (int i = 0; (i < accounts.len) && (i < LAMB_MAX_CLIENT) && (accounts.list[i] != NULL); i++) {
-        pid = fork();
-        if (pid < 0) {
-            lamb_errlog(config.logfile, "Can't fork id %d work child process", accounts.list[i]->id);
-            return;
-        } else if (pid == 0) {
-            lamb_work_loop(accounts.list[i]);
-            return;
-        }
-    }
-
-    /* Master process event monitor */
-    lamb_set_process("lamb-master");
-
-    while (true) {
-        sleep(3);
-    }
-
-    return;
-}
-
-void lamb_reload(int signum) {
-    if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
-        printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
-    }
-    printf("lamb reload configuration file success!\n");
-    return;
-}
-
-void lamb_work_loop(lamb_account_t *account) {
     int err, ret;
     lamb_cache_t rdb;
     lamb_cache_t cache;
@@ -147,10 +82,16 @@ void lamb_work_loop(lamb_account_t *account) {
     lamb_list_t *storage;
     lamb_queues_t channel;
     lamb_group_t group;
+    lamb_account_t account;
     lamb_company_t company;
     lamb_templates_t template;
 
     lamb_set_process("lamb-server");
+
+    err = lamb_signal(SIGHUP, lamb_reload);
+    if (err) {
+        printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
+    }
 
     /* Work Queue Initialization */
     queue = lamb_list_new();
@@ -180,12 +121,10 @@ void lamb_work_loop(lamb_account_t *account) {
         return;
     }
 
-    /* Postgresql Database Initialization */
-    lamb_db_t db;
-
+    /* Postgresql Database  */
     err = lamb_db_init(&db);
     if (err) {
-        lamb_errlog(config.logfile, "Postgresql database handle initialize failed", 0);
+        lamb_errlog(config.logfile, "Can't initialize postgresql database handle", 0);
         return;
     }
 
@@ -195,6 +134,14 @@ void lamb_work_loop(lamb_account_t *account) {
         return;
     }
     
+    /* fetch  account */
+    memset(&account, 0, sizeof(account));
+    err = lamb_account_fetch(&db, aid, &account);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't fetch account information", 0);
+        return;
+    }
+
     /* Open Client Queue */
     char name[128];
     lamb_queue_t client;
@@ -214,6 +161,7 @@ void lamb_work_loop(lamb_account_t *account) {
     }
 
     /* Fetch company information */
+    memset(&company, 0, sizeof(company));
     err = lamb_company_get(&db, account->company, &company);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch id %d company information", account->company);
@@ -222,6 +170,9 @@ void lamb_work_loop(lamb_account_t *account) {
 
     /* Fetch template information */
     memset(&template, 0, sizeof(template));
+    if () {
+
+    }
     err = lamb_template_get_all(&db, account->id, &template, LAMB_MAX_TEMPLATE);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch template information", 0);
@@ -236,6 +187,15 @@ void lamb_work_loop(lamb_account_t *account) {
         return;
     }
 
+    /* Fetch keyword information */
+    memset(&keys, 0, sizeof(keys));
+    if (account.check_keyword) {
+        err = lamb_keyword_get_all(&db, &keys, LAMB_MAX_KEYWORD);
+        if (err) {
+            lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
+        }
+    }
+        
     /* Fetch Channel Queue*/
     lamb_queue_opt gopt;
     gopt.flag = O_WRONLY | O_NONBLOCK;
@@ -302,6 +262,20 @@ void lamb_work_loop(lamb_account_t *account) {
         }
 
     }
+
+    return;
+}
+
+void lamb_reload(int signum) {
+    if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
+        printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
+    }
+    printf("lamb reload configuration file success!\n");
+    return;
+}
+
+void lamb_work_loop(lamb_account_t *account) {
+
 }
 
 void *lamb_worker_loop(void *data) {
@@ -431,15 +405,13 @@ void *lamb_worker_loop(void *data) {
             }
 
             /* Send Message to Storage */
-            /* 
-               pthread_mutex_lock(&storage->lock);
-               node = lamb_list_rpush(storage, node);
-               pthread_mutex_unlock(&storage->lock);
-               if (node == NULL) {
-               lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
-               lamb_sleep(3000);
-               }
-            */
+            pthread_mutex_lock(&storage->lock);
+            node = lamb_list_rpush(storage, node);
+            pthread_mutex_unlock(&storage->lock);
+            if (node == NULL) {
+                lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
+                lamb_sleep(3000);
+            }
 
             free(node);
             free(message);

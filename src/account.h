@@ -49,6 +49,7 @@ typedef struct {
 } lamb_account_queues_t;
 
 int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account);
+int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account);
 int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size);
 int lamb_account_queue_open(lamb_account_queues_t *queues, int qlen, lamb_accounts_t *accounts, int alen, lamb_queue_opt *opt, int type);
 int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_queues_t *queues, int len, int type);
