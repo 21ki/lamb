@@ -1,0 +1,13 @@
+[Unit]
+Description=Redis persistent key-value database
+After=network.target
+
+[Service]
+User=redis
+Group=redis
+LimitNOFILE=10240
+ExecStart=/usr/local/redis-4.0/redis-server /usr/local/redis-4.0/conf/blacklist.conf --daemonize no
+ExecStop=/usr/local/redis-4.0/redis-cli -h 127.0.0.1 -p 6381 shutdown
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+[Unit]
+Description=PostgreSQL database server
+After=network.target
+
+[Service]
+Type=forking
+User=postgres
+Group=postgres
+LimitNPROC=65535
+LimitNOFILE=102400
+OOMScoreAdjust=-1000
+TimeoutSec=300
+
+ExecStart=/usr/local/postgresql-10/bin/pg_ctl -D /var/pgsql/data -s -w -t 300 start
+ExecStop=/usr/local/postgresql-10/bin/pg_ctl -D /var/pgsql/data -s -m fast stop
+ExecReload=/usr/local/postgresql-10/bin/pg_ctl -D /var/pgsql/data -s reload
+
+[Install]
+WantedBy=multi-user.target

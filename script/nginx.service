@@ -1,0 +1,18 @@
+[Unit]
+Description=The nginx HTTP and reverse proxy server
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/tmp/nginx.pid
+
+ExecStartPre=/usr/bin/rm -f /tmp/nginx.pid
+ExecStartPre=/usr/local/nginx-1.12/sbin/nginx -t -c /usr/local/nginx-1.12/conf/nginx.conf
+ExecStart=/usr/local/nginx-1.12/sbin/nginx -c /usr/local/nginx-1.12/conf/nginx.conf
+ExecReload=/bin/kill -s HUP $MAINPID
+KillSignal=SIGQUIT
+TimeoutStopSec=5
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
