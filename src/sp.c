@@ -77,7 +77,7 @@ void lamb_event_loop(void) {
     struct mq_attr sattr, rattr;
 
     sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    sattr.mq_maxmsg = config.send_queue;
+    sattr.mq_maxmsg = 8;
     sattr.mq_msgsize = sizeof(lamb_message_t);
     sopt.attr = &sattr;
     
@@ -89,7 +89,7 @@ void lamb_event_loop(void) {
     }
 
     ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
-    rattr.mq_maxmsg = config.recv_queue;
+    rattr.mq_maxmsg = 65535;
     rattr.mq_msgsize = sizeof(lamb_message_t);
     ropt.attr = &rattr;
     
@@ -103,7 +103,6 @@ void lamb_event_loop(void) {
     /* Cmpp client initialization */
     err = lamb_cmpp_init(&cmpp, &config);
     if (err) {
-        lamb_errlog(config.logfile, "Lamb sp client initialization failed", 0);
         return;
     }
 
@@ -588,16 +587,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_int64(&cfg, "RecvTimeout", &conf->recv_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "SendQueue", &conf->send_queue) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'SendQueue' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "RecvQueue", &conf->recv_queue) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RecvQueue' parameter\n");
         goto error;
     }
 

@@ -149,7 +149,7 @@ void lamb_event_loop(void) {
     struct mq_attr attr;
     
     opt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    attr.mq_maxmsg = config.queue;
+    attr.mq_maxmsg = 65535;
     attr.mq_msgsize = sizeof(lamb_message_t);
     opt.attr = &attr;
 
@@ -537,11 +537,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_bool(&cfg, "Daemon", &conf->daemon) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Daemon' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "Queue", &conf->queue) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Queue' parameter\n");
         goto error;
     }
 

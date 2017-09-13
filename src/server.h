@@ -28,7 +28,6 @@ typedef struct {
     int id;
     bool debug;
     bool daemon;
-    int queue;
     int work_queue;
     int work_threads;
     char logfile[128];

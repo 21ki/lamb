@@ -26,8 +26,6 @@ typedef struct {
     long long timeout;
     long long send_timeout;
     long long recv_timeout;
-    int send_queue;
-    int recv_queue;
     bool extended;
     int service[4];
     int concurrent;
