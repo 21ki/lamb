@@ -3,7 +3,7 @@ CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
 MACRO = -D_POSIX_C_SOURCE=200112L
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/message.o
-LIBS = -pthread -lssl -lcrypto -liconv -lcmpp2 -lconfig -lpq -lhiredis -lrt -lpcre
+LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre
 
 all: sp ismg server deliver lamb test
 
