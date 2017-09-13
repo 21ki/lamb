@@ -11,19 +11,20 @@
 #include <hiredis/hiredis.h>
 #include "account.h"
 
-int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account) {
+int lamb_account_get(lamb_cache_t *cache, char *username, lamb_account_t *account) {
+    const char *cmd;
     redisReply *reply = NULL;
 
-    redisReply *reply = NULL;
-    const char *cmd = "HMGET account.%s id username password spcode company charge_type ip_addr concurrent route extended policy check_template check_keyword";
-    reply = redisCommand(cache->handle, cmd, user);
+    cmd = "HMGET account.%s id username password spcode company charge_type ip_addr concurrent route extended policy check_template check_keyword";
+    reply = redisCommand(cache->handle, cmd, username);
 
     if (reply == NULL ) {
         return -1;
     }
 
     if ((reply->type != REDIS_REPLY_ARRAY) || (reply->elements != 13)) {
-        goto exit;
+        freeReplyObject(reply);
+        return -1;
     }
 
     /* Id */
@@ -73,7 +74,7 @@ int lamb_account_get(lamb_db_t *db, char *username, lamb_account_t *account) {
         if (reply->element[6]->len > 15) {
             memcpy(account->ip_addr, reply->element[6]->str, 15);
         } else {
-            memcpy(account->ip_addr, reply->element[6]->str, reply->element[6]);
+            memcpy(account->ip_addr, reply->element[6]->str, reply->element[6]->len);
         }
     }
 
@@ -130,7 +131,7 @@ int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account) {
     }
 
     account->id = atoi(PQgetvalue(res, 0, 0));
-    strncpy(account->user, PQgetvalue(res, 0, 1), 7);
+    strncpy(account->username, PQgetvalue(res, 0, 1), 7);
     strncpy(account->spcode, PQgetvalue(res, 0, 2), 20);
     account->company = atoi(PQgetvalue(res, 0, 3));
     account->charge_type = atoi(PQgetvalue(res, 0, 4));
@@ -168,7 +169,7 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
         a = (lamb_account_t *)calloc(1, sizeof(lamb_account_t));
         if (a != NULL) {
             a->id = atoi(PQgetvalue(res, i, 0));
-            strncpy(a->user, PQgetvalue(res, i, 1), 7);
+            strncpy(a->username, PQgetvalue(res, i, 1), 7);
             strncpy(a->spcode, PQgetvalue(res, i, 2), 20);
             a->company = atoi(PQgetvalue(res, i, 3));
             a->charge_type = atoi(PQgetvalue(res, i, 4));

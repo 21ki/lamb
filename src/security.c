@@ -13,7 +13,7 @@ bool lamb_security_check(lamb_cache_t *cache, int type, char *phone) {
     bool r = false;
     redisReply *reply = NULL;
     
-    sprintf(cmd, "EXISTS %s%s", (type == LAMB_BLACKLIST) ? "blacklist." : "whitelist.", phone);
+    sprintf(cmd, "EXISTS %s%s", (type == LAMB_BLACKLIST) ? "black." : "white.", phone);
     reply = redisCommand(cache->handle, cmd);
     if (reply != NULL) {
         if (reply->type == REDIS_REPLY_INTEGER) {

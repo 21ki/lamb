@@ -14,7 +14,7 @@ ismg: src/ismg.c src/ismg.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/ismg.c $(OBJS) $(LIBS) -o ismg
 
 server: src/server.c src/server.h $(OBJS)
-	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -lnanomsg -o server
+	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -o server
 
 deliver: src/deliver.c src/deliver.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) $(LIBS) -o deliver

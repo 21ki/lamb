@@ -21,18 +21,16 @@ int lamb_template_get(lamb_db_t *db, int id, lamb_template_t *template) {
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        return 1;
+        return -1;
     }
 
-    if (PQntuples(res) < 1) {
-        return 2;
-    }
+    if (PQntuples(res) > 1) {
+        template->id = atoi(PQgetvalue(res, 0, 0));
+        strncpy(template->name, PQgetvalue(res, 0, 1), 63);
+        strncpy(template->contents, PQgetvalue(res, 0, 2), 511);
+        template->account = atoi(PQgetvalue(res, 0, 3));
+    }    
 
-    template->id = atoi(PQgetvalue(res, 0, 0));
-    strncpy(template->name, PQgetvalue(res, 0, 1), 63);
-    strncpy(template->contents, PQgetvalue(res, 0, 2), 511);
-    template->account = atoi(PQgetvalue(res, 0, 3));
-    
     PQclear(res);
 
     return 0;

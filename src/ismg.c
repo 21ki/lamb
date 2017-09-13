@@ -29,7 +29,6 @@
 #include "queue.h"
 #include "config.h"
 
-static lamb_db_t db;
 static cmpp_ismg_t cmpp;
 static lamb_cache_t cache;
 static lamb_config_t config;
@@ -75,18 +74,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    /* Postgresql Database Initialization */
-    err = lamb_db_init(&db);
-    if (err) {
-        lamb_errlog(config.logfile, "Postgresql database handle initialization failed", 0);
-    }
-
-    err = lamb_db_connect(&db, "127.0.0.1", 5432, "postgres", "postgres", "lamb");
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to postgresql database", 0);
-        return -1;
-    }
-    
     /* Cmpp ISMG Gateway Initialization */
     err = cmpp_init_ismg(&cmpp, config.listen, config.port);
     if (err) {
@@ -193,12 +180,12 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     
                     /* Check SourceAddr */
                     char key[32];
-                    char user[8];
+                    char username[8];
                     char password[64];
 
-                    memset(user, 0, sizeof(user));
-                    cmpp_pack_get_string(&pack, cmpp_connect_source_addr, user, sizeof(user), 6);
-                    sprintf(key, "account.%s", user);
+                    memset(username, 0, sizeof(username));
+                    cmpp_pack_get_string(&pack, cmpp_connect_source_addr, username, sizeof(username), 6);
+                    sprintf(key, "account.%s", username);
                     
                     if (!lamb_cache_has(&cache, key)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
@@ -210,9 +197,9 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     lamb_cache_hget(&cache, key, "password", password, sizeof(password));
 
                     /* Check AuthenticatorSource */
-                    if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
+                    if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), username, password)) {
                         /* Check Duplicate Logon */
-                        sprintf(key, "client.%s", user);
+                        sprintf(key, "client.%s", username);
                         if (lamb_cache_has(&cache, key)) {
                             cmpp_connect_resp(&sock, sequenceId, 9);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
@@ -229,7 +216,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 
                         lamb_account_t account;
                         memset(&account, 0, sizeof(account));
-                        err = lamb_account_get(&db, user, &account);
+                        err = lamb_account_get(&cache, username, &account);
                         if (err) {
                             cmpp_connect_resp(&sock, sequenceId, 10);
                             lamb_errlog(config.logfile, "Can't to obtain account information", 0);

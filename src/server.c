@@ -28,6 +28,18 @@
 #include "message.h"
 
 static int aid = 0;
+static lamb_db_t db;
+static lamb_cache_t rdb;
+static lamb_cache_t cache;
+static lamb_cache_t black;
+static lamb_queue_t client;
+static lamb_list_t *queue;
+static lamb_list_t *storage;
+static lamb_queues_t channel;
+static lamb_group_t group;
+static lamb_account_t account;
+static lamb_company_t company;
+static lamb_templates_t template;
 static lamb_keywords_t keys;
 static lamb_config_t config;
 
@@ -43,6 +55,7 @@ int main(int argc, char *argv[]) {
         switch (opt) {
         case 'a':
             aid = atoi(optarg);
+            break;
         case 'c':
             file = optarg;
             break;
@@ -65,6 +78,9 @@ int main(int argc, char *argv[]) {
 
     /* Signal event processing */
     lamb_signal_processing();
+
+    /* Resource limit processing */
+    lamb_rlimit_processing();
     
     /* Start main event thread */
     lamb_event_loop();
@@ -74,15 +90,6 @@ int main(int argc, char *argv[]) {
 
 void lamb_event_loop(void) {
     int err, ret;
-    lamb_cache_t rdb;
-    lamb_cache_t cache;
-    lamb_list_t *queue;
-    lamb_list_t *storage;
-    lamb_queues_t channel;
-    lamb_group_t group;
-    lamb_account_t account;
-    lamb_company_t company;
-    lamb_templates_t template;
 
     lamb_set_process("lamb-server");
 
@@ -119,6 +126,13 @@ void lamb_event_loop(void) {
         return;
     }
 
+    /* Blacklist Cache Initialization */
+    err = lamb_cache_connect(&black, config.black_host, config.black_port, NULL, config.black_db);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to cache server", 0);
+        return;
+    }
+    
     /* Postgresql Database  */
     err = lamb_db_init(&db);
     if (err) {
@@ -141,37 +155,19 @@ void lamb_event_loop(void) {
     }
 
     /* Open Client Queue */
-    char name[128];
-    lamb_queue_t client;
-    lamb_queue_opt opt;
-    struct mq_attr attr;
-    
-    opt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    attr.mq_maxmsg = 65535;
-    attr.mq_msgsize = sizeof(lamb_message_t);
-    opt.attr = &attr;
-
-    sprintf(name, "/cli.%d.message", account->id);
-    err = lamb_queue_open(&client, name, &opt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open %s client queue", name);
-        return;
-    }
+    lamb_init_queues(&account);
 
     /* Fetch company information */
     memset(&company, 0, sizeof(company));
-    err = lamb_company_get(&db, account->company, &company);
+    err = lamb_company_get(&db, account.company, &company);
     if (err) {
-        lamb_errlog(config.logfile, "Can't fetch id %d company information", account->company);
+        lamb_errlog(config.logfile, "Can't fetch id %d company information", account.company);
         return;
     }
 
     /* Fetch template information */
     memset(&template, 0, sizeof(template));
-    if () {
-
-    }
-    err = lamb_template_get_all(&db, account->id, &template, LAMB_MAX_TEMPLATE);
+    err = lamb_template_get_all(&db, account.id, &template, LAMB_MAX_TEMPLATE);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch template information", 0);
         return;
@@ -179,9 +175,9 @@ void lamb_event_loop(void) {
 
     /* Fetch group information */
     memset(&group, 0, sizeof(group));
-    err = lamb_group_get(&db, account->route, &group, LAMB_MAX_CHANNEL);
+    err = lamb_group_get(&db, account.route, &group, LAMB_MAX_CHANNEL);
     if (err) {
-        lamb_errlog(config.logfile, "Can't fetch group information", 0);
+        lamb_errlog(config.logfile, "No channel routing available", 0);
         return;
     }
 
@@ -208,23 +204,14 @@ void lamb_event_loop(void) {
     }
 
     /* Start sender worker threads */
-    lamb_work_object_t object;
-
-    object.db = &db;
-    object.rdb = &rdb;
-    object.cache = &cache;
-    object.queue = queue;
-    object.channel = &channel;
-    object.storage = storage;
-    object.account = account;
-    object.company = &company;
-    object.template = &template;
-    
-    lamb_start_thread(lamb_worker_loop, (void *)&object, config.work_threads);
+    lamb_start_thread(lamb_worker_loop, NULL, config.work_threads);
 
     /* Start Billing and Update thread */
-    lamb_start_thread(lamb_storage_billing, (void *)&object, 1);
+    lamb_start_thread(lamb_storage_billing, NULL, 1);
 
+    /* Start online status thread */
+    lamb_start_thread(lamb_online_update, NULL, 1);
+    
     /* Read queue message */
     lamb_list_node_t *node;
     lamb_message_t *message;
@@ -274,27 +261,11 @@ void lamb_reload(int signum) {
 
 void *lamb_worker_loop(void *data) {
     int err;
-    lamb_cache_t *cache;
-    lamb_list_t *queue;
-    lamb_queues_t *channel;
-    lamb_list_t *storage;
-    lamb_account_t *account;
-    lamb_templates_t *template;
-    lamb_work_object_t *object;
+    lamb_list_node_t *node;
     lamb_message_t *message;
     lamb_submit_t *submit;
 
-    object = (lamb_work_object_t *)data;
-    cache = object->cache;
-    queue = object->queue;
-    channel = object->channel;
-    storage = object->storage;
-    account = object->account;
-    template = object->template;
-    
     while (true) {
-        lamb_list_node_t *node;
-
         pthread_mutex_lock(&queue->lock);
         node = lamb_list_lpop(queue);
         pthread_mutex_unlock(&queue->lock);
@@ -344,9 +315,9 @@ void *lamb_worker_loop(void *data) {
             printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
                         
             /* Blacklist and Whitelist */
-            if (account->policy != LAMB_POL_EMPTY) {
-                if (lamb_security_check(cache, account->policy, submit->phone)) {
-                    printf("-> [policy] The security check will not pass\n");
+            if (account.policy != LAMB_POL_EMPTY) {
+                if (lamb_security_check(&black, account.policy, submit->phone)) {
+                    printf("-> [policy] The security check not pass\n");
                     continue;
                 }
                 printf("-> [policy] The Security check OK\n");
@@ -354,16 +325,15 @@ void *lamb_worker_loop(void *data) {
 
             /* SpCode Processing  */
             printf("-> [spcode] check message spcode extended\n");
-            if (account->extended) {
-                lamb_account_spcode_process(account->spcode, submit->spcode, 20);
+            if (account.extended) {
+                lamb_account_spcode_process(account.spcode, submit->spcode, 20);
             } else {
-                strcpy(submit->spcode, account->spcode);
+                strcpy(submit->spcode, account.spcode);
             }
 
             /* Template Processing */
-            
-            if (account->check_template) {
-                if (!lamb_template_check(template, submit->content, submit->length)) {
+            if (account.check_template) {
+                if (!lamb_template_check(&template, submit->content, submit->length)) {
                     printf("-> [template] The template check will not pass\n");
                     continue;
                 }
@@ -371,31 +341,32 @@ void *lamb_worker_loop(void *data) {
             }
 
             /* Keywords Filtration */
-            if (account->check_keyword) {
+            if (account.check_keyword) {
                 if (lamb_keyword_check(&keys, submit->content)) {
-                    printf("-> [keyword] The keyword check will not pass\n");
+                    printf("-> [keyword] The keyword check not pass\n");
                     continue;
                 }
                 printf("-> [keyword] The keyword check OK\n");
             }
 
+        routing:
+            /* Routing Scheduling */
+            if (channel.len > 0) {
+                for (int i = 0; i < channel.len; i++) {
+                    err = lamb_queue_send(channel.queues[i], (char *)message, sizeof(lamb_message_t), 0);
+                    if (!err) {
+                        break;
+                    }
 
-            if (channel->len < 1) {
-                printf("-> [channel] No gateway channels available");
+                    if ((i + 1) == channel.len) {
+                        i = 0;
+                    }
+                }
+            } else {
+                printf("-> [channel] No gateway channels available\n");
                 lamb_errlog(config.logfile, "Lamb No gateway channels available", 0);
                 lamb_sleep(3000);
-            }
-
-            /* Routing Scheduling */
-            for (int i = 0; i < channel->len; i++) {
-                err = lamb_queue_send(channel->queues[i], (char *)message, sizeof(lamb_message_t), 0);
-                if (!err) {
-                    break;
-                }
-
-                if ((i + 1) == channel->len) {
-                    i = 0;
-                }
+                goto routing;
             }
 
             /* Send Message to Storage */
@@ -419,20 +390,6 @@ void *lamb_worker_loop(void *data) {
 
 void *lamb_storage_billing(void *data) {
     int err;
-    lamb_db_t *db;
-    lamb_cache_t *cache;
-    lamb_list_t *storage;
-    lamb_account_t *account;
-    lamb_company_t *company;
-    lamb_work_object_t *object;
-
-    object = (lamb_work_object_t *)data;
-    db = object->db;
-    cache = object->cache;
-    storage = object->storage;
-    account = object->account;
-    company = object->company;
-
     lamb_submit_t *submit;
     lamb_list_node_t *node;
     lamb_message_t *message;
@@ -448,24 +405,24 @@ void *lamb_storage_billing(void *data) {
         }
 
         /* Billing Processing */
-        if (account->charge_type == LAMB_CHARGE_SUBMIT) {
-            err = lamb_company_billing(company->id, 1);
+        if (account.charge_type == LAMB_CHARGE_SUBMIT) {
+            err = lamb_company_billing(&db, company.id, 1);
             if (err) {
-                lamb_errlog(config.logfile, "Lamb Account %d chargeback failure", company->id);
+                lamb_errlog(config.logfile, "Lamb Account %d chargeback failure", company.id);
             }
         }
 
         /* Write Message to Cache */
         message = (lamb_message_t *)node->val;
         submit = (lamb_submit_t *)&(message->data);
-        err = lamb_cache_message(cache, account->id, company->id, submit);
+        err = lamb_cache_message(&cache, account.id, company.id, submit);
         if (err) {
             lamb_errlog(config.logfile, "Write submit message to cache failure", 0);
             lamb_sleep(1000);
         }
 
         /* Write Message to Database */
-        err = lamb_write_message(db, account->id, company->id, submit);
+        err = lamb_write_message(&db, account.id, company.id, submit);
         if (err) {
             lamb_errlog(config.logfile, "Write submit message to database failure", 0);
             lamb_sleep(1000);
@@ -509,25 +466,13 @@ int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *lis
 }
 
 void *lamb_online_update(void *data) {
-    int err;
-    lamb_account_t *account;
-
-    account = (lamb_account_t *)data;
-
-    /* Redis Cache */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
-        return NULL;
-    }
-
     redisReply *reply = NULL;
 
     while (true) {
-        reply = redisCommand(cache.handle, "SET server.%d %u", account->id, getpid());
+        reply = redisCommand(rdb.handle, "SET server.%d %u", account.id, getpid());
         if (reply != NULL) {
             freeReplyObject(reply);
-            reply = redisCommand(cache.handle, "EXPIRE server.%d 5", account->id);
+            reply = redisCommand(rdb.handle, "EXPIRE server.%d 5", account.id);
             if (reply != NULL) {
                 freeReplyObject(reply);
             }
@@ -539,6 +484,41 @@ void *lamb_online_update(void *data) {
     }
 
     pthread_exit(NULL);
+}
+
+void lamb_init_queues(lamb_account_t *account) {
+    int err;
+    char name[128];
+    lamb_queue_opt sopt, ropt;
+    struct mq_attr sattr, rattr;
+    
+    sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
+    sattr.mq_maxmsg = 65535;
+    sattr.mq_msgsize = 512;
+    sopt.attr = &sattr;
+
+    sprintf(name, "/cli.%d.message", account->id);
+    err = lamb_queue_open(&client, name, &sopt);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open %s client queue", name);
+    }
+
+    lamb_queue_t deliver;
+
+    ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
+    rattr.mq_maxmsg = 3;
+    rattr.mq_msgsize = 512;
+    ropt.attr = &rattr;
+
+    sprintf(name, "/cli.%d.deliver", account->id);
+    err = lamb_queue_open(&deliver, name, &ropt);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open %s client queue", name);
+    } else {
+        lamb_queue_close(&deliver);
+    }
+
+    return;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
@@ -637,6 +617,36 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
+    if (lamb_get_string(&cfg, "BlackHost", conf->black_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'BlackHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "BlackPort", &conf->black_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'BlackPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->black_port < 1 || conf->black_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid blacklist cache port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "BlackPassword", conf->black_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'BlackPassword' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "BlackDb", &conf->black_db) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'BlackDb' parameter\n");
+        goto error;
+    }
+    
+    if (conf->black_db < 0 || conf->black_db > 65535) {
+        fprintf(stderr, "ERROR: Invalid blacklist cache database name\n");
+        goto error;
+    }
+    
     if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
         goto error;

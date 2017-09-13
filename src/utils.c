@@ -20,6 +20,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <sys/resource.h>
 #include <iconv.h>
 #include <cmpp.h>
 #include "utils.h"
@@ -376,4 +377,15 @@ bool lamb_check_operator(int sp, const char *phone, size_t len) {
     }
 
     return false;
+}
+
+void lamb_rlimit_processing(void) {
+    struct rlimit rlim;
+
+    memset(&rlim, 0, sizeof(rlim));
+    rlim.rlim_cur = RLIM_INFINITY;
+    rlim.rlim_max = RLIM_INFINITY;
+    setrlimit(RLIMIT_MSGQUEUE, &rlim);
+
+    return;
 }

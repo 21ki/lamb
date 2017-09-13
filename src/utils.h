@@ -83,5 +83,6 @@ size_t lamb_ucs2_strlen(const char *str);
 size_t lamb_gbk_strlen(const char *str);
 bool lamb_check_msgfmt(int coded, int list[], size_t len);
 bool lamb_check_operator(int sp, const char *phone, size_t len);
+void lamb_rlimit_processing(void);
 
 #endif

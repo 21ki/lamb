@@ -27,9 +27,6 @@ int lamb_group_get(lamb_db_t *db, int id, lamb_group_t *group, int size) {
     }
 
     rows = PQntuples(res);
-    if (rows < 1) {
-        return 1;
-    }
 
     for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
         lamb_channel_t *channel;

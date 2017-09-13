@@ -60,9 +60,10 @@ int main(int argc, char *argv[]) {
     /* Signal event processing */
     lamb_signal_processing();
 
-    /* Start main event processing */
-    lamb_set_process("lamb-gateway");
+    /* Resource limit processing */
+    lamb_rlimit_processing();
 
+    /* Start main event processing */
     lamb_event_loop();
 
     return 0;
@@ -70,6 +71,8 @@ int main(int argc, char *argv[]) {
 
 void lamb_event_loop(void) {
     int err;
+
+    lamb_set_process("lamb-gateway");
 
     /* Message queue initialization */
     char name[64];

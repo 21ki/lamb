@@ -39,6 +39,10 @@ typedef struct {
     int cache_port;
     char cache_password[64];
     int cache_db;
+    char black_host[16];
+    int black_port;
+    char black_password[64];
+    int black_db;
     char db_host[16];
     int db_port;
     char db_user[64];
@@ -62,10 +66,11 @@ typedef struct {
 void lamb_event_loop(void);
 void lamb_work_loop(lamb_account_t *account);
 void *lamb_worker_loop(void *data);
-//lamb_gateway_queue_t *lamb_route_schedul(lamb_group_t *group, lamb_gateway_queues_t *queues, long limit);
 lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues);
 void *lamb_storage_billing(void *data);
 int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *list, int size);
+void *lamb_online_update(void *data);
+void lamb_init_queues(lamb_account_t *account);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 void lamb_reload(int signum);
 
