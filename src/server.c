@@ -19,8 +19,6 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <errno.h>
-#include <nanomsg/nn.h>
-#include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "server.h"
 #include "utils.h"
