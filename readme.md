@@ -3,16 +3,18 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
 ### 基础环境说明
 
 - CentOS 7.x
-- Nginx 1.12
-- PHP 7.x
-- Yaf 3.x
-- Redis 4.x
-- Cmpp 1.x
-- PostgreSQL 10.x
+- nginx 1.12
+- php 7.x
+- yaf 3.x
+- redis 4.x
+- cmpp 1.x
+- hiredis 0.13.x
+- libiconv 1.15
+- postgresql 10.x
 
 ### 依赖软件库
 
-    yum install -y gcc gcc-c++  make automake autoconf libtool openssl-devel pcre-devel
+    yum install -y gcc gcc-c++ make automake autoconf libtool openssl-devel pcre-devel
     yum install -y re2c re2c-devl flex flex-devel bison bison-devl curl-devel libconfig-devel
 
 ### 内核参数配置 (/etc/sysctl.conf)

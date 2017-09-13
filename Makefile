@@ -77,11 +77,16 @@ src/message.o: src/message.c src/message.h
 
 install:
 	/usr/bin/mkdir -p /usr/local/lamb/bin
+	/usr/bin/mkdir -p /etc/lamb
 	/usr/bin/install -m 750 ismg /usr/local/lamb/bin
 	/usr/bin/install -m 750 server /usr/local/lamb/bin
 	/usr/bin/install -m 750 deliver /usr/local/lamb/bin
 	/usr/bin/install -m 750 sp /usr/local/lamb/bin
 	/usr/bin/install -m 750 test /usr/local/lamb/bin
+	/usr/bin/install -m 750 config/ismg.conf /etc/lamb
+	/usr/bin/install -m 750 config/server.conf /etc/lamb
+	/usr/bin/install -m 750 config/deliver.conf /etc/lamb
+	/usr/bin/install -m 750 config/sp.conf /etc/lamb
 
 clean:
 	rm -f src/*.o
