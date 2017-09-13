@@ -10,7 +10,6 @@ use Db\Redis;
 use Tool\Filter;
 
 class LoginModel {
-    public  $db = null;
     public $redis = null;
     public $config = null;
     private $username = null;
@@ -22,7 +21,6 @@ class LoginModel {
             $this->password = Filter::string($data['password'], null, 6, 64);
 
             if ($this->username && $this->password) {
-                $this->db = Yaf\Registry::get('db');
                 $this->config = Yaf\Registry::get('config');
 
                 if ($this->config) {
@@ -37,14 +35,9 @@ class LoginModel {
     }
 
     public function verify() {
-        if ($this->db && $this->username && $this->password) {
-            $sth = $this->db->prepare('SELECT * FROM account WHERE username = :username AND password = :password LIMIT 1');
-            $sth->bindParam(':username', $this->username, PDO::PARAM_STR);
-            $sth->bindParam(':password', $this->password, PDO::PARAM_STR);
-            $sth->execute();
-            $result = $sth->fetch();
-
-            if (is_array($result) && count($result) > 0) {
+        if ($this->redis && $this->username && $this->password) {
+            $encryption = $this->redis->hGet('admin', 'password');
+            if ($this->password === $encryption) {
                 return true;
             }
         }

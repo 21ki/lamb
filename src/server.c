@@ -272,16 +272,12 @@ void lamb_reload(int signum) {
     return;
 }
 
-void lamb_work_loop(lamb_account_t *account) {
-
-}
-
 void *lamb_worker_loop(void *data) {
     int err;
     lamb_cache_t *cache;
     lamb_list_t *queue;
     lamb_queues_t *channel;
-    //lamb_list_t *storage;
+    lamb_list_t *storage;
     lamb_account_t *account;
     lamb_templates_t *template;
     lamb_work_object_t *object;
@@ -292,7 +288,7 @@ void *lamb_worker_loop(void *data) {
     cache = object->cache;
     queue = object->queue;
     channel = object->channel;
-    //storage = object->storage;
+    storage = object->storage;
     account = object->account;
     template = object->template;
     
@@ -510,6 +506,39 @@ int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *lis
     }
 
     return 0;
+}
+
+void *lamb_online_update(void *data) {
+    int err;
+    lamb_account_t *account;
+
+    account = (lamb_account_t *)data;
+
+    /* Redis Cache */
+    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
+        return NULL;
+    }
+
+    redisReply *reply = NULL;
+
+    while (true) {
+        reply = redisCommand(cache.handle, "SET server.%d %u", account->id, getpid());
+        if (reply != NULL) {
+            freeReplyObject(reply);
+            reply = redisCommand(cache.handle, "EXPIRE server.%d 5", account->id);
+            if (reply != NULL) {
+                freeReplyObject(reply);
+            }
+        } else {
+            lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
+        }
+
+        sleep(3);
+    }
+
+    pthread_exit(NULL);
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

@@ -212,7 +212,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     /* Check AuthenticatorSource */
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), user, password)) {
                         /* Check Duplicate Logon */
-                        sprintf(key, "online.%s", user);
+                        sprintf(key, "client.%s", user);
                         if (lamb_cache_has(&cache, key)) {
                             cmpp_connect_resp(&sock, sequenceId, 9);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
@@ -517,10 +517,10 @@ void *lamb_online_update(void *data) {
     redisReply *reply = NULL;
 
     while (true) {
-        reply = redisCommand(cache.handle, "SET online.%d %u", client->account->id, getpid());
+        reply = redisCommand(cache.handle, "SET client.%d %u", client->account->id, getpid());
         if (reply != NULL) {
             freeReplyObject(reply);
-            reply = redisCommand(cache.handle, "EXPIRE online.%d 5", client->account->id);
+            reply = redisCommand(cache.handle, "EXPIRE client.%d 5", client->account->id);
             if (reply != NULL) {
                 freeReplyObject(reply);
             }

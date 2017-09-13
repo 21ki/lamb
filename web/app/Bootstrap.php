@@ -13,12 +13,10 @@ class Bootstrap extends Yaf\Bootstrap_Abstract{
         Yaf\Registry::set('config', $this->config);
     }
 
-    /*
     public function _initAuth(Yaf\Dispatcher $dispatcher) {
         $authPlugin = new AuthPlugin();
         $dispatcher->registerPlugin($authPlugin);
     }
-    */
 
     public function _initCommon() {
         Yaf\Loader::import("common.php");

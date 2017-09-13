@@ -12,7 +12,6 @@ class LoginController extends Yaf\Controller_Abstract {
     public function indexAction() {
         $request = $this->getRequest();
         $response = $this->getResponse();
-        $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'];
 
         /* Check login action */
         if ($request->isPost()) {
@@ -24,24 +23,15 @@ class LoginController extends Yaf\Controller_Abstract {
                 goto output;
             }
 
-            /* Check ip whitelist */
-            $config = new ConfigModel();
-            if ($config->get('security') === '1') {
-                $acl = new AclModel();
-                if (!$acl->check($_SERVER['REMOTE_ADDR'])) {
-                    goto output;
-                }
-            }
-
             $session = Yaf\Session::getInstance();
             $session->set('login', true);
-            $response->setRedirect($url . '/cdr');
+            $response->setRedirect($url . '/status/inbound');
             $response->response();
             return false;
         }
 
         output:
-        $response->setRedirect($url);
+        $response->setRedirect('/');
         $response->response();
         return false;
     }
