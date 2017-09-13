@@ -20,14 +20,15 @@
 
 typedef struct {
     int id;
-    char user[8];
+    char username[8];
+    char password[64];
+    char spcode[24];
     int company;
     int charge_type;
     char ip_addr[16];
     int route;
-    char spcode[24];
-    int concurrent;
     bool extended;
+    int concurrent;
     int policy;
     bool check_template;
     bool check_keyword;

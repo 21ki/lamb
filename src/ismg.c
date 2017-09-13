@@ -356,7 +356,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 message.type = LAMB_SUBMIT;
                 submit = (lamb_submit_t *)&message.data;
                 submit->id = msgId;
-                strcpy(submit->spid, client->account->user);
+                strcpy(submit->spid, client->account->username);
                 cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit->phone, 24, 21);
                 cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit->spcode, 24, 21);
                 cmpp_pack_get_integer(&pack, cmpp_submit_msg_fmt, &submit->msgFmt, 1);

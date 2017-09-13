@@ -6,15 +6,22 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
+use Db\Redis;
 use Tool\Filter;
 
 class AccountModel {
     public $db = null;
+    public $redis = null;
+    private $config = null;
     private $table = 'account';
     private $column = ['username', 'password', 'spcode', 'company', 'charge_type', 'ip_addr', 'concurrent', 'route', 'extended', 'policy', 'check_template', 'check_keyword', 'description'];
 
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
+        $this->config = Yaf\Registry::get('config');
+        $config = $this->config->redis;
+        $redis = new Redis($config->host, $config->port, $config->password, $config->db);
+        $this->redis = $redis->handle;
     }
 
     public function get($id = null) {
@@ -73,18 +80,28 @@ class AccountModel {
             $sql = 'INSERT INTO ' . $this->table;
             $sql .= '(username, password, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword, description) ';
             $sql .= 'VALUES(:username, :password, :spcode, :company, :charge_type, :ip_addr, :concurrent, :route, :extended, :policy, :check_template, :check_keyword, :description)';
+            $sql .= ' returning id';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
                 if ($val !== null) {
-                    $sth->bindParam(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                    $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
                 } else {
                     return false;
                 }
             }
 
             if ($sth->execute()) {
-                return true;
+                $sql = 'SELECT * FROM account WHERE username = :username';
+                $sth = $this->db->prepare($sql);
+                $sth->bindValue(':username', $data['username'], PDO::PARAM_STR);
+                if ($sth->execute) {
+                    $result = $sth->fetch();
+                    if ($result !== false) {
+                        $this->redis->hMSet('account.' . $result['username'], $data);
+                        return true;
+                    }
+                }
             }
         }
 
@@ -130,6 +147,10 @@ class AccountModel {
             }
 
             if ($sth->execute()) {
+                $result = $this->get($id);
+                if ($result != null) {
+                    $this->redis->hMSet('account.' . $result['username'], $result);
+                }
                 return true;
             }
         }
@@ -212,7 +233,7 @@ class AccountModel {
 
     
     public function keyAssembly(array $data) {
-    	$text = '';
+        $text = '';
         $append = false;
         foreach ($data as $key => $val) {
             if ($val !== null) {

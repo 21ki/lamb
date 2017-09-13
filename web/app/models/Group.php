@@ -29,11 +29,14 @@ class GroupModel {
     }
     
     public function getAll() {
+        $groups = array();
         $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id';
-        $groups = $this->db->query($sql)->fetchAll();
-
-        foreach ($groups as &$group) {
-            $group['channels'] = $this->getChannels($group['id']);
+        $sth = $this->db->query($sql);
+        if ($sth !== false) {
+            $groups =  $sth->fetchAll();
+            foreach ($groups as &$group) {
+                $group['channels'] = $this->getChannels($group['id']);
+            }
         }
 
         return $groups;
