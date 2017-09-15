@@ -501,6 +501,7 @@ int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *lis
 }
 
 void *lamb_online_update(void *data) {
+    int err;
     redisReply *reply = NULL;
 
     err = lamb_cpu_affinity(pthread_self());

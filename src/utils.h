@@ -85,5 +85,6 @@ bool lamb_check_msgfmt(int coded, int list[], size_t len);
 bool lamb_check_operator(int sp, const char *phone, size_t len);
 void lamb_rlimit_processing(void);
 long lamb_get_cpu(void);
+int lamb_cpu_affinity(pthread_t thread);
 
 #endif
