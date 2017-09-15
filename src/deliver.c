@@ -271,13 +271,13 @@ void *lamb_deliver_worker(void *data) {
                    deliver->id, deliver->phone, deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length);
 
             /*
-            int id;
-            id = lamb_route_query(&routes, deliver->spcode);
-            if (lamb_is_online(&cache, id)) {
-                lamb_queue_send(&(cli_queue.list[id]->queue), (char *)message, sizeof(lamb_message_t), 0);
-            } else {
-                lamb_save_deliver(&db, deliver);
-            }
+              int id;
+              id = lamb_route_query(&routes, deliver->spcode);
+              if (lamb_is_online(&cache, id)) {
+              lamb_queue_send(&(cli_queue.list[id]->queue), (char *)message, sizeof(lamb_message_t), 0);
+              } else {
+              lamb_save_deliver(&db, deliver);
+              }
             */
             break;
         }
@@ -295,7 +295,45 @@ bool lamb_is_online(lamb_cache_t *cache, int id) {
 }
 
 int lamb_report_update(lamb_db_t *db, lamb_report_t *report) {
-    printf("-> lamb_report_update()\n");
+    char sql[512];
+    PGresult *res = NULL;
+
+    int status = 6;
+
+    if (strncasecmp(report->status, "DELIVRD", 7) == 0) {
+        status = 1;
+    } else if (strncasecmp(report->status, "EXPIRED", 7) == 0) {
+        status = 2;
+    } else if (strncasecmp(report->status, "DELETED", 7) == 0) {
+        status = 3;
+    } else if (strncasecmp(report->status, "UNDELIV", 7) == 0) {
+        status = 4;
+    } else if (strncasecmp(report->status, "ACCEPTD", 7) == 0) {
+        status = 5;
+    } else if (strncasecmp(report->status, "UNKNOWN", 7) == 0) {
+        status = 6;
+    } else if (strncasecmp(report->status, "REJECTD", 7) == 0) {
+        status = 7;
+    }
+
+    unsigned long long id;
+    char key[64], val[64];
+
+    memset(val, 0, sizeof(val));
+    sprintf(key, "msg.%llu", report->id);
+    lamb_cache_hget(&cache, key, "msgid", val, sizeof(val));
+
+    id = atoll();
+
+    sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld", status, (signed long long)report->id);
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
+
     return 0;
 }
 

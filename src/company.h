@@ -9,12 +9,15 @@
 #define _LAMB_COMPANY_H
 
 #include "db.h"
+#include "cache.h"
 
 #define LAMB_MAX_COMPANY 1024
 
 typedef struct {
     int id;
     int paytype;
+    long long money;
+    int status;
 } lamb_company_t;
 
 typedef struct {
@@ -24,6 +27,6 @@ typedef struct {
 
 int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company);
 int lamb_company_get_all(lamb_db_t *db, lamb_companys_t *companys, int size);
-int lamb_company_billing(lamb_db_t *db, int company, int count);
+int lamb_company_billing(lamb_cache_t *cache, int company, int count, long long *money);
 
 #endif

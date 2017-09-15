@@ -29,6 +29,7 @@
 
 static int aid = 0;
 static lamb_db_t db;
+static lamb_db_t mdb;
 static lamb_cache_t rdb;
 static lamb_cache_t cache;
 static lamb_cache_t black;
@@ -145,7 +146,20 @@ void lamb_event_loop(void) {
         lamb_errlog(config.logfile, "Can't connect to postgresql database", 0);
         return;
     }
-    
+
+    /* Postgresql Database  */
+    err = lamb_db_init(&mdb);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't initialize message database handle", 0);
+        return;
+    }
+
+    err = lamb_db_connect(&mdb, config.msg_host, config.msg_port, config.msg_user, config.msg_password, config.msg_name);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to message database", 0);
+        return;
+    }
+
     /* fetch  account */
     memset(&account, 0, sizeof(account));
     err = lamb_account_fetch(&db, aid, &account);
@@ -207,7 +221,7 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_worker_loop, NULL, config.work_threads);
 
     /* Start Billing and Update thread */
-    lamb_start_thread(lamb_storage_billing, NULL, 1);
+    lamb_start_thread(lamb_save_message, NULL, 1);
 
     /* Start online status thread */
     lamb_start_thread(lamb_online_update, NULL, 1);
@@ -261,7 +275,6 @@ void lamb_reload(int signum) {
 
 void *lamb_worker_loop(void *data) {
     int err;
-    bool allow;
     lamb_list_node_t *node;
     lamb_message_t *message;
     lamb_submit_t *submit;
@@ -376,6 +389,17 @@ void *lamb_worker_loop(void *data) {
                 goto routing;
             }
 
+            /* Billing Processing */
+            if (account.charge_type == LAMB_CHARGE_SUBMIT) {
+                pthread_mutex_lock(&(rdb.lock));
+                err = lamb_company_billing(&rdb, company.id, -1, &(company.money));
+                pthread_mutex_unlock(&(rdb.lock));
+                if (err) {
+                    lamb_errlog(config.logfile, "Lamb Account %d for company %d chargeback failure", account.id, company.id);
+                    lamb_sleep(3000);
+                }
+            }
+        
             /* Send Message to Storage */
             pthread_mutex_lock(&storage->lock);
             node = lamb_list_rpush(storage, node);
@@ -392,7 +416,7 @@ void *lamb_worker_loop(void *data) {
     pthread_exit(NULL);
 }
 
-void *lamb_storage_billing(void *data) {
+void *lamb_save_message(void *data) {
     int err;
     lamb_submit_t *submit;
     lamb_list_node_t *node;
@@ -408,14 +432,6 @@ void *lamb_storage_billing(void *data) {
             continue;
         }
 
-        /* Billing Processing */
-        if (account.charge_type == LAMB_CHARGE_SUBMIT) {
-            err = lamb_company_billing(&db, company.id, 1);
-            if (err) {
-                lamb_errlog(config.logfile, "Lamb Account %d chargeback failure", company.id);
-            }
-        }
-
         /* Write Message to Cache */
         message = (lamb_message_t *)node->val;
         submit = (lamb_submit_t *)&(message->data);
@@ -426,7 +442,7 @@ void *lamb_storage_billing(void *data) {
         }
 
         /* Write Message to Database */
-        err = lamb_write_message(&db, account.id, company.id, submit);
+        err = lamb_write_message(&mdb, account.id, company.id, submit);
         if (err) {
             lamb_errlog(config.logfile, "Write submit message to database failure", 0);
             lamb_sleep(1000);
@@ -471,17 +487,12 @@ void *lamb_online_update(void *data) {
     redisReply *reply = NULL;
 
     while (true) {
-        reply = redisCommand(rdb.handle, "SET server.%d %u", account.id, getpid());
+        pthread_mutex_lock(&(rdb.lock));
+        reply = redisCommand(rdb.handle, "HMSET server.%d pid %u queue %u storage %u", account.id, getpid(), queue->len, storage->len);
+        pthread_mutex_unlock(&(rdb.lock));
         if (reply != NULL) {
             freeReplyObject(reply);
-            reply = redisCommand(rdb.handle, "EXPIRE server.%d 5", account.id);
-            if (reply != NULL) {
-                freeReplyObject(reply);
-            }
-        } else {
-            lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
         }
-
         sleep(3);
     }
 
@@ -676,6 +687,36 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     
     if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MsgHost", conf->msg_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "MsgPort", &conf->msg_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->msg_port < 1 || conf->msg_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid MsgPort number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MsgUser", conf->msg_user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgUser' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MsgPassword", conf->msg_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgPassword' parameter\n");
+        goto error;
+    }
+    
+    if (lamb_get_string(&cfg, "MsgName", conf->msg_name, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgName' parameter\n");
         goto error;
     }
 

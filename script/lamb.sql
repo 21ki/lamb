@@ -106,35 +106,3 @@ CREATE TABLE whitelist (
 
 CREATE UNIQUE INDEX idx_whitelist on whitelist(phone);
 
-CREATE TABLE message (
-    id bigint UNIQUE NOT NULL,
-    msgid bigint NOT NULL,
-    spid varchar(6) NOT NULL,
-    spcode varchar(21) NOT NULL,
-    phone varchar(21) NOT NULL,
-    content text NOT NULL,
-    status int NOT NULL,
-    account int NOT NULL,
-    company int NOT NULL,
-    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
-);
-
-CREATE TABLE report (
-   id bigint UNIQUE NOT NULL,
-   spcode varchar(21) NOT NULL,
-   status int NOT NULL,
-   submit_time varchar(10),
-   done_time varchar(10),
-   phone varchar(21),
-   account int NOT NULL,
-   company int NOT NULL,
-   create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
-);
-
-CREATE TABLE deliver (
-   id bigint UNIQUE NOT NULL,
-   spcode varchar(21) NOT NULL,
-   phone varchar(21) NOT NULL,
-   content text NOT NULL,
-   create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
-);

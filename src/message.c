@@ -31,7 +31,7 @@ int lamb_write_message(lamb_db_t *db, int account, int company, lamb_submit_t *m
         sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, %u, '%s', '%s', '%s', '%s', %d, %d, %d)", column,
                 (long long int)message->id, 0, message->spid, message->spcode, message->phone, message->content, 6, account, company);
         res = PQexec(db->conn, sql);
-        if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
             PQclear(res);
             return -1;
         }
@@ -45,7 +45,7 @@ int lamb_write_message(lamb_db_t *db, int account, int company, lamb_submit_t *m
 int lamb_cache_update_message(lamb_cache_t *cache, lamb_update_t *message) {
     redisReply *reply = NULL;
 
-    reply = redisCommand(cache->handle, "HSET msg.%llu msgid %llu", message->id , message->msgId);
+    reply = redisCommand(cache->handle, "HSET msg.%llu id %llu", message->msgId , message->id);
     if (reply == NULL) {
         return -1;
     }

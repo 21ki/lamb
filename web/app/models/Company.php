@@ -6,10 +6,12 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
+use Db\Redis;
 use Tool\Filter;
 
 class CompanyModel {
     public $db = null;
+    public $redis = null;
     public $config = null;
     private $table = 'company';
     private $column = ['name', 'paytype', 'contacts', 'telephone', 'description'];
@@ -17,6 +19,11 @@ class CompanyModel {
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
         $this->config = Yaf\Registry::get('config');
+        if ($this->config) {
+            $config = $this->config->redis;
+            $redis = new Redis($config->host, $config->port, $config->password, $config->db);
+            $this->redis = $redis->handle;
+        }
     }
 
     public function get($id = null) {
@@ -185,5 +192,15 @@ class CompanyModel {
             }
         }
         return $text;
+    }
+
+    public function getMoney($id = null) {
+        $money = 0;
+        $result = $this->redis->hGet('company.' . intval($id), 'money');
+        if ($result !== false) {
+            $money = intval($result);
+        }
+
+        return $money;
     }
 }

@@ -6,6 +6,7 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
+use Db\Redis;
 use Tool\Filter;
 
 class CompanyController extends Yaf\Controller_Abstract {
@@ -14,6 +15,7 @@ class CompanyController extends Yaf\Controller_Abstract {
 
         $list = $company->getAll();
         foreach ($list as &$val) {
+            $val['money'] = $company->getMoney($val['id']);
             $val['count'] = $company->accountTotal($val['id']);
         }
 

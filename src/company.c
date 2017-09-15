@@ -14,7 +14,7 @@ int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company) {
     char *column;
     PGresult *res = NULL;
 
-    column = "id, paytype";
+    column = "id, money, paytype";
     sprintf(sql, "SELECT %s FROM company WHERE id = %d", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -27,7 +27,9 @@ int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company) {
     }
 
     company->id = atoi(PQgetvalue(res, 0, 0));
-    company->paytype = atoi(PQgetvalue(res, 0, 1));
+    company->money = atoi(PQgetvalue(res, 0, 1));
+    company->paytype = atoi(PQgetvalue(res, 0, 2));
+    company->status = 1;
     PQclear(res);
 
     return 0;
@@ -67,19 +69,18 @@ int lamb_company_get_all(lamb_db_t *db, lamb_companys_t *companys, int size) {
     return 0;
 }
 
-int lamb_company_billing(lamb_db_t *db, int company, int count) {
-    char sql[128];
-    PGresult *res = NULL;
+int lamb_company_billing(lamb_cache_t *cache, int company, int count, long long *money) {
+    redisReply *reply = NULL;
 
-    sprintf(sql, "UPDATE company SET money = money - %d WHERE id = %d", count, company);
-    res = PQexec(db->conn, sql);
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        PQclear(res);
-        return -1;
+    reply = redisCommand(cache->handle, "HINCRBY company.%d money %d", company, count);
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_INTEGER) {
+            *money = reply->integer;
+        }
+        freeReplyObject(reply);
+        return 0;
     }
-
-    PQclear(res);
-
-    return 0;
+    
+    return -1;
 }
 
