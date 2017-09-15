@@ -387,13 +387,13 @@ void *lamb_worker_loop(void *data) {
             if (channel.len > 0) {
                 for (int i = 0; i < channel.len; i++) {
                     err = lamb_queue_send(channel.queues[i], (char *)message, sizeof(lamb_message_t), 0);
-                    if (!err) {
-                        break;
+                    if (err) {
+                        if ((i + 1) > channel.len) {
+                            i = 0;
+                        }
+                        continue;
                     }
-
-                    if ((i + 1) == channel.len) {
-                        i = 0;
-                    }
+                    break;
                 }
             } else {
                 printf("-> [channel] No gateway channels available\n");

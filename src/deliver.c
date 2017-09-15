@@ -222,6 +222,11 @@ void *lamb_deliver_worker(void *data) {
     lamb_message_t *message;
     lamb_deliver_t *deliver;
 
+    err = lamb_cpu_affinity(pthread_self());
+    if (err) {
+        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
+    }
+    
     while (true) {
         pthread_mutex_lock(&queue->lock);
         node = lamb_list_lpop(queue);
