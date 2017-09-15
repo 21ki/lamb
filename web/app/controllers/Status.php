@@ -14,7 +14,7 @@ class StatusController extends Yaf\Controller_Abstract {
         $data = array();
 
         $status = new StatusModel();
-        $this->getView()->assign('accounts', $status->online($account->getAll()););
+        $this->getView()->assign('accounts', $status->online($account->getAll()));
 
         return true;
     }
