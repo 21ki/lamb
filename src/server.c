@@ -32,7 +32,7 @@ static int aid = 0;
 static lamb_db_t db;
 static lamb_db_t mdb;
 static lamb_cache_t rdb;
-static lamb_cache_t cache;
+static lamb_cache_t *cache[7];
 static lamb_cache_t black;
 static lamb_queue_t client;
 static lamb_list_t *queue;
@@ -135,6 +135,15 @@ void lamb_event_loop(void) {
         return;
     }
     
+    /* Cache Node Initialization */
+    for (int i = 0; i < 7; i++) {
+        cache[i] = lamb_init_node(config.nodes[i]);
+        if (cache == NULL) {
+            lamb_errlog(config.logfile, "Can't connect to cache node server");
+            return;
+        }
+    }
+
     /* Postgresql Database  */
     err = lamb_db_init(&db);
     if (err) {
@@ -542,7 +551,7 @@ void lamb_init_queues(lamb_account_t *account) {
     lamb_queue_t deliver;
 
     ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
-    rattr.mq_maxmsg = 3;
+    rattr.mq_maxmsg = 65535;
     rattr.mq_msgsize = 512;
     ropt.attr = &rattr;
 
@@ -555,6 +564,25 @@ void lamb_init_queues(lamb_account_t *account) {
     }
 
     return;
+}
+
+lamb_cache_t *lamb_init_node(char *str) {
+    int err;
+    char host[16];
+    int port = 0;
+    lamb_cache_t *cache;
+
+    memset(host, 0, sizeof(host));
+    lamb_hp_parse(str, host, &port);
+    cache = (lamb_cache_t *)calloc(1, sizeof(lamb_cache_t));
+    if (cache != NULL) {
+        err = lamb_cache_connect(cache, host, port, NULL, 0);
+        if (!err) {
+            return cache;
+        }
+    }
+
+    return NULL;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
@@ -742,6 +770,51 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'MsgName' parameter\n");
         goto error;
     }
+
+    char node[32];
+    memset(node, 0, sizeof(node));
+
+    if (lamb_get_string(&cfg, "node1", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node1' parameter\n");
+        goto error;
+    }
+    conf->nodes[0] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node2", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node2' parameter\n");
+        goto error;
+    }
+    conf->nodes[1] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node3", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node3' parameter\n");
+        goto error;
+    }
+    conf->nodes[2] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node4", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node4' parameter\n");
+        goto error;
+    }
+    conf->nodes[3] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node5", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node5' parameter\n");
+        goto error;
+    }
+    conf->nodes[4] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node6", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node1' parameter\n");
+        goto error;
+    }
+    conf->nodes[5] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node7", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node7' parameter\n");
+        goto error;
+    }
+    conf->nodes[6] = lamb_strdup(node);
 
     lamb_config_destroy(&cfg);
     return 0;

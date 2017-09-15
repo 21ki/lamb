@@ -22,6 +22,7 @@
 #include "cache.h"
 
 static cmpp_sp_t cmpp;
+static lamb_cache_t rdb;
 static lamb_config_t config;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
@@ -74,6 +75,13 @@ void lamb_event_loop(void) {
 
     lamb_set_process("lamb-gateway");
 
+    /* Redis Initialization */
+    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
+        return;
+    }
+
     /* Message queue initialization */
     char name[64];
     lamb_queue_opt sopt, ropt;
@@ -121,6 +129,9 @@ void lamb_event_loop(void) {
     /* Start Keepalive Thread */
     heartbeat.count = 0;
     lamb_start_thread(lamb_cmpp_keepalive, NULL, 1);
+
+    /* Start Status Update Thread */
+    lamb_start_thread(lamb_online_update, NULL, 1);
 
     while (true) {
         lamb_sleep(3000);
@@ -687,6 +698,31 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->redis_port < 1 || conf->redis_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid redis port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
         goto error;
     }
 

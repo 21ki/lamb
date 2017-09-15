@@ -411,3 +411,23 @@ int lamb_cpu_affinity(pthread_t thread) {
 
     return 0;
 }
+
+int lamb_hp_parse(char *str, char *host, int *port) {
+    char *delims = ":";
+    char *result = NULL;
+
+    result = strtok(str, delims);
+    for (int i = 0; (i < 2) && (result != NULL); i++) {
+        if (i == 0) {
+            if (strlen(result) > 15) {
+                memcpy(host, result, 15);
+            } else {
+                strcpy(host, result);
+            }
+        } else if (i == 1) {
+            *port = atoi(result);
+        }
+    }
+
+    return 0;
+}

@@ -16,7 +16,7 @@ class StatusModel {
         $this->db = Yaf\Registry::get('db');
         $this->config = Yaf\Registry::get('config');
         if ($this->config) {
-            $config = $this->config->redis;
+            $config = $this->config->backup;
             $redis = new Redis($config->host, $config->port, $config->password, $config->db);
             $this->redis = $redis->handle;
         }

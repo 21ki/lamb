@@ -53,6 +53,7 @@ typedef struct {
     char msg_user[64];
     char msg_password[64];
     char msg_name[64];
+    char *nodes[7];
 } lamb_config_t;
 
 typedef struct {
@@ -76,6 +77,7 @@ void *lamb_save_message(void *data);
 int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *list, int size);
 void *lamb_online_update(void *data);
 void lamb_init_queues(lamb_account_t *account);
+lamb_cache_t *lamb_init_node(char *str);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 void lamb_reload(int signum);
 

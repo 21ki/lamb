@@ -31,6 +31,10 @@ typedef struct {
     int concurrent;
     char backfile[128];
     char logfile[128];
+    char redis_host[16];
+    int redis_port;
+    char redis_password[64];
+    int redis_db;
 } lamb_config_t;
 
 typedef struct {
