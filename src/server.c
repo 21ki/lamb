@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sched.h>
 #include <pthread.h>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
@@ -218,14 +219,20 @@ void lamb_event_loop(void) {
     }
 
     /* Start sender worker threads */
-    lamb_start_thread(lamb_worker_loop, NULL, config.work_threads);
+    long cpus = lamb_get_cpu();
+    lamb_start_thread(lamb_worker_loop, NULL, config.work_threads > cpus ? cpus : config.work_threads);
 
     /* Start Billing and Update thread */
     lamb_start_thread(lamb_save_message, NULL, 1);
 
     /* Start online status thread */
     lamb_start_thread(lamb_online_update, NULL, 1);
-    
+
+    err = lamb_cpu_affinity(pthread_self());
+    if (err) {
+        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
+    }
+
     /* Read queue message */
     lamb_list_node_t *node;
     lamb_message_t *message;
@@ -279,6 +286,11 @@ void *lamb_worker_loop(void *data) {
     lamb_message_t *message;
     lamb_submit_t *submit;
 
+    err = lamb_cpu_affinity(pthread_self());
+    if (err) {
+        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
+    }
+    
     while (true) {
         pthread_mutex_lock(&queue->lock);
         node = lamb_list_lpop(queue);
@@ -421,6 +433,11 @@ void *lamb_save_message(void *data) {
     lamb_submit_t *submit;
     lamb_list_node_t *node;
     lamb_message_t *message;
+
+    err = lamb_cpu_affinity(pthread_self());
+    if (err) {
+        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
+    }
     
     while (true) {
         pthread_mutex_lock(&storage->lock);
@@ -485,6 +502,11 @@ int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *lis
 
 void *lamb_online_update(void *data) {
     redisReply *reply = NULL;
+
+    err = lamb_cpu_affinity(pthread_self());
+    if (err) {
+        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
+    }
 
     while (true) {
         pthread_mutex_lock(&(rdb.lock));

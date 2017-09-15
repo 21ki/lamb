@@ -389,3 +389,25 @@ void lamb_rlimit_processing(void) {
 
     return;
 }
+
+long lamb_get_cpu(void) {
+    return sysconf(_SC_NPROCESSORS_CONF);
+}
+
+int lamb_cpu_affinity(pthread_t thread) {
+    long cpus;
+    cpu_set_t mask;
+    
+    cpus = lamb_get_cpu();
+    CPU_ZERO(&mask);
+
+    for (int i = 0; i < cpus; i++) {
+        CPU_SET(i, &mask);
+    }
+
+    if (pthread_setaffinity_np(thread, sizeof(mask), &mask) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
