@@ -10,6 +10,12 @@ use Tool\Filter;
 
 class StatusController extends Yaf\Controller_Abstract {
     public function inboundAction() {
+        $account = new AccountModel();
+        $data = array();
+
+        $status = new StatusModel();
+        $this->getView()->assign('accounts', $status->online($account->getAll()););
+
         return true;
     }
 

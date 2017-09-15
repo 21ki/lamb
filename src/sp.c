@@ -542,6 +542,28 @@ int lamb_save_logfile(char *file, void *data) {
     return 0;
 }
 
+void *lamb_online_update(void *data) {
+    int err;
+    redisReply *reply = NULL;
+
+    err = lamb_cpu_affinity(pthread_self());
+    if (err) {
+        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
+    }
+
+    while (true) {
+        pthread_mutex_lock(&(rdb.lock));
+        reply = redisCommand(rdb.handle, "HMSET gateway.%d pid %u status %d", config.id, getpid(), cmpp.ok ? 1 : 0);
+        pthread_mutex_unlock(&(rdb.lock));
+        if (reply != NULL) {
+            freeReplyObject(reply);
+        }
+        sleep(3);
+    }
+
+    pthread_exit(NULL);
+}
+
 int lamb_read_config(lamb_config_t *conf, const char *file) {
     if (!conf) {
         return -1;

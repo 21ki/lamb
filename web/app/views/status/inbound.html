@@ -96,16 +96,11 @@
             <tr><th>#</th><th>接入帐号</th><th>公司名称</th><th>通道路由</th><th>队列数量</th><th>流量速度</th><th>错误总数</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>a10001</td><td>九城游戏</td><td>测试通道组</td><td>4500</td><td>5000/s</td><td>1</td></tr>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>j20005</td><td>万达地产</td><td>营销通道</td><td>75008</td><td>8000/s</td><td>0</td></tr>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>a10001</td><td>港华燃气</td><td>验证码通道组</td><td>45008</td><td>5000/s</td><td>5</td></tr>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>a10002</td><td>九城游戏</td><td>移动通道组</td><td>1500</td><td>1000/s</td><td>0</td></tr>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>a10001</td><td>港华燃气</td><td>临时测试通道</td><td>45008</td><td>5000/s</td><td>18</td></tr>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>s10001</td><td>四海恒通</td><td>营销通道</td><td>5008</td><td>2000/s</td><td>0</td></tr>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>s10003</td><td>四海恒通</td><td>营销通道</td><td>4000</td><td>2000/s</td><td>20</td></tr>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>a10004</td><td>九城游戏</td><td>验证码通道组</td><td>7008</td><td>1000/s</td><td>0</td></tr>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>t10005</td><td>统一企业</td><td>验证码通道组</td><td>2000</td><td>2500/s</td><td>3</td></tr>
-            <tr><td><span class="glyphicon glyphicon-record"></span></td><td>a10006</td><td>九城游戏</td><td>营销通道</td><td>4020</td><td>300/s</td><td>0</td></tr>
+            <?php
+              foreach ($accounts as $a) {
+                echo '<tr><td><span class="glyphicon glyphicon-record"></span></td><td>',$a['username'],'</td><td>',$a['company'],'</td><td>',$a['route'],'</td><td>',intval($a['queue']),'</td><td>',intval($a['storage']),'/s</td><td>1</td></tr>';
+              }
+              ?>
           </tbody>
         </table>
       </div>
