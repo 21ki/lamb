@@ -10,7 +10,7 @@
 int lamb_cache_message(lamb_cache_t *cache, int account, int company, lamb_submit_t *message) {
     redisReply *reply = NULL;
 
-    reply = redisCommand(cache->handle, "HMSET msg.%llu msgid 0 spid %s spcode %s phone %s account %d company %d",
+    reply = redisCommand(cache->handle, "HMSET %llu id 0 spid %s spcode %s phone %s account %d company %d",
                          message->id, message->spid, message->spcode, message->phone, account, company);
     if (reply == NULL) {
         return -1;

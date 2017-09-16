@@ -76,13 +76,13 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>帐号名称</th><th>接入码</th><th>所属公司</th><th>计费类型</th><th>最大并发</th><th>备注信息</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>帐号名称</th><th>接入码</th><th>所属公司</th><th>计费类型</th><th>备注信息</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
             <?php
               foreach ($accounts as $a) {
                 echo '<tr><td><span class="glyphicon glyphicon-user"></span></td><td>',$a['username'],'</td>';
-                echo '<td>',$a['spcode'],'</td><td>',$companys[$a['company']]['name'],'</td><td>',$a['charge_type'] == 1 ? '提交计费' : '成功计费','</td><td>',$a['concurrent'],'/s</td>';
+                echo '<td>',$a['spcode'],'</td><td>',$companys[$a['company']]['name'],'</td><td>',$a['charge_type'] == 1 ? '提交计费' : '成功计费','</td>';
                 echo '<td>',$a['description'],'</td><td>',$a['create_time'],'</td>';
                 echo '<td><button class="btn btn-default btn-xs" onclick="deleteAccount(',$a['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
                 echo '<td><a class="btn btn-default btn-xs" href="account/edit?id=',$a['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";

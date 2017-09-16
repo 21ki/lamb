@@ -12,10 +12,17 @@
 #include <pthread.h>
 #include <hiredis/hiredis.h>
 
+#define LAMB_MAX_CACHE 16
+
 typedef struct {
     redisContext *handle;
     pthread_mutex_t lock;
 } lamb_cache_t;
+
+typedef struct {
+    int len;
+    lamb_cache_t *nodes[LAMB_MAX_CACHE];
+} lamb_caches_t;
 
 int lamb_cache_connect(lamb_cache_t *cache, char *host, int port, char *password, int db);
 bool lamb_cache_check_connect(lamb_cache_t *cache);
