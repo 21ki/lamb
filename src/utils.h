@@ -30,11 +30,6 @@ typedef struct {
 
 typedef struct {
     unsigned long long id;
-    unsigned long long msgId;
-} lamb_update_t;
-
-typedef struct {
-    unsigned long long id;
     char spid[8];
     char spcode[24];
     char phone[24];

@@ -23,13 +23,14 @@
 
 static cmpp_sp_t cmpp;
 static lamb_cache_t rdb;
+static lamb_leveldb_t cache;
 static lamb_config_t config;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
-static lamb_seqtable_t table;
 static lamb_queue_t send_queue;
 static lamb_queue_t recv_queue;
 static lamb_heartbeat_t heartbeat;
+static lamb_confirmed_t confirmed;
 
 int main(int argc, char *argv[]) {
     char *file = "lamb.conf";
@@ -74,6 +75,13 @@ void lamb_event_loop(void) {
     int err;
 
     lamb_set_process("lamb-gateway");
+
+    /* Cache Initialization */
+    err = lamb_level_init(&cache, config.cache);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open leveldb chace database", 0);
+        return;
+    }
 
     /* Redis Initialization */
     err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
@@ -203,7 +211,7 @@ void *lamb_sender_loop(void *data) {
                 continue;
             }
             
-            table.msgId = submit->id;
+            confirmed.id = submit->id;
 
             if (config.extended) {
                 sprintf(spcode, "%s%s", config.spcode, submit->spcode);
@@ -231,7 +239,7 @@ void *lamb_sender_loop(void *data) {
                 continue;
             }
 
-            sequenceId = table.sequenceId = cmpp_sequence();
+            sequenceId = confirmed.sequenceId = cmpp_sequence();
             err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, content, length, msgFmt, true);
             if (err) {
                 lamb_sleep(config.interval * 1000);
@@ -278,10 +286,12 @@ void *lamb_sender_loop(void *data) {
 
 void *lamb_deliver_loop(void *data) {
     int err;
+    char *tmp;
+    size_t len;
     cmpp_pack_t pack;
     cmpp_head_t *chp;
+    char key[64], val[64];
     lamb_report_t *report;
-    lamb_update_t *update;
     lamb_deliver_t *deliver;
     lamb_message_t message;
     unsigned int commandId;
@@ -301,6 +311,8 @@ void *lamb_deliver_loop(void *data) {
             continue;
         }
 
+        memset(key, 0, sizeof(key));
+        memset(val, 0, sizeof(val));
         chp = (cmpp_head_t *)&pack;
         commandId = ntohl(chp->commandId);
         sequenceId = ntohl(chp->sequenceId);
@@ -310,26 +322,22 @@ void *lamb_deliver_loop(void *data) {
         case CMPP_SUBMIT_RESP:;
             /* Cmpp Submit Resp */
             int result = 0;
-            message.type = LAMB_UPDATE;
-            update = (lamb_update_t *)&(message.data);
+            unsigned long long id;
+
+            id = confirmed.id;
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, &msgId, 8);
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_result, &result, 1);
 
-            if ((table.sequenceId != sequenceId) || (result != 0)) {
+            if ((confirmed.sequenceId != sequenceId) || (result != 0)) {
                 break;
             }
 
             pthread_cond_signal(&cond);
-
-            update->id = table.msgId;
-            update->msgId = msgId;
+            sprintf(key, "%llu", msgId);
+            sprintf(val, "%llu", id);
+            lamb_leveldb_put(&cache, key, strlen(key), val, strlen(val));
 
             printf("-> [update] sequenceId: %u, msgId: %llu\n", sequenceId, update->msgId);
-
-            err = lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0);
-            if (err) {
-                lamb_save_logfile(config.backfile, &message);
-            }
 
             break;
         case CMPP_DELIVER:;
@@ -341,7 +349,7 @@ void *lamb_deliver_loop(void *data) {
                 report = (lamb_report_t *)&(message.data);
 
                 /* Msg_Id */
-                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &report->id, 8);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &msgId, 8);
 
                 /* Src_Terminal_Id */
                 cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, report->phone, 24, 20);
@@ -355,13 +363,20 @@ void *lamb_deliver_loop(void *data) {
                 /* Done_Time */
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_done_time, report->doneTime, 16, 10);
                 
+                sprintf(key, "%llu", msgId);
+                tmp = lamb_level_get(&cache, key strlen(key), &len);
+
+                if (tmp != NULL) {
+                    msgId = (unsigned long long)(atoll(tmp));
+                    report.id = msgId;
+                    err = lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0);
+                    if (err) {
+                        lamb_save_logfile(config.backfile, &message);
+                    }
+                }
+
                 printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
                        report->id, report->phone, report->status, report->submitTime, report->doneTime);
-                
-                err = lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0);
-                if (err) {
-                    lamb_save_logfile(config.backfile, &message);
-                }
 
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
             } else {
@@ -723,6 +738,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "Cache", conf->cache, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Cache' parameter\n");
         goto error;
     }
 

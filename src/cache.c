@@ -6,10 +6,12 @@
  */
 
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
 #include "cache.h"
+#include "utils.h"
 
 int lamb_cache_connect(lamb_cache_t *cache, char *host, int port, char *password, int db) {
     redisReply *reply = NULL;
@@ -138,3 +140,35 @@ int lamb_cache_hget(lamb_cache_t *cache, char *key, char *field, char *buff, siz
     return 0;
 }
 
+int lamb_nodes_connect(lamb_caches_t *cache, int len, char *nodes[], int size) {
+    int err;
+    char host[16];
+    int port = 0;
+    lamb_cache_t *node;
+
+    cache->len = 0;
+
+    for (int i = 0, j = 0; (j < len) && (i < size) && (nodes[i] != NULL) && (*nodes[i] != '\0'); i++, j++) {
+        memset(host, 0, sizeof(host));
+        lamb_hp_parse(nodes[i], host, &port);
+        node = (lamb_cache_t *)calloc(1, sizeof(lamb_cache_t));
+        if (node != NULL) {
+            err = lamb_cache_connect(node, host, port, NULL, 0);
+            if (!err) {
+                cache->nodes[j] = node;
+                cache->len++;
+            } else {
+                free(node);
+                if (j > 0) {
+                    j--;
+                }
+            }
+        } else {
+            if (j > 0) {
+                j--;
+            }
+        }
+    }
+
+    return 0;
+}

@@ -130,7 +130,7 @@ void lamb_event_loop(void) {
     
     /* Cache Node Initialization */
     memset(&cache, 0, sizeof(cache));
-    lamb_init_node_cache(&cache, LAMB_MAX_CACHE, config.nodes, 7);
+    lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7);
     if (cache.len < 1) {
         lamb_errlog(config.logfile, "Can't connect to cache node server", 0);
         return;
@@ -340,7 +340,7 @@ void *lamb_worker_loop(void *data) {
             }
 
             printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
-                        
+
             /* Blacklist and Whitelist */
             if (account.policy != LAMB_POL_EMPTY) {
                 if (lamb_security_check(&black, account.policy, submit->phone)) {
@@ -391,6 +391,7 @@ void *lamb_worker_loop(void *data) {
                     if (err) {
                         if ((i + 1) > channel.len) {
                             i = 0;
+                            lamb_sleep(10);
                         }
                         continue;
                     }
@@ -557,39 +558,6 @@ void lamb_init_queues(lamb_account_t *account) {
     }
 
     return;
-}
-
-int lamb_init_node_cache(lamb_caches_t *cache, int len, char *nodes[], int size) {
-    int err;
-    char host[16];
-    int port = 0;
-    lamb_cache_t *node;
-
-    cache->len = 0;
-
-    for (int i = 0, j = 0; (j < len) && (i < size) && (nodes[i] != NULL) && (*nodes[i] != '\0'); i++, j++) {
-        memset(host, 0, sizeof(host));
-        lamb_hp_parse(nodes[i], host, &port);
-        node = (lamb_cache_t *)calloc(1, sizeof(lamb_cache_t));
-        if (node != NULL) {
-            err = lamb_cache_connect(node, host, port, NULL, 0);
-            if (!err) {
-                cache->nodes[j] = node;
-                cache->len++;
-            } else {
-                free(node);
-                if (j > 0) {
-                    j--;
-                }
-            }
-        } else {
-            if (j > 0) {
-                j--;
-            }
-        }
-    }
-
-    return 0;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

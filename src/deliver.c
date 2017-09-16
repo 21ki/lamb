@@ -31,7 +31,7 @@
 
 static lamb_db_t db;
 static lamb_cache_t rdb;
-static lamb_cache_t cache;
+static lamb_caches_t cache;
 static lamb_list_t *queue;
 static lamb_config_t config;
 static lamb_routes_t routes;
@@ -97,10 +97,11 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Cache Database Initialization */
-    err = lamb_cache_connect(&cache, config.cache_host, config.cache_port, NULL, config.cache_db);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to cache database", 0);
+    /* Cache Node Initialization */
+    memset(&cache, 0, sizeof(cache));
+    lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7);
+    if (cache.len < 1) {
+        lamb_errlog(config.logfile, "Can't connect to cache node server", 0);
         return;
     }
 
@@ -215,7 +216,7 @@ void lamb_event_loop(void) {
 }
 
 void *lamb_deliver_worker(void *data) {
-    int err;
+    int i, err;
     lamb_update_t *update;
     lamb_report_t *report;
     lamb_list_node_t *node;
@@ -252,9 +253,10 @@ void *lamb_deliver_worker(void *data) {
                 lamb_sleep(1000);
             }
 
-            pthread_mutex_lock(&db.lock);
-            err = lamb_update_message(&db, update);
-            pthread_mutex_unlock(&db.lock);
+            i = (update->msgId % cache.len);
+            pthread_mutex_lock(&(cache.nodes[i]->lock));
+            err = lamb_update_message(cache.nodes[i], update);
+            pthread_mutex_unlock(&(cache.nodes[i]->lock));
             if (err) {
                 lamb_errlog(config.logfile, "Can't update messsage to database", 0);
                 lamb_sleep(1000);
@@ -413,21 +415,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "CacheHost", conf->cache_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'CacheHost' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "CachePort", &conf->cache_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'CachePort' parameter\n");
-        goto error;
-    }
-
-    if (conf->cache_port < 1 || conf->cache_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid cache port number\n");
-        goto error;
-    }
-
     if (lamb_get_string(&cfg, "CachePassword", conf->cache_password, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'CachePassword' parameter\n");
         goto error;
@@ -472,6 +459,51 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
         goto error;
     }
+
+    char node[32];
+    memset(node, 0, sizeof(node));
+
+    if (lamb_get_string(&cfg, "node1", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node1' parameter\n");
+        goto error;
+    }
+    conf->nodes[0] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node2", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node2' parameter\n");
+        goto error;
+    }
+    conf->nodes[1] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node3", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node3' parameter\n");
+        goto error;
+    }
+    conf->nodes[2] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node4", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node4' parameter\n");
+        goto error;
+    }
+    conf->nodes[3] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node5", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node5' parameter\n");
+        goto error;
+    }
+    conf->nodes[4] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node6", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node1' parameter\n");
+        goto error;
+    }
+    conf->nodes[5] = lamb_strdup(node);
+
+    if (lamb_get_string(&cfg, "node7", node, 32) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'node7' parameter\n");
+        goto error;
+    }
+    conf->nodes[6] = lamb_strdup(node);
 
     lamb_config_destroy(&cfg);
     return 0;

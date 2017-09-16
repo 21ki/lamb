@@ -35,12 +35,13 @@ typedef struct {
     int redis_port;
     char redis_password[64];
     int redis_db;
+    char cache[128];
 } lamb_config_t;
 
 typedef struct {
     unsigned int sequenceId;
-    unsigned long long msgId;
-} lamb_seqtable_t;
+    unsigned long long id;
+} lamb_confirmed_t;
 
 typedef struct {
     int count;

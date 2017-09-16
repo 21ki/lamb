@@ -73,7 +73,6 @@ void *lamb_save_message(void *data);
 int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *list, int size);
 void *lamb_online_update(void *data);
 void lamb_init_queues(lamb_account_t *account);
-int lamb_init_node_cache(lamb_caches_t *cache, int len, char *nodes[], int size);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 void lamb_reload(int signum);
 
