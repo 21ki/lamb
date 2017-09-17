@@ -64,7 +64,7 @@ int lamb_write_report(lamb_db_t *db, int account, int company, lamb_report_t *re
     PGresult *res = NULL;
 
     column = "id, spcode, phone, status, submit_time, done_time, account, company";
-    sprintf(sql, "INSERT INTO report(%s) VALUES(%lld, '%s', '%s', %d, '%s', '%s', %d, %d)",
+    sprintf(sql, "INSERT INTO report(%s) VALUES(%lld, '%s', '%s', %d, '%s', '%s', %d, %d)", column,
         (long long)report->id, report->spcode, report->phone, report->status, report->submitTime, report->doneTime, account, company);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {

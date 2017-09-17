@@ -243,12 +243,10 @@ void lamb_event_loop(void) {
 
 void *lamb_deliver_worker(void *data) {
     int i, err;
-    int account;
-    int company;
-    int charge;
+    char key[64];
     char spcode[24];
     long long money;
-    char key[64];
+    int account, company, charge;
     lamb_report_t *report;
     lamb_list_node_t *node;
     lamb_message_t *message;
