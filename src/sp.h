@@ -55,6 +55,7 @@ void *lamb_cmpp_keepalive(void *data);
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config);
 int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config);
 int lamb_save_logfile(char *file, void *data);
+void *lamb_online_update(void *data);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

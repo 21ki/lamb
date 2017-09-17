@@ -40,8 +40,9 @@ typedef struct {
 
 typedef struct {
     unsigned long long id;
+    char spcode[24];
     char phone[24];
-    char status[8];
+    int status;
     char submitTime[16];
     char doneTime[16];
 } lamb_report_t;

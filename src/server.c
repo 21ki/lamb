@@ -455,14 +455,14 @@ void *lamb_save_message(void *data) {
         message = (lamb_message_t *)node->val;
         submit = (lamb_submit_t *)&(message->data);
         i = (submit->id % cache.len);
-        err = lamb_cache_message(cache.nodes[i], account.id, company.id, submit);
+        err = lamb_cache_message(cache.nodes[i], &account, &company, submit);
         if (err) {
             lamb_errlog(config.logfile, "Write submit message to cache failure", 0);
             lamb_sleep(1000);
         }
 
         /* Write Message to Database */
-        err = lamb_write_message(&mdb, account.id, company.id, submit);
+        err = lamb_write_message(&mdb, &account, &company, submit);
         if (err) {
             lamb_errlog(config.logfile, "Write submit message to database failure", 0);
             lamb_sleep(1000);

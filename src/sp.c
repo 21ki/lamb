@@ -20,6 +20,7 @@
 #include "config.h"
 #include "queue.h"
 #include "cache.h"
+#include "leveldb.h"
 
 static cmpp_sp_t cmpp;
 static lamb_cache_t rdb;
@@ -288,6 +289,7 @@ void *lamb_deliver_loop(void *data) {
     int err;
     char *tmp;
     size_t len;
+    char status[8];
     cmpp_pack_t pack;
     cmpp_head_t *chp;
     char key[64], val[64];
@@ -335,9 +337,9 @@ void *lamb_deliver_loop(void *data) {
             pthread_cond_signal(&cond);
             sprintf(key, "%llu", msgId);
             sprintf(val, "%llu", id);
-            lamb_leveldb_put(&cache, key, strlen(key), val, strlen(val));
+            lamb_level_put(&cache, key, strlen(key), val, strlen(val));
 
-            printf("-> [update] sequenceId: %u, msgId: %llu\n", sequenceId, update->msgId);
+            printf("-> [update] sequenceId: %u, id: %llu, msgId: %llu\n", sequenceId, id, msgId);
 
             break;
         case CMPP_DELIVER:;
@@ -345,6 +347,7 @@ void *lamb_deliver_loop(void *data) {
             int registered_delivery;
             cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, &registered_delivery, 1);
             if (registered_delivery == 1) {
+                memset(status, 0, sizeof(status));
                 message.type = LAMB_REPORT;
                 report = (lamb_report_t *)&(message.data);
 
@@ -355,20 +358,37 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, report->phone, 24, 20);
 
                 /* Stat */
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_stat, report->status, 8, 7);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_stat, status, 8, 7);
 
                 /* Submit_Time */
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_submit_time, report->submitTime, 16, 10);
 
                 /* Done_Time */
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_done_time, report->doneTime, 16, 10);
-                
+
                 sprintf(key, "%llu", msgId);
-                tmp = lamb_level_get(&cache, key strlen(key), &len);
+                tmp = lamb_level_get(&cache, key, strlen(key), &len);
 
                 if (tmp != NULL) {
                     msgId = (unsigned long long)(atoll(tmp));
-                    report.id = msgId;
+                    report->id = msgId;
+
+                    if (strncasecmp(status, "DELIVRD", 7) == 0) {
+                        report->status = 1;
+                    } else if (strncasecmp(status, "EXPIRED", 7) == 0) {
+                        report->status = 2;
+                    } else if (strncasecmp(status, "DELETED", 7) == 0) {
+                        report->status = 3;
+                    } else if (strncasecmp(status, "UNDELIV", 7) == 0) {
+                        report->status = 4;
+                    } else if (strncasecmp(status, "ACCEPTD", 7) == 0) {
+                        report->status = 5;
+                    } else if (strncasecmp(status, "UNKNOWN", 7) == 0) {
+                        report->status = 6;
+                    } else if (strncasecmp(status, "REJECTD", 7) == 0) {
+                        report->status = 7;
+                    }
+
                     err = lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0);
                     if (err) {
                         lamb_save_logfile(config.backfile, &message);
@@ -539,7 +559,6 @@ int lamb_save_logfile(char *file, void *data) {
         return -1;
     }
 
-    lamb_update_t *update;
     lamb_report_t *report;
     lamb_deliver_t *deliver;
     lamb_message_t *message;
@@ -547,10 +566,6 @@ int lamb_save_logfile(char *file, void *data) {
     message = (lamb_message_t *)data;
 
     switch (message->type) {
-    case LAMB_UPDATE:
-        update = (lamb_update_t *)&message->data;
-        fprintf(fp, "%d,%llu,%llu\n", LAMB_UPDATE, update->id, update->msgId);
-        break;
     case LAMB_REPORT:
         report = (lamb_report_t *)&message->data;
         fprintf(fp, "%d,%llu,%s,%s,%s,%s\n", LAMB_REPORT, report->id, report->phone, report->status,

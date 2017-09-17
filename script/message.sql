@@ -34,10 +34,10 @@ create table message_201811 partition of message for values from ('2018-11-01') 
 CREATE TABLE report (
    id bigint UNIQUE NOT NULL,
    spcode varchar(21) NOT NULL,
+   phone varchar(21),
    status int NOT NULL,
    submit_time varchar(10),
    done_time varchar(10),
-   phone varchar(21),
    account int NOT NULL,
    company int NOT NULL,
    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone

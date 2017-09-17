@@ -11,7 +11,7 @@ int lamb_level_init(lamb_leveldb_t *db, const char *name) {
     db->options = leveldb_options_create();
     leveldb_options_set_create_if_missing(db->options, 1);
 
-    if (lamb_db_open(db, name) != 0) {
+    if (lamb_level_open(db, name) != 0) {
         return -1;
     }
 
