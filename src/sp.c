@@ -396,7 +396,7 @@ void *lamb_deliver_loop(void *data) {
                 }
 
                 printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
-                       (long long)report->id, report->phone, report->status, report->submitTime, report->doneTime);
+                       report->id, report->phone, status, report->submitTime, report->doneTime);
 
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
             } else {
