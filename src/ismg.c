@@ -449,7 +449,7 @@ void *lamb_deliver_loop(void *data) {
                 sequenceId = sequence = cmpp_sequence();
                 report = (lamb_report_t *)&message.data;
             report:
-                err = cmpp_report(client->sock, sequenceId, report->id, report->status, report->submitTime, report->doneTime, report->phone, 0);
+                err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
                     lamb_errlog(config.logfile, "Sending 'cmpp_report' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
