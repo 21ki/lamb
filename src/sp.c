@@ -396,7 +396,7 @@ void *lamb_deliver_loop(void *data) {
                 }
 
                 printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
-                       report->id, report->phone, report->status, report->submitTime, report->doneTime);
+                       (long long)report->id, report->phone, report->status, report->submitTime, report->doneTime);
 
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
             } else {
@@ -568,7 +568,7 @@ int lamb_save_logfile(char *file, void *data) {
     switch (message->type) {
     case LAMB_REPORT:
         report = (lamb_report_t *)&message->data;
-        fprintf(fp, "%d,%llu,%s,%s,%s,%s\n", LAMB_REPORT, report->id, report->phone, report->status,
+        fprintf(fp, "%d,%llu,%s,%d,%s,%s\n", LAMB_REPORT, report->id, report->phone, report->status,
                 report->submitTime, report->doneTime);
         break;
     case LAMB_DELIVER:
