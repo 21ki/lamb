@@ -62,6 +62,7 @@ typedef struct {
 
 void lamb_event_loop(void);
 void *lamb_deliver_worker(void *data);
+void *lamb_charge_loop(void *data);
 void *lamb_report_loop(void *data);
 void *lamb_delivery_loop(void *data);
 int lamb_update_report(lamb_db_t *db, lamb_report_pack *report);

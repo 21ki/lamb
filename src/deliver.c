@@ -265,12 +265,12 @@ void *lamb_deliver_worker(void *data) {
     char key[64];
     char spcode[24];
     long long money;
-    int account, company, charge;
+    int account, company, charge_type;
     lamb_report_t *report;
     lamb_list_node_t *node;
     lamb_message_t *message;
     lamb_deliver_t *deliver;
-    unsigned long long msgid;    
+    unsigned long long msgId;    
 
     err = lamb_cpu_affinity(pthread_self());
     if (err) {
@@ -304,7 +304,7 @@ void *lamb_deliver_worker(void *data) {
 
         sprintf(key, "%llu", msgId);
         i = (msgId % cache.len);
-        err = lamb_get_cache_message(cache.nodes[i], key, &account, &company, &charge, report->spcode, 24);
+        err = lamb_get_cache_message(cache.nodes[i], key, &account, &company, &charge_type, report->spcode, 24);
         if (err) {
             free(message);
             goto done;
@@ -333,8 +333,8 @@ void *lamb_deliver_worker(void *data) {
 
 
             /* Charge  */
-            lamb_charge_t *cpk = NULL;
-            cpk = (lamb_charge_t *)malloc(sizeof(lamb_charge_t));
+            lamb_charge_pack *cpk = NULL;
+            cpk = (lamb_charge_pack *)malloc(sizeof(lamb_charge_pack));
             if (cpk != NULL) {
                 if ((charge == LAMB_CHARGE_SUCCESS) && (report->status == 1)) {
                     cpk->company = company;
