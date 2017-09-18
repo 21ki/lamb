@@ -262,8 +262,6 @@ void lamb_event_loop(void) {
 
 void *lamb_deliver_worker(void *data) {
     int i, err;
-    char key[64];
-    char spcode[24];
     long long money;
     int account, company, charge_type;
     lamb_report_t *report;
@@ -290,7 +288,7 @@ void *lamb_deliver_worker(void *data) {
         message = (lamb_message_t *)node->val;
 
         /* Fetch Cache Message Information */
-        memset(key, 0, sizeof(key));
+
         if (message->type == LAMB_REPORT) {
             report = (lamb_report_t *)&(message->data);
             msgId = report->id;
@@ -302,9 +300,9 @@ void *lamb_deliver_worker(void *data) {
             goto done;
         }
 
-        sprintf(key, "%llu", msgId);
         i = (msgId % cache.len);
-        err = lamb_get_cache_message(cache.nodes[i], key, &account, &company, &charge_type, report->spcode, 24);
+        memset(report->spcode, 0, 24);
+        err = lamb_get_cache_message(cache.nodes[i], msgId, &account, &company, &charge_type, report->spcode, 24);
         if (err) {
             free(message);
             goto done;
@@ -535,7 +533,7 @@ int lamb_write_report(lamb_db_t *db, int account, int company, lamb_report_t *re
 
     column = "id, spcode, phone, status, submit_time, done_time, account, company";
     sprintf(sql, "INSERT INTO report(%s) VALUES(%lld, '%s', '%s', %d, '%s', '%s', %d, %d)", column,
-        (long long)report->id, report->spcode, report->phone, report->status, report->submitTime, report->doneTime, account, company);
+            (long long)report->id, report->spcode, report->phone, report->status, report->submitTime, report->doneTime, account, company);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         PQclear(res);
@@ -566,9 +564,38 @@ int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
     return 0;
 }
 
-int lamb_save_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
-    printf("-> lamb_save_deliver()\n");
-    return 0;
+int lamb_get_cache_message(lamb_cache_t *cache, unsigned long long key, int *account, int *company, int *charge, char *spcode, size_t size) {
+    char *cmd;
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HMGET %llu account company charge spcode", key);
+
+    if (reply != NULL) {
+        if (reply->element[0]->len > 0) {
+            *account = atoi(element[0]->str);
+        }
+
+        if (reply->element[1]->len > 0) {
+            *company = atoi(element[0]->str);
+        }
+
+        if (reply->element[2]->len > 0) {
+            *charge = atoi(element[2]->str);
+        }
+
+        if (reply->element[3]->len > 0) {
+            if (reply->element[3]->len > size) {
+                memcpy(spcode, reply->element[3]->str, size - 1);
+            } else {
+                memcpy(spcode, reply->element[3]->str, reply->element[3]->len);
+            }
+        }
+
+        freeReplyObject(reply);
+        return 0;
+    }
+
+    return -1;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
