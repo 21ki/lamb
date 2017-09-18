@@ -16,7 +16,7 @@ int lamb_gateway_get(lamb_db_t *db, int id, lamb_gateway_t *gateway) {
     PGresult *res = NULL;
 
     column = "id, type, host, port, username, password, spid, spcode, encoded, concurrent";
-    sprintf(sql, "SELECT %s FROM channel WHERE id = %d", column, id);
+    sprintf(sql, "SELECT %s FROM gateway WHERE id = %d", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -51,7 +51,7 @@ int lamb_gateway_get_all(lamb_db_t *db, lamb_gateways_t *gateways, int size) {
 
     gateways->len = 0;
     column = "id, type, host, port, username, password, spid, spcode, encoded, concurrent";
-    sprintf(sql, "SELECT %s FROM channel ORDER BY id", column);
+    sprintf(sql, "SELECT %s FROM gateway ORDER BY id", column);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
