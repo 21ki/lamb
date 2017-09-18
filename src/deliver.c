@@ -496,10 +496,19 @@ void *lamb_delivery_loop(void *data) {
         /* Write Message to Database */
         if (dpk->type == LAMB_REPORT) {
             report = (lamb_report_t *)dpk->data;
-            lamb_write_report(&db, dpk->account, dpk->company, report);
+            err = lamb_write_report(&db, dpk->account, dpk->company, report);
+            if (err) {
+                lamb_errlog(config.logfile, "Can't write report message to database", 0);
+                lamb_sleep(1000);
+            }
         } else if (dpk->type == LAMB_DELIVER) {
             deliver = (lamb_deliver_t *)dpk->data;
-            lamb_write_deliver(&db, deliver);
+            err = lamb_write_deliver(&db, deliver);
+            if (err) {
+                lamb_errlog(config.logfile, "Can't write deliver message to database", 0);
+                lamb_sleep(1000);
+            }
+
         }
 
         free(node->val);
