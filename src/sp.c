@@ -412,7 +412,12 @@ void *lamb_deliver_loop(void *data) {
                 pthread_mutex_lock(&recovery->lock);
                 node = lamb_list_rpush(recovery, lamb_list_node_new(tmp));
                 pthread_mutex_unlock(&recovery->lock);
-                
+
+                if (!node) {
+                    lamb_errlog(config.logfile, "Can't memory allocated for the recovery queue");
+                    lamb_sleep(3000);
+                }
+
                 printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
                        report->id, report->phone, status, report->submitTime, report->doneTime);
 
