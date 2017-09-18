@@ -305,7 +305,6 @@ void *lamb_deliver_loop(void *data) {
     cmpp_pack_t pack;
     cmpp_head_t *chp;
     char key[64], val[64];
-    lamb_list_node_t *node;
     lamb_report_t *report;
     lamb_deliver_t *deliver;
     lamb_message_t message;
@@ -641,7 +640,7 @@ void *lamb_recovery_loop(void *data) {
         key = (char *)node->val;
         err = lamb_level_delete(&cache, key, strlen(key));
         if (err) {
-            lamb_errlog(config.logfile, "Can't delete message resources from leveldb");
+            lamb_errlog(config.logfile, "Can't delete message resources from leveldb", 0);
             lamb_sleep(1000);
         }
 
