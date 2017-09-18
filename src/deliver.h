@@ -68,6 +68,7 @@ void *lamb_delivery_loop(void *data);
 int lamb_update_report(lamb_db_t *db, lamb_report_pack *report);
 int lamb_write_report(lamb_db_t *db, int account, int company, lamb_report_t *report);
 int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *deliver);
+int lamb_get_cache_message(lamb_cache_t *cache, unsigned long long key, int *account, int *company, int *charge, char *spcode, size_t size);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

@@ -326,7 +326,7 @@ void *lamb_deliver_worker(void *data) {
 
             }
 
-            printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
+            printf("-> [report] msgId: %llu, phone: %s, status: %d, submitTime: %s, doneTime: %s\n",
                    report->id, report->phone, report->status, report->submitTime, report->doneTime);
 
 
@@ -334,10 +334,10 @@ void *lamb_deliver_worker(void *data) {
             lamb_charge_pack *cpk = NULL;
             cpk = (lamb_charge_pack *)malloc(sizeof(lamb_charge_pack));
             if (cpk != NULL) {
-                if ((charge == LAMB_CHARGE_SUCCESS) && (report->status == 1)) {
+                if ((charge_type == LAMB_CHARGE_SUCCESS) && (report->status == 1)) {
                     cpk->company = company;
                     cpk->money = -1;
-                } else if (charge == LAMB_CHARGE_SUBMIT && report->status != 1) {
+                } else if (charge_type == LAMB_CHARGE_SUBMIT && report->status != 1) {
                     cpk->company = company;
                     cpk->money = 1;
                 } else {
@@ -503,7 +503,7 @@ void *lamb_delivery_loop(void *data) {
             lamb_write_deliver(&db, deliver);
         }
 
-        free(node->data);
+        free(node->val);
         free(node);
     }
 
@@ -572,15 +572,15 @@ int lamb_get_cache_message(lamb_cache_t *cache, unsigned long long key, int *acc
 
     if (reply != NULL) {
         if (reply->element[0]->len > 0) {
-            *account = atoi(element[0]->str);
+            *account = atoi(reply->element[0]->str);
         }
 
         if (reply->element[1]->len > 0) {
-            *company = atoi(element[0]->str);
+            *company = atoi(reply->element[0]->str);
         }
 
         if (reply->element[2]->len > 0) {
-            *charge = atoi(element[2]->str);
+            *charge = atoi(reply->element[2]->str);
         }
 
         if (reply->element[3]->len > 0) {
