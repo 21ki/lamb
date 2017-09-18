@@ -35,6 +35,11 @@ typedef struct {
     char db_user[64];
     char db_password[64];
     char db_name[64];
+    char msg_host[16];
+    int msg_port;
+    char msg_user[64];
+    char msg_password[64];
+    char msg_name[64];
     char *nodes[7];
 } lamb_config_t;
 

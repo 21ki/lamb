@@ -461,7 +461,7 @@ void *lamb_report_loop(void *data) {
         report = (lamb_report_pack *)&(node->val);
 
         /* Write Message to Database */
-        err = lamb_update_message(&db, report);
+        err = lamb_update_message(&mdb, report);
         if (err) {
             lamb_errlog(config.logfile, "Write report to message database failure", 0);
             lamb_sleep(1000);
@@ -499,10 +499,10 @@ void *lamb_delivery_loop(void *data) {
         /* Write Message to Database */
         if (dpk->type == LAMB_REPORT) {
             report = (lamb_report_t *)dpk->data;
-            lamb_write_report(db, dpk->account, dpk->company, report);
+            lamb_write_report(&db, dpk->account, dpk->company, report);
         } else if (dpk->type == LAMB_DELIVER) {
             deliver = (lamb_deliver_t *)dpk->data;
-            lamb_write_deliver(db, deliver);
+            lamb_write_deliver(&db, deliver);
         }
 
         free(node->data);
@@ -664,6 +664,36 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     
     if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MsgHost", conf->msg_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "MsgPort", &conf->msg_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->msg_port < 1 || conf->msg_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid MsgPort number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MsgUser", conf->msg_user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgUser' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MsgPassword", conf->msg_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgPassword' parameter\n");
+        goto error;
+    }
+    
+    if (lamb_get_string(&cfg, "MsgName", conf->msg_name, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgName' parameter\n");
         goto error;
     }
 
