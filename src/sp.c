@@ -304,6 +304,7 @@ void *lamb_deliver_loop(void *data) {
     char status[8];
     cmpp_pack_t pack;
     cmpp_head_t *chp;
+    lamb_list_node_t *node;
     char key[64], val[64];
     lamb_report_t *report;
     lamb_deliver_t *deliver;
