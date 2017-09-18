@@ -18,6 +18,7 @@
 #include "sp.h"
 #include "utils.h"
 #include "config.h"
+#include "list.h"
 #include "queue.h"
 #include "cache.h"
 #include "leveldb.h"
@@ -26,6 +27,7 @@ static cmpp_sp_t cmpp;
 static lamb_cache_t rdb;
 static lamb_leveldb_t cache;
 static lamb_config_t config;
+static lamb_list_t *recovery;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 static lamb_queue_t send_queue;
@@ -77,6 +79,13 @@ void lamb_event_loop(void) {
 
     lamb_set_process("lamb-gateway");
 
+    /* Storage Queue Initialization */
+    recovery = lamb_list_new();
+    if (recovery == NULL) {
+        lamb_errlog(config.logfile, "Lamb recovery queue initialization failed ", 0);
+        return;
+    }
+    
     /* Cache Initialization */
     err = lamb_level_init(&cache, config.cache);
     if (err) {
@@ -141,6 +150,9 @@ void lamb_event_loop(void) {
 
     /* Start Status Update Thread */
     lamb_start_thread(lamb_online_update, NULL, 1);
+
+    /* Start Status Update Thread */
+    lamb_start_thread(lamb_recovery_loop, NULL, 1);
 
     while (true) {
         lamb_sleep(3000);
@@ -293,13 +305,14 @@ void *lamb_deliver_loop(void *data) {
     cmpp_pack_t pack;
     cmpp_head_t *chp;
     char key[64], val[64];
+    lamb_list_node_t *node;
     lamb_report_t *report;
     lamb_deliver_t *deliver;
     lamb_message_t message;
     unsigned int commandId;
     unsigned int sequenceId;
     unsigned long long msgId;
-    
+
     while (true) {
         if (!cmpp.ok) {
             lamb_sleep(10);
@@ -368,7 +381,7 @@ void *lamb_deliver_loop(void *data) {
 
                 sprintf(key, "%llu", msgId);
                 tmp = lamb_level_get(&cache, key, strlen(key), &len);
-
+                
                 if (tmp != NULL) {
                     msgId = (unsigned long long)(atoll(tmp));
                     report->id = msgId;
@@ -395,6 +408,11 @@ void *lamb_deliver_loop(void *data) {
                     }
                 }
 
+                tmp = lamb_strdup(key);
+                pthread_mutex_lock(&recovery->lock);
+                node = lamb_list_rpush(recovery, lamb_list_node_new(tmp));
+                pthread_mutex_unlock(&recovery->lock);
+                
                 printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
                        report->id, report->phone, status, report->submitTime, report->doneTime);
 
@@ -600,6 +618,35 @@ void *lamb_online_update(void *data) {
             freeReplyObject(reply);
         }
         sleep(3);
+    }
+
+    pthread_exit(NULL);
+}
+
+void *lamb_recovery_loop(void *data) {
+    int err;
+    char *key = NULL;
+    lamb_list_node_t *node;
+
+    while (true) {
+        pthread_mutex_lock(&recovery->lock);
+        node = lamb_list_lpop(recovery);
+        pthread_mutex_unlock(&recovery->lock);
+
+        if (!node) {
+            lamb_sleep(50);
+            continue;
+        }
+
+        key = (char *)node->val;
+        err = lamb_level_delete(&cache, key, strlen(key));
+        if (err) {
+            lamb_errlog(config.logfile, "Can't delete message resources from leveldb");
+            lamb_sleep(1000);
+        }
+
+        free(key);
+        free(node);
     }
 
     pthread_exit(NULL);

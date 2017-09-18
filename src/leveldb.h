@@ -8,6 +8,7 @@
 #ifndef _LAMB_LEVELDB_H
 #define _LAMB_LEVELDB_H
 
+#include <pthread.h>
 #include <leveldb/c.h>
 
 typedef struct {
@@ -16,6 +17,7 @@ typedef struct {
     leveldb_options_t *options;
     leveldb_readoptions_t *roptions;
     leveldb_writeoptions_t *woptions;
+    pthread_mutex_t lock;
 } lamb_leveldb_t;
 
 int lamb_level_init(lamb_leveldb_t *db, const char *name);

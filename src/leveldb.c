@@ -15,6 +15,7 @@ int lamb_level_init(lamb_leveldb_t *db, const char *name) {
         return -1;
     }
 
+    pthread_mutex_init(&db->lock, NULL);
     db->roptions = leveldb_readoptions_create();
     db->woptions = leveldb_writeoptions_create();
 
@@ -84,7 +85,8 @@ int lamb_level_close(lamb_leveldb_t *db) {
 
     leveldb_close(db->handle);
     leveldb_destroy_db(db->options, db->name, &err);
-
+    pthread_mutex_destroy(&db->lock);
+    
     if (err != NULL) {
         return -1;
     }
