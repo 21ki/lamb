@@ -436,11 +436,6 @@ void *lamb_save_message(void *data) {
     lamb_list_node_t *node;
     lamb_message_t *message;
 
-    err = lamb_cpu_affinity(pthread_self());
-    if (err) {
-        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
-    }
-    
     while (true) {
         pthread_mutex_lock(&storage->lock);
         node = lamb_list_lpop(storage);
@@ -455,7 +450,9 @@ void *lamb_save_message(void *data) {
         message = (lamb_message_t *)node->val;
         submit = (lamb_submit_t *)&(message->data);
         i = (submit->id % cache.len);
+        pthread_mutex_lock(&(cache.nodes[i]->lock));
         err = lamb_cache_message(cache.nodes[i], &account, &company, submit);
+        pthread_mutex_unlock(&(cache.nodes[i]->lock));
         if (err) {
             lamb_errlog(config.logfile, "Write submit message to cache failure", 0);
             lamb_sleep(1000);

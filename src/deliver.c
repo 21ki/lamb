@@ -264,6 +264,7 @@ void *lamb_deliver_worker(void *data) {
     int i, err;
     int account, company, charge_type;
     lamb_report_t *report;
+    lamb_list_node_t *ret;
     lamb_list_node_t *node;
     lamb_message_t *message;
     lamb_deliver_t *deliver;
@@ -301,7 +302,9 @@ void *lamb_deliver_worker(void *data) {
 
         i = (msgId % cache.len);
         memset(report->spcode, 0, 24);
+        pthread_mutex_lock(&(cache.nodes[i]->lock));
         err = lamb_get_cache_message(cache.nodes[i], msgId, &account, &company, &charge_type, report->spcode, 24);
+        pthread_mutex_unlock(&(cache.nodes[i]->lock));
         if (err) {
             free(message);
             goto done;
@@ -311,14 +314,14 @@ void *lamb_deliver_worker(void *data) {
         case LAMB_REPORT:;
             lamb_report_pack *rpk;
             rpk = (lamb_report_pack *)malloc(sizeof(lamb_report_pack));
+
             if (rpk != NULL) {
                 rpk->id = msgId;
                 rpk->status = report->status;
                 pthread_mutex_lock(&storage->lock);
-                node = lamb_list_rpush(storage, lamb_list_node_new(rpk));
+                ret = lamb_list_rpush(storage, lamb_list_node_new(rpk));
                 pthread_mutex_unlock(&storage->lock);
-                if (node == NULL) {
-                    free(rpk);
+                if (ret == NULL) {
                     lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
                     lamb_sleep(3000);
                 }
@@ -345,10 +348,9 @@ void *lamb_deliver_worker(void *data) {
                 }
 
                 pthread_mutex_lock(&(charge->lock));
-                node = lamb_list_rpush(charge, lamb_list_node_new(cpk));
+                ret = lamb_list_rpush(charge, lamb_list_node_new(cpk));
                 pthread_mutex_unlock(&(charge->lock));
-                if (node == NULL) {
-                    free(cpk);
+                if (ret == NULL) {
                     lamb_errlog(config.logfile, "Lamb account %d for company %d chargeback failure", account, company);
                     lamb_sleep(3000);
                 }
@@ -367,7 +369,7 @@ void *lamb_deliver_worker(void *data) {
                             dpk->type = LAMB_REPORT;
                             dpk->data = deliver;
                             pthread_mutex_lock(&(delivery->lock));
-                            node = lamb_list_rpush(delivery, lamb_list_node_new(dpk));
+                            ret = lamb_list_rpush(delivery, lamb_list_node_new(dpk));
                             pthread_mutex_unlock(&(delivery->lock));
                         }
                     }
@@ -390,7 +392,6 @@ void *lamb_deliver_worker(void *data) {
               }
             */
             free(message);
-            message = NULL;
             break;
         }
 
@@ -455,7 +456,7 @@ void *lamb_report_loop(void *data) {
         }
 
         /* Write Report to Database */
-        report = (lamb_report_pack *)&(node->val);
+        report = (lamb_report_pack *)node->val;
 
         /* Write Message to Database */
         err = lamb_update_report(&mdb, report);

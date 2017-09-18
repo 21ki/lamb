@@ -244,22 +244,13 @@ void *lamb_sender_loop(void *data) {
                 continue;
             }
             printf("-> [encoded] Message encoding conversion successfull, length: %d\n", length);
-        submit:
-            if (retry >= config.retry) {
-                retry = 0;
-                count = 0;
-                start_time = lamb_now_microsecond();
-                continue;
-            }
 
             sequenceId = confirmed.sequenceId = cmpp_sequence();
             err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, content, length, msgFmt, true);
+
             if (err) {
                 lamb_sleep(config.interval * 1000);
-                if (!cmpp.ok) {
-                    continue;
-                }
-                goto submit;
+                continue;
             }
 
             printf("-> [submit] msgId: %llu, phone: %s, msgFmt: %d, length: %d\n", submit->id, submit->phone, msgFmt, length);
@@ -276,15 +267,12 @@ void *lamb_sender_loop(void *data) {
             
             pthread_mutex_lock(&mutex);
             err = pthread_cond_timedwait(&cond, &mutex, &timeout);
-
+            pthread_mutex_unlock(&mutex);
+            
             if (err == ETIMEDOUT) {
-                retry++;
-                pthread_mutex_unlock(&mutex);
                 lamb_errlog(config.logfile, "Lamb submit message to %s timeout", config.host);
                 lamb_sleep(config.interval * 1000);
-                goto submit;
             }
-            pthread_mutex_unlock(&mutex);
 
             /* Flow Monitoring And Control */
             lamb_flow_limit(&start_time, &now_time, &next_summary_time, &count, config.concurrent);
@@ -320,7 +308,8 @@ void *lamb_deliver_loop(void *data) {
         }
 
         err = cmpp_recv_timeout(&cmpp.sock, &pack, sizeof(pack), config.recv_timeout);
-
+        printf("-> cmpp_recv_timeout() ....\n");
+        
         if (err) {
             lamb_sleep(10);
             continue;
@@ -381,11 +370,15 @@ void *lamb_deliver_loop(void *data) {
 
                 sprintf(key, "%llu", msgId);
                 tmp = lamb_level_get(&cache, key, strlen(key), &len);
+
+                printf("-> tmp : %s\n", tmp ? tmp : "null");
                 
                 if (tmp != NULL) {
-                    msgId = (unsigned long long)(atoll(tmp));
+                    msgId = strtoull(tmp, NULL, 10);
                     report->id = msgId;
-
+                    free(tmp);
+                    tmp = NULL;
+                    
                     if (strncasecmp(status, "DELIVRD", 7) == 0) {
                         report->status = 1;
                     } else if (strncasecmp(status, "EXPIRED", 7) == 0) {
@@ -406,20 +399,22 @@ void *lamb_deliver_loop(void *data) {
                     if (err) {
                         lamb_save_logfile(config.backfile, &message);
                     }
+
+                    tmp = lamb_strdup(key);
+                    pthread_mutex_lock(&recovery->lock);
+                    node = lamb_list_rpush(recovery, lamb_list_node_new(tmp));
+                    pthread_mutex_unlock(&recovery->lock);
+
+                    if (!node) {
+                        lamb_errlog(config.logfile, "Can't memory allocated for the recovery queue", 0);
+                        lamb_sleep(3000);
+                    }
+                } else {
+                    printf("-> [leveldb] lamb_level_get() error\n");
                 }
 
-                tmp = lamb_strdup(key);
-                pthread_mutex_lock(&recovery->lock);
-                node = lamb_list_rpush(recovery, lamb_list_node_new(tmp));
-                pthread_mutex_unlock(&recovery->lock);
-
-                if (!node) {
-                    lamb_errlog(config.logfile, "Can't memory allocated for the recovery queue", 0);
-                    lamb_sleep(3000);
-                }
-
-                printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
-                       report->id, report->phone, status, report->submitTime, report->doneTime);
+                printf("-> [report] id:%llu, msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
+                       msgId, report->id, report->phone, status, report->submitTime, report->doneTime);
 
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
             } else {
@@ -460,7 +455,7 @@ void *lamb_deliver_loop(void *data) {
         case CMPP_ACTIVE_TEST_RESP:
             if (heartbeat.sequenceId == sequenceId) {
                 heartbeat.count = 0;
-                printf("-> [active] sequenceId: %u keepalive response\n", sequenceId);
+                printf("-> [active] Receive sequenceId: %u keepalive response\n", sequenceId);
             }
             break;
         }
@@ -474,8 +469,9 @@ void *lamb_cmpp_keepalive(void *data) {
     unsigned int sequenceId;
 
     while (true) {
-        
         sequenceId = heartbeat.sequenceId = cmpp_sequence();
+        printf("-> [active] sending sequenceId: %u keepalive request\n", sequenceId);
+        
         err = cmpp_active_test(&cmpp.sock, sequenceId);
         if (err) {
             lamb_errlog(config.logfile, "sending 'cmpp_active_test' to %s gateway failed", config.host);
