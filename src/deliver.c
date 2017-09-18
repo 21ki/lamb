@@ -262,7 +262,6 @@ void lamb_event_loop(void) {
 
 void *lamb_deliver_worker(void *data) {
     int i, err;
-    long long money;
     int account, company, charge_type;
     lamb_report_t *report;
     lamb_list_node_t *node;
@@ -459,7 +458,7 @@ void *lamb_report_loop(void *data) {
         report = (lamb_report_pack *)&(node->val);
 
         /* Write Message to Database */
-        err = lamb_update_message(&mdb, report);
+        err = lamb_update_report(&mdb, report);
         if (err) {
             lamb_errlog(config.logfile, "Write report to message database failure", 0);
             lamb_sleep(1000);
