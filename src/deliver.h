@@ -38,12 +38,30 @@ typedef struct {
     char *nodes[7];
 } lamb_config_t;
 
+typedef struct {
+    unsigned long long id;
+    int status;
+} lamb_report_pack;
+
+typedef struct {
+    int company;
+    int money;
+} lamb_charge_pack;
+
+typedef struct {
+    int type;
+    int account;
+    int company;
+    void *data;
+} lamb_delivery_pack;
+
 void lamb_event_loop(void);
 void *lamb_deliver_worker(void *data);
-int lamb_update_msgid(lamb_cache_t *cache, unsigned long long id, unsigned long long msgId);
-int lamb_report_update(lamb_db_t *db, lamb_report_t *report);
-int lamb_save_deliver(lamb_db_t *db, lamb_deliver_t *deliver);
+void *lamb_report_loop(void *data);
+void *lamb_delivery_loop(void *data);
+int lamb_update_report(lamb_db_t *db, lamb_report_pack *report);
+int lamb_write_report(lamb_db_t *db, int account, int company, lamb_report_t *report);
+int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *deliver);
 int lamb_read_config(lamb_config_t *conf, const char *file);
-bool lamb_is_online(lamb_cache_t *cache, int id);
 
 #endif

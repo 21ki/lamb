@@ -34,6 +34,7 @@ static lamb_db_t mdb;
 static lamb_cache_t rdb;
 static lamb_caches_t cache;
 static lamb_list_t *queue;
+static lamb_list_t *charge;
 static lamb_list_t *storage;
 static lamb_list_t *delivery;
 static lamb_config_t config;
@@ -95,8 +96,22 @@ void lamb_event_loop(void) {
 
     /* Storage Queue Initialization */
     storage = lamb_list_new();
-    if (!queue) {
+    if (!storage) {
         lamb_errlog(config.logfile, "Lmab storage queue initialization failed", 0);
+        return;
+    }
+
+    /* Charge Queue Initialization */
+    charge = lamb_list_new();
+    if (!charge) {
+        lamb_errlog(config.logfile, "Lmab charge queue initialization failed", 0);
+        return;
+    }
+    
+    /* Delivery Queue Initialization */
+    delivery = lamb_list_new();
+    if (!delivery) {
+        lamb_errlog(config.logfile, "Lmab delivery queue initialization failed", 0);
         return;
     }
 
@@ -204,7 +219,11 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_deliver_worker, NULL, config.work_threads);
 
     /* Start sender worker threads */
-    lamb_start_thread(lamb_report_message, NULL, config.work_threads);
+    lamb_start_thread(lamb_report_loop, NULL, 1);
+
+    lamb_start_thread(lamb_charge_loop, NULL, 1);
+
+    lamb_start_thread(lamb_delivery_loop, NULL, 1);
 
     /* Read queue message */
     lamb_list_node_t *node;
@@ -251,6 +270,7 @@ void *lamb_deliver_worker(void *data) {
     lamb_list_node_t *node;
     lamb_message_t *message;
     lamb_deliver_t *deliver;
+    unsigned long long msgid;    
 
     err = lamb_cpu_affinity(pthread_self());
     if (err) {
@@ -269,47 +289,90 @@ void *lamb_deliver_worker(void *data) {
 
         message = (lamb_message_t *)node->val;
 
+        /* Fetch Cache Message Information */
+        memset(key, 0, sizeof(key));
+        if (message->type == LAMB_REPORT) {
+            report = (lamb_report_t *)&(message->data);
+            msgId = report->id;
+        } else if (message->type == LAMB_DELIVER) {
+            deliver = (lamb_deliver_t *)&(message->data);
+            msgId = deliver->id;
+        } else {
+            free(message);
+            goto done;
+        }
+
+        sprintf(key, "%llu", msgId);
+        i = (msgId % cache.len);
+        err = lamb_get_cache_message(cache.nodes[i], key, &account, &company, &charge, report->spcode, 24);
+        if (err) {
+            free(message);
+            goto done;
+        }
+            
         switch (message->type) {
-        case LAMB_REPORT:
-            report = (lamb_report_t *)&message->data;
+        case LAMB_REPORT:;
+            lamb_report_pack *rpk;
+            rpk = (lamb_report_pack *)malloc(sizeof(lamb_report_pack));
+            if (rpk != NULL) {
+                rpk->id = msgId;
+                rpk->status = report->status;
+                pthread_mutex_lock(&storage->lock);
+                node = lamb_list_rpush(storage, lamb_list_node_new(rpk));
+                pthread_mutex_unlock(&storage->lock);
+                if (node == NULL) {
+                    free(rpk);
+                    lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
+                    lamb_sleep(3000);
+                }
+
+            }
+
             printf("-> [report] msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
                    report->id, report->phone, report->status, report->submitTime, report->doneTime);
 
-            pthread_mutex_lock(&storage->lock);
-            node = lamb_list_rpush(storage, node);
-            pthread_mutex_unlock(&storage->lock);
 
-            if (node == NULL) {
-                lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
-                lamb_sleep(3000);
-            }
+            /* Charge  */
+            lamb_charge_t *cpk = NULL;
+            cpk = (lamb_charge_t *)malloc(sizeof(lamb_charge_t));
+            if (cpk != NULL) {
+                if ((charge == LAMB_CHARGE_SUCCESS) && (report->status == 1)) {
+                    cpk->company = company;
+                    cpk->money = -1;
+                } else if (charge == LAMB_CHARGE_SUBMIT && report->status != 1) {
+                    cpk->company = company;
+                    cpk->money = 1;
+                } else {
+                    free(cpk);
+                    goto next;
+                }
 
-            /* Fetch Cache Message Information */
-            memset(key, 0, sizeof(key));
-            sprintf(key, "%llu", report->id);
-            i = (submit->id % cache.len);
-            err = lamb_get_cache_message(cache.nodes[i], key, &account, &company, &charge, report->spcode, 24);
-            if (err) {
-                break;
-            }
-
-            /* Deduction For Account */
-            if ((charge == LAMB_CHARGE_SUCCESS) && (report->status == 1)) {
-                pthread_mutex_lock(&(rdb.lock));
-                lamb_company_billing(&rdb, company, -1, &money);
-                pthread_mutex_unlock(&(rdb.lock));
-                if (err) {
+                pthread_mutex_lock(&(charge->lock));
+                node = lamb_list_rpush(charge, lamb_list_node_new(cpk));
+                pthread_mutex_unlock(&(charge->lock));
+                if (node == NULL) {
+                    free(cpk);
                     lamb_errlog(config.logfile, "Lamb account %d for company %d chargeback failure", account, company);
                     lamb_sleep(3000);
                 }
+
             }
 
+        next:
             /* Status Report Delivery to Client*/
             for (int j = 0; j < cli_queue.len; j++) {
                 if (cli_queue.list[j]->id == account) {
                     err = lamb_queue_send(&(cli_queue.list[j]->queue), (const char *)&message, sizeof(message), 0);
                     if (err) {
-                        
+                        lamb_delivery_pack *dpk;
+                        dpk = (lamb_delivery_pack *)malloc(sizeof(lamb_delivery_pack));
+                        if (dpk != NULL) {
+                            dpk->type = LAMB_REPORT;
+                            dpk->data = deliver;
+                            pthread_mutex_lock(&(delivery->lock));
+                            node = lamb_list_rpush(delivery, lamb_list_node_new(dpk));
+                            pthread_mutex_unlock(&(delivery->lock));
+                        }
                     }
                     break;
                 }
@@ -317,7 +380,6 @@ void *lamb_deliver_worker(void *data) {
 
             break;
         case LAMB_DELIVER:
-            deliver = (lamb_deliver_t *)&message->data;
             printf("-> [deliver] msgId: %llu, phone: %s, spcode: %s, serviceId: %s, msgFmt: %d, length: %d\n",
                    deliver->id, deliver->phone, deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length);
 
@@ -330,52 +392,178 @@ void *lamb_deliver_worker(void *data) {
               lamb_save_deliver(&db, deliver);
               }
             */
+            free(message);
+            message = NULL;
             break;
         }
 
+    done:
         free(node);
-        free(message);
     }
 
     pthread_exit(NULL);
 }
 
-bool lamb_is_online(lamb_cache_t *cache, int id) {
-    printf("-> lamb_is_online()\n");
-    return true;
-}
-
-void *lamb_report_loop(void *data) {
+void *lamb_charge_loop(void *data) {
     int err;
-    lamb_report_t *report;
-    lamb_message_t *message;
+    long long money;
+    lamb_list_node_t *node;
+    lamb_charge_pack *charges;
 
+    lamb_set_process("lamb-charged");
+    
     while (true) {
-        pthread_mutex_lock(&storage->lock);
-        node = lamb_list_lpop(storage);
-        pthread_mutex_unlock(&storage->lock);
+        pthread_mutex_lock(&charge->lock);
+        node = lamb_list_lpop(charge);
+        pthread_mutex_unlock(&charge->lock);
 
-        if (node == NULL) {
+        if (!node) {
             lamb_sleep(10);
             continue;
         }
 
         /* Write Report to Database */
-        message = (lamb_message_t *)node->val;
-        report = (lamb_report_t *)&(message->data);
+        charges = (lamb_charge_pack *)&(node->val);
 
         /* Write Message to Database */
-        err = lamb_update_message(&mdb, report);
+        err = lamb_company_billing(&rdb, charges->company, charges->money, &money);
+
         if (err) {
             lamb_errlog(config.logfile, "Write report to message database failure", 0);
             lamb_sleep(1000);
         }
 
         free(node);
-        free(message);
+        free(charges);
     }
     
     pthread_exit(NULL);
+}
+
+void *lamb_report_loop(void *data) {
+    int err;
+    lamb_list_node_t *node;
+    lamb_report_pack *report;
+
+    lamb_set_process("lamb-reportd");
+
+    while (true) {
+        pthread_mutex_lock(&storage->lock);
+        node = lamb_list_lpop(storage);
+        pthread_mutex_unlock(&storage->lock);
+
+        if (!node) {
+            lamb_sleep(10);
+            continue;
+        }
+
+        /* Write Report to Database */
+        report = (lamb_report_pack *)&(node->val);
+
+        /* Write Message to Database */
+        err = lamb_update_message(&db, report);
+        if (err) {
+            lamb_errlog(config.logfile, "Write report to message database failure", 0);
+            lamb_sleep(1000);
+        }
+
+        free(node);
+        free(report);
+    }
+    
+    pthread_exit(NULL);
+}
+
+void *lamb_delivery_loop(void *data) {
+    int err;
+    lamb_list_node_t *node;
+    lamb_report_t *report;
+    lamb_deliver_t *deliver;
+    lamb_delivery_pack *dpk;
+
+    lamb_set_process("lamb-backupd");
+   
+    while (true) {
+        pthread_mutex_lock(&delivery->lock);
+        node = lamb_list_lpop(delivery);
+        pthread_mutex_unlock(&delivery->lock);
+
+        if (!node) {
+            lamb_sleep(10);
+            continue;
+        }
+
+        /* Write Report to Database */
+        dpk = (lamb_delivery_pack *)&(node->val);
+
+        /* Write Message to Database */
+        if (dpk->type == LAMB_REPORT) {
+            report = (lamb_report_t *)dpk->data;
+            lamb_write_report(db, dpk->account, dpk->company, report);
+        } else if (dpk->type == LAMB_DELIVER) {
+            deliver = (lamb_deliver_t *)dpk->data;
+            lamb_write_deliver(db, deliver);
+        }
+
+        free(node->data);
+        free(node);
+    }
+
+    pthread_exit(NULL);
+}
+
+int lamb_update_report(lamb_db_t *db, lamb_report_pack *report) {
+    char sql[256];
+    PGresult *res = NULL;
+
+    sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld", report->status, (long long)report->id);
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
+
+    return 0;
+}
+
+int lamb_write_report(lamb_db_t *db, int account, int company, lamb_report_t *report) {
+    char *column;
+    char sql[256];
+    PGresult *res = NULL;
+
+    column = "id, spcode, phone, status, submit_time, done_time, account, company";
+    sprintf(sql, "INSERT INTO report(%s) VALUES(%lld, '%s', '%s', %d, '%s', '%s', %d, %d)", column,
+        (long long)report->id, report->spcode, report->phone, report->status, report->submitTime, report->doneTime, account, company);
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
+
+    return 0;
+}
+
+int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
+    char *column;
+    char sql[256];
+    PGresult *res = NULL;
+
+    column = "id, spcode, phone, content";
+    sprintf(sql, "INSERT INTO deliver(%s) VALUES(%lld, '%s', '%s', '%s')", column,
+            (long long)deliver->id, deliver->spcode, deliver->phone, deliver->content);
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
+
+    return 0;
 }
 
 int lamb_save_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
@@ -446,21 +634,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_string(&cfg, "CachePassword", conf->cache_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'CachePassword' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "CacheDb", &conf->cache_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'CacheDb' parameter\n");
-        goto error;
-    }
-
-    if (conf->cache_db < 0 || conf->cache_db > 65535) {
-        fprintf(stderr, "ERROR: Invalid cache database name\n");
         goto error;
     }
 
