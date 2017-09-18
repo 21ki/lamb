@@ -38,7 +38,7 @@ static lamb_list_t *charge;
 static lamb_list_t *storage;
 static lamb_list_t *delivery;
 static lamb_config_t config;
-static lamb_routes_t routes;
+/* static lamb_routes_t routes; */
 static lamb_accounts_t accounts;
 static lamb_companys_t companys;
 static lamb_gateways_t gateways;
@@ -573,7 +573,6 @@ int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
 }
 
 int lamb_get_cache_message(lamb_cache_t *cache, unsigned long long key, int *account, int *company, int *charge, char *spcode, size_t size) {
-    char *cmd;
     redisReply *reply = NULL;
 
     reply = redisCommand(cache->handle, "HMGET %llu account company charge spcode", key);
