@@ -221,6 +221,7 @@ int lamb_account_queue_open(lamb_account_queues_t *queues, int qlen, lamb_accoun
             }
 
             queues->list[j] = q;
+            queues->len++;
         } else {
             if (j > 0) {
                 j--;

@@ -345,12 +345,13 @@ void *lamb_deliver_loop(void *data) {
             break;
         case CMPP_DELIVER:;
             /* Cmpp Deliver */
-            int registered_delivery;
+            unsigned char registered_delivery;
+            printf("-> [report] -------------------------------------->\n");
             cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, &registered_delivery, 1);
             if (registered_delivery == 1) {
-                memset(status, 0, sizeof(status));
                 message.type = LAMB_REPORT;
                 report = (lamb_report_t *)&(message.data);
+                memset(status, 0, sizeof(status));
 
                 /* Msg_Id */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &msgId, 8);
@@ -391,6 +392,8 @@ void *lamb_deliver_loop(void *data) {
                         report->status = 6;
                     } else if (strncasecmp(status, "REJECTD", 7) == 0) {
                         report->status = 7;
+                    } else {
+                        report->status = 6;
                     }
 
                     err = lamb_queue_send(&recv_queue, (char *)&message, sizeof(message), 0);
