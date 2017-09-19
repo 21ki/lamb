@@ -89,7 +89,7 @@ void lamb_event_loop(void) {
     /* Cache Initialization */
     err = lamb_level_init(&cache, config.cache);
     if (err) {
-        lamb_errlog(config.logfile, "Can't open leveldb chace database", 0);
+        lamb_errlog(config.logfile, "Can't open leveldb cache database", 0);
         return;
     }
 
@@ -207,20 +207,13 @@ void *lamb_sender_loop(void *data) {
             /* Check Operator */
             int sp;
             bool allow = false;
-            
-            for (int i = 0; i < 4; i++) {
-                sp = config.service[i];
-                if (sp != 0) {
-                    if (lamb_check_operator(sp, submit->phone, strlen(submit->phone))) {
-                        allow = true;
-                    }
-                }
-            }
+
+            allow = lamb_check_operator(config.sp, submit->phone, strlen(submit->phone));
 
             if (allow) {
-                printf("-> [operator] Check phone %s successfull\n", submit->phone);
+                printf("-> [check] Check phone %s OK\n", submit->phone);
             } else {
-                printf("-> [operator] Check phone %s does not pass\n", submit->phone);
+                printf("-> [check] Check phone %s not allowed\n", submit->phone);
                 continue;
             }
             
@@ -240,37 +233,29 @@ void *lamb_sender_loop(void *data) {
             memset(content, 0, sizeof(content));
             err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), "UTF-8", config.encoding, &length);
             if (err || (length == 0)) {
-                printf("-> [encoded] Message encoding conversion failed\n");
+                printf("-> [encoded] Message %llu encoding conversion failed\n", submit->id);
                 continue;
             }
-            printf("-> [encoded] Message encoding conversion successfull, length: %d\n", length);
+            printf("-> [encoded] Message %llu encoding conversion OK\n", submit->id);
 
             sequenceId = confirmed.sequenceId = cmpp_sequence();
             err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, content, length, msgFmt, true);
 
             if (err) {
+                printf("-> [sending] Message %llu phone: %s, msgFmt: %d, length: %d to %s failed\n", submit->id, submit->phone, msgFmt, length, config.host);
                 lamb_sleep(config.interval * 1000);
                 continue;
             }
 
-            printf("-> [submit] msgId: %llu, phone: %s, msgFmt: %d, length: %d\n", submit->id, submit->phone, msgFmt, length);
+            printf("-> [sending] Message %llu phone: %s, msgFmt: %d, length: %d to %s OK\n", submit->id, submit->phone, msgFmt, length, config.host);
 
             count++;
-            
-            struct timeval now;
-            struct timespec timeout;
 
-            gettimeofday(&now, NULL);
-            timeout.tv_sec = now.tv_sec;
-            timeout.tv_nsec = now.tv_usec * 1000;
-            timeout.tv_sec += config.timeout;
-            
-            pthread_mutex_lock(&mutex);
-            err = pthread_cond_timedwait(&cond, &mutex, &timeout);
-            pthread_mutex_unlock(&mutex);
+            err = lamb_wait_confirmation(&cond, &mutex, config.timeout);
             
             if (err == ETIMEDOUT) {
-                lamb_errlog(config.logfile, "Lamb submit message to %s timeout", config.host);
+                printf("-> [error] wait message %llu confirmation timeout", submit->id);
+                lamb_errlog(config.logfile, "Wait submit message confirmation timeout", 0);
                 lamb_sleep(config.interval * 1000);
             }
 
@@ -340,13 +325,12 @@ void *lamb_deliver_loop(void *data) {
             sprintf(val, "%llu", id);
             lamb_level_put(&cache, key, strlen(key), val, strlen(val));
 
-            printf("-> [update] sequenceId: %u, id: %llu, msgId: %llu\n", sequenceId, id, msgId);
+            printf("-> [received] message response id: %llu, msgId: %llu\n", id, msgId);
 
             break;
         case CMPP_DELIVER:;
             /* Cmpp Deliver */
             unsigned char registered_delivery;
-            printf("-> [report] -------------------------------------->\n");
             cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, &registered_delivery, 1);
             if (registered_delivery == 1) {
                 message.type = LAMB_REPORT;
@@ -765,8 +749,9 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     char *result = NULL;
 
     result = strtok(service, delims);
-    while((result != NULL) && (i < 4)) {
-        conf->service[i++] = atoi(result);
+    while((result != NULL) && (i < LAMB_MAX_OPERATOR)) {
+        conf->sp.ops[i++] = atoi(result);
+        conf->sp.len++;
         result = strtok( NULL, delims );
     }
     

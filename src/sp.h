@@ -27,7 +27,6 @@ typedef struct {
     long long send_timeout;
     long long recv_timeout;
     bool extended;
-    int service[4];
     int concurrent;
     char backfile[128];
     char logfile[128];
@@ -36,6 +35,7 @@ typedef struct {
     char redis_password[64];
     int redis_db;
     char cache[128];
+    lamb_operator_t sp;
 } lamb_config_t;
 
 typedef struct {

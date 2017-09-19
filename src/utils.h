@@ -24,6 +24,8 @@
 
 #pragma pack(1)
 
+#define LAMB_MAX_OPERATOR 4
+
 typedef struct {
     int type;
     char data[508];
@@ -58,6 +60,11 @@ typedef struct {
     char content[160];
 } lamb_deliver_t;
 
+typedef struct {
+    int len;
+    int ops[LAMB_MAX_OPERATOR];
+} lamb_operator_t;
+
 #pragma pack()
 
 int lamb_signal(int sig, void (*handler)(int));
@@ -79,7 +86,7 @@ int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, c
 size_t lamb_ucs2_strlen(const char *str);
 size_t lamb_gbk_strlen(const char *str);
 bool lamb_check_msgfmt(int coded, int list[], size_t len);
-bool lamb_check_operator(int sp, const char *phone, size_t len);
+bool lamb_check_operator(lamb_operator_t *sp, const char *phone, size_t len);
 void lamb_rlimit_processing(void);
 long lamb_get_cpu(void);
 int lamb_cpu_affinity(pthread_t thread);
