@@ -9,6 +9,7 @@
 #define _LAMB_SP_H
 
 #include <stdbool.h>
+#include "utils.h"
 
 typedef struct {
     int id;

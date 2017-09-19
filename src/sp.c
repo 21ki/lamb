@@ -16,7 +16,6 @@
 #include <pthread.h>
 #include <cmpp.h>
 #include "sp.h"
-#include "utils.h"
 #include "config.h"
 #include "list.h"
 #include "queue.h"
@@ -161,7 +160,6 @@ void lamb_event_loop(void) {
 
 void *lamb_sender_loop(void *data) {
     int err;
-    int retry;
     int msgFmt;
     ssize_t ret;
     char spcode[21];
@@ -205,10 +203,9 @@ void *lamb_sender_loop(void *data) {
             submit = (lamb_submit_t *)&(message.data);
 
             /* Check Operator */
-            int sp;
             bool allow = false;
 
-            allow = lamb_check_operator(config.sp, submit->phone, strlen(submit->phone));
+            allow = lamb_check_operator(&config.sp, submit->phone, strlen(submit->phone));
 
             if (allow) {
                 printf("-> [check] Check phone %s OK\n", submit->phone);
@@ -395,7 +392,7 @@ void *lamb_deliver_loop(void *data) {
                         lamb_sleep(3000);
                     }
                 } else {
-                    printf("-> [leveldb] No %llu message record found\n", key);
+                    printf("-> [leveldb] No %s message record found\n", key);
                 }
 
                 printf("-> [report] id:%llu, msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
