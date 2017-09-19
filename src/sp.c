@@ -167,7 +167,6 @@ void *lamb_sender_loop(void *data) {
     lamb_message_t message;
     unsigned int sequenceId;
 
-    retry = 0;
     memset(spcode, 0, sizeof(spcode));
     
     if (strcasecmp(config.encoding, "ASCII") == 0) {
