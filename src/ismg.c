@@ -329,7 +329,7 @@ void lamb_work_loop(lamb_client_t *client) {
             /* Check protocol command */
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
-                printf("-> [received] active test from %s client\n", result, client->addr);
+                printf("-> [received] active test from %s client\n", client->addr);
                 cmpp_active_test_resp(client->sock, sequenceId);
                 break;
             case CMPP_SUBMIT:;
@@ -472,7 +472,7 @@ void *lamb_deliver_loop(void *data) {
             }
 
             /* Waiting for message confirmation */
-            err = lamb_wait_confirmation(cond, &mutex, 3);
+            err = lamb_wait_confirmation(&cond, &mutex, 3);
 
             if (err == ETIMEDOUT) {
                 if (message.type == LAMB_DELIVER) {
@@ -492,7 +492,6 @@ exit:
 }
 
 void *lamb_online_update(void *data) {
-    int err;
     lamb_client_t *client;
     redisReply *reply = NULL;
 
