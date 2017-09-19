@@ -407,11 +407,11 @@ void *lamb_deliver_loop(void *data) {
                     pthread_mutex_unlock(&recovery->lock);
 
                     if (!node) {
-                        lamb_errlog(config.logfile, "Can't memory allocated for the recovery queue", 0);
+                        lamb_errlog(config.logfile, "Can't memory allocated for recovery queue", 0);
                         lamb_sleep(3000);
                     }
                 } else {
-                    printf("-> [leveldb] lamb_level_get() error\n");
+                    printf("-> [leveldb] No %llu message record found\n", key);
                 }
 
                 printf("-> [report] id:%llu, msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",

@@ -9,6 +9,7 @@
 #define _LAMB_UTILS_H
 
 #include <stdbool.h>
+#include <pthread.h>
 
 #define lamb_errlog(f, fmt, ...) lamb_log_error(f, __FILE__, __LINE__, fmt, __VA_ARGS__)
 
@@ -83,5 +84,6 @@ void lamb_rlimit_processing(void);
 long lamb_get_cpu(void);
 int lamb_cpu_affinity(pthread_t thread);
 int lamb_hp_parse(char *str, char *host, int *port);
+int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, int second);
 
 #endif

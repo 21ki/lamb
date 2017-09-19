@@ -30,14 +30,14 @@
 #include "config.h"
 
 static cmpp_ismg_t cmpp;
-static lamb_cache_t cache;
+static lamb_cache_t rdb;
 static lamb_config_t config;
-static unsigned int sequence;
+static lamb_confirmed_t confirmed;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 
 int main(int argc, char *argv[]) {
-    char *file = "lamb.conf";
+    char *file = "ismg.conf";
 
     int opt = 0;
     char *optstring = "c:";
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     int err;
 
     /* Redis Cache */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to redis server", 0);
         return -1;
@@ -187,20 +187,20 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     cmpp_pack_get_string(&pack, cmpp_connect_source_addr, username, sizeof(username), 6);
                     sprintf(key, "account.%s", username);
                     
-                    if (!lamb_cache_has(&cache, key)) {
+                    if (!lamb_cache_has(&rdb, key)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
                         lamb_errlog(config.logfile, "Incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
 
                     memset(password, 0, sizeof(password));
-                    lamb_cache_hget(&cache, key, "password", password, sizeof(password));
+                    lamb_cache_hget(&rdb, key, "password", password, sizeof(password));
 
                     /* Check AuthenticatorSource */
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), username, password)) {
                         /* Check Duplicate Logon */
                         sprintf(key, "client.%s", username);
-                        if (lamb_cache_has(&cache, key)) {
+                        if (lamb_cache_has(&rdb, key)) {
                             cmpp_connect_resp(&sock, sequenceId, 9);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                             close(sockfd);
@@ -216,7 +216,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 
                         lamb_account_t account;
                         memset(&account, 0, sizeof(account));
-                        err = lamb_account_get(&cache, username, &account);
+                        err = lamb_account_get(&rdb, username, &account);
                         if (err) {
                             cmpp_connect_resp(&sock, sequenceId, 10);
                             lamb_errlog(config.logfile, "Can't to obtain account information", 0);
@@ -230,7 +230,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         } else if (pid == 0) {
                             close(epfd);
                             cmpp_ismg_close(cmpp);
-                            lamb_cache_close(&cache);
+                            lamb_cache_close(&rdb);
                             
                             lamb_client_t client;
                             client.sock = &sock;
@@ -264,14 +264,14 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_message_t message;
 
     gid = getpid();
+    lamb_set_process("lamb-client");
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
-    lamb_set_process("lamb-client");
-    
+
     /* Redis Cache */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
+    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to redis server", 0);
+        lamb_errlog(config.logfile, "can't connect to redis %s server", config.redis_host);
         return;
     }
     
@@ -313,6 +313,7 @@ void lamb_work_loop(lamb_client_t *client) {
             err = cmpp_recv(client->sock, &pack, sizeof(pack));
             if (err) {
                 if (err == -1) {
+                    printf("-> [error] Connection is closed by the client %s\n", client->addr);
                     lamb_errlog(config.logfile, "Connection is closed by the client %s\n", client->addr);
                     break;
                 }
@@ -328,6 +329,7 @@ void lamb_work_loop(lamb_client_t *client) {
             /* Check protocol command */
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
+                printf("-> [received] active test from %s client\n", result, client->addr);
                 cmpp_active_test_resp(client->sock, sequenceId);
                 break;
             case CMPP_SUBMIT:;
@@ -352,27 +354,28 @@ void lamb_work_loop(lamb_client_t *client) {
                 int codeds[] = {0, 8, 11, 15};
                 if (!lamb_check_msgfmt(submit->msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
                     result = 11;
-                    printf("-> [submit] check message encoded %d not support\n", submit->msgFmt);
+                    printf("-> [error] Message encoded %d not support\n", submit->msgFmt);
                     goto response;
                 }
                 
                 cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit->length, 1);
 
                 /* Check Message Length */
-                if (submit->length > 159) {
+                if (submit->length > 159 || submit->length < 1) {
                     result = 4;
-                    printf("-> [submit] check message length is incorrect\n");
+                    printf("-> [error] Message length is Incorrect\n");
                     goto response;
                 }
                 
                 cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit->content, 160, submit->length);
 
-                printf("-> [submit] msgId: %llu, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->msgFmt, submit->content, submit->length);
+                printf("-> [received] msgId: %llu, msgFmt: %d, length: %d\n", submit->id, submit->msgFmt, submit->length);
 
                 /* Message Write Queue */
                 err = lamb_queue_send(&queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
                     result = 12;
+                    printf("-> [error] write msgId %llu to queue failed\n", submit->id);
                 }
 
                 /* Submit Response */
@@ -381,15 +384,17 @@ void lamb_work_loop(lamb_client_t *client) {
                 break;
             case CMPP_DELIVER_RESP:;
                 result = 0;
-                printf("-> [deliver resp] Receive deliver response from %s client\n", client->addr);
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
-                if ((result == 0) && (sequenceId == sequence)) {
-                    pthread_mutex_lock(&mutex);
+
+                printf("-> [received] deliver response result: %u from %s client\n", result, client->addr);
+
+                if ((confirmed.sequenceId == sequenceId) && (result == 0)) {
                     pthread_cond_signal(&cond);
-                    pthread_mutex_unlock(&mutex);
                 }
+                
                 break;
             case CMPP_TERMINATE:
+                printf("-> [received] terminate request from %s client\n", client->addr);
                 cmpp_terminate_resp(client->sock, sequenceId);
                 goto exit;
             }
@@ -434,26 +439,29 @@ void *lamb_deliver_loop(void *data) {
         memset(&message, 0 , sizeof(message));
         ret = lamb_queue_receive(&queue, (char *)&message, sizeof(message), 0);
         if (ret > 0) {
+            printf("-> [fetch] pull a new message ...\n");
             switch (message.type) {
             case LAMB_DELIVER:;
-                sequenceId = sequence = cmpp_sequence();
+                sequenceId = confirmed.sequenceId = cmpp_sequence();
                 deliver = (lamb_deliver_t *)&message.data;
             deliver:
-                printf("-> [deliver] id: %llu sending to %s client\n", deliver->id, client->addr);
+                printf("-> [sending] message %llu to %s client\n", deliver->id, client->addr);
                 err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
                 if (err) {
+                    printf("-> [error] sending message %llu to client %s failed", deliver->id, client->addr);
                     lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
                     goto deliver;
                 }
                 break;
             case LAMB_REPORT:;
-                sequenceId = sequence = cmpp_sequence();
+                sequenceId = confirmed.sequenceId = cmpp_sequence();
                 report = (lamb_report_t *)&message.data;
             report:
-                printf("-> [report] id: %llu, status: %d, submitTime: %s, doneTime: %s, sending to %s client\n", report->id, report->status, report->submitTime, report->doneTime, client->addr);
+                printf("-> [sending] report %llu, status: %d, submitTime: %s, doneTime: %s, to %s client\n", report->id, report->status, report->submitTime, report->doneTime, client->addr);
                 err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
+                    printf("-> [error] send report %llu to client %s failed", report->id, client->addr);
                     lamb_errlog(config.logfile, "Sending 'cmpp_report' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
                     goto report;
@@ -463,26 +471,18 @@ void *lamb_deliver_loop(void *data) {
                 continue;
             }
 
-            struct timeval now;
-            struct timespec timeout;
-            gettimeofday(&now, NULL);
-            timeout.tv_sec = now.tv_sec + 5;
-
             /* Waiting for message confirmation */
-            pthread_mutex_lock(&mutex);
-            err = pthread_cond_timedwait(&cond, &mutex, &timeout);
+            err = lamb_wait_confirmation(cond, &mutex, 3);
 
             if (err == ETIMEDOUT) {
-                lamb_errlog(config.logfile, "Deliver message timeout from client %s", client->addr);
                 if (message.type == LAMB_DELIVER) {
-                    pthread_mutex_unlock(&mutex);
+                    printf("-> [error] wait message confirmation timeout from  %s client\n", client->addr);
                     goto deliver;
                 } else if (message.type == LAMB_REPORT) {
+                    printf("-> [error] wait report confirmation timeout from  %s client\n", client->addr);
                     goto report;
-                    pthread_mutex_unlock(&mutex);
                 }
             }
-            pthread_mutex_unlock(&mutex);
         }
     }
 
@@ -494,25 +494,19 @@ exit:
 void *lamb_online_update(void *data) {
     int err;
     lamb_client_t *client;
+    redisReply *reply = NULL;
 
     client = (lamb_client_t *)data;
 
-    /* Redis Cache */
-    err = lamb_cache_connect(&cache, config.redis_host, config.redis_port, NULL, config.redis_db);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
-        return NULL;
-    }
-
-    redisReply *reply = NULL;
-
     while (true) {
-        reply = redisCommand(cache.handle, "SET client.%d %u", client->account->id, getpid());
+        reply = redisCommand(rdb.handle, "SET client.%d %u", client->account->id, getpid());
         if (reply != NULL) {
             freeReplyObject(reply);
-            reply = redisCommand(cache.handle, "EXPIRE client.%d 5", client->account->id);
+            reply = NULL;
+            reply = redisCommand(rdb.handle, "EXPIRE client.%d 5", client->account->id);
             if (reply != NULL) {
                 freeReplyObject(reply);
+                reply = NULL;
             }
         } else {
             lamb_errlog(config.logfile, "Lamb exec redis command error", 0);

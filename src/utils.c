@@ -19,7 +19,6 @@
 #include <sys/prctl.h>
 #include <time.h>
 #include <sys/time.h>
-#include <pthread.h>
 #include <sys/resource.h>
 #include <iconv.h>
 #include <cmpp.h>
@@ -429,4 +428,18 @@ int lamb_hp_parse(char *str, char *host, int *port) {
     }
 
     return 0;
+}
+
+int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, int second) {
+    int err;
+    struct timeval now;
+    struct timespec timeout;
+    gettimeofday(&now, NULL);
+    timeout.tv_sec = now.tv_sec + second;
+
+    pthread_mutex_lock(mutex);
+    err = pthread_cond_timedwait(cond, mutex, &timeout);
+    pthread_mutex_unlock(mutex);
+
+    return err;
 }

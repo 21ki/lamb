@@ -34,6 +34,10 @@ typedef struct {
 } lamb_config_t;
 
 typedef struct {
+    unsigned int sequenceId;
+} lamb_confirmed_t;
+
+typedef struct {
     cmpp_sock_t *sock;
     lamb_account_t *account;
     char *addr;
