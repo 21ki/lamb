@@ -348,7 +348,7 @@ bool lamb_check_operator(lamb_operator_t *sp, const char *phone, size_t len) {
     num = atoi(tmp);
 
     for (int i = 0; i < sp->len; i++) {
-        switch (sp[i]) {
+        switch (sp->ops[i]) {
         case LAMB_CMCC:
             count = sizeof(cmcc) / sizeof(cmcc[0]);
             for (int j = 0; j < count; j++) {
