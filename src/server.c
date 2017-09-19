@@ -283,6 +283,7 @@ void lamb_reload(int signum) {
 
 void *lamb_worker_loop(void *data) {
     int err;
+    lamb_list_node_t *ret;
     lamb_list_node_t *node;
     lamb_message_t *message;
     lamb_submit_t *submit;
@@ -416,9 +417,9 @@ void *lamb_worker_loop(void *data) {
         
             /* Send Message to Storage */
             pthread_mutex_lock(&storage->lock);
-            node = lamb_list_rpush(storage, node);
+            ret = lamb_list_rpush(storage, node);
             pthread_mutex_unlock(&storage->lock);
-            if (node == NULL) {
+            if (ret == NULL) {
                 lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
                 lamb_sleep(3000);
             }
@@ -432,8 +433,8 @@ void *lamb_worker_loop(void *data) {
 
 void *lamb_save_message(void *data) {
     int i, err;
-    lamb_submit_t *submit;
     lamb_list_node_t *node;
+    lamb_submit_t *submit;
     lamb_message_t *message;
 
     while (true) {
@@ -448,7 +449,7 @@ void *lamb_save_message(void *data) {
 
         /* Write Message to Cache */
         message = (lamb_message_t *)node->val;
-        submit = (lamb_submit_t *)&(message->data);
+        submit = (lamb_submit_t *)&message->data;
         i = (submit->id % cache.len);
         pthread_mutex_lock(&(cache.nodes[i]->lock));
         err = lamb_cache_message(cache.nodes[i], &account, &company, submit);

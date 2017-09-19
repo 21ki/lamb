@@ -381,6 +381,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 break;
             case CMPP_DELIVER_RESP:;
                 result = 0;
+                printf("-> [deliver resp] Receive deliver response from %s client\n", client->addr);
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                 if ((result == 0) && (sequenceId == sequence)) {
                     pthread_mutex_lock(&mutex);
@@ -438,6 +439,7 @@ void *lamb_deliver_loop(void *data) {
                 sequenceId = sequence = cmpp_sequence();
                 deliver = (lamb_deliver_t *)&message.data;
             deliver:
+                printf("-> [deliver] id: %llu sending to %s client\n", deliver->id, client->addr);
                 err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
                 if (err) {
                     lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet to client %s failed", client->addr);
@@ -449,6 +451,7 @@ void *lamb_deliver_loop(void *data) {
                 sequenceId = sequence = cmpp_sequence();
                 report = (lamb_report_t *)&message.data;
             report:
+                printf("-> [report] id: %llu, status: %d, submitTime: %s, doneTime: %s, sending to %s client\n", report->id, report->status, report->submitTime, report->doneTime, client->addr);
                 err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
                     lamb_errlog(config.logfile, "Sending 'cmpp_report' packet to client %s failed", client->addr);

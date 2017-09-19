@@ -421,7 +421,7 @@ void *lamb_charge_loop(void *data) {
         }
 
         /* Write Report to Database */
-        charges = (lamb_charge_pack *)&(node->val);
+        charges = (lamb_charge_pack *)node->val;
 
         /* Write Message to Database */
         err = lamb_company_billing(&rdb, charges->company, charges->money, &money);
@@ -492,7 +492,7 @@ void *lamb_delivery_loop(void *data) {
         }
 
         /* Write Report to Database */
-        dpk = (lamb_delivery_pack *)&(node->val);
+        dpk = (lamb_delivery_pack *)node->val;
 
         /* Write Message to Database */
         if (dpk->type == LAMB_REPORT) {

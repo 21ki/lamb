@@ -308,7 +308,6 @@ void *lamb_deliver_loop(void *data) {
         }
 
         err = cmpp_recv_timeout(&cmpp.sock, &pack, sizeof(pack), config.recv_timeout);
-        printf("-> cmpp_recv_timeout() ....\n");
         
         if (err) {
             lamb_sleep(10);
@@ -374,8 +373,7 @@ void *lamb_deliver_loop(void *data) {
                 printf("-> tmp : %s\n", tmp ? tmp : "null");
                 
                 if (tmp != NULL) {
-                    msgId = strtoull(tmp, NULL, 10);
-                    report->id = msgId;
+                    report->id = strtoull(tmp, NULL, 10);
                     free(tmp);
                     tmp = NULL;
                     
@@ -416,7 +414,7 @@ void *lamb_deliver_loop(void *data) {
                 printf("-> [report] id:%llu, msgId: %llu, phone: %s, status: %s, submitTime: %s, doneTime: %s\n",
                        msgId, report->id, report->phone, status, report->submitTime, report->doneTime);
 
-                cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
+                cmpp_deliver_resp(&cmpp.sock, sequenceId, msgId, 0);
             } else {
                 message.type = LAMB_DELIVER;
                 deliver = (lamb_deliver_t *)&(message.data);
@@ -527,7 +525,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
         return 2;
     }
 
-    err = cmpp_recv(&cmpp->sock, &pack, sizeof(pack));
+    err = cmpp_recv_timeout(&cmpp->sock, &pack, sizeof(pack), config->recv_timeout);
     if (err) {
         lamb_errlog(config->logfile, "Receive gateway response packet from %s failed", config->host);
         return 3;
