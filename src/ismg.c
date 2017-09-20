@@ -262,6 +262,7 @@ void lamb_work_loop(lamb_client_t *client) {
     cmpp_pack_t pack;
     lamb_submit_t *submit;
     lamb_message_t message;
+    unsigned long long msgId;
 
     gid = getpid();
     lamb_set_process("lamb-client");
@@ -334,7 +335,6 @@ void lamb_work_loop(lamb_client_t *client) {
                 break;
             case CMPP_SUBMIT:;
                 result = 0;
-                unsigned long long msgId;
 
                 /* Generate Message ID */
                 msgId = lamb_gen_msgid(gid, lamb_sequence());
@@ -385,10 +385,11 @@ void lamb_work_loop(lamb_client_t *client) {
             case CMPP_DELIVER_RESP:;
                 result = 0;
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_resp_msg_id, &msgId, 8);
+                
+                printf("-> [received] deliver response seqid: %u, msgId: %llu, result: %u from %s client\n", sequenceId, msgId, result, client->addr);
 
-                printf("-> [received] deliver response result: %u from %s client\n", result, client->addr);
-
-                if ((confirmed.sequenceId == sequenceId) && (result == 0)) {
+                if ((confirmed.sequenceId == sequenceId) && (confirmed.msgId == msgId) && (result == 0)) {
                     pthread_cond_signal(&cond);
                 }
                 
@@ -439,11 +440,12 @@ void *lamb_deliver_loop(void *data) {
         memset(&message, 0 , sizeof(message));
         ret = lamb_queue_receive(&queue, (char *)&message, sizeof(message), 0);
         if (ret > 0) {
-            printf("-> [fetch] pull a new message ...\n");
+            printf("-> [fetch] pull a new type is %d message\n", message.type);
             switch (message.type) {
             case LAMB_DELIVER:;
-                sequenceId = confirmed.sequenceId = cmpp_sequence();
                 deliver = (lamb_deliver_t *)&message.data;
+                sequenceId = confirmed.sequenceId = cmpp_sequence();
+                confirmed.msgId = deliver->id;
             deliver:
                 printf("-> [sending] message %llu to %s client\n", deliver->id, client->addr);
                 err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
@@ -455,10 +457,11 @@ void *lamb_deliver_loop(void *data) {
                 }
                 break;
             case LAMB_REPORT:;
-                sequenceId = confirmed.sequenceId = cmpp_sequence();
                 report = (lamb_report_t *)&message.data;
+                sequenceId = confirmed.sequenceId = cmpp_sequence();
+                confirmed.msgId = report->id;
             report:
-                printf("-> [sending] report %llu, status: %d, submitTime: %s, doneTime: %s, to %s client\n", report->id, report->status, report->submitTime, report->doneTime, client->addr);
+                printf("-> [sending] report seqId: %u, msgId: %llu, status: %d, submitTime: %s, doneTime: %s, to %s client\n", sequenceId, report->id, report->status, report->submitTime, report->doneTime, client->addr);
                 err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
                     printf("-> [error] send report %llu to client %s failed", report->id, client->addr);

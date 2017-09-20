@@ -25,7 +25,7 @@ class LoginController extends Yaf\Controller_Abstract {
 
             $session = Yaf\Session::getInstance();
             $session->set('login', true);
-            $response->setRedirect($url . '/status/inbound');
+            $response->setRedirect('/status/inbound');
             $response->response();
             return false;
         }

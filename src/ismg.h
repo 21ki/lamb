@@ -35,6 +35,7 @@ typedef struct {
 
 typedef struct {
     unsigned int sequenceId;
+    unsigned long long msgId;
 } lamb_confirmed_t;
 
 typedef struct {

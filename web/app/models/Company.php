@@ -12,6 +12,7 @@ use Tool\Filter;
 class CompanyModel {
     public $db = null;
     public $redis = null;
+    public $backup = null;
     public $config = null;
     private $table = 'company';
     private $column = ['name', 'paytype', 'contacts', 'telephone', 'description'];
@@ -20,9 +21,12 @@ class CompanyModel {
         $this->db = Yaf\Registry::get('db');
         $this->config = Yaf\Registry::get('config');
         if ($this->config) {
-            $config = $this->config->backup;
-            $redis = new Redis($config->host, $config->port, $config->password, $config->db);
+            $rcfg = $this->config->redis;
+            $bcfg = $this->config->backup;
+            $redis = new Redis($rcfg->host, $rcfg->port, $rcfg->password, $rcfg->db);
             $this->redis = $redis->handle;
+            $backup = new Redis($bcfg->host, $bcfg->port, $bcfg->password, $bcfg->db);
+            $this->backup = $backup->handle;
         }
     }
 
@@ -120,19 +124,19 @@ class CompanyModel {
     }
     
     public function recharge($id = null, $money = 0) {
-        if (intval($money) !== 0 && $this->isExist($id)) {
-            $sql = 'UPDATE ' . $this->table . ' SET money = money + ' . intval($money) . ' WHERE id = ' . intval($id);
-            if ($this->db->query($sql)) {
-                $payment = new PaymentModel();
-                $company = $this->get($id);
-                $event['company'] = $company['name'];
-                $event['money'] = intval($money);
-                $event['operator'] = 'admin';
-                $event['description'] = 'no description';
-                $event['ip_addr'] = ip2long($_SERVER['REMOTE_ADDR']);
-                $payment->writeLogs($event);
-                return true;
-            }
+        $id = intval($id);
+        $money = intval($money);
+        if ($money !== 0 && $this->isExist($id)) {
+            $this->redis->multi()->hIncrBy('company.' . $id, 'money', $money)->exec();
+            $payment = new PaymentModel();
+            $company = $this->get($id);
+            $event['company'] = $company['name'];
+            $event['money'] = intval($money);
+            $event['operator'] = 'admin';
+            $event['description'] = 'no description';
+            $event['ip_addr'] = ip2long($_SERVER['REMOTE_ADDR']);
+            $payment->writeLogs($event);
+            return true;
         }
 
         return false;
@@ -196,7 +200,7 @@ class CompanyModel {
 
     public function getMoney($id = null) {
         $money = 0;
-        $result = $this->redis->hGet('company.' . intval($id), 'money');
+        $result = $this->backup->hGet('company.' . intval($id), 'money');
         if ($result !== false) {
             $money = intval($result);
         }

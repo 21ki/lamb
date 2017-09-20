@@ -251,6 +251,9 @@ void lamb_event_loop(void) {
                             lamb_errlog(config.logfile, "Lamb can't allocate memory for queue", 0);
                             lamb_sleep(3000);
                         }
+                    } else {
+                        free(message);
+                        message = NULL;
                     }
                 }
             }
@@ -361,7 +364,7 @@ void *lamb_deliver_worker(void *data) {
             /* Status Report Delivery to Client*/
             for (int j = 0; j < cli_queue.len; j++) {
                 if (cli_queue.list[j]->id == account) {
-                    err = lamb_queue_send(&(cli_queue.list[j]->queue), (const char *)&message, sizeof(message), 0);
+                    err = lamb_queue_send(&(cli_queue.list[j]->queue), (char *)message, sizeof(lamb_message_t), 0);
                     if (err) {
                         lamb_delivery_pack *dpk;
                         dpk = (lamb_delivery_pack *)malloc(sizeof(lamb_delivery_pack));
@@ -584,7 +587,7 @@ int lamb_get_cache_message(lamb_cache_t *cache, unsigned long long key, int *acc
         }
 
         if (reply->element[1]->len > 0) {
-            *company = atoi(reply->element[0]->str);
+            *company = atoi(reply->element[1]->str);
         }
 
         if (reply->element[2]->len > 0) {
