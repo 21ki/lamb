@@ -182,9 +182,7 @@ void lamb_event_loop(void) {
 
     /* Open All Client Queue */
     opt.flag = O_WRONLY | O_NONBLOCK;
-    attr.mq_maxmsg = 5;
-    attr.mq_msgsize = sizeof(lamb_message_t);
-    opt.attr = &attr;
+    opt.attr = NULL;
 
     memset(&cli_queue, 0, sizeof(cli_queue));
     err = lamb_account_queue_open(&cli_queue, LAMB_MAX_CLIENT, &accounts, LAMB_MAX_CLIENT, &opt, LAMB_QUEUE_RECV);
@@ -232,9 +230,9 @@ void lamb_event_loop(void) {
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
 
-        if (nfds > 0) {
+        if (nfds < 0) {
             for (int i = 0; i < nfds; i++) {
-                if ((events[i].events & EPOLLIN) && (queue->len < config.work_queue)) {
+                if (events[i].events & EPOLLIN) {
                     message = (lamb_message_t *)calloc(1, sizeof(lamb_message_t));
                     if (!message) {
                         lamb_errlog(config.logfile, "Lamb can't allocate memory for message", 0);
@@ -265,7 +263,8 @@ void lamb_event_loop(void) {
 
 void *lamb_deliver_worker(void *data) {
     int i, err;
-    int account, company, charge_type;
+    int charge_type;
+    int account, company;
     lamb_report_t *report;
     lamb_list_node_t *ret;
     lamb_list_node_t *node;

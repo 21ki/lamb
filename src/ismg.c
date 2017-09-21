@@ -35,6 +35,7 @@ static lamb_config_t config;
 static lamb_confirmed_t confirmed;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
+static unsigned long long total = 0;
 
 int main(int argc, char *argv[]) {
     char *file = "ismg.conf";
@@ -335,6 +336,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 break;
             case CMPP_SUBMIT:;
                 result = 0;
+                count++;
 
                 /* Generate Message ID */
                 msgId = lamb_gen_msgid(gid, lamb_sequence());
@@ -496,24 +498,22 @@ exit:
 
 void *lamb_online_update(void *data) {
     lamb_client_t *client;
+    unsigned long long last;
     redisReply *reply = NULL;
 
+    last = 0;
     client = (lamb_client_t *)data;
 
     while (true) {
-        reply = redisCommand(rdb.handle, "SET client.%d %u", client->account->id, getpid());
+        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu", client->account->id, getpid(), (total - last) / 3);
         if (reply != NULL) {
             freeReplyObject(reply);
             reply = NULL;
-            reply = redisCommand(rdb.handle, "EXPIRE client.%d 5", client->account->id);
-            if (reply != NULL) {
-                freeReplyObject(reply);
-                reply = NULL;
-            }
         } else {
             lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
         }
 
+        total = 0;
         sleep(3);
     }
 
