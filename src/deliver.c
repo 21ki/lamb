@@ -522,7 +522,7 @@ void *lamb_delivery_loop(void *data) {
 }
 
 int lamb_update_report(lamb_db_t *db, lamb_report_pack *report) {
-    char sql[256];
+    char sql[512];
     PGresult *res = NULL;
 
     sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld", report->status, (long long)report->id);
@@ -539,7 +539,7 @@ int lamb_update_report(lamb_db_t *db, lamb_report_pack *report) {
 
 int lamb_write_report(lamb_db_t *db, int account, int company, lamb_report_t *report) {
     char *column;
-    char sql[256];
+    char sql[512];
     PGresult *res = NULL;
 
     column = "id, spcode, phone, status, submit_time, done_time, account, company";
@@ -558,7 +558,7 @@ int lamb_write_report(lamb_db_t *db, int account, int company, lamb_report_t *re
 
 int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
     char *column;
-    char sql[256];
+    char sql[512];
     PGresult *res = NULL;
 
     column = "id, spcode, phone, content";
