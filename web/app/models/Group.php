@@ -17,68 +17,49 @@ class GroupModel {
         $this->db = Yaf\Registry::get('db');
     }
 
-    public function get($id = null) {
-        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($id);
-        $group = $this->db->query($sql)->fetch();
-        if (count($group) > 0) {
-            $group['channels'] = $this->getChannels($id);
-            return $group;
+    public function get($gid = null) {
+        $group = [];
+        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($gid);
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $group = $sth->fetch();
         }
 
         return $group;
     }
     
     public function getAll() {
-        $groups = array();
+        $groups = [];
         $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id';
         $sth = $this->db->query($sql);
-        if ($sth !== false) {
-            $groups =  $sth->fetchAll();
-            foreach ($groups as &$group) {
-                $group['channels'] = $this->getChannels($group['id']);
-            }
+        if ($sth) {
+            $groups = $sth->fetchAll();
         }
 
         return $groups;
     }
 
-    public function create(array $data, array $channel = null, array $weight = null) {
-        $data = $this->checkArgs($data);
-        $channels = array();
-
-        foreach ($channel as $key => $val) {
-            if (isset($weight[$key])) {
-                $channels[$key]['channel'] = $val;
-                $channels[$key]['weight'] = $weight[$key];
-            }
-        }
-
-        return $channels;
+    public function create() {
+        return null;
     }
 
-    public function delete($id = null) {
-        $sql = 'DELETE FROM channels WHERE gid = ' . intval($id);
-        $this->db->query($sql);
-
-        $sql = 'DELETE FROM groups WHERE id = ' . intval($id);
-        if ($this->db->query($sql)) {
-            return true;
+    public function delete($gid = null) {
+        $gid = intval($gid);
+        
+        if (!$this->isUsed($gid)) {
+            $sql = 'DELETE FROM groups WHERE id = ' . intval($gid);
+            if ($this->db->query($sql)) {
+                return true;
+            }
         }
-
         return false;
     }
 
-    public function getChannels($gid = null) {
-        $sql = 'SELECT * FROM channels WHERE gid = ' . intval($gid);
-        $result = $this->db->query($sql)->fetchAll();
-        return $result;
-    }
-
-    public function isExist($id = null) {
-        $result = false;
-        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+    public function isUsed($gid = NULL) {
+        $sql = 'SELECT count(id) FROM account WHERE route = ' . intval($gid);
         $sth = $this->db->query($sql);
-        if ($sth && ($result = $sth->fetch()) !== false) {
+        if ($sth) {
+            $result = $sth->fetch();
             if ($result['count'] > 0) {
                 return true;
             }
@@ -86,7 +67,7 @@ class GroupModel {
 
         return false;
     }
-    
+
     public function checkArgs(array $data) {
         $res = array();
         $data = array_intersect_key($data, array_flip($this->column));
@@ -104,7 +85,6 @@ class GroupModel {
 
         return $res;
     }
-
     
     public function keyAssembly(array $data) {
     	$text = '';

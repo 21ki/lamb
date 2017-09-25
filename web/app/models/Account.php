@@ -39,7 +39,7 @@ class AccountModel {
     
     public function getAll() {
         $result = [];
-        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY company';
+        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY company, create_time';
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetchAll();

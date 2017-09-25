@@ -126,9 +126,11 @@ class GatewayModel {
     }
     
     public function delete($id = null) {
-        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
-        if ($this->db->query($sql)) {
-            return true;
+        if (!$this->isUsed($id)) {
+            $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
+            if ($this->db->query($sql)) {
+                return true;
+            }
         }
 
         return false;
@@ -144,6 +146,19 @@ class GatewayModel {
         $sth = $this->db->query($sql);
         if ($sth && ($result = $sth->fetch()) !== false) {
             if ($result['count'] > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function isUsed($id = null) {
+        $sql = 'SELECT count(id) AS total FROM channels WHERE id = ' . intval($id);
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            if ($result['total'] > 0) {
                 return true;
             }
         }
