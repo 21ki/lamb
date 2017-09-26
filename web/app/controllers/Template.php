@@ -11,7 +11,15 @@ use Tool\Filter;
 class TemplateController extends Yaf\Controller_Abstract {
     public function indexAction() {
         $template = new TemplateModel();
+        $account = new AccountModel();
+        $accounts = [];
+        foreach ($account->getAll() as $val) {
+            $accounts[$val['id']] = $val['username'];
+        }
+
+        $this->getView()->assign('accounts', $accounts);
         $this->getView()->assign('templates', $template->getAll());
+        
         return true;
     }
 

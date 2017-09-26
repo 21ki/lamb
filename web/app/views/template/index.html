@@ -82,7 +82,7 @@
             <?php
               foreach ($templates as $t) {
               echo '<tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>',$t['name'],'</td>';
-              echo '<td>',lamb_output($t['contents'], 32),'</td><td>',$t['account'],'</td><td>',$t['create_time'],'</td>';
+              echo '<td>',lamb_output($t['contents'], 32),'</td><td>',$accounts[$t['account']],'</td><td>',$t['create_time'],'</td>';
               echo '<td><button class="btn btn-default btn-xs" onclick="deleteTemplate(',$t['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
               echo '<td><a class="btn btn-default btn-xs" href="template/edit?id=',$t['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
               }
