@@ -27,17 +27,19 @@ class AccountController extends Yaf\Controller_Abstract {
         if ($request->isPost()) {
             $account = new AccountModel();
             $account->create($request->getPost());
-            $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/account';
             $response = $this->getResponse();
-            $response->setRedirect($url);
+            $response->setRedirect('/account');
             $response->response();
             return false;
         }
 
         $company = new CompanyModel();
         $list = $company->getAll();
-
         $this->getView()->assign('companys', $list);
+        
+        $group = new GroupModel();
+        $this->getView()->assign('groups', $group->getAll());
+
         return true;
     }
 
@@ -47,16 +49,18 @@ class AccountController extends Yaf\Controller_Abstract {
 
         if ($request->isPost()) {
             $account->change($request->getPost('id'), $request->getPost());
-            $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/account';
             $response = $this->getResponse();
-            $response->setRedirect($url);
+            $response->setRedirect('/account');
             $response->response();
             return false;
         }
 
+        $group = new GroupModel();
         $company = new CompanyModel();
         $this->getView()->assign('companys', $company->getAll());
+        $this->getView()->assign('groups', $group->getAll());
         $this->getView()->assign('account', $account->get($request->getQuery('id')));
+
         return true;
     }
 

@@ -75,12 +75,20 @@ class AccountModel {
         if (!isset($data['check_keyword'])) {
             $data['check_keyword'] = 0;
         }
+
+        if (!isset($data['route'])) {
+            return false;
+        }
+
+        $group = new GroupModel();
+        if (!$group->isExist($data['route'])) {
+            return false;
+        }
         
         if (count($data) == count($this->column)) {
             $sql = 'INSERT INTO ' . $this->table;
             $sql .= '(username, password, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword, description) ';
             $sql .= 'VALUES(:username, :password, :spcode, :company, :charge_type, :ip_addr, :concurrent, :route, :extended, :policy, :check_template, :check_keyword, :description)';
-            $sql .= ' returning id';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {

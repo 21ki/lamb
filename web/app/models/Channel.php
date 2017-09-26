@@ -41,6 +41,30 @@ class ChannelModel {
         return $result;
     }
 
+    public function create(array $data = null) {
+        $data = $this->checkArgs($data);
+
+        if ($this->isExist($data['id'])) {
+            $sql = 'INSERT INTO channels VALUES(:id, :gid, :weight, :operator)';
+            $sth = $this->db->prepare($sql);
+
+            foreach ($data as $key => $val) {
+                if ($val !== null) {
+                    $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                } else {
+                    return false;
+                }
+            }
+
+            if ($sth->execute()) {
+                return true;
+            }
+        }
+
+
+        return false;
+    }
+
     public function delete($id = null, $gid = null) {
         if ($this->getTotal($gid) > 1) {
             $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' and gid = ' . intval($gid);
@@ -60,18 +84,19 @@ class ChannelModel {
         return false;
     }
 
-    public function getTotal($gid = null) {
-        $count = 0;
-        $sql = 'SELECT count(id) AS total FROM ' . $this->table . ' WHERE gid = ' . intval($gid);
+    public function isExist($id = null) {
+        $sql = 'SELECT count(id) AS total FROM gateway WHERE id = ' . intval($id);
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetch();
-            $count = intval($result['total']);
+            if (intval($result['total']) > 0) {
+                return true;
+            }
         }
 
-        return $count;
+        return false;
     }
-    
+
     public function checkArgs(array $data) {
         $res = array();
         $data = array_intersect_key($data, array_flip($this->column));

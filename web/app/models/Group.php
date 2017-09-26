@@ -39,8 +39,22 @@ class GroupModel {
         return $groups;
     }
 
-    public function create() {
-        return null;
+    public function create(array $data = null) {
+        $data = $this->checkArgs($data);
+
+        $sql = 'INSERT INTO groups(name, description) VALUES(:name, :description) returning id';
+        $sth = $this->db->prepare($sql);
+
+        if (isset($data['name'], $data['description'])) {
+            $sth->bindParam(':name', $data['name'],PDO::PARAM_STR);
+            $sth->bindValue(':description', $data['description'], PDO::PARAM_STR);
+            if ($sth->execute()) {
+                $result = $sth->fetch();
+                return intval($result['id']);
+            }
+        }
+
+        return 0;
     }
 
     public function delete($gid = null) {
@@ -68,6 +82,18 @@ class GroupModel {
         return false;
     }
 
+    public function total($gid = null) {
+        $count = 0;
+        $sql = 'SELECT count(id) AS total FROM channels WHERE gid = ' . intval($gid);
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            $count = intval($result['total']);
+        }
+
+        return $count;
+    }
+    
     public function checkArgs(array $data) {
         $res = array();
         $data = array_intersect_key($data, array_flip($this->column));

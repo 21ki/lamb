@@ -63,7 +63,7 @@ class CompanyModel {
 
             foreach ($data as $key => $val) {
                 if ($val !== null) {
-                    $sth->bindParam(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                    $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
                 } else {
                     return false;
                 }
@@ -101,9 +101,12 @@ class CompanyModel {
     }
     
     public function delete($id = null) {
-        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
-        if ($this->db->query($sql)) {
-            return true;
+        $id = intval($id);
+        if (!$this->isUsed($id)) {
+            $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . $id;
+            if ($this->db->query($sql)) {
+                return true;
+            }
         }
 
         return false;
@@ -121,6 +124,20 @@ class CompanyModel {
         }
 
         return $count;
+    }
+
+    public function isUsed($id = null) {
+        $id = intval($id);
+        $sql = 'SELECT count(id) AS total FROM account WHERE company = ' . $id;
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            if (intval($result['total']) > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
     
     public function recharge($id = null, $money = 0) {

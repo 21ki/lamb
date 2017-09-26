@@ -99,7 +99,7 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">所属公司:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="company">
+                <select class="form-control" name="company" required="required">
                   <?php
                     foreach ($companys as $c) {
                       echo '<option value="',$c['id'],'">',$c['name'],'</option>',"\n";
@@ -144,10 +144,12 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道路由:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="route">
-                  <option value="1">cmcc01</option>
-                  <option value="2">cmcc02</option>
-                  <option value="3">cmcc03</option>
+                <select class="form-control" name="route" required="required">
+                  <?php
+                    foreach ($groups as $g) {
+                      echo '<option value="',$g['id'],'">',$g['name'],'</option>';
+                    }
+                  ?>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">

@@ -100,7 +100,7 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">所属公司:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="company">
+                <select class="form-control" name="company" required="required">
                   <?php
                     foreach ($companys as $c) {
                       $selected = $c['id'] == $account['company'] ? ' selected="selected"' : '';
@@ -146,14 +146,12 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道路由:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="route">
-                  <option value="1"<?php if ($account['route'] == 1) {echo 'selected="selected"';}?>>cmcc01</option>
-                  <option value="2"<?php if ($account['route'] == 2) {echo 'selected="selected"';}?>>cmcc02</option>
-                  <option value="3"<?php if ($account['route'] == 3) {echo 'selected="selected"';}?>>cmcc03</option>
-                  <option value="4"<?php if ($account['route'] == 4) {echo 'selected="selected"';}?>>cmcc04</option>
-                  <option value="5"<?php if ($account['route'] == 5) {echo 'selected="selected"';}?>>cmcc05</option>
-                  <option value="6"<?php if ($account['route'] == 6) {echo 'selected="selected"';}?>>cmcc06</option>
-                  <option value="7"<?php if ($account['route'] == 7) {echo 'selected="selected"';}?>>cmcc07</option>
+                <select class="form-control" name="route" required="required">
+                  <?php
+                    foreach ($groups as $g) {
+                      echo '<option value="',$g['id'],'"', ($account['route'] == $g['id']) ? 'selected="selected"' : '', '>',$g['name'],'</option>';
+                    }
+                  ?>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">

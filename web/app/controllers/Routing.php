@@ -12,17 +12,99 @@ class RoutingController extends Yaf\Controller_Abstract {
         $group = new GroupModel();
         $groups = $group->getAll();
 
-        $channel = new ChannelModel();
         foreach ($groups as &$g) {
-            $g['total'] = $channel->getTotal($g['id']);
+            $g['total'] = $group->total($g['id']);
         }
 
         $gateway = new GatewayModel();
         
-        $this->getView()->assign('groups', $group->getAll());
+        $this->getView()->assign('groups', $groups);
         $this->getView()->assign('gateways', $gateway->getAll());
 
         return true;
+    }
+
+    public function createAction() {
+        $name = $this->getRequest()->getPost('name');
+        $data = $this->getRequest()->getPost('channels');
+
+        $channels = $this->duplicate_removal($data);
+
+        $group = new GroupModel();
+        $gid = $group->create(['name' => $name, 'description' => 'no description']);
+
+        if ($gid > 0) {
+            $channel = new ChannelModel();
+            foreach ($channels as $chan) {
+                $chan['gid'] = $gid;
+                $chan['operator'] = 1 | (1 << 1) | (1 << 2);
+                $channel->create($chan);
+            }
+        }
+
+        $response = $this->getResponse();
+        $response->setRedirect('/routing');
+        $response->response();
+
+        return false;
+    }
+
+    public function deleteAction() {
+        $group = new GroupModel();
+
+        $gid = $this->getRequest()->getQuery('id');
+
+        $success = false;
+
+        if ($group->delete($gid)) {
+            $channel = new ChannelModel();
+            $success = $channel->deleteAll($gid);
+        }
+
+        $response['status'] = $success ? 200 : 400;
+        $response['message'] = $success ? 'success' : 'failed';
+        header('Content-type: application/json');
+        echo json_encode($response);
+
+        return false;
+    }
+
+    public function channelsAction() {
+        $request = $this->getRequest();
+
+        $gid = $request->getQuery('id');
+        $channel = new ChannelModel();
+
+        $gateway = new GatewayModel();
+        
+        $response['status'] = 200;
+        $response['message'] = 'success';
+        $response['gateway'] = $gateway->getAll();
+        $response['channels'] = $channel->getAll($gid);
+        
+        header('Content-type: application/json');
+        echo json_encode($response);
+
+        return false;
+    }
+    
+    private function duplicate_removal(array $data = null) {
+        $result = [];
+        
+        foreach ($data as $v1) {
+            $have = true;
+            foreach ($result as $v2) {
+                if ($v1['id'] == $v2['id']) {
+                    $have = false;
+                }
+            }
+
+            if ($have) {
+                $result[] = $v1;
+            }
+        }
+
+        return $result;
     }
 }
 

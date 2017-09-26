@@ -76,12 +76,12 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>通道名称</th><th>通道类型</th><th>IP 地址</th><th>端 口</th><th>最大并发</th><th>备注信息</th><th>创建时间</th><th>通道测试</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>通道名称</th><th>通道类型</th><th>IP 地址</th><th>最大并发</th><th>备注信息</th><th>创建时间</th><th>通道测试</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
             <?php
               foreach ($gateways as $g) {
-                echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',lamb_output($g['name']),'</td><td>cmpp/2.0</td><td>',$g['host'],'</td><td>',$g['port'],'</td>';
+                echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',lamb_output($g['name']),'</td><td>cmpp/2.0</td><td>',$g['host'],'</td>';
                 echo '<td>',$g['concurrent'],'/s</td><td>',lamb_output($g['description']),'</td><td>',$g['create_time'],'</td>';
                 echo '<td><a href="javascript:void(0)" onclick="checkChannel(',$g['id'],')"><span class="glyphicon glyphicon-phone"></span> 测 试</a></td>';
                 echo '<td><button class="btn btn-default btn-xs" onclick="deleteChannel(',$g['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
