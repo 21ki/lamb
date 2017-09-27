@@ -49,45 +49,6 @@ class RoutingController extends Yaf\Controller_Abstract {
         return false;
     }
 
-    public function deleteAction() {
-        $group = new GroupModel();
-
-        $gid = $this->getRequest()->getQuery('id');
-
-        $success = false;
-
-        if ($group->delete($gid)) {
-            $channel = new ChannelModel();
-            $success = $channel->deleteAll($gid);
-        }
-
-        $response['status'] = $success ? 200 : 400;
-        $response['message'] = $success ? 'success' : 'failed';
-        header('Content-type: application/json');
-        echo json_encode($response);
-
-        return false;
-    }
-
-    public function channelsAction() {
-        $request = $this->getRequest();
-
-        $gid = $request->getQuery('id');
-        $channel = new ChannelModel();
-
-        $gateway = new GatewayModel();
-        
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['gateway'] = $gateway->getAll();
-        $response['channels'] = $channel->getAll($gid);
-        
-        header('Content-type: application/json');
-        echo json_encode($response);
-
-        return false;
-    }
-    
     private function duplicate_removal(array $data = null) {
         $result = [];
         

@@ -11,7 +11,7 @@ use Tool\Filter;
 class GatewayModel {
     public $db = null;
     private $table = 'gateway';
-    private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid', 'spcode', 'encoded', 'extended', 'service', 'concurrent', 'description'];
+    private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid', 'spcode', 'encoded', 'extended', 'concurrent', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -57,15 +57,9 @@ class GatewayModel {
             $data['extended'] = 0;
         }
 
-        if (isset($data['service'])) {
-            $data['service'] = '{' . $data['service'] . '}';
-        } else {
-            $data['service'] = '{0}';
-        }
-
         if (count($data) == count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(name, type, host, port, username, password, spid, spcode, encoded, extended, service, concurrent, description) ';
-            $sql .= 'VALUES(:name, :type, :host, :port, :username, :password, :spid, :spcode, :encoded, :extended, :service, :concurrent, :description)';
+            $sql = 'INSERT INTO ' . $this->table . '(name, type, host, port, username, password, spid, spcode, encoded, extended, concurrent, description) ';
+            $sql .= 'VALUES(:name, :type, :host, :port, :username, :password, :spid, :spcode, :encoded, :extended, :concurrent, :description)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -98,12 +92,6 @@ class GatewayModel {
             $data['extended'] = 0;
         }
         
-        if (isset($data['service'])) {
-            $data['service'] = '{' . $data['service'] . '}';
-        } else {
-            $data['service'] = '{0}';
-        }
-
         $column = $this->keyAssembly($data);
 
         if (count($data) > 0) {
@@ -142,10 +130,10 @@ class GatewayModel {
 
     public function isExist($id = null) {
         $result = false;
-        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $sql = 'SELECT count(id) AS total FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
         $sth = $this->db->query($sql);
         if ($sth && ($result = $sth->fetch()) !== false) {
-            if ($result['count'] > 0) {
+            if ($result['total'] > 0) {
                 return true;
             }
         }
@@ -202,12 +190,6 @@ class GatewayModel {
             case 'extended':
                 $res['extended'] = Filter::number($val, 0, 0, 1);
                 break;
-            case 'service':
-                $res['service'] = '0';
-                if ($this->checkService($val)) {
-                    $res['service'] = implode(',', $val);
-                }
-                break;
             case 'concurrent':
                 $res['concurrent'] = Filter::number($val, null, 1);
                 break;
@@ -235,22 +217,5 @@ class GatewayModel {
             }
         }
         return $text;
-    }
-
-    public function checkService(array $data) {
-        $len = count($data);
-        $service = [1, 2, 3, 4];
-        
-        if (!($len > 0 && $len <= count($service))) {
-            return false;
-        }
-
-        foreach ($data as $val) {
-            if (!in_array($val, $service, true)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

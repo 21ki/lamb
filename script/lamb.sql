@@ -53,7 +53,6 @@ CREATE TABLE gateway (
     encoded int NOT NULL,
     extended int NOT NULL,
     concurrent int NOT NULL,
-    service int[] NOT NULL,
     description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );

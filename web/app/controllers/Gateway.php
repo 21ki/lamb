@@ -86,32 +86,8 @@ class GatewayController extends Yaf\Controller_Abstract {
 
         return false;
     }
-    
-    public function groupsAction() {
-        $request = $this->getRequest();
-        $channel = new GatewayModel();
-        $group = new GroupModel();
-        
-        if ($request->isPost()) {
-            $op = $request->getQuery('op', null);
-            switch ($op) {
-            case 'create':
-                echo '<pre>';
-                var_dump($group->create($request->getPost(), $request->getPost('channels'), $request->getPost('weights')));
-                echo '</pre>';
-                exit;
-                break;
-            case 'delete':
-                $group->delete($request->getPost('id'));
-                break;
-            case 'edit':
-                $group->change($request->getPost('id'), $request->getPost());
-                break;
-            }
-        }
 
-        $this->getView()->assign('channels', $channel->getAll());
-        $this->getView()->assign('groups', $group->getAll());
+    public function reportAction() {
         return true;
     }
 }

@@ -28,9 +28,8 @@ class CompanyController extends Yaf\Controller_Abstract {
         if ($request->isPost()) {
             $company = new CompanyModel();
             $company->create($request->getPost());
-            $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/company';
             $response = $this->getResponse();
-            $response->setRedirect($url);
+            $response->setRedirect('/company');
             $response->response();
             return false;
         }
@@ -44,9 +43,8 @@ class CompanyController extends Yaf\Controller_Abstract {
 
         if ($request->isPost()) {
             $company->change($request->getPost('id'), $request->getPost());
-            $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/company';
             $response = $this->getResponse();
-            $response->setRedirect($url);
+            $response->setRedirect('/company');
             $response->response();
             return false;
         }

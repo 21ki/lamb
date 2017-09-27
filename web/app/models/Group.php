@@ -59,9 +59,9 @@ class GroupModel {
 
     public function delete($gid = null) {
         $gid = intval($gid);
-        
+
         if (!$this->isUsed($gid)) {
-            $sql = 'DELETE FROM groups WHERE id = ' . intval($gid);
+            $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($gid);
             if ($this->db->query($sql)) {
                 return true;
             }
@@ -70,11 +70,11 @@ class GroupModel {
     }
 
     public function isUsed($gid = NULL) {
-        $sql = 'SELECT count(id) FROM account WHERE route = ' . intval($gid);
+        $sql = 'SELECT count(id) AS total FROM account WHERE route = ' . intval($gid);
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetch();
-            if ($result['count'] > 0) {
+            if (intval($result['total']) > 0) {
                 return true;
             }
         }
@@ -92,6 +92,19 @@ class GroupModel {
         }
 
         return $count;
+    }
+
+    public function isExist($gid = null) {
+        $sql = 'SELECT count(id) AS total FROM groups WHERE id = ' . intval($gid);
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            if (intval($result['total']) > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
     
     public function checkArgs(array $data) {

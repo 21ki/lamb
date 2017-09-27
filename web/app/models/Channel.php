@@ -66,11 +66,9 @@ class ChannelModel {
     }
 
     public function delete($id = null, $gid = null) {
-        if ($this->getTotal($gid) > 1) {
-            $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' and gid = ' . intval($gid);
-            if ($this->db->query($sql)) {
-                return true;
-            }
+        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' and gid = ' . intval($gid);
+        if ($this->db->query($sql)) {
+            return true;
         }
         return false;
     }
@@ -110,10 +108,10 @@ class ChannelModel {
                 $res['gid'] = Filter::number($val, null);
                 break;
             case 'weight':
-                $res['weight'] = Filter::number($val, null, 1);
+                $res['weight'] = Filter::number($val, 1, 1);
                 break;
             case 'operator':
-                $res['operator'] = Filter::number($val, null);
+                $res['operator'] = Filter::number($val, 0);
                 break;
             }
         }
