@@ -117,6 +117,7 @@ class GatewayModel {
         if (!$this->isUsed($id)) {
             $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
             if ($this->db->query($sql)) {
+                $this->cleanReport($id);
                 return true;
             }
         }
@@ -172,7 +173,17 @@ class GatewayModel {
 
         return false;
     }
-    
+
+    public function cleanReport($id = null) {
+        $id = intval($id);
+        $sql = 'DELETE FROM statistical WHERE gid = ' . $id;
+        if ($this->db->query($sql)) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function checkArgs(array $data) {
         $res = array();
         $data = array_intersect_key($data, array_flip($this->column));

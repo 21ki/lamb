@@ -201,18 +201,6 @@ void *lamb_sender_loop(void *data) {
             unsigned long long now_time;
             submit = (lamb_submit_t *)&(message.data);
 
-            /* Check Operator */
-            bool allow = false;
-
-            allow = lamb_check_operator(&config.sp, submit->phone, strlen(submit->phone));
-
-            if (allow) {
-                printf("-> [check] Check phone %s OK\n", submit->phone);
-            } else {
-                printf("-> [check] Check phone %s not allowed\n", submit->phone);
-                continue;
-            }
-            
             confirmed.id = submit->id;
 
             if (config.extended) {
@@ -734,23 +722,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    char service[32];
-    if (lamb_get_string(&cfg, "Service", service, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Service' parameter\n");
-        goto error;
-    }
-
-    int i = 0;
-    char *delims = ",";
-    char *result = NULL;
-
-    result = strtok(service, delims);
-    while((result != NULL) && (i < LAMB_MAX_OPERATOR)) {
-        conf->sp.ops[i++] = atoi(result);
-        conf->sp.len++;
-        result = strtok( NULL, delims );
-    }
-    
     if (lamb_get_string(&cfg, "BackFile", conf->backfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'BackFile' parameter\n");
         goto error;

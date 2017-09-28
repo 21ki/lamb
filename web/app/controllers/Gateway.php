@@ -68,8 +68,21 @@ class GatewayController extends Yaf\Controller_Abstract {
     }
 
     public function deleteAction() {
+        $success = false;
         $request = $this->getRequest();
-        
+
+        $id = $request->getQuery('id', null);
+        $gateway = new GatewayModel();
+        if ($gateway->delete($id)) {
+            $success = true;
+        }
+
+        $response['status'] = $success ? 200 : 400;
+        $response['message'] = $success ? 'success' : 'failed';
+        header('Content-type: application/json');
+        echo json_encode($response);
+
+        return false;
     }
 
     public function testAction() {

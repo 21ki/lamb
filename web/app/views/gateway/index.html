@@ -98,7 +98,7 @@
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {   
+  $('li.dropdown').mouseover(function() {
     $(this).addClass('open');
   }).mouseout(function() {
     $(this).removeClass('open');
@@ -108,7 +108,7 @@
     layer.confirm('亲，确定要删除？', {
       btn: ['是','否'], icon: 3
     }, function(){
-      var url = '/channel/delete?id=' + id;
+      var url = '/gateway/delete?id=' + id;
       $.get(url, function(){
         layer.msg('删除成功!', {icon: 1, time: 1000});
         setTimeout(function() {
