@@ -58,6 +58,32 @@ class ChannelController extends Yaf\Controller_Abstract {
 
         return false;
     }
+
+    public function updateAction() {
+        $request = $this->getRequest();
+
+        $gid = $request->getPost('gid', null);
+        
+        if ($request->isPost()) {
+            $data['id'] = $request->getPost('id', null);
+            $data['gid'] = $request->getPost('gid', null);
+            $data['weight'] = $request->getPost('weight', null);
+            $operator = 0;
+            $operator |= $request->getPost('cmcc', false) ? 1 : 0;
+            $operator |= $request->getPost('ctcc', false) ? (1 << 1) : 0;
+            $operator |= $request->getPost('cucc', false) ? (1 << 2) : 0;
+            $operator |= $request->getPost('other', false) ? (1 << 3) : 0;
+            $data['operator'] = $operator;
+            $channel = new ChannelModel();
+            $channel->change($data);
+        }
+
+        $response = $this->getResponse();
+        $response->setRedirect('/group?id=' . intval($gid));
+        $response->response();
+
+        return false;
+    }
 }
 
 

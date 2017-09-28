@@ -86,10 +86,10 @@ class CompanyModel {
         if (count($data) > 0) {
             $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id';
             $sth = $this->db->prepare($sql);
-            $sth->bindParam(':id', $id, PDO::PARAM_INT);
+            $sth->bindValue(':id', $id, PDO::PARAM_INT);
             
             foreach ($data as $key => $val) {
-                $sth->bindParam(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
             }
 
             if ($sth->execute()) {

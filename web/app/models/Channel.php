@@ -82,6 +82,37 @@ class ChannelModel {
         return false;
     }
 
+    public function change(array $data = null) {
+        $data = $this->checkArgs($data);
+        $column = $this->keyAssembly($data);
+
+        if (count($data) < 3) {
+            return false;
+        }
+        
+        if (!isset($data['id'], $data['gid'])) {
+            return false;
+        }
+
+        $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id and gid = :gid';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $data['id'], PDO::PARAM_INT);
+        $sth->bindValue(':gid', $data['gid'], PDO::PARAM_INT);
+
+        foreach ($data as $key => $val) {
+            if ($val != null) {
+                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+        }
+
+        if ($sth->execute()) {
+            return true;
+
+        }
+
+        return false;
+    }
+    
     public function isExist($id = null) {
         $sql = 'SELECT count(id) AS total FROM gateway WHERE id = ' . intval($id);
         $sth = $this->db->query($sql);

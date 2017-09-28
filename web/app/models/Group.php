@@ -69,6 +69,28 @@ class GroupModel {
         return false;
     }
 
+    public function change($id = null, array $data = null) {
+        $id = intval($id);
+        $data = $this->checkArgs($data);
+        $column = $this->keyAssembly($data);
+
+        if (count($data) > 0) {
+            $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id';
+            $sth = $this->db->prepare($sql);
+            $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+            foreach ($data as $key => $val) {
+                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+
+            if ($sth->execute()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
     public function isUsed($gid = NULL) {
         $sql = 'SELECT count(id) AS total FROM account WHERE route = ' . intval($gid);
         $sth = $this->db->query($sql);

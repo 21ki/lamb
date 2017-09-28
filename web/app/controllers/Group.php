@@ -7,8 +7,13 @@
  */
 
 class GroupController extends Yaf\Controller_Abstract {
+    public function init() {
+        $this->request = $this->getRequest();
+        $this->response = $this->getResponse();
+    }
+    
     public function indexAction() {
-        $gid = $this->getRequest()->getQuery('id', null);
+        $gid = $this->request->getQuery('id', null);
         $gateway = new GatewayModel();
         $gateways = [];
 
@@ -25,11 +30,9 @@ class GroupController extends Yaf\Controller_Abstract {
     }
     
     public function createAction() {
-        $request = $this->getRequest();
-
-        if ($request->isPost()) {
+        if ($this->request->isPost()) {
             $group = new GroupModel();
-            $group->create($request->getPost());
+            $group->create($this->request->getPost());
             $response = $this->getResponse();
             $response->setRedirect('/routing');
             $response->response();
@@ -40,12 +43,12 @@ class GroupController extends Yaf\Controller_Abstract {
 
     public function deleteAction() {
         $success = false;
-        $id = $this->getRequest()->getQuery('id');
+        $id = $this->request->getQuery('id');
 
         $group = new GroupModel();
-        if ($group->delete($gid)) {
+        if ($group->delete($id)) {
             $channel = new ChannelModel();
-            $success = $channel->deleteAll($gid);
+            $success = $channel->deleteAll($id);
         }
         
         $response['status'] = $success ? 200 : 400;
@@ -55,6 +58,18 @@ class GroupController extends Yaf\Controller_Abstract {
 
         return false;
     }
-}
 
+    public function updateAction() {
+        if ($this->request->isPost()) {
+            $group = new GroupModel();
+            $id = $this->request->getPost('id', null);
+            $group->change($id, $this->request->getPost());
+        }
+
+        $this->response->setRedirect('/routing');
+        $this->response->response();
+
+        return false;
+    }
+}
 
