@@ -71,7 +71,7 @@
           <li><a href="/status/inbound">Home</a></li>
           <li><a href="/template">Template</a></li>
           <li class="active">Data</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="template/create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
         </ol>
       </div>
       <div class="row">
@@ -85,7 +85,7 @@
               echo '<tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>',$t['name'],'</td>';
               echo '<td>',lamb_output($t['contents'], 32),'</td><td>',$accounts[$t['account']],'</td><td>',$t['create_time'],'</td>';
               echo '<td><button class="btn btn-default btn-xs" onclick="deleteTemplate(',$t['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
-              echo '<td><a class="btn btn-default btn-xs" href="template/edit?id=',$t['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
+              echo '<td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="edit(',$t['id'],",'",$accounts[$t['account']],"'",')"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
               }
             ?>
           </tbody>
@@ -102,6 +102,97 @@
   }).mouseout(function() {
     $(this).removeClass('open');
   });
+
+  function show() {
+    var url = '/api/accounts';
+    $.get(url, function(resp, stat){
+      if (stat == 'success') {
+        var accounts = resp.data;
+        var templete = '<form class="form-horizontal" action="/template/create" method="post" style="width:470px">'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">签名标题</label>'+
+        '<div class="col-sm-9">'+
+        '<input type="text" class="form-control" name="name" placeholder="Enter name" minlength="3" required="required">'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">绑定帐号</label>'+
+        '<div class="col-sm-9">'+
+        '<select class="form-control" name="account" required="required">';
+
+        for (i in accounts) {
+          templete += '<option value="' + accounts[i].id + '">' + accounts[i].username + '</option>';
+        }
+
+        templete += '</select>'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-xs-3 col-sm-3 control-label" style="line-height:100px">模板内容</label>'+
+        '<div class="col-xs-9 col-sm-9">'+
+        '<textarea class="form-control" rows="5" cols="20" name="contents" placeholder="Enter Template Content" required="required"></textarea>'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<div class="col-sm-offset-3 col-sm-9" style="margin-top:15px">'+
+        '<button type="submit" class="btn btn-success">创 建</button><a href="javascript:void(0);" onClick="layer.closeAll()" class="btn btn-default">取 消</a>'+
+        '</div>'+
+        '</div>'+
+        '</form>';
+
+        layer.open({
+          type: 1,
+          title: '新建签名模板',
+          area: ['520px', '390px'],
+          content: templete
+        });
+      }
+     });
+  }
+
+  function edit(id, username) {
+    var url = '/api/template?id=' + id;
+    $.get(url, function(resp, stat){
+      if (stat == 'success') {
+        var el = resp.data;
+        var templete = '<form class="form-horizontal" action="/template/update" method="post" style="width:470px">'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">签名标题</label>'+
+        '<div class="col-sm-9">'+
+        '<input type="hidden" name="id" value="' + el.id + '" />'+
+        '<input type="text" class="form-control" name="name" value="' + el.name + '" placeholder="Enter name" minlength="3" required="required">'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">绑定帐号</label>'+
+        '<div class="col-sm-9">'+
+        '<select class="form-control" disabled="disabled">'+
+        '<option>' + username + '</option>'+
+        '</select>'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-xs-3 col-sm-3 control-label" style="line-height:100px">模板内容</label>'+
+        '<div class="col-xs-9 col-sm-9">'+
+        '<textarea class="form-control" rows="5" cols="20" name="contents" placeholder="Enter Template Content" required="required">' + el.contents + '</textarea>'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<div class="col-sm-offset-3 col-sm-9" style="margin-top:15px">'+
+        '<button type="submit" class="btn btn-success">保 存</button><a href="javascript:void(0);" onClick="layer.closeAll()" class="btn btn-default">取 消</a>'+
+        '</div>'+
+        '</div>'+
+        '</form>';
+
+        layer.open({
+          type: 1,
+          title: '签名模板',
+          area: ['520px', '390px'],
+          content: templete
+        });
+      }
+     });
+  }
 
   function deleteTemplate(id) {
     layer.confirm('亲，确定要删除？', {

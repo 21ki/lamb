@@ -8,6 +8,7 @@
     <title>gateway report - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
+    <link type="text/css" rel="stylesheet" href="/css/bootstrap-datetimepicker.min.css">
     <link type="text/css" rel="stylesheet" href="/css/channel.css">
   </head>
   <body>
@@ -74,18 +75,34 @@
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
+      <div class="row statistics">
+        <form class="form-inline" action="report" method="get">
+          <div class="form-group">
+            <label>时间范围 : </label>
+            <input type="text" id="begin" class="form-control" style="width:165px" name="begin" value="<?php echo lamb_output($where['begin']);?>" />
+          </div>
+          -
+          <div class="form-group">
+            <input type="text" id="end" class="form-control" style="width:165px" name="end" value="<?php echo lamb_output($where['end']);?>" />
+          </div>
+          <div class="form-group">
+            <p class="text-muted help"><span class="glyphicon glyphicon-info-sign"></span> 网关数据统计最小查询时间为一天，无数据通道将不被显示</p>
+          </div>
+          <button type="submit" id="query" class="btn btn-success btn-sm pull-right" name="sub" value="ok">查 询</button>
+        </form>
+      </div>
+      <hr />
       <div class="row">
         <table class="table table-hover">
           <thead>
             <tr><th>#</th><th>通道名称</th><th>DELIVRD</th><th>EXPIRED</th><th>DELETED</th><th>UNDELIV</th><th>ACCEPTD</th><th>UNKNOWN</th><th>REJECTD</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>aliyun</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>aliyun</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>aliyun</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>aliyun</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>aliyun</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>aliyun</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr>
+            <?php
+              foreach ($report as $r) {
+                echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',$gateways[$r['gid']],'</td><td>',$r['delivrd'],'</td><td>',$r['expired'],'</td><td>',$r['deleted'],'</td><td>',$r['undeliv'],'</td><td>',$r['acceptd'],'</td><td>',$r['unknown'],'</td><td>',$r['rejectd'],'</td></tr>';
+              }
+            ?>
           </tbody>
         </table>
       </div>
@@ -93,13 +110,29 @@
 </div>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/bootstrap-datetimepicker.min.js"></script>
+<script type="text/javascript" src="/js/locales/bootstrap-datetimepicker.zh-CN.js" charset="UTF-8"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {   
+  $('li.dropdown').mouseover(function() {
     $(this).addClass('open');
   }).mouseout(function() {
     $(this).removeClass('open');
   });
+
+      // datetimepicker
+  $('#begin').datetimepicker({
+     format: 'yyyy-mm-dd hh:ii:ss',
+     language: 'zh-CN',
+     autoclose: true
+   });
+
+   $('#end').datetimepicker({
+     format: 'yyyy-mm-dd hh:ii:ss',
+     language: 'zh-CN',
+     autoclose: true
+   });
+
 </script>
 </body>
 </html>

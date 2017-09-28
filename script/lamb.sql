@@ -94,6 +94,18 @@ CREATE TABLE pay_logs (
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
+CREATE TABLE statistical (
+    gid int NOT NULL,
+    delivrd bigint NOT NULL,
+    expired bigint NOT NULL,
+    deleted bigint NOT NULL,
+    undeliv bigint NOT NULL,
+    acceptd bigint NOT NULL,
+    unknown bigint NOT NULL,
+    rejectd bigint NOT NULL,
+    datetime date NOT NULL
+);
+
 CREATE TABLE blacklist (
     phone bigint UNIQUE NOT NULL
 );

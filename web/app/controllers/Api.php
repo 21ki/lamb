@@ -13,6 +13,18 @@ class ApiController extends Yaf\Controller_Abstract {
             exit;
         }
     }
+
+    public function accountsAction() {
+        $account = new AccountModel();
+        $response['status'] = 200;
+        $response['message'] = 'success';
+        $response['data'] = $account->getAll();
+
+        header('Content-type: application/json');
+        echo json_encode($response);
+
+        return false;
+    }
     
     public function groupAction() {
         $id = $this->request->getQuery('id', null);
@@ -55,6 +67,18 @@ class ApiController extends Yaf\Controller_Abstract {
         $response['status'] = 200;
         $response['message'] = 'success';
         $response['data'] = $gateway->getAll();
+
+        header('Content-type: application/json');
+        echo json_encode($response);
+
+        return false;
+    }
+
+    public function templateAction() {
+        $template = new TemplateModel();
+        $response['status'] = 200;
+        $response['message'] = 'success';
+        $response['data'] = $template->get($this->request->getQuery('id'));
 
         header('Content-type: application/json');
         echo json_encode($response);

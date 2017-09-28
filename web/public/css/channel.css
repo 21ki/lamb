@@ -75,3 +75,18 @@ form div .list-group a {
 #submit, #cancel, #add {
     margin-right: 18px;
 }
+
+.statistics form {
+    padding-left: 18px;
+    padding-right: 18px;
+}
+
+.statistics #query {
+    margin-right: 15px;
+    margin-top: 8px;
+}
+
+.statistics .help {
+    margin-left: 15px;
+    padding-top: 13px;
+}
