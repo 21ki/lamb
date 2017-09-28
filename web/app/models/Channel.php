@@ -44,7 +44,7 @@ class ChannelModel {
     public function create(array $data = null) {
         $data = $this->checkArgs($data);
 
-        if ($this->isExist($data['id'])) {
+        if ($this->isExist($data['id']) && $this->check($data['id'], $data['gid'])) {
             $sql = 'INSERT INTO channels VALUES(:id, :gid, :weight, :operator)';
             $sth = $this->db->prepare($sql);
 
@@ -126,6 +126,25 @@ class ChannelModel {
         return false;
     }
 
+    public function check($id = null, $gid = null) {
+        $id = intval($id);
+        $gid = intval($gid);
+
+        $sql = 'SELECT count(id) AS total FROM channels WHERE id = :id and gid = :gid';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+        $sth->bindValue(':gid', $gid, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $result = $sth->fetch();
+            if (intval($result['total']) == 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
     public function checkArgs(array $data) {
         $res = array();
         $data = array_intersect_key($data, array_flip($this->column));
