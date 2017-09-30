@@ -36,6 +36,7 @@ typedef struct {
 int lamb_queue_open(lamb_queue_t *queue, char *name, lamb_queue_opt *opt);
 int lamb_queue_send(lamb_queue_t *queue, const char *val, size_t len, unsigned int prio);
 ssize_t lamb_queue_receive(lamb_queue_t *queue, char *buff, size_t len, unsigned int *prio);
+int lamb_queue_getattr(lamb_queue_t *queue, lamb_queue_attr *qattr);
 int lamb_queue_close(lamb_queue_t *queue);
 
 #endif

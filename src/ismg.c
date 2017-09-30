@@ -12,6 +12,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <mqueue.h>
@@ -199,10 +200,20 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 
                     /* Check AuthenticatorSource */
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), username, password)) {
-                        /* Check Duplicate Logon */
-                        sprintf(key, "client.%s", username);
-                        if (lamb_cache_has(&rdb, key)) {
+                        lamb_account_t account;
+                        memset(&account, 0, sizeof(account));
+                        err = lamb_account_get(&rdb, username, &account);
+                        if (err) {
                             cmpp_connect_resp(&sock, sequenceId, 9);
+                            epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
+                            close(sockfd);
+                            lamb_errlog(config.logfile, "Can't fetch account information", 0);
+                            continue;
+                        }
+
+                        /* Check Duplicate Logon */
+                        if (lamb_is_login(&rdb, account.id)) {
+                            cmpp_connect_resp(&sock, sequenceId, 10);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                             close(sockfd);
                             lamb_errlog(config.logfile, "Duplicate login from client %s", inet_ntoa(clientaddr.sin_addr));
@@ -212,17 +223,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
 
                         /* Login Successfull */
-
                         lamb_errlog(config.logfile, "Login successfull from client %s", inet_ntoa(clientaddr.sin_addr));
-
-                        lamb_account_t account;
-                        memset(&account, 0, sizeof(account));
-                        err = lamb_account_get(&rdb, username, &account);
-                        if (err) {
-                            cmpp_connect_resp(&sock, sequenceId, 10);
-                            lamb_errlog(config.logfile, "Can't to obtain account information", 0);
-                            continue;
-                        }
 
                         /* Create Work Process */
                         pid_t pid = fork();
@@ -305,7 +306,7 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_start_thread(lamb_online_update, client, 1);
 
     /* Client Message Deliver */
-    lamb_start_thread(lamb_deliver_loop, (void *)client, 1);
+    lamb_start_thread(lamb_deliver_loop, client, 1);
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -336,7 +337,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 break;
             case CMPP_SUBMIT:;
                 result = 0;
-                count++;
+                total++;
 
                 /* Generate Message ID */
                 msgId = lamb_gen_msgid(gid, lamb_sequence());
@@ -497,6 +498,8 @@ exit:
 }
 
 void *lamb_online_update(void *data) {
+    int err;
+    lamb_queue_t queue;
     lamb_client_t *client;
     unsigned long long last;
     redisReply *reply = NULL;
@@ -504,8 +507,28 @@ void *lamb_online_update(void *data) {
     last = 0;
     client = (lamb_client_t *)data;
 
+    char name[128];
+    lamb_queue_opt opt;
+    lamb_queue_attr attr;
+
+    attr.len = 0;
+    opt.flag = O_RDWR | O_NONBLOCK;
+    opt.attr = NULL;
+
+    sprintf(name, "/cli.%d.message", client->account->id);
+    err = lamb_queue_open(&queue, name, &opt);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open %s message queue failed", name);
+        pthread_exit(NULL);
+    }
+
     while (true) {
-        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu", client->account->id, getpid(), (total - last) / 3);
+        err = lamb_queue_getattr(&queue, &attr);
+        if (err) {
+            lamb_errlog(config.logfile, "Can't read %s message attribute", name);
+        }
+
+        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu queue %llu error %u", client->account->id, getpid(), (unsigned long long)((total - last) / 5), attr.len, 0);
         if (reply != NULL) {
             freeReplyObject(reply);
             reply = NULL;
@@ -514,10 +537,31 @@ void *lamb_online_update(void *data) {
         }
 
         total = 0;
-        sleep(3);
+        sleep(5);
     }
 
     pthread_exit(NULL);
+}
+
+bool lamb_is_login(lamb_cache_t *cache, int account) {
+    int pid = 0;
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HGET client.%d pid", account);
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_STRING) {
+            pid = (reply->len > 0) ? atoi(reply->str) : 0;
+            if (pid > 0) {
+                if (kill(pid, 0) == 0) {
+                    return true;
+                }
+            }
+        }
+
+        freeReplyObject(reply);
+    }
+
+    return false;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

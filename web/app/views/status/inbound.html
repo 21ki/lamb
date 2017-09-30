@@ -98,8 +98,8 @@
           </thead>
           <tbody>
             <?php
-              foreach ($accounts as $a) {
-                echo '<tr><td><span class="glyphicon glyphicon-record"></span></td><td>',$a['username'],'</td><td>',$a['company'],'</td><td>',$a['route'],'</td><td>',intval($a['queue']),'</td><td>',intval($a['storage']),'/s</td><td>1</td></tr>';
+              foreach ($clients as $c) {
+                echo '<tr><td><span class="glyphicon glyphicon-record"></span></td><td>',$c['username'],'</td><td>',$c['company'],'</td><td>',$c['route'],'</td><td>',intval($c['queue']),'</td><td>',intval($c['speed']),'/s</td><td>',$c['error'],'</td></tr>';
               }
               ?>
           </tbody>
@@ -109,13 +109,13 @@
     <script type="text/javascript" src="/js/jquery.min.js"></script>
     <script type="text/javascript" src="/js/bootstrap.min.js"></script>
     <script type="text/javascript">
-      $('li.dropdown').mouseover(function() {   
+      $('li.dropdown').mouseover(function() {
       $(this).addClass('open');
       }).mouseout(function() {
       $(this).removeClass('open');
       });
 
-      
+
     </script>
   </body>
 </html>

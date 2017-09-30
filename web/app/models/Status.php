@@ -31,8 +31,9 @@ class StatusModel {
                 $result[$a['id']]['username'] = $a['username'];
                 $result[$a['id']]['company'] = $a['company'];
                 $result[$a['id']]['route'] = $a['route'];
-                $result[$a['id']]['queue'] = $this->getStatus($a['id']);
-                $result[$a['id']]['speed'] = 1000;
+                $result[$a['id']]['queue'] = $this->getQueue($a['id']);
+                $result[$a['id']]['speed'] = $this->getSpeed($a['id']);
+                $result[$a['id']]['error'] = $this->getError($a['id']);
             }
         }
 
@@ -40,16 +41,46 @@ class StatusModel {
     }
 
     public function getPid($id = null) {
+        $id = intval($id);
         $pid = 0;
-        $result = $this->redis->get('client.' . intval($id));
-        if ($result !== false) {
-            $pid = intval($result);
+        $reply = $this->redis->hGet('client.' . $id, 'pid');
+        if ($reply !== false) {
+            $pid = intval($reply);
         }
 
         return $pid;
     }
 
-    public function getStatus($id = null) {
-        return $this->redis->hGet('server.' . intval($id), 'queue');
+    public function getQueue($id = null) {
+        $id = intval($id);
+        $queue = 0;
+        $reply = $this->redis->hGet('client.' . $id, 'queue');
+        if ($reply !== false) {
+            $queue = intval($reply);
+        }
+
+        return $queue;
+    }
+
+    public function getSpeed($id = null) {
+        $id = intval($id);
+        $speed = 0;
+        $reply = $this->redis->hGet('client.' . $id, 'speed');
+        if ($reply !== false) {
+            $speed = intval($reply);
+        }
+
+        return $speed;
+    }
+
+    public function getError($id = null) {
+        $id = intval($id);
+        $error = 0;
+        $reply = $this->redis->hGet('client.' . $id, 'error');
+        if ($reply !== false) {
+            $error = intval($reply);
+        }
+
+        return $error;
     }
 }

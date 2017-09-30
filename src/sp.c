@@ -300,6 +300,8 @@ void *lamb_deliver_loop(void *data) {
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, &msgId, 8);
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_result, &result, 1);
 
+            printf("-> [received] message response id: %llu, msgId: %llu, result: %u\n", id, msgId, result);
+            
             if ((confirmed.sequenceId != sequenceId) || (result != 0)) {
                 break;
             }
@@ -308,8 +310,6 @@ void *lamb_deliver_loop(void *data) {
             sprintf(key, "%llu", msgId);
             sprintf(val, "%llu", id);
             lamb_level_put(&cache, key, strlen(key), val, strlen(val));
-
-            printf("-> [received] message response id: %llu, msgId: %llu\n", id, msgId);
 
             break;
         case CMPP_DELIVER:;
