@@ -13,6 +13,12 @@
 
 #define lamb_errlog(f, fmt, ...) lamb_log_error(f, __FILE__, __LINE__, fmt, __VA_ARGS__)
 
+#ifdef _DEBUG
+#define lamb_debug(M, ...) fprintf(stderr, "-> %s:%d " M "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#else
+#define lamb_debug(M, ...)
+#endif
+
 #define LAMB_SUBMIT  1
 #define LAMB_DELIVER 2
 #define LAMB_REPORT  3
