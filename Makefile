@@ -1,11 +1,11 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
-MACRO = -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
+MACRO = -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE -D_DEBUG
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/message.o src/leveldb.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre -lleveldb
 
-all: sp ismg server deliver lamb test
+all: sp ismg server deliver mtserv test
 
 sp: src/sp.c src/sp.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/sp.c $(OBJS) $(LIBS) -o sp
@@ -18,6 +18,9 @@ server: src/server.c src/server.h $(OBJS)
 
 deliver: src/deliver.c src/deliver.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) $(LIBS) -o deliver
+
+mtserv: src/mtserv.c src/mtserv.h $(OBJS)
+	$(CC) $(CFLAGS) $(MACRO) src/mtserv.c $(OBJS) $(LIBS) -lnanomsg -o mtserv
 
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
