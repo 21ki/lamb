@@ -5,8 +5,8 @@
  * Update: 2017-07-14
  */
 
-#ifndef _LAMB_ISMG_H
-#define _LAMB_ISMG_H
+#ifndef _LAMB_MT_H
+#define _LAMB_MT_H
 
 #include <stdbool.h>
 #include <pthread.h>

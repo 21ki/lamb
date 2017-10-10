@@ -2,8 +2,8 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
 MACRO = -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE -D_DEBUG
-OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/message.o src/leveldb.o
-LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre -lleveldb
+OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/message.o src/socket.o
+LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre
 
 all: sp ismg server deliver mtserv test
 
@@ -19,8 +19,8 @@ server: src/server.c src/server.h $(OBJS)
 deliver: src/deliver.c src/deliver.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) $(LIBS) -o deliver
 
-mtserv: src/mtserv.c src/mtserv.h $(OBJS)
-	$(CC) $(CFLAGS) $(MACRO) src/mtserv.c $(OBJS) $(LIBS) -lnanomsg -o mtserv
+mt: src/mt.c src/mt.h src/config.o src/utils.o src/socket.o
+	$(CC) $(CFLAGS) $(MACRO) src/mt.c src/config.o src/utils.o src/socket.o -pthread -lconfig -lcrypto -liconv -lpcre -lcmpp -o mt
 
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
@@ -76,8 +76,8 @@ src/route.o: src/route.c src/route.h
 src/message.o: src/message.c src/message.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/message.c -o src/message.o
 
-src/leveldb.o: src/leveldb.c src/leveldb.h
-	$(CC) $(CFLAGS) $(MACRO) -c src/leveldb.c -o src/leveldb.o
+src/socket.o: src/socket.c src/socket.h
+	$(CC) $(CFLAGS) $(MACRO) -c src/socket.c -o src/socket.o
 
 .PHONY: install clean
 

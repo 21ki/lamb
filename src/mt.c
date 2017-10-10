@@ -14,11 +14,16 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <sys/signal.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <pthread.h>
-#include <nanomsg/nn.h>
-#include <nanomsg/reqrep.h>
 #include "utils.h"
 #include "config.h"
+#include "socket.h"
 #include "mt.h"
 
 static lamb_config_t config;
@@ -98,7 +103,7 @@ void lamb_event_loop(void) {
                 }
 
                 /* Start client work thread */
-                lamb_start_thread(lamb_work_loop,  (void *)confd, 1);
+                lamb_start_thread(lamb_work_loop,  (void *)(intptr_t)confd, 1);
                 lamb_errlog(config.logfile, "New client connection from %s", inet_ntoa(clientaddr.sin_addr));
                 lamb_debug("New client connection from %s", inet_ntoa(clientaddr.sin_addr));
             }
@@ -109,11 +114,15 @@ void lamb_event_loop(void) {
 
 void *lamb_work_loop(void *arg) {
     int err;
-    int confd = (int)arg;
+    int confd = (intptr_t)arg;
     lamb_submit_t *message;
     
     lamb_debug("start a new %lu thread ", pthread_self());
 
+    lamb_list_t *queue;
+
+    queue = lamb_list_new();
+    
     int epfd, nfds;
     struct epoll_event ev, events[32];
 
@@ -126,17 +135,23 @@ void *lamb_work_loop(void *arg) {
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
         if (nfds > 0) {
-            message = (lamb_submit_t *)calloc(1, sizeof(message));
-            err = lamb_sock_recv(confd, &message, sizeof(message));
+            message = (lamb_submit_t *)calloc(1, sizeof(lamb_submit_t));
+            if (!message) {
+                continue;
+            }
+
+            err = lamb_sock_recv(confd, (char *)message, sizeof(lamb_submit_t), 1000);
             if (err == -1) {
+                free(message);
                 break;
             }
 
-            if (message->spid) {
-                
-            }
+            lamb_list_push(queue, (void *)message);
+            printf("-> push %u message\n", queue->len);
         }
     }
+
+    lamb_debug("close %lu thread ", pthread_self());
     
     pthread_exit(NULL);
 }
@@ -163,7 +178,7 @@ int lamb_server_init(int *sock, const char *addr, int port) {
         return 2;
     }
 
-    if (listen(sock->fd, backlog) == -1) {
+    if (listen(fd, 1024) == -1) {
         return 3;
     }
 
