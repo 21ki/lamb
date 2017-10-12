@@ -27,9 +27,11 @@
 #include "ismg.h"
 #include "utils.h"
 #include "cache.h"
-#include "queue.h"
+#include "socket.h"
 #include "config.h"
 
+static int mt;
+static int mo;
 static cmpp_ismg_t cmpp;
 static lamb_cache_t rdb;
 static lamb_config_t config;
@@ -260,6 +262,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 }
 
 void lamb_work_loop(lamb_client_t *client) {
+    ssize_t ret;
     int err, gid;
     cmpp_pack_t pack;
     lamb_submit_t *submit;
@@ -277,7 +280,20 @@ void lamb_work_loop(lamb_client_t *client) {
         lamb_errlog(config.logfile, "can't connect to redis %s server", config.redis_host);
         return;
     }
-    
+
+    /* Connect to MT server */
+    mt = lamb_sock_create();
+    if (mt < 0) {
+        lamb_errlog(config.logfile, "lamb socket create failed", 0;
+        return;
+    }
+
+    err = lamb_sock_connect(mt, config.mt_host, config.mt_port, config.timeout);
+    if (err) {
+        lamb_errlog(config.logfile, "connect to mt server %s timeout", config.mt_host);
+        return;
+    }
+
     /* Epoll Events */
     int epfd, nfds;
     struct epoll_event ev, events[32];
@@ -286,21 +302,6 @@ void lamb_work_loop(lamb_client_t *client) {
     ev.data.fd = client->sock->fd;
     ev.events = EPOLLIN;
     epoll_ctl(epfd, EPOLL_CTL_ADD, client->sock->fd, &ev);
-
-    /* Mqueue Message Queue */
-    char name[64];
-    lamb_queue_t queue;
-    lamb_queue_opt opt;
-
-    opt.flag = O_WRONLY | O_NONBLOCK;
-    sprintf(name, "/cli.%d.message", client->account->id);
-    opt.attr = NULL;
-
-    err = lamb_queue_open(&queue, name, &opt);
-    if (err) {
-        lamb_errlog(config.logfile, "Open %s message queue failed", name);
-        goto exit;
-    }
 
     /* Start Client Status Update Thread */
     lamb_start_thread(lamb_online_update, client, 1);
@@ -348,6 +349,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 message.type = LAMB_SUBMIT;
                 submit = (lamb_submit_t *)&message.data;
                 submit->id = msgId;
+                submit->account = clilen->account->id;
                 strcpy(submit->spid, client->account->username);
                 cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit->phone, 24, 21);
                 cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit->spcode, 24, 21);
@@ -374,11 +376,12 @@ void lamb_work_loop(lamb_client_t *client) {
 
                 printf("-> [received] msgId: %llu, msgFmt: %d, length: %d\n", submit->id, submit->msgFmt, submit->length);
 
-                /* Message Write Queue */
-                err = lamb_queue_send(&queue, (const char *)&message, sizeof(message), 0);
-                if (err) {
+                /* Write Message to MT Server */
+                int length = sizeof(message);
+                ret = lamb_sock_send(mt, (const char *)&message, length, config.send_timeout);
+                if (ret != length) {
                     result = 12;
-                    printf("-> [error] write msgId %llu to queue failed\n", submit->id);
+                    printf("-> [error] write msgId %llu to mt server failed\n", submit->id);
                 }
 
                 /* Submit Response */
@@ -425,23 +428,22 @@ void *lamb_deliver_loop(void *data) {
 
     client = (lamb_client_t *)data;
 
-    char name[64];
-    lamb_queue_t queue;
-    lamb_queue_opt opt;
+    /* Connect to MT server */
+    mo = lamb_sock_create();
+    if (mt < 0) {
+        lamb_errlog(config.logfile, "lamb socket create failed", 0;
+        return;
+    }
 
-    opt.flag = O_RDWR;
-    opt.attr = NULL;
-
-    sprintf(name, "/cli.%d.deliver", client->account->id);
-    err = lamb_queue_open(&queue, name, &opt);
+    err = lamb_sock_connect(mo, config.mo_host, config.mo_port, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "Open %s message queue failed", name);
-        goto exit;
+        lamb_errlog(config.logfile, "connect to mo server %s timeout", config.mo_host);
+        return;
     }
     
     while (true) {
         memset(&message, 0 , sizeof(message));
-        ret = lamb_queue_receive(&queue, (char *)&message, sizeof(message), 0);
+        ret = lamb_sock_recv(mo, (char *)&message, sizeof(message), 3000);
         if (ret > 0) {
             printf("-> [fetch] pull a new type is %d message\n", message.type);
             switch (message.type) {
@@ -585,11 +587,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_bool(&cfg, "Daemon", &conf->daemon) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Daemon' parameter\n");
-        goto error;
-    }
-        
     if (lamb_get_string(&cfg, "Listen", conf->listen, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid Listen IP address\n");
         goto error;
@@ -625,11 +622,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "redisHost", conf->redis_host, 16) != 0) {
+    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
     }
 
-    if (lamb_get_int(&cfg, "redisPort", &conf->redis_port) != 0) {
+    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
     }
 
@@ -638,8 +635,28 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "redisDb", &conf->redis_db) != 0) {
+    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisDb' parameter\n");
+    }
+
+    if (lamb_get_string(&cfg, "MtHost", conf->mo_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid MT server IP address\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "MtPort", &conf->mt_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MtPort' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MoHost", conf->mo_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid MO server IP address\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "MoPort", &conf->mo_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MoPort' parameter\n");
+        goto error;
     }
     
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {

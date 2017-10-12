@@ -28,6 +28,10 @@ typedef struct {
     char redis_host[16];
     int redis_port;
     int redis_db;
+    char mt_host[16];
+    int mt_port;
+    char mo_host[16];
+    int mo_port;
     char logfile[128];
     bool debug;
     bool daemon;
