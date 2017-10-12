@@ -39,6 +39,7 @@ typedef struct {
 
 typedef struct {
     unsigned long long id;
+    int account;
     char spid[8];
     char spcode[24];
     char phone[24];

@@ -20,25 +20,37 @@ typedef struct {
     char logfile[128];
 } lamb_config_t;
 
+typedef struct lamb_msg_t {
+    void *val;
+    struct lamb_msg_t *next;
+} lamb_msg_t;
 
 typedef struct lamb_node_t {
-    void *val;
+    int id;
+    int len;
+    pthread_mutex_t lock;
+    struct lamb_msg_t *head;
+    struct lamb_msg_t *tail;
     struct lamb_node_t *next;
 } lamb_node_t;
 
-typedef struct lamb_list {
+typedef struct {
     int len;
-    pthread_mutex_t lock;
-    struct lamb_node_t *head;
-    struct lamb_node_t *tail;
-} lamb_list_t;
+    lamb_node_t *head;
+    lamb_node_t *tail;
+} lamb_pool_t;
 
 void lamb_event_loop(void);
 void *lamb_work_loop(void *arg);
 int lamb_server_init(int *sock, const char *addr, int port);
 int lamb_read_config(lamb_config_t *conf, const char *file);
-lamb_list_t *lamb_list_new(void);
-lamb_node_t *lamb_list_push(lamb_list_t *self, void *val);
-lamb_node_t *lamb_list_pop(lamb_list_t *self);
+lamb_node_t *lamb_node_new(int id);
+lamb_msg_t *lamb_msg_push(lamb_node_t *self, void *val);
+lamb_msg_t *lamb_msg_pop(lamb_node_t *self);
+lamb_pool_t *lamb_pool_new(void);
+lamb_node_t *lamb_pool_add(lamb_pool_t *self, lamb_node_t *node);
+lamb_node_t *lamb_pool_del(lamb_pool_t *self, int id);
+lamb_node_t *lamb_pool_find(lamb_pool_t *self, int id);
+void *lamb_stat_loop(void *arg);
 
 #endif

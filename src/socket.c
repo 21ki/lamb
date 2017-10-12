@@ -5,6 +5,7 @@
  * Update: 2017-08-24
  */
 
+#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -13,6 +14,61 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include "socket.h"
+
+int lamb_sock_create(void) {
+    int fd;
+
+    fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) {
+        return -1;
+    }
+
+    return fd;
+}
+
+int lamb_sock_bind(int fd, const char *addr, unsigned short port, int backlog) {
+    struct sockaddr_in servaddr;
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(port);
+
+    if (inet_pton(AF_INET, addr, &servaddr.sin_addr) < 1) {
+        return 1;
+    }
+
+    /* socket bind */
+    if (bind(fd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr)) == -1) {
+        return 2;
+    }
+
+    /* socket listen */
+    if (listen(fd, backlog) == -1) {
+        return 3;
+    }
+
+    return 0;
+}
+
+int lamb_sock_connect(int fd, const char *addr, unsigned short port, long long timeout) {
+    struct sockaddr_in servaddr;
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(port);
+
+    if (inet_pton(AF_INET, addr, &servaddr.sin_addr) < 1) {
+        return 1;
+    }
+
+    /* Set connection timeout */
+    lamb_sock_timeout(fd, LAMB_SOCK_SEND, timeout);
+
+    if (connect(fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        return 2;
+    }
+
+    return 0;
+}
 
 int lamb_sock_nonblock(int fd, bool enable) {
     int ret, flag;
@@ -50,13 +106,13 @@ int lamb_sock_tcpnodelay(int fd, bool enable) {
     return 0;
 }
 
-int lamb_sock_send(int fd, const char *buff, size_t len, long long millisecond) {
+int lamb_sock_send(int fd, const char *buff, size_t len, long long timeout) {
     int ret;
     int offset = 0;
 
     /* Start sending data */
     while (offset < len) {
-        if (lamb_sock_writable(fd, millisecond) > 0) {
+        if (lamb_sock_writable(fd, timeout) > 0) {
             ret = write(fd, buff + offset, len - offset);
             if (ret > 0) {
                 offset += ret;
@@ -81,13 +137,13 @@ int lamb_sock_send(int fd, const char *buff, size_t len, long long millisecond) 
     return offset;
 }
 
-int lamb_sock_recv(int fd, char *buff, size_t len, long long millisecond) {
+int lamb_sock_recv(int fd, char *buff, size_t len, long long timeout) {
     int ret;
     int offset = 0;
 
     /* Begin to receive data */
     while (offset < len) {
-        if (lamb_sock_readable(fd, millisecond) > 0) {
+        if (lamb_sock_readable(fd, timeout) > 0) {
             ret = read(fd, buff + offset, len - offset);
             if (ret > 0) {
                 offset += ret;
@@ -142,3 +198,16 @@ int lamb_sock_writable(int fd, long long millisecond) {
     return ret;
 }
 
+int lamb_sock_timeout(int fd, int type, long long millisecond) {
+    struct timeval timeout;
+
+    timeout.tv_sec = millisecond / 1000;
+    timeout.tv_usec = (millisecond % 1000) * 1000;
+    type = (type == LAMB_SOCK_SEND) ? SO_SNDTIMEO : SO_RCVTIMEO;
+
+    if (setsockopt(fd, SOL_SOCKET, type, (void *)&timeout, sizeof(timeout)) == -1) {
+        return -1;
+    }
+
+    return 0;
+}

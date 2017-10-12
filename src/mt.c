@@ -27,6 +27,7 @@
 #include "mt.h"
 
 static lamb_config_t config;
+static lamb_pool_t *list_pools;
 
 int main(int argc, char *argv[]) {
     char *file = "mt.conf";
@@ -73,6 +74,12 @@ void lamb_event_loop(void) {
     int fd, confd;
     socklen_t clilen;
     struct sockaddr_in clientaddr;
+
+    list_pools = lamb_pool_new();
+    if (!list_pools) {
+        lamb_errlog(config.logfile, "lamb node pool initialization failed", 0);
+        return;
+    }
     
     err = lamb_server_init(&fd, config.listen, config.port);
     if (err) {
@@ -81,6 +88,8 @@ void lamb_event_loop(void) {
         return;
     }
 
+    lamb_start_thread(lamb_stat_loop, NULL, 1);
+    
     int epfd, nfds;
     struct epoll_event ev, events[32];
 
@@ -114,15 +123,12 @@ void lamb_event_loop(void) {
 
 void *lamb_work_loop(void *arg) {
     int err;
+    lamb_node_t *node;
     int confd = (intptr_t)arg;
     lamb_submit_t *message;
     
     lamb_debug("start a new %lu thread ", pthread_self());
 
-    lamb_list_t *queue;
-
-    queue = lamb_list_new();
-    
     int epfd, nfds;
     struct epoll_event ev, events[32];
 
@@ -146,8 +152,18 @@ void *lamb_work_loop(void *arg) {
                 break;
             }
 
-            lamb_list_push(queue, (void *)message);
-            printf("-> push %u message\n", queue->len);
+            node = lamb_pool_find(list_pools, message->account);
+            if (node) {
+                lamb_msg_push(node, (void *)message);
+            } else {
+                node = lamb_node_new(message->account);
+                if (node) {
+                    lamb_pool_add(list_pools, node);
+                    lamb_msg_push(node, (void *)message);
+                }
+            }
+            
+            printf("-> [ %d ] push %u message\n", node->id, node->len);
         }
     }
 
@@ -157,29 +173,18 @@ void *lamb_work_loop(void *arg) {
 }
 
 int lamb_server_init(int *sock, const char *addr, int port) {
-    int fd;
-    struct sockaddr_in servaddr;
-    
-    fd = socket(AF_INET, SOCK_STREAM, 0);
+    int fd, err;
+
+    fd = lamb_sock_create();
     if (fd < 0) {
+        lamb_errlog(config.logfile, "lamb create socket failed", 0);
         return -1;
     }
 
-    memset(&servaddr, 0, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-
-    if (inet_pton(AF_INET, addr, &servaddr.sin_addr) < 1) {
-        return 1;
-    }
-
-    servaddr.sin_port = htons(port);
-
-    if (bind(fd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr)) == -1) {
-        return 2;
-    }
-
-    if (listen(fd, 1024) == -1) {
-        return 3;
+    err = lamb_sock_bind(fd, addr, port, 1024);
+    if (err) {
+        lamb_errlog(config.logfile, "lamb bind socket failed", 0);
+        return -1;
     }
 
     lamb_sock_nonblock(fd, true);
@@ -190,61 +195,152 @@ int lamb_server_init(int *sock, const char *addr, int port) {
     return 0;
 }
 
-lamb_list_t *lamb_list_new(void) {
-    lamb_list_t *self;
+lamb_node_t *lamb_node_new(int id) {
+    lamb_node_t *self;
 
-    self = malloc(sizeof(lamb_list_t));
+    self = malloc(sizeof(lamb_node_t));
+    if (!self) {
+        return NULL;
+    }
+
+    self->id = id;
+    self->len = 0;
+    pthread_mutex_init(&self->lock, NULL);
+    self->head = NULL;
+    self->tail = NULL;
+    self->next = NULL;
+
+    return self;
+}
+
+lamb_msg_t *lamb_msg_push(lamb_node_t *self, void *val) {
+    if (!val) {
+        return NULL;
+    }
+
+    lamb_msg_t *msg;
+    msg = (lamb_msg_t *)malloc(sizeof(lamb_msg_t));
+
+    if (msg) {
+        msg->val = val;
+        msg->next = NULL;
+        if (self->len) {
+            self->tail->next = msg;
+            self->tail = msg;
+        } else {
+            self->head = self->tail = msg;
+        }
+        ++self->len;
+    }
+
+    return msg;
+}
+
+lamb_msg_t *lamb_msg_pop(lamb_node_t *self) {
+    if (!self->len) {
+        return NULL;
+    }
+
+    lamb_msg_t *msg = self->head;
+
+    if (--self->len) {
+        self->head = msg->next;
+    } else {
+        self->head = self->tail = NULL;
+    }
+
+    msg->next = NULL;
+
+    return msg;
+}
+
+lamb_node_t *lamb_pool_add(lamb_pool_t *self, lamb_node_t *node) {
+    if (!node) {
+        return NULL;
+    }
+
+    if (self->len) {
+        self->tail->next = node;
+        self->tail = node;
+    } else {
+        self->head = self->tail = node;
+    }
+    ++self->len;
+
+    return node;
+}
+
+lamb_node_t *lamb_pool_del(lamb_pool_t *self, int id) {
+    lamb_node_t *curr;
+    lamb_node_t *node;
+
+    node = NULL;
+    curr = self->head;
+
+    while (curr != NULL) {
+        if (curr->id == id) {
+            if (node) {
+                node->next = curr->next;
+            } else {
+                self->head = curr->next;
+            }
+
+            --self->len;
+            free(curr);
+            break;
+        }
+
+        node = curr;
+        curr = curr->next;
+    }
+
+    return node;
+}
+
+lamb_node_t *lamb_pool_find(lamb_pool_t *self, int id) {
+    lamb_node_t *node;
+
+    node = self->head;
+    
+    while (node != NULL) {
+        if (node->id == id) {
+            break;
+        }
+        node = node->next;
+    }
+
+    return node;
+}
+
+lamb_pool_t *lamb_pool_new(void) {
+    lamb_pool_t *self;
+    
+    self = (lamb_pool_t *)malloc(sizeof(lamb_pool_t));
     if (!self) {
         return NULL;
     }
 
     self->len = 0;
-    pthread_mutex_init(&self->lock, NULL);
     self->head = NULL;
     self->tail = NULL;
 
     return self;
 }
 
-lamb_node_t *lamb_list_push(lamb_list_t *self, void *val) {
-    if (!val) {
-        return NULL;
-    }
-
+void *lamb_stat_loop(void *arg) {
     lamb_node_t *node;
-    node = (lamb_node_t *)malloc(sizeof(lamb_node_t));
 
-    if (node) {
-        node->val = val;
-        node->next = NULL;
-        if (self->len) {
-            self->tail->next = node;
-            self->tail = node;
-        } else {
-            self->head = self->tail = node;
+    while (true) {
+        node = list_pools->head;
+        while (node != NULL) {
+            printf("-> node: %d, len: %u\n", node->id, node->len);
+            node = node->next;
         }
-        ++self->len;
+
+        lamb_sleep(5000);
     }
 
-    return node;
-}
-
-lamb_node_t *lamb_list_pop(lamb_list_t *self) {
-    if (!self->len) {
-        return NULL;
-    }
-
-    lamb_node_t *node = self->head;
-
-    if (--self->len) {
-        self->head = node->next;
-    } else {
-        self->head = self->tail = NULL;
-    }
-
-    node->next = NULL;
-
-    return node;
+    pthread_exit(NULL);
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
