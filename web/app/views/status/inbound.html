@@ -78,10 +78,10 @@
         </ol>
       </div>
       <div class="row statistics">
-        <span class="item">通道数量: <span class="badge badge-success">14</span></span>
-        <span class="item">平均并发: <span class="badge badge-default">1800/s</span></span>
-        <span class="item">队列总数: <span class="badge badge-info">14</span></span>
-        <span class="item">通道错误: <span class="badge badge-danger">14</span></span>
+        <span class="item">客户端数: <span class="badge badge-success">0</span></span>
+        <span class="item">总并发数: <span class="badge badge-default">0/s</span></span>
+        <span class="item">队列总数: <span class="badge badge-info">0</span></span>
+        <span class="item">通道错误: <span class="badge badge-danger">0</span></span>
         <span class="item pull-right">
           <span class="glyphicon glyphicon-flag"></span>
           <select onchange="window.location=this.value">
@@ -94,12 +94,12 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>接入帐号</th><th>公司名称</th><th>通道路由</th><th>队列数量</th><th>流量速度</th><th>错误总数</th></tr>
+            <tr><th>#</th><th>接入帐号</th><th>公司名称</th><th>通道路由</th><th>提交队列</th><th>推送队列</th><th>流量速度</th><th>错误总数</th></tr>
           </thead>
           <tbody>
             <?php
               foreach ($clients as $c) {
-                echo '<tr><td><span class="glyphicon glyphicon-record"></span></td><td>',$c['username'],'</td><td>',$c['company'],'</td><td>',$c['route'],'</td><td>',intval($c['queue']),'</td><td>',intval($c['speed']),'/s</td><td>',$c['error'],'</td></tr>';
+                echo '<tr><td><span class="glyphicon glyphicon-record"></span></td><td>',$c['username'],'</td><td>',$c['company'],'</td><td>',$c['route'],'</td><td>',intval($c['queue']),'</td><td>',$c['deliver'],'</td><td>',intval($c['speed']),'/s</td><td>',$c['error'],'</td></tr>';
               }
               ?>
           </tbody>

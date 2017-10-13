@@ -32,6 +32,7 @@ class StatusModel {
                 $result[$a['id']]['company'] = $a['company'];
                 $result[$a['id']]['route'] = $a['route'];
                 $result[$a['id']]['queue'] = $this->getQueue($a['id']);
+                $result[$a['id']]['deliver'] = $this->getDeliver($a['id']);
                 $result[$a['id']]['speed'] = $this->getSpeed($a['id']);
                 $result[$a['id']]['error'] = $this->getError($a['id']);
             }
@@ -82,5 +83,16 @@ class StatusModel {
         }
 
         return $error;
+    }
+
+    public function getDeliver($id = null) {
+        $id = intval($id);
+        $deliver = 0;
+        $reply = $this->redis->hGet('client.' . $id, 'deliver');
+        if ($reply !== false) {
+            $deliver = intval($reply);
+        }
+
+        return $deliver;
     }
 }

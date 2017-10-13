@@ -318,7 +318,6 @@ void lamb_work_loop(lamb_client_t *client) {
             err = cmpp_recv(client->sock, &pack, sizeof(pack));
             if (err) {
                 if (err == -1) {
-                    printf("-> [error] Connection is closed by the client %s\n", client->addr);
                     lamb_errlog(config.logfile, "Connection is closed by the client %s\n", client->addr);
                     break;
                 }
@@ -334,7 +333,6 @@ void lamb_work_loop(lamb_client_t *client) {
             /* Check protocol command */
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
-                printf("-> [received] active test from %s client\n", client->addr);
                 cmpp_active_test_resp(client->sock, sequenceId);
                 break;
             case CMPP_SUBMIT:;
@@ -359,7 +357,6 @@ void lamb_work_loop(lamb_client_t *client) {
                 if (!lamb_check_msgfmt(submit.msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
                     result = 11;
                     status.fmt++;
-                    printf("-> [error] Message encoded %d not support\n", submit.msgFmt);
                     goto response;
                 }
                 
@@ -369,13 +366,10 @@ void lamb_work_loop(lamb_client_t *client) {
                 if (submit.length > 159 || submit.length < 1) {
                     result = 4;
                     status.len++;
-                    printf("-> [error] Message length is Incorrect\n");
                     goto response;
                 }
                 
                 cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit.content, 160, submit.length);
-
-                printf("-> [received] msgId: %llu, msgFmt: %d, length: %d\n", submit.id, submit.msgFmt, submit.length);
 
                 /* Write Message to MT Server */
                 int length = sizeof(lamb_submit_t);
@@ -383,7 +377,6 @@ void lamb_work_loop(lamb_client_t *client) {
                 if (ret != length) {
                     result = 12;
                     status.mt++;
-                    printf("-> [error] write msgId %llu to mt server failed\n", submit.id);
                 }
 
                 /* Submit Response */
@@ -395,15 +388,12 @@ void lamb_work_loop(lamb_client_t *client) {
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_msg_id, &msgId, 8);
                 
-                printf("-> [received] deliver response seqid: %u, msgId: %llu, result: %u from %s client\n", sequenceId, msgId, result, client->addr);
-
                 if ((confirmed.sequenceId == sequenceId) && (confirmed.msgId == msgId) && (result == 0)) {
                     pthread_cond_signal(&cond);
                 }
                 
                 break;
             case CMPP_TERMINATE:
-                printf("-> [received] terminate request from %s client\n", client->addr);
                 cmpp_terminate_resp(client->sock, sequenceId);
                 goto exit;
             }
@@ -521,6 +511,7 @@ void *lamb_online_update(void *data) {
             lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
         }
 
+        printf("-> [status] fmt: %llu, len: %llu, mt: %llu, send: %llu, ack: %llu\n", status.fmt, status.len, status.mt, status.send, status.ack);
         total = 0;
         sleep(5);
     }
