@@ -1,7 +1,7 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
-MACRO = -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE -D_DEBUG
+MACRO = -D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/message.o src/socket.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre
 

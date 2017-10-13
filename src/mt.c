@@ -95,7 +95,6 @@ void lamb_event_loop(void) {
     err = lamb_server_init(&fd, config.listen, config.port);
     if (err) {
         lamb_errlog(config.logfile, "lamb server initialization failed", 0);
-        lamb_debug("lamb server initialization failed");
         return;
     }
 
@@ -119,14 +118,12 @@ void lamb_event_loop(void) {
                 confd = accept(fd, (struct sockaddr *)&clientaddr, &clilen);
                 if (confd < 0) {
                     lamb_errlog(config.logfile, "server accept client connect error", 0);
-                    lamb_debug("server accept client connect error");
                     continue;
                 }
 
                 /* Start client work thread */
                 lamb_start_thread(lamb_work_loop,  (void *)(intptr_t)confd, 1);
                 lamb_errlog(config.logfile, "New client connection from %s", inet_ntoa(clientaddr.sin_addr));
-                lamb_debug("New client connection from %s", inet_ntoa(clientaddr.sin_addr));
             }
         }
     }
@@ -139,7 +136,7 @@ void *lamb_work_loop(void *arg) {
     int confd = (intptr_t)arg;
     lamb_submit_t *message;
     
-    lamb_debug("start a new %lu thread ", pthread_self());
+    printf("start a new %lu thread ", pthread_self());
 
     int epfd, nfds;
     struct epoll_event ev, events[32];
@@ -177,7 +174,7 @@ void *lamb_work_loop(void *arg) {
         }
     }
 
-    lamb_debug("close %lu thread ", pthread_self());
+    printf("close %lu thread ", pthread_self());
     
     pthread_exit(NULL);
 }

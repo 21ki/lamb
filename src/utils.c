@@ -435,6 +435,7 @@ int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restr
     int err;
     struct timeval now;
     struct timespec timeout;
+
     gettimeofday(&now, NULL);
     timeout.tv_sec = now.tv_sec;
     timeout.tv_nsec = now.tv_usec * 1000;

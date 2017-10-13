@@ -49,11 +49,14 @@ typedef struct {
 } lamb_client_t;
 
 typedef struct {
+    unsigned long long recv;
+    unsigned long long store;
+    unsigned long long delv;
+    unsigned long long ack;
+    unsigned long long timeo;
     unsigned long long fmt;
     unsigned long long len;
-    unsigned long long mt;
-    unsigned long long send;
-    unsigned long long ack;
+    unsigned long long err;
 } lamb_status_t;
 
 void lamb_event_loop(cmpp_ismg_t *cmpp);

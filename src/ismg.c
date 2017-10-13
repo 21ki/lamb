@@ -338,7 +338,8 @@ void lamb_work_loop(lamb_client_t *client) {
             case CMPP_SUBMIT:;
                 result = 0;
                 total++;
-
+                status.recv++;
+                
                 /* Generate Message ID */
                 msgId = lamb_gen_msgid(gid, lamb_sequence());
                 cmpp_pack_set_integer(&pack, cmpp_submit_msg_id, msgId, 8);
@@ -376,7 +377,9 @@ void lamb_work_loop(lamb_client_t *client) {
                 ret = lamb_sock_send(mt, (const char *)&submit, length, 3000);
                 if (ret != length) {
                     result = 12;
-                    status.mt++;
+                    status.err++;
+                } else {
+                    status.store++;
                 }
 
                 /* Submit Response */
@@ -385,6 +388,8 @@ void lamb_work_loop(lamb_client_t *client) {
                 break;
             case CMPP_DELIVER_RESP:;
                 result = 0;
+                status.ack++;
+
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_msg_id, &msgId, 8);
                 
@@ -437,37 +442,36 @@ void *lamb_deliver_loop(void *data) {
         memset(&message, 0 , sizeof(message));
         ret = lamb_sock_recv(mo, (char *)&message, sizeof(message), 3000);
         if (ret > 0) {
-            printf("-> [fetch] pull a new type is %d message\n", message.type);
             switch (message.type) {
             case LAMB_DELIVER:;
                 deliver = (lamb_deliver_t *)&message.data;
                 sequenceId = confirmed.sequenceId = cmpp_sequence();
                 confirmed.msgId = deliver->id;
             deliver:
-                printf("-> [sending] message %llu to %s client\n", deliver->id, client->addr);
                 err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
                 if (err) {
-                    status.send++;
-                    printf("-> [error] sending message %llu to client %s failed", deliver->id, client->addr);
-                    lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet to client %s failed", client->addr);
+                    status.err++;
+                    lamb_errlog(config.logfile, "sending 'cmpp_deliver' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
                     goto deliver;
                 }
+
+                status.delv++;
                 break;
             case LAMB_REPORT:;
                 report = (lamb_report_t *)&message.data;
                 sequenceId = confirmed.sequenceId = cmpp_sequence();
                 confirmed.msgId = report->id;
             report:
-                printf("-> [sending] report seqId: %u, msgId: %llu, status: %d, submitTime: %s, doneTime: %s, to %s client\n", sequenceId, report->id, report->status, report->submitTime, report->doneTime, client->addr);
                 err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
-                    status.send++;
-                    printf("-> [error] send report %llu to client %s failed", report->id, client->addr);
-                    lamb_errlog(config.logfile, "Sending 'cmpp_report' packet to client %s failed", client->addr);
+                    status.err++;
+                    lamb_errlog(config.logfile, "sending 'cmpp_report' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
                     goto report;
                 }
+
+                status.delv++;
                 break;
             default:
                 continue;
@@ -477,12 +481,10 @@ void *lamb_deliver_loop(void *data) {
             err = lamb_wait_confirmation(&cond, &mutex, 3);
 
             if (err == ETIMEDOUT) {
-                status.ack++;
+                status.timeo++;
                 if (message.type == LAMB_DELIVER) {
-                    printf("-> [error] wait message confirmation timeout from  %s client\n", client->addr);
                     goto deliver;
                 } else if (message.type == LAMB_REPORT) {
-                    printf("-> [error] wait report confirmation timeout from  %s client\n", client->addr);
                     goto report;
                 }
             }
@@ -502,7 +504,7 @@ void *lamb_online_update(void *data) {
     client = (lamb_client_t *)data;
 
     while (true) {
-        error = status.fmt + status.len + status.mt + status.send + status.ack;
+        error = status.timeo + status.fmt + status.len + status.err;
         reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu error %llu", client->account->id, getpid(), (unsigned long long)((total - last) / 5), error);
         if (reply != NULL) {
             freeReplyObject(reply);
@@ -511,7 +513,7 @@ void *lamb_online_update(void *data) {
             lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
         }
 
-        printf("-> [status] fmt: %llu, len: %llu, mt: %llu, send: %llu, ack: %llu\n", status.fmt, status.len, status.mt, status.send, status.ack);
+        printf("-> [status] recv: %llu, store: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n", status.recv, status.store, status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
         total = 0;
         sleep(5);
     }
