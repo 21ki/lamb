@@ -48,6 +48,14 @@ typedef struct {
     char *addr;
 } lamb_client_t;
 
+typedef struct {
+    int fmt;
+    int len;
+    int mt;
+    int send;
+    int ack;
+} lamb_status_t;
+
 void lamb_event_loop(cmpp_ismg_t *cmpp);
 void lamb_work_loop(lamb_client_t *client);
 void *lamb_deliver_loop(void *data);

@@ -11,7 +11,7 @@ sp: src/sp.c src/sp.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/sp.c $(OBJS) $(LIBS) -o sp
 
 ismg: src/ismg.c src/ismg.h $(OBJS)
-	$(CC) $(CFLAGS) $(MACRO) src/ismg.c $(OBJS) -pthread -lssl -lcrypto -lcmpp -lconfig -lhiredis -lrt -o ismg
+	$(CC) $(CFLAGS) $(MACRO) src/ismg.c $(OBJS) $(LIBS) -o ismg
 
 server: src/server.c src/server.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -o server

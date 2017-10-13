@@ -103,7 +103,7 @@ class AccountModel {
                 $sql = 'SELECT * FROM account WHERE username = :username';
                 $sth = $this->db->prepare($sql);
                 $sth->bindValue(':username', $data['username'], PDO::PARAM_STR);
-                if ($sth->execute) {
+                if ($sth->execute()) {
                     $result = $sth->fetch();
                     if ($result !== false) {
                         $this->redis->hMSet('account.' . $result['username'], $data);

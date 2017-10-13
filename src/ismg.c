@@ -34,6 +34,7 @@ static int mt;
 static int mo;
 static cmpp_ismg_t cmpp;
 static lamb_cache_t rdb;
+static lamb_status_t status;
 static lamb_config_t config;
 static lamb_confirmed_t confirmed;
 static pthread_cond_t cond;
@@ -89,7 +90,7 @@ int main(int argc, char *argv[]) {
 
     /* Setting Cmpp Socket Parameter */
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
-    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.timeout);
+    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
 
     if (config.daemon) {
         lamb_errlog(config.logfile, "lamb server listen %s port %d", config.listen, config.port);
@@ -273,7 +274,8 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_set_process("lamb-client");
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
-
+    memset(&status, 0, sizeof(lamb_status_t));
+    
     /* Redis Cache */
     err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
@@ -284,7 +286,7 @@ void lamb_work_loop(lamb_client_t *client) {
     /* Connect to MT server */
     mt = lamb_sock_create();
     if (mt < 0) {
-        lamb_errlog(config.logfile, "lamb socket create failed", 0;
+        lamb_errlog(config.logfile, "lamb socket create failed", 0);
         return;
     }
 
@@ -349,7 +351,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 message.type = LAMB_SUBMIT;
                 submit = (lamb_submit_t *)&message.data;
                 submit->id = msgId;
-                submit->account = clilen->account->id;
+                submit->account = client->account->id;
                 strcpy(submit->spid, client->account->username);
                 cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit->phone, 24, 21);
                 cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit->spcode, 24, 21);
@@ -359,6 +361,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 int codeds[] = {0, 8, 11, 15};
                 if (!lamb_check_msgfmt(submit->msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
                     result = 11;
+                    status.fmt++;
                     printf("-> [error] Message encoded %d not support\n", submit->msgFmt);
                     goto response;
                 }
@@ -368,6 +371,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 /* Check Message Length */
                 if (submit->length > 159 || submit->length < 1) {
                     result = 4;
+                    status.len++;
                     printf("-> [error] Message length is Incorrect\n");
                     goto response;
                 }
@@ -378,9 +382,10 @@ void lamb_work_loop(lamb_client_t *client) {
 
                 /* Write Message to MT Server */
                 int length = sizeof(message);
-                ret = lamb_sock_send(mt, (const char *)&message, length, config.send_timeout);
+                ret = lamb_sock_send(mt, (const char *)&message, length, 3000);
                 if (ret != length) {
                     result = 12;
+                    status.mt++;
                     printf("-> [error] write msgId %llu to mt server failed\n", submit->id);
                 }
 
@@ -431,14 +436,14 @@ void *lamb_deliver_loop(void *data) {
     /* Connect to MT server */
     mo = lamb_sock_create();
     if (mt < 0) {
-        lamb_errlog(config.logfile, "lamb socket create failed", 0;
-        return;
+        lamb_errlog(config.logfile, "lamb socket create failed", 0);
+        goto exit;
     }
 
     err = lamb_sock_connect(mo, config.mo_host, config.mo_port, config.timeout);
     if (err) {
         lamb_errlog(config.logfile, "connect to mo server %s timeout", config.mo_host);
-        return;
+        goto exit;
     }
     
     while (true) {
@@ -455,6 +460,7 @@ void *lamb_deliver_loop(void *data) {
                 printf("-> [sending] message %llu to %s client\n", deliver->id, client->addr);
                 err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
                 if (err) {
+                    status.send++;
                     printf("-> [error] sending message %llu to client %s failed", deliver->id, client->addr);
                     lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
@@ -469,6 +475,7 @@ void *lamb_deliver_loop(void *data) {
                 printf("-> [sending] report seqId: %u, msgId: %llu, status: %d, submitTime: %s, doneTime: %s, to %s client\n", sequenceId, report->id, report->status, report->submitTime, report->doneTime, client->addr);
                 err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
+                    status.send++;
                     printf("-> [error] send report %llu to client %s failed", report->id, client->addr);
                     lamb_errlog(config.logfile, "Sending 'cmpp_report' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
@@ -483,6 +490,7 @@ void *lamb_deliver_loop(void *data) {
             err = lamb_wait_confirmation(&cond, &mutex, 3);
 
             if (err == ETIMEDOUT) {
+                status.ack++;
                 if (message.type == LAMB_DELIVER) {
                     printf("-> [error] wait message confirmation timeout from  %s client\n", client->addr);
                     goto deliver;
@@ -496,7 +504,6 @@ void *lamb_deliver_loop(void *data) {
 
 exit:
     pthread_exit(NULL);
-    return NULL;
 }
 
 void *lamb_online_update(void *data) {
