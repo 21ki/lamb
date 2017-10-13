@@ -266,8 +266,7 @@ void lamb_work_loop(lamb_client_t *client) {
     ssize_t ret;
     int err, gid;
     cmpp_pack_t pack;
-    lamb_submit_t *submit;
-    lamb_message_t message;
+    lamb_submit_t submit;
     unsigned long long msgId;
 
     gid = getpid();
@@ -347,46 +346,44 @@ void lamb_work_loop(lamb_client_t *client) {
                 cmpp_pack_set_integer(&pack, cmpp_submit_msg_id, msgId, 8);
 
                 /* Message Resolution */
-                memset(&message, 0, sizeof(message));
-                message.type = LAMB_SUBMIT;
-                submit = (lamb_submit_t *)&message.data;
-                submit->id = msgId;
-                submit->account = client->account->id;
-                strcpy(submit->spid, client->account->username);
-                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit->phone, 24, 21);
-                cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit->spcode, 24, 21);
-                cmpp_pack_get_integer(&pack, cmpp_submit_msg_fmt, &submit->msgFmt, 1);
+                memset(&submit, 0, sizeof(lamb_submit_t));
+                submit.id = msgId;
+                submit.account = client->account->id;
+                strcpy(submit.spid, client->account->username);
+                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit.phone, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit.spcode, 24, 21);
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_fmt, &submit.msgFmt, 1);
 
                 /* Check Message Encoded */
                 int codeds[] = {0, 8, 11, 15};
-                if (!lamb_check_msgfmt(submit->msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
+                if (!lamb_check_msgfmt(submit.msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
                     result = 11;
                     status.fmt++;
-                    printf("-> [error] Message encoded %d not support\n", submit->msgFmt);
+                    printf("-> [error] Message encoded %d not support\n", submit.msgFmt);
                     goto response;
                 }
                 
-                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit->length, 1);
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit.length, 1);
 
                 /* Check Message Length */
-                if (submit->length > 159 || submit->length < 1) {
+                if (submit.length > 159 || submit.length < 1) {
                     result = 4;
                     status.len++;
                     printf("-> [error] Message length is Incorrect\n");
                     goto response;
                 }
                 
-                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit->content, 160, submit->length);
+                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit.content, 160, submit.length);
 
-                printf("-> [received] msgId: %llu, msgFmt: %d, length: %d\n", submit->id, submit->msgFmt, submit->length);
+                printf("-> [received] msgId: %llu, msgFmt: %d, length: %d\n", submit.id, submit.msgFmt, submit.length);
 
                 /* Write Message to MT Server */
-                int length = sizeof(message);
-                ret = lamb_sock_send(mt, (const char *)&message, length, 3000);
+                int length = sizeof(lamb_submit_t);
+                ret = lamb_sock_send(mt, (const char *)&submit, length, 3000);
                 if (ret != length) {
                     result = 12;
                     status.mt++;
-                    printf("-> [error] write msgId %llu to mt server failed\n", submit->id);
+                    printf("-> [error] write msgId %llu to mt server failed\n", submit.id);
                 }
 
                 /* Submit Response */
@@ -507,37 +504,16 @@ exit:
 }
 
 void *lamb_online_update(void *data) {
-    int err;
-    lamb_queue_t queue;
     lamb_client_t *client;
-    unsigned long long last;
     redisReply *reply = NULL;
+    unsigned long long last, error;
 
     last = 0;
     client = (lamb_client_t *)data;
 
-    char name[128];
-    lamb_queue_opt opt;
-    lamb_queue_attr attr;
-
-    attr.len = 0;
-    opt.flag = O_RDWR | O_NONBLOCK;
-    opt.attr = NULL;
-
-    sprintf(name, "/cli.%d.message", client->account->id);
-    err = lamb_queue_open(&queue, name, &opt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open %s message queue failed", name);
-        pthread_exit(NULL);
-    }
-
     while (true) {
-        err = lamb_queue_getattr(&queue, &attr);
-        if (err) {
-            lamb_errlog(config.logfile, "Can't read %s message attribute", name);
-        }
-
-        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu queue %llu error %u", client->account->id, getpid(), (unsigned long long)((total - last) / 5), attr.len, 0);
+        error = status.fmt + status.len + status.mt + status.send + status.ack;
+        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu error %llu", client->account->id, getpid(), (unsigned long long)((total - last) / 5), error);
         if (reply != NULL) {
             freeReplyObject(reply);
             reply = NULL;
@@ -646,7 +622,7 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'redisDb' parameter\n");
     }
 
-    if (lamb_get_string(&cfg, "MtHost", conf->mo_host, 16) != 0) {
+    if (lamb_get_string(&cfg, "MtHost", conf->mt_host, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid MT server IP address\n");
         goto error;
     }

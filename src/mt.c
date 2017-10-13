@@ -24,8 +24,10 @@
 #include "utils.h"
 #include "config.h"
 #include "socket.h"
+#include "cache.h"
 #include "mt.h"
 
+static lamb_cache_t rdb;
 static lamb_config_t config;
 static lamb_pool_t *list_pools;
 
@@ -75,12 +77,21 @@ void lamb_event_loop(void) {
     socklen_t clilen;
     struct sockaddr_in clientaddr;
 
+    /* Client Queue Pools Initialization */
     list_pools = lamb_pool_new();
     if (!list_pools) {
         lamb_errlog(config.logfile, "lamb node pool initialization failed", 0);
         return;
     }
-    
+
+    /* Redis Cache Initialization */
+    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connect to redis %s server", config.redis_host);
+        return;
+    }
+
+    /* MT Server Initialization */
     err = lamb_server_init(&fd, config.listen, config.port);
     if (err) {
         lamb_errlog(config.logfile, "lamb server initialization failed", 0);
@@ -88,6 +99,7 @@ void lamb_event_loop(void) {
         return;
     }
 
+    /* Start Data Acquisition Thread */
     lamb_start_thread(lamb_stat_loop, NULL, 1);
     
     int epfd, nfds;
@@ -162,8 +174,6 @@ void *lamb_work_loop(void *arg) {
                     lamb_msg_push(node, (void *)message);
                 }
             }
-            
-            printf("-> [ %d ] push %u message\n", node->id, node->len);
         }
     }
 
@@ -329,15 +339,20 @@ lamb_pool_t *lamb_pool_new(void) {
 
 void *lamb_stat_loop(void *arg) {
     lamb_node_t *node;
-
+    redisReply *reply;
+    
     while (true) {
         node = list_pools->head;
         while (node != NULL) {
-            printf("-> node: %d, len: %u\n", node->id, node->len);
+            reply = redisCommand(rdb.handle, "HMSET client.%d queue %lld", node->id, node->len);
+            if (reply != NULL) {
+                freeReplyObject(reply);
+            }
+            printf("-> node: %d, len: %lld\n", node->id, node->len);
             node = node->next;
         }
 
-        lamb_sleep(5000);
+        lamb_sleep(3000);
     }
 
     pthread_exit(NULL);
@@ -378,7 +393,24 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'WorkerThread' parameter\n");
         goto error;
     }
-    
+
+    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+    }
+
+    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+    }
+
+    if (conf->redis_port < 1 || conf->redis_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid redis port number\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+    }
+
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;

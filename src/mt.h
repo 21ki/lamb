@@ -17,6 +17,9 @@ typedef struct {
     int port;
     long long timeout;
     int worker_thread;
+    char redis_host[16];
+    int redis_port;
+    int redis_db;
     char logfile[128];
 } lamb_config_t;
 
@@ -27,7 +30,7 @@ typedef struct lamb_msg_t {
 
 typedef struct lamb_node_t {
     int id;
-    int len;
+    long long len;
     pthread_mutex_t lock;
     struct lamb_msg_t *head;
     struct lamb_msg_t *tail;

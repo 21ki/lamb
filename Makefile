@@ -19,8 +19,8 @@ server: src/server.c src/server.h $(OBJS)
 deliver: src/deliver.c src/deliver.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) $(LIBS) -o deliver
 
-mt: src/mt.c src/mt.h src/config.o src/utils.o src/socket.o
-	$(CC) $(CFLAGS) $(MACRO) src/mt.c src/config.o src/utils.o src/socket.o -pthread -lconfig -lcrypto -liconv -lpcre -lcmpp -o mt
+mt: src/mt.c src/mt.h $(OBJS)
+	$(CC) $(CFLAGS) $(MACRO) src/mt.c $(OBJS) $(LIBS) -o mt
 
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
