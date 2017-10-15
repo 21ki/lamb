@@ -161,13 +161,13 @@ void *lamb_work_loop(void *arg) {
                 break;
             }
 
-            node = lamb_pool_find(list_pools, message->account);
+            node = lamb_find_node(list_pools, message->account);
             if (node) {
                 lamb_msg_push(node, (void *)message);
             } else {
                 node = lamb_node_new(message->account);
                 if (node) {
-                    lamb_pool_add(list_pools, node);
+                    lamb_node_add(list_pools, node);
                     lamb_msg_push(node, (void *)message);
                 }
             }
@@ -261,7 +261,7 @@ lamb_msg_t *lamb_msg_pop(lamb_node_t *self) {
     return msg;
 }
 
-lamb_node_t *lamb_pool_add(lamb_pool_t *self, lamb_node_t *node) {
+lamb_node_t *lamb_node_add(lamb_pool_t *self, lamb_node_t *node) {
     if (!node) {
         return NULL;
     }
@@ -277,7 +277,7 @@ lamb_node_t *lamb_pool_add(lamb_pool_t *self, lamb_node_t *node) {
     return node;
 }
 
-lamb_node_t *lamb_pool_del(lamb_pool_t *self, int id) {
+void lamb_node_del(lamb_pool_t *self, int id) {
     lamb_node_t *curr;
     lamb_node_t *node;
 
@@ -301,10 +301,10 @@ lamb_node_t *lamb_pool_del(lamb_pool_t *self, int id) {
         curr = curr->next;
     }
 
-    return node;
+    return;
 }
 
-lamb_node_t *lamb_pool_find(lamb_pool_t *self, int id) {
+lamb_node_t *lamb_find_node(lamb_pool_t *self, int id) {
     lamb_node_t *node;
 
     node = self->head;

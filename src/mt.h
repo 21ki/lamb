@@ -51,9 +51,9 @@ lamb_node_t *lamb_node_new(int id);
 lamb_msg_t *lamb_msg_push(lamb_node_t *self, void *val);
 lamb_msg_t *lamb_msg_pop(lamb_node_t *self);
 lamb_pool_t *lamb_pool_new(void);
-lamb_node_t *lamb_pool_add(lamb_pool_t *self, lamb_node_t *node);
-lamb_node_t *lamb_pool_del(lamb_pool_t *self, int id);
-lamb_node_t *lamb_pool_find(lamb_pool_t *self, int id);
+lamb_node_t *lamb_node_add(lamb_pool_t *self, lamb_node_t *node);
+void lamb_node_del(lamb_pool_t *self, int id);
+lamb_node_t *lamb_find_node(lamb_pool_t *self, int id);
 void *lamb_stat_loop(void *arg);
 
 #endif
