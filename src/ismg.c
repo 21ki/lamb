@@ -379,7 +379,12 @@ void lamb_work_loop(lamb_client_t *client) {
                     result = 12;
                     status.err++;
                 } else {
-                    status.store++;
+                    if (lamb_sock_confirm(mt)) {
+                        status.store++;
+                    } else {
+                        result = 13;
+                        status.err++;
+                    }
                 }
 
                 /* Submit Response */

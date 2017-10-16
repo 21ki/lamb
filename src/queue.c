@@ -2,48 +2,66 @@
 /* 
  * Lamb Gateway Platform
  * Copyright (C) 2017 typefo <typefo@qq.com>
- * Update: 2017-08-24
+ * Update: 2017-07-14
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
 #include "queue.h"
 
-int lamb_queue_open(lamb_queue_t *queue, char *name, lamb_queue_opt *opt) {
-    /* Open send queue */
-    queue->mqd = mq_open(name, opt->flag, 0644, opt->attr);
+lamb_queue_t *lamb_queue_new(int id) {
+    lamb_queue_t *self;
 
-    if (queue->mqd < 0) {
-        return -1;
+    self = malloc(sizeof(lamb_queue_t));
+    if (!self) {
+        return NULL;
     }
 
-    return 0;
+    self->id = id;
+    self->len = 0;
+    pthread_mutex_init(&self->lock, NULL);
+    self->head = NULL;
+    self->tail = NULL;
+    self->next = NULL;
+
+    return self;
 }
 
-int lamb_queue_send(lamb_queue_t *queue, const char *val, size_t len, unsigned int prio) {
-    return mq_send(queue->mqd, val, len, prio);
-}
-
-ssize_t lamb_queue_receive(lamb_queue_t *queue, char *buff, size_t len, unsigned int *prio) {
-    return mq_receive(queue->mqd, buff, len, prio);
-}
-
-int lamb_queue_getattr(lamb_queue_t *queue, lamb_queue_attr *qattr) {
-    int err;
-    struct mq_attr attr;
-
-    err  = mq_getattr(queue->mqd, &attr);
-    if (err == -1) {
-        return -1;
+lamb_node_t *lamb_node_push(lamb_queue_t *self, void *val) {
+    if (!val) {
+        return NULL;
     }
 
-    qattr->len = attr.mq_curmsgs;
+    lamb_node_t *node;
+    node = (lamb_node_t *)malloc(sizeof(lamb_node_t));
 
-    return 0;
+    if (node) {
+        node->val = val;
+        node->next = NULL;
+        if (self->len) {
+            self->tail->next = node;
+            self->tail = node;
+        } else {
+            self->head = self->tail = node;
+        }
+        ++self->len;
+    }
+
+    return node;
 }
 
-int lamb_queue_close(lamb_queue_t *queue) {
-    return mq_close(queue->mqd);
+lamb_node_t *lamb_node_pop(lamb_queue_t *self) {
+    if (!self->len) {
+        return NULL;
+    }
+
+    lamb_node_t *node = self->head;
+
+    if (--self->len) {
+        self->head = node->next;
+    } else {
+        self->head = self->tail = NULL;
+    }
+
+    node->next = NULL;
+
+    return node;
 }

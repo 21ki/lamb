@@ -77,6 +77,8 @@ void lamb_event_loop(void) {
     socklen_t clilen;
     struct sockaddr_in clientaddr;
 
+    clilen = sizeof(struct sockaddr);
+
     /* Client Queue Pools Initialization */
     list_pools = lamb_pool_new();
     if (!list_pools) {
@@ -109,7 +111,7 @@ void lamb_event_loop(void) {
     ev.events = EPOLLIN;
 
     epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev);
-
+    
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
         for (i = 0; i < nfds; ++i) {
@@ -122,8 +124,20 @@ void lamb_event_loop(void) {
                 }
 
                 /* Start client work thread */
-                lamb_start_thread(lamb_work_loop,  (void *)(intptr_t)confd, 1);
-                lamb_errlog(config.logfile, "New client connection from %s", inet_ntoa(clientaddr.sin_addr));
+                lamb_amqp_t *client = (lamb_amqp_t *)calloc(1, sizeof(lamb_amqp_t));
+                if (!client) {
+                    lamb_errlog(config.logfile, "the system cannot allocate memory", 0);
+                }
+
+                client->fd = confd;
+                lamb_sock_nonblock(client->fd, true);
+                lamb_sock_tcpnodelay(client->fd, true);
+                pthread_mutex_init(&client->lock, NULL);
+                client->ip = lamb_strdup(inet_ntoa(clientaddr.sin_addr));
+
+                lamb_start_thread(lamb_work_loop,  (void *)client, 1);
+
+                lamb_errlog(config.logfile, "New client connection from %s", client->ip);
             }
         }
     }
@@ -131,50 +145,67 @@ void lamb_event_loop(void) {
 }
 
 void *lamb_work_loop(void *arg) {
-    int err;
+    int ret, event;
     lamb_node_t *node;
-    int confd = (intptr_t)arg;
-    lamb_submit_t *message;
+    lamb_queue_t *queue;
+    lamb_amqp_t *client;
+    lamb_submit_t *submit;
+    lamb_amqp_message message;
     
-    printf("start a new %lu thread ", pthread_self());
+    printf("-> Start a new %lu thread ", pthread_self());
 
-    int epfd, nfds;
+    client = (lamb_amqp_t *)arg;
+
+    int epfd, event;
     struct epoll_event ev, events[32];
 
     epfd = epoll_create1(0);
-    ev.data.fd = confd;
+    ev.data.fd = client->fd;
     ev.events = EPOLLIN;
 
-    epoll_ctl(epfd, EPOLL_CTL_ADD, confd, &ev);
+    epoll_ctl(epfd, EPOLL_CTL_ADD, client->fd, &ev);
 
     while (true) {
-        nfds = epoll_wait(epfd, events, 32, -1);
-        if (nfds > 0) {
-            message = (lamb_submit_t *)calloc(1, sizeof(lamb_submit_t));
-            if (!message) {
-                continue;
-            }
+        event = epoll_wait(epfd, events, 32, -1);
+        if (event > 0) {
+            memset(&message, 0, sizeof(message));
 
-            err = lamb_sock_recv(confd, (char *)message, sizeof(lamb_submit_t), 1000);
-            if (err == -1) {
-                free(message);
+            ret = lamb_sock_recv(client->fd, (char *)&message, 4, config.timeout);
+
+            if (ret == -1) {
                 break;
             }
 
-            node = lamb_find_node(list_pools, message->account);
-            if (node) {
-                lamb_msg_push(node, (void *)message);
-            } else {
-                node = lamb_node_new(message->account);
-                if (node) {
-                    lamb_node_add(list_pools, node);
-                    lamb_msg_push(node, (void *)message);
+            queue = lamb_find_queue(list_pools, message->id);
+
+            if (!queue) {
+                queue = lamb_queue_new(message->account);
+                if (queue) {
+                    lamb_queue_add(list_pools, queue);
                 }
             }
+
+            if (queue) {
+                if (message.type == LAMB_AMQP_PUSH) {
+                    
+                }
+
+                ret = lamb_queue_push(queue, (void *)message);
+                if (ret) {
+                    lamb_sock_ack(confd);
+                    continue;
+                }
+            }
+
+            lamb_sock_reject(confd);
         }
     }
 
-    printf("close %lu thread ", pthread_self());
+    printf("-> The client %s disconnect\n", client->ip);
+    
+    close(epfd);
+    free(client->ip);
+    lamb_amqp_destroy(client);
     
     pthread_exit(NULL);
 }
@@ -202,92 +233,33 @@ int lamb_server_init(int *sock, const char *addr, int port) {
     return 0;
 }
 
-lamb_node_t *lamb_node_new(int id) {
-    lamb_node_t *self;
-
-    self = malloc(sizeof(lamb_node_t));
-    if (!self) {
-        return NULL;
-    }
-
-    self->id = id;
-    self->len = 0;
-    pthread_mutex_init(&self->lock, NULL);
-    self->head = NULL;
-    self->tail = NULL;
-    self->next = NULL;
-
-    return self;
-}
-
-lamb_msg_t *lamb_msg_push(lamb_node_t *self, void *val) {
-    if (!val) {
-        return NULL;
-    }
-
-    lamb_msg_t *msg;
-    msg = (lamb_msg_t *)malloc(sizeof(lamb_msg_t));
-
-    if (msg) {
-        msg->val = val;
-        msg->next = NULL;
-        if (self->len) {
-            self->tail->next = msg;
-            self->tail = msg;
-        } else {
-            self->head = self->tail = msg;
-        }
-        ++self->len;
-    }
-
-    return msg;
-}
-
-lamb_msg_t *lamb_msg_pop(lamb_node_t *self) {
-    if (!self->len) {
-        return NULL;
-    }
-
-    lamb_msg_t *msg = self->head;
-
-    if (--self->len) {
-        self->head = msg->next;
-    } else {
-        self->head = self->tail = NULL;
-    }
-
-    msg->next = NULL;
-
-    return msg;
-}
-
-lamb_node_t *lamb_node_add(lamb_pool_t *self, lamb_node_t *node) {
-    if (!node) {
+lamb_node_t *lamb_queue_add(lamb_pool_t *self, lamb_queue_t *queue) {
+    if (!queue) {
         return NULL;
     }
 
     if (self->len) {
-        self->tail->next = node;
-        self->tail = node;
+        self->tail->next = queue;
+        self->tail = queue;
     } else {
-        self->head = self->tail = node;
+        self->head = self->tail = queue;
     }
     ++self->len;
 
-    return node;
+    return queue;
 }
 
-void lamb_node_del(lamb_pool_t *self, int id) {
-    lamb_node_t *curr;
-    lamb_node_t *node;
+void lamb_queue_del(lamb_pool_t *self, int id) {
+    lamb_queue_t *prev;
+    lamb_queue_t *curr;
 
-    node = NULL;
+    prev = NULL;
     curr = self->head;
 
     while (curr != NULL) {
         if (curr->id == id) {
-            if (node) {
-                node->next = curr->next;
+            if (prev) {
+                prev->next = curr->next;
             } else {
                 self->head = curr->next;
             }
@@ -297,26 +269,26 @@ void lamb_node_del(lamb_pool_t *self, int id) {
             break;
         }
 
-        node = curr;
+        prev = curr;
         curr = curr->next;
     }
 
     return;
 }
 
-lamb_node_t *lamb_find_node(lamb_pool_t *self, int id) {
-    lamb_node_t *node;
+lamb_node_t *lamb_find_queue(lamb_pool_t *self, int id) {
+    lamb_queue_t *queue;
 
-    node = self->head;
+    queue = self->head;
     
-    while (node != NULL) {
-        if (node->id == id) {
+    while (queue != NULL) {
+        if (queue->id == id) {
             break;
         }
-        node = node->next;
+        queue = queue->next;
     }
 
-    return node;
+    return queue;
 }
 
 lamb_pool_t *lamb_pool_new(void) {
@@ -335,18 +307,18 @@ lamb_pool_t *lamb_pool_new(void) {
 }
 
 void *lamb_stat_loop(void *arg) {
-    lamb_node_t *node;
+    lamb_queue_t *queue;
     redisReply *reply;
     
     while (true) {
-        node = list_pools->head;
-        while (node != NULL) {
-            reply = redisCommand(rdb.handle, "HMSET client.%d queue %lld", node->id, node->len);
+        queue = list_pools->head;
+        while (queue != NULL) {
+            reply = redisCommand(rdb.handle, "HMSET client.%d queue %lld", queue->id, queue->len);
             if (reply != NULL) {
                 freeReplyObject(reply);
             }
-            printf("-> node: %d, len: %lld\n", node->id, node->len);
-            node = node->next;
+            printf("-> node: %d, len: %lld\n", queue->id, queue->len);
+            queue = queue->next;
         }
 
         lamb_sleep(3000);

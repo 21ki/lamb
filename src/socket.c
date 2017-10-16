@@ -50,7 +50,7 @@ int lamb_sock_bind(int fd, const char *addr, unsigned short port, int backlog) {
     return 0;
 }
 
-int lamb_sock_connect(int fd, const char *addr, unsigned short port, long long timeout) {
+int lamb_sock_connect(int fd, const char *addr, unsigned short port, unsigned long long timeout) {
     struct sockaddr_in servaddr;
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -106,7 +106,7 @@ int lamb_sock_tcpnodelay(int fd, bool enable) {
     return 0;
 }
 
-int lamb_sock_send(int fd, const char *buff, size_t len, long long timeout) {
+int lamb_sock_send(int fd, const char *buff, size_t len, unsigned long long timeout) {
     int ret;
     int offset = 0;
 
@@ -137,7 +137,7 @@ int lamb_sock_send(int fd, const char *buff, size_t len, long long timeout) {
     return offset;
 }
 
-int lamb_sock_recv(int fd, char *buff, size_t len, long long timeout) {
+int lamb_sock_recv(int fd, char *buff, size_t len, unsigned long long timeout) {
     int ret;
     int offset = 0;
 
@@ -168,7 +168,7 @@ int lamb_sock_recv(int fd, char *buff, size_t len, long long timeout) {
     return offset;
 }
 
-int lamb_sock_readable(int fd, long long millisecond) {
+int lamb_sock_readable(int fd, unsigned long long millisecond) {
     int ret;
     fd_set rset;
     struct timeval timeout;
@@ -183,7 +183,7 @@ int lamb_sock_readable(int fd, long long millisecond) {
     return ret;
 }
 
-int lamb_sock_writable(int fd, long long millisecond) {
+int lamb_sock_writable(int fd, unsigned long long millisecond) {
     int ret;
     fd_set wset;
     struct timeval timeout;
@@ -198,7 +198,7 @@ int lamb_sock_writable(int fd, long long millisecond) {
     return ret;
 }
 
-int lamb_sock_timeout(int fd, int type, long long millisecond) {
+int lamb_sock_timeout(int fd, int type, unsigned long long millisecond) {
     struct timeval timeout;
 
     timeout.tv_sec = millisecond / 1000;
@@ -211,3 +211,4 @@ int lamb_sock_timeout(int fd, int type, long long millisecond) {
 
     return 0;
 }
+
