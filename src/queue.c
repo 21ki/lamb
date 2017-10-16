@@ -17,15 +17,15 @@ lamb_queue_t *lamb_queue_new(int id) {
 
     self->id = id;
     self->len = 0;
-    pthread_mutex_init(&self->lock, NULL);
     self->head = NULL;
     self->tail = NULL;
     self->next = NULL;
-
+    pthread_mutex_init(&self->lock, NULL);
+    
     return self;
 }
 
-lamb_node_t *lamb_node_push(lamb_queue_t *self, void *val) {
+lamb_node_t *lamb_queue_push(lamb_queue_t *self, void *val) {
     if (!val) {
         return NULL;
     }
@@ -48,7 +48,7 @@ lamb_node_t *lamb_node_push(lamb_queue_t *self, void *val) {
     return node;
 }
 
-lamb_node_t *lamb_node_pop(lamb_queue_t *self) {
+lamb_node_t *lamb_queue_pop(lamb_queue_t *self) {
     if (!self->len) {
         return NULL;
     }

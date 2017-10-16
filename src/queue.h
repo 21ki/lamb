@@ -24,7 +24,7 @@ typedef struct lamb_node_t {
 } lamb_queue_t;
 
 lamb_queue_t *lamb_queue_new(int id);
-lamb_node_t *lamb_node_push(lamb_queue_t *self, void *val);
-lamb_node_t *lamb_node_pop(lamb_queue_t *self);
+lamb_node_t *lamb_queue_push(lamb_queue_t *self, void *val);
+lamb_node_t *lamb_queue_pop(lamb_queue_t *self);
 
 #endif
