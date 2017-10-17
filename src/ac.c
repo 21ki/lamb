@@ -27,14 +27,11 @@
 #include "ismg.h"
 #include "utils.h"
 #include "cache.h"
-#include "socket.h"
+#include "queue.h"
 #include "config.h"
 
-static lamb_amqp_t *mt;
-static lamb_amqp_t *mo;
 static cmpp_ismg_t cmpp;
 static lamb_cache_t rdb;
-static lamb_status_t status;
 static lamb_config_t config;
 static lamb_confirmed_t confirmed;
 static pthread_cond_t cond;
@@ -90,7 +87,7 @@ int main(int argc, char *argv[]) {
 
     /* Setting Cmpp Socket Parameter */
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
-    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
+    cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.timeout);
 
     if (config.daemon) {
         lamb_errlog(config.logfile, "lamb server listen %s port %d", config.listen, config.port);
@@ -263,39 +260,24 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 }
 
 void lamb_work_loop(lamb_client_t *client) {
-    ssize_t ret;
     int err, gid;
     cmpp_pack_t pack;
-    lamb_submit_t submit;
+    lamb_submit_t *submit;
+    lamb_message_t message;
     unsigned long long msgId;
 
     gid = getpid();
     lamb_set_process("lamb-client");
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
-    memset(&status, 0, sizeof(lamb_status_t));
-    
+
     /* Redis Cache */
     err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to redis %s server", config.redis_host);
         return;
     }
-
-    /* Connect to MT server */
-    mt = lamb_amqp_new();
-    if (!mt) {
-        lamb_errlog(config.logfile, "lamb mt server initialization failed", 0);
-        return;
-    }
     
-    err = lamb_amqp_connect(mt, config.mt_host, config.mt_port, config.timeout);
-    if (err) {
-        lamb_amqp_destroy(mt);
-        lamb_errlog(config.logfile, "can't connect to mt %s server", config.mt_host);
-        return;
-    }
-
     /* Epoll Events */
     int epfd, nfds;
     struct epoll_event ev, events[32];
@@ -304,6 +286,21 @@ void lamb_work_loop(lamb_client_t *client) {
     ev.data.fd = client->sock->fd;
     ev.events = EPOLLIN;
     epoll_ctl(epfd, EPOLL_CTL_ADD, client->sock->fd, &ev);
+
+    /* Mqueue Message Queue */
+    char name[64];
+    lamb_queue_t queue;
+    lamb_queue_opt opt;
+
+    opt.flag = O_WRONLY | O_NONBLOCK;
+    sprintf(name, "/cli.%d.message", client->account->id);
+    opt.attr = NULL;
+
+    err = lamb_queue_open(&queue, name, &opt);
+    if (err) {
+        lamb_errlog(config.logfile, "Open %s message queue failed", name);
+        goto exit;
+    }
 
     /* Start Client Status Update Thread */
     lamb_start_thread(lamb_online_update, client, 1);
@@ -319,6 +316,7 @@ void lamb_work_loop(lamb_client_t *client) {
             err = cmpp_recv(client->sock, &pack, sizeof(pack));
             if (err) {
                 if (err == -1) {
+                    printf("-> [error] Connection is closed by the client %s\n", client->addr);
                     lamb_errlog(config.logfile, "Connection is closed by the client %s\n", client->addr);
                     break;
                 }
@@ -334,53 +332,53 @@ void lamb_work_loop(lamb_client_t *client) {
             /* Check protocol command */
             switch (commandId) {
             case CMPP_ACTIVE_TEST:
+                printf("-> [received] active test from %s client\n", client->addr);
                 cmpp_active_test_resp(client->sock, sequenceId);
                 break;
             case CMPP_SUBMIT:;
                 result = 0;
                 total++;
-                status.recv++;
-                
+
                 /* Generate Message ID */
                 msgId = lamb_gen_msgid(gid, lamb_sequence());
                 cmpp_pack_set_integer(&pack, cmpp_submit_msg_id, msgId, 8);
 
                 /* Message Resolution */
-                memset(&submit, 0, sizeof(lamb_submit_t));
-                submit.id = msgId;
-                submit.account = client->account->id;
-                strcpy(submit.spid, client->account->username);
-                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit.phone, 24, 21);
-                cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit.spcode, 24, 21);
-                cmpp_pack_get_integer(&pack, cmpp_submit_msg_fmt, &submit.msgFmt, 1);
+                memset(&message, 0, sizeof(message));
+                message.type = LAMB_SUBMIT;
+                submit = (lamb_submit_t *)&message.data;
+                submit->id = msgId;
+                strcpy(submit->spid, client->account->username);
+                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit->phone, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit->spcode, 24, 21);
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_fmt, &submit->msgFmt, 1);
 
                 /* Check Message Encoded */
                 int codeds[] = {0, 8, 11, 15};
-                if (!lamb_check_msgfmt(submit.msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
+                if (!lamb_check_msgfmt(submit->msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
                     result = 11;
-                    status.fmt++;
+                    printf("-> [error] Message encoded %d not support\n", submit->msgFmt);
                     goto response;
                 }
                 
-                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit.length, 1);
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit->length, 1);
 
                 /* Check Message Length */
-                if (submit.length > 159 || submit.length < 1) {
+                if (submit->length > 159 || submit->length < 1) {
                     result = 4;
-                    status.len++;
+                    printf("-> [error] Message length is Incorrect\n");
                     goto response;
                 }
                 
-                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit.content, 160, submit.length);
+                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit->content, 160, submit->length);
 
-                /* Write Message to MT Server */
-                int length = sizeof(lamb_submit_t);
-                err = lamb_amqp_push(mt, (char *)&submit, length, 3000);
+                printf("-> [received] msgId: %llu, msgFmt: %d, length: %d\n", submit->id, submit->msgFmt, submit->length);
+
+                /* Message Write Queue */
+                err = lamb_queue_send(&queue, (const char *)&message, sizeof(message), 0);
                 if (err) {
                     result = 12;
-                    status.err++;
-                } else {
-                    status.store++;
+                    printf("-> [error] write msgId %llu to queue failed\n", submit->id);
                 }
 
                 /* Submit Response */
@@ -389,17 +387,18 @@ void lamb_work_loop(lamb_client_t *client) {
                 break;
             case CMPP_DELIVER_RESP:;
                 result = 0;
-                status.ack++;
-
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_result, &result, 1);
                 cmpp_pack_get_integer(&pack, cmpp_deliver_resp_msg_id, &msgId, 8);
                 
+                printf("-> [received] deliver response seqid: %u, msgId: %llu, result: %u from %s client\n", sequenceId, msgId, result, client->addr);
+
                 if ((confirmed.sequenceId == sequenceId) && (confirmed.msgId == msgId) && (result == 0)) {
                     pthread_cond_signal(&cond);
                 }
                 
                 break;
             case CMPP_TERMINATE:
+                printf("-> [received] terminate request from %s client\n", client->addr);
                 cmpp_terminate_resp(client->sock, sequenceId);
                 goto exit;
             }
@@ -426,54 +425,53 @@ void *lamb_deliver_loop(void *data) {
 
     client = (lamb_client_t *)data;
 
-    /* Connect to MO server */
-    mo = lamb_amqp_new();
-    if (!mt) {
-        lamb_errlog(config.logfile, "lamb mo server initialization failed", 0);
+    char name[64];
+    lamb_queue_t queue;
+    lamb_queue_opt opt;
+
+    opt.flag = O_RDWR;
+    opt.attr = NULL;
+
+    sprintf(name, "/cli.%d.deliver", client->account->id);
+    err = lamb_queue_open(&queue, name, &opt);
+    if (err) {
+        lamb_errlog(config.logfile, "Open %s message queue failed", name);
         goto exit;
     }
     
-    err = lamb_amqp_connect(mo, config.mo_host, config.mo_port, config.timeout);
-    if (err) {
-        lamb_amqp_destroy(mo);
-        lamb_errlog(config.logfile, "can't connect to mo %s server", config.mo_host);
-        goto exit;
-    }
-
     while (true) {
         memset(&message, 0 , sizeof(message));
-        ret = lamb_amqp_pull(mo, (char *)&message, sizeof(message), 3000);
+        ret = lamb_queue_receive(&queue, (char *)&message, sizeof(message), 0);
         if (ret > 0) {
+            printf("-> [fetch] pull a new type is %d message\n", message.type);
             switch (message.type) {
             case LAMB_DELIVER:;
                 deliver = (lamb_deliver_t *)&message.data;
                 sequenceId = confirmed.sequenceId = cmpp_sequence();
                 confirmed.msgId = deliver->id;
             deliver:
+                printf("-> [sending] message %llu to %s client\n", deliver->id, client->addr);
                 err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
                 if (err) {
-                    status.err++;
-                    lamb_errlog(config.logfile, "sending 'cmpp_deliver' packet to client %s failed", client->addr);
+                    printf("-> [error] sending message %llu to client %s failed", deliver->id, client->addr);
+                    lamb_errlog(config.logfile, "Sending 'cmpp_deliver' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
                     goto deliver;
                 }
-
-                status.delv++;
                 break;
             case LAMB_REPORT:;
                 report = (lamb_report_t *)&message.data;
                 sequenceId = confirmed.sequenceId = cmpp_sequence();
                 confirmed.msgId = report->id;
             report:
+                printf("-> [sending] report seqId: %u, msgId: %llu, status: %d, submitTime: %s, doneTime: %s, to %s client\n", sequenceId, report->id, report->status, report->submitTime, report->doneTime, client->addr);
                 err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
                 if (err) {
-                    status.err++;
-                    lamb_errlog(config.logfile, "sending 'cmpp_report' packet to client %s failed", client->addr);
+                    printf("-> [error] send report %llu to client %s failed", report->id, client->addr);
+                    lamb_errlog(config.logfile, "Sending 'cmpp_report' packet to client %s failed", client->addr);
                     lamb_sleep(3000);
                     goto report;
                 }
-
-                status.delv++;
                 break;
             default:
                 continue;
@@ -483,10 +481,11 @@ void *lamb_deliver_loop(void *data) {
             err = lamb_wait_confirmation(&cond, &mutex, 3);
 
             if (err == ETIMEDOUT) {
-                status.timeo++;
                 if (message.type == LAMB_DELIVER) {
+                    printf("-> [error] wait message confirmation timeout from  %s client\n", client->addr);
                     goto deliver;
                 } else if (message.type == LAMB_REPORT) {
+                    printf("-> [error] wait report confirmation timeout from  %s client\n", client->addr);
                     goto report;
                 }
             }
@@ -495,19 +494,41 @@ void *lamb_deliver_loop(void *data) {
 
 exit:
     pthread_exit(NULL);
+    return NULL;
 }
 
 void *lamb_online_update(void *data) {
+    int err;
+    lamb_queue_t queue;
     lamb_client_t *client;
+    unsigned long long last;
     redisReply *reply = NULL;
-    unsigned long long last, error;
 
     last = 0;
     client = (lamb_client_t *)data;
 
+    char name[128];
+    lamb_queue_opt opt;
+    lamb_queue_attr attr;
+
+    attr.len = 0;
+    opt.flag = O_RDWR | O_NONBLOCK;
+    opt.attr = NULL;
+
+    sprintf(name, "/cli.%d.message", client->account->id);
+    err = lamb_queue_open(&queue, name, &opt);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't open %s message queue failed", name);
+        pthread_exit(NULL);
+    }
+
     while (true) {
-        error = status.timeo + status.fmt + status.len + status.err;
-        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu error %llu", client->account->id, getpid(), (unsigned long long)((total - last) / 5), error);
+        err = lamb_queue_getattr(&queue, &attr);
+        if (err) {
+            lamb_errlog(config.logfile, "Can't read %s message attribute", name);
+        }
+
+        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu queue %llu error %u", client->account->id, getpid(), (unsigned long long)((total - last) / 5), attr.len, 0);
         if (reply != NULL) {
             freeReplyObject(reply);
             reply = NULL;
@@ -515,7 +536,6 @@ void *lamb_online_update(void *data) {
             lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
         }
 
-        printf("-> [status] recv: %llu, store: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n", status.recv, status.store, status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
         total = 0;
         sleep(5);
     }
@@ -565,6 +585,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
+    if (lamb_get_bool(&cfg, "Daemon", &conf->daemon) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Daemon' parameter\n");
+        goto error;
+    }
+        
     if (lamb_get_string(&cfg, "Listen", conf->listen, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid Listen IP address\n");
         goto error;
@@ -600,11 +625,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
+    if (lamb_get_string(&cfg, "redisHost", conf->redis_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
     }
 
-    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
+    if (lamb_get_int(&cfg, "redisPort", &conf->redis_port) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
     }
 
@@ -613,28 +638,8 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
+    if (lamb_get_int(&cfg, "redisDb", &conf->redis_db) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisDb' parameter\n");
-    }
-
-    if (lamb_get_string(&cfg, "MtHost", conf->mt_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid MT server IP address\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "MtPort", &conf->mt_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MtPort' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_string(&cfg, "MoHost", conf->mo_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid MO server IP address\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "MoPort", &conf->mo_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MoPort' parameter\n");
-        goto error;
     }
     
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {

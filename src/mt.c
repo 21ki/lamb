@@ -21,9 +21,11 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <pthread.h>
+#include <nanomsg/nn.h>
+#include <nanomsg/pair.h>
+#include <nanomsg/reqrep.h>
 #include "utils.h"
 #include "config.h"
-#include "socket.h"
 #include "cache.h"
 #include "mt.h"
 
@@ -72,12 +74,7 @@ int main(int argc, char *argv[]) {
 }
 
 void lamb_event_loop(void) {
-    int i, err;
-    int fd, confd;
-    socklen_t clilen;
-    struct sockaddr_in clientaddr;
-
-    clilen = sizeof(struct sockaddr);
+    int fd, err;
 
     /* Client Queue Pools Initialization */
     list_pools = lamb_pool_new();
@@ -96,137 +93,135 @@ void lamb_event_loop(void) {
     /* MT Server Initialization */
     err = lamb_server_init(&fd, config.listen, config.port);
     if (err) {
-        lamb_errlog(config.logfile, "lamb server initialization failed", 0);
         return;
     }
 
     /* Start Data Acquisition Thread */
     lamb_start_thread(lamb_stat_loop, NULL, 1);
-    
-    int epfd, nfds;
-    struct epoll_event ev, events[32];
 
-    epfd = epoll_create1(0);
-    ev.data.fd = fd;
-    ev.events = EPOLLIN;
-
-    epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev);
+    int rc;
     
     while (true) {
-        nfds = epoll_wait(epfd, events, 32, -1);
-        for (i = 0; i < nfds; ++i) {
-            if (events[i].data.fd == fd) {
-                /* Accept new client connection  */
-                confd = accept(fd, (struct sockaddr *)&clientaddr, &clilen);
-                if (confd < 0) {
-                    lamb_errlog(config.logfile, "server accept client connect error", 0);
-                    continue;
-                }
+        char *buf = NULL;
+        rc = nn_recv(fd, &buf, NN_MSG, 0);
 
-                /* Start client work thread */
-                lamb_amqp_t *client = (lamb_amqp_t *)calloc(1, sizeof(lamb_amqp_t));
-                if (!client) {
-                    lamb_errlog(config.logfile, "the system cannot allocate memory", 0);
-                }
-
-                client->fd = confd;
-                lamb_sock_nonblock(client->fd, true);
-                lamb_sock_tcpnodelay(client->fd, true);
-                pthread_mutex_init(&client->lock, NULL);
-                client->ip = lamb_strdup(inet_ntoa(clientaddr.sin_addr));
-
-                lamb_start_thread(lamb_work_loop,  (void *)client, 1);
-
-                lamb_errlog(config.logfile, "New client connection from %s", client->ip);
-            }
+        if (rc != sizeof(lamb_client_t)) {
+            nn_freemsg(buf);
+            continue;
         }
+
+        lamb_start_thread(lamb_work_loop,  (void *)buf, 1);
     }
-    
 }
 
 void *lamb_work_loop(void *arg) {
-    int ret, event;
+    int fd, rc;
+    char url[128];
     lamb_node_t *node;
     lamb_queue_t *queue;
-    lamb_amqp_t *client;
+    lamb_client_t *client;
     lamb_submit_t *submit;
-    lamb_amqp_message message;
     
-    printf("-> Start a new %lu thread ", pthread_self());
+    client = (lamb_client_t *)arg;
 
-    client = (lamb_amqp_t *)arg;
+    printf("-> New client from %lu connectd\n", client->addr);
 
-    int epfd, event;
-    struct epoll_event ev, events[32];
-
-    epfd = epoll_create1(0);
-    ev.data.fd = client->fd;
-    ev.events = EPOLLIN;
-
-    epoll_ctl(epfd, EPOLL_CTL_ADD, client->fd, &ev);
-
-    while (true) {
-        event = epoll_wait(epfd, events, 32, -1);
-        if (event > 0) {
-            memset(&message, 0, sizeof(message));
-
-            ret = lamb_sock_recv(client->fd, (char *)&message, 4, config.timeout);
-
-            if (ret == -1) {
-                break;
-            }
-
-            queue = lamb_find_queue(list_pools, message->id);
-
-            if (!queue) {
-                queue = lamb_queue_new(message->account);
-                if (queue) {
-                    lamb_queue_add(list_pools, queue);
-                }
-            }
-
-            if (queue) {
-                if (message.type == LAMB_AMQP_PUSH) {
-                    
-                }
-
-                ret = lamb_queue_push(queue, (void *)message);
-                if (ret) {
-                    lamb_sock_ack(confd);
-                    continue;
-                }
-            }
-
-            lamb_sock_reject(confd);
+    /* Client queue initialization */
+    queue = lamb_find_queue(list_pools, client->id);
+    if (!queue) {
+        queue = lamb_queue_new(message->account);
+        if (queue) {
+            lamb_queue_add(list_pools, queue);
         }
     }
 
-    printf("-> The client %s disconnect\n", client->ip);
+    if (!queue) {
+        nn_freemsg((char *)client);
+        lamb_errlog(config.logfile, "can't create queue for client %s", client->addr);
+        pthread_exit(NULL);
+    }
     
-    close(epfd);
-    free(client->ip);
-    lamb_amqp_destroy(client);
+    /* Client channel initialization */
+    fd = nn_socket(AF_SP, NN_PAIR);
+    if (fd < 0) {
+        nn_freemsg((char *)client);
+        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
+        pthread_exit(NULL);
+    }
+
+    nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &config.timeout, sizeof(config.timeout));
+
+    sprintf(url, "tcp://%s:%d", client->addr, client->port);
+    if (nn_connect(fd, url) < 0) {
+        nn_close(fd);
+        nn_freemsg((char *)client);
+        lamb_errlog(config.logfile, "connect %s", nn_strerror(nn_errno()));
+        pthread_exit(NULL);
+    }
+
+    /* Start event processing */
+    int length;
+    lamb_nn_type *req;
+
+    length = sizeof(lamb_submit_t);
     
+    while (true) {
+        char *buf = NULL;
+        rc = nn_recv(fd, &buf, NN_MSG, 0);
+        req = (lamb_nn_type *)buf;
+
+        if (rc >= sizeof(req)) {
+            switch (req->type) {
+            case LAMB_NN_PULL:
+                node = lamb_queue_pop(queue);
+                if (node) {
+                    if (nn_send(fd, node->val, length, 0) < 0) {
+                        free(node->val);
+                        free(node);
+                        lamb_errlog(config.logfile, "socket %s from %s", nn_strerror(nn_errno()), client->addr);
+                        goto exit;
+                    }
+                    free(node->val);
+                    free(node);
+                }
+                break;
+            case LAMB_NN_PUSH:
+                submit = (lamb_submit_t *)malloc(sizeof(lamb_submit_t));
+                if (submit && ((rc - sizeof(req)) < sizeof(lamb_submit_t))) {
+                    memcpy(submit, (buf + sizeof(req)), rc - sizeof(req));
+                    lamb_queue_push(queue, submit);
+                }
+            }
+        }
+
+        if (rc > 0) {
+            nn_freemsg(buf);
+        }
+    }
+
+exit:
+    nn_close(fd);
+    nn_freemsg((char *)client);
     pthread_exit(NULL);
 }
 
-int lamb_server_init(int *sock, const char *addr, int port) {
-    int fd, err;
+int lamb_server_init(int *sock, const char *listen, int port) {
+    int fd;
+    char addr[128];
 
-    fd = lamb_sock_create();
+    sprintf(addr, "tcp://%s:%d", listen, port);
+    
+    fd = nn_socket(AF_SP, NN_REP);
     if (fd < 0) {
-        lamb_errlog(config.logfile, "lamb create socket failed", 0);
+        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
         return -1;
     }
 
-    err = lamb_sock_bind(fd, addr, port, 1024);
-    if (err) {
-        lamb_errlog(config.logfile, "lamb bind socket failed", 0);
+    if (nn_bind(fd, addr) < 0) {
+        nn_close(fd);
+        lamb_errlog(config.logfile, "bind %s", nn_strerror(nn_errno()));
         return -1;
     }
-
-    lamb_sock_nonblock(fd, true);
-    lamb_sock_tcpnodelay(fd, true);
 
     *sock = fd;
 

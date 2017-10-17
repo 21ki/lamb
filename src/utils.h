@@ -18,6 +18,9 @@
 #define LAMB_REPORT  3
 #define LAMB_UPDATE  4
 
+#define LAMB_NN_PULL 1
+#define LAMB_NN_PUSH 2
+
 #define LAMB_CMCC    1
 #define LAMB_CTCC    2
 #define LAMB_CUCC    3
@@ -25,6 +28,17 @@
 #pragma pack(1)
 
 #define LAMB_MAX_OPERATOR 4
+
+typedef struct {
+    int type;
+} lamb_nn_type;
+
+typedef struct {
+    int id;
+    char addr[16];
+    int port;
+    char token[128];
+} lamb_client_t;
 
 typedef struct {
     int type;
