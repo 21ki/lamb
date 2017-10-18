@@ -19,8 +19,11 @@ server: src/server.c src/server.h $(OBJS)
 deliver: src/deliver.c src/deliver.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) $(LIBS) -o deliver
 
-mt: src/mt.c src/mt.h $(OBJS)
-	$(CC) $(CFLAGS) $(MACRO) src/mt.c $(OBJS) $(LIBS) -lnanomsg -o mt
+mt: src/mt.c src/mt.h $(OBJS) src/pool.o
+	$(CC) $(CFLAGS) $(MACRO) src/mt.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mt
+
+mo: src/mo.c src/mo.h $(OBJS) src/pool.o
+	$(CC) $(CFLAGS) $(MACRO) src/mo.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mo
 
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
@@ -66,6 +69,9 @@ src/security.o: src/security.c src/security.h
 
 src/list.o: src/list.c src/list.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/list.c -o src/list.o
+
+src/pool.o: src/pool.c src/pool.h
+	$(CC) $(CFLAGS) $(MACRO) -c src/pool.c -o src/pool.o
 
 src/keyword.o: src/keyword.c src/keyword.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/keyword.c -o src/keyword.o

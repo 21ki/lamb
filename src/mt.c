@@ -27,11 +27,15 @@
 #include "utils.h"
 #include "config.h"
 #include "cache.h"
+#include "pool.h"
 #include "mt.h"
 
 static lamb_cache_t rdb;
 static lamb_config_t config;
 static lamb_pool_t *list_pools;
+static lamb_rep_t resp;
+static pthread_cond_t cond;
+static pthread_mutex_t mutex;
 
 int main(int argc, char *argv[]) {
     char *file = "mt.conf";
@@ -67,7 +71,7 @@ int main(int argc, char *argv[]) {
     lamb_signal_processing();
 
     /* Start Main Event Thread */
-    lamb_set_process("lamb-mtserv");
+    lamb_set_process("lamb-mtd");
     lamb_event_loop();
 
     return 0;
@@ -76,6 +80,9 @@ int main(int argc, char *argv[]) {
 void lamb_event_loop(void) {
     int fd, err;
 
+    pthread_cond_init(&cond, NULL);
+    pthread_mutex_init(&mutex, NULL);
+    
     /* Client Queue Pools Initialization */
     list_pools = lamb_pool_new();
     if (!list_pools) {
@@ -99,38 +106,51 @@ void lamb_event_loop(void) {
     /* Start Data Acquisition Thread */
     lamb_start_thread(lamb_stat_loop, NULL, 1);
 
-    int rc;
+    int rc, len;
+
+    len = sizeof(lamb_req_t);
     
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
-        if (rc != sizeof(lamb_client_t)) {
+        if (rc != len) {
             nn_freemsg(buf);
+            lamb_errlog(config.logfile, "Invalid request from client", 0);
             continue;
         }
 
+        struct timeval now;
+        struct timespec timeout;
+        gettimeofday(&now, NULL);
+        timeout.tv_sec = now.tv_sec + 5;
+            
+        pthread_mutex_lock(&mutex);
+        memset(&resp, 0, sizeof(resp));
         lamb_start_thread(lamb_work_loop,  (void *)buf, 1);
+        pthread_cond_timedwait(&cond, &mutex, &timeout);
+        nn_send(fd, (char *)&resp, sizeof(resp), 0);
+        pthread_mutex_unlock(&mutex);
     }
 }
 
 void *lamb_work_loop(void *arg) {
+    int err;
     int fd, rc;
-    char url[128];
     lamb_node_t *node;
     lamb_queue_t *queue;
-    lamb_client_t *client;
+    lamb_req_t *client;
     
-    client = (lamb_client_t *)arg;
+    client = (lamb_req_t *)arg;
 
-    printf("-> New client from %s connectd\n", client->addr);
+    printf("-> new client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
-    queue = lamb_find_queue(list_pools, client->id);
+    queue = lamb_pool_find(list_pools, client->id);
     if (!queue) {
         queue = lamb_queue_new(client->id);
         if (queue) {
-            lamb_queue_add(list_pools, queue);
+            lamb_pool_add(list_pools, queue);
         }
     }
 
@@ -141,22 +161,21 @@ void *lamb_work_loop(void *arg) {
     }
     
     /* Client channel initialization */
-    fd = nn_socket(AF_SP, NN_PAIR);
-    if (fd < 0) {
-        nn_freemsg((char *)client);
-        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
-        pthread_exit(NULL);
+    unsigned short port = 7001;
+    err = lamb_child_server(&fd, config.listen, &port);
+    if (err) {
+        port = 0;
+        lamb_errlog(config.logfile, "lamb can't find available port", 0);
     }
+    pthread_mutex_lock(&mutex);
 
-    nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &config.timeout, sizeof(config.timeout));
+    resp.id = client->id;
+    memcpy(resp.addr, config.listen, 16);
+    resp.port = port;
 
-    sprintf(url, "tcp://%s:%d", client->addr, client->port);
-    if (nn_connect(fd, url) < 0) {
-        nn_close(fd);
-        nn_freemsg((char *)client);
-        lamb_errlog(config.logfile, "connect %s", nn_strerror(nn_errno()));
-        pthread_exit(NULL);
-    }
+    pthread_mutex_unlock(&mutex);
+
+    pthread_cond_signal(&cond);    
 
     /* Start event processing */
     int len;
@@ -173,29 +192,30 @@ void *lamb_work_loop(void *arg) {
 
         if (rc == len) {
             node = lamb_queue_push(queue, buf);
-            nn_send(fd, node ? "ack" : "err", 4, 0);
             continue;
         }
 
-        if (rc >= 3 && (strncasecmp(buf, "req", 3) == 0)) {
-            node = lamb_queue_pop(queue);
-            if (node) {
-                if (nn_send(fd, node->val, len, 0) < 0) {
+        if (rc >= 3) {
+            if (strncasecmp(buf, "bye", 3) == 0) {
+                nn_freemsg(buf);
+                break;
+            } else if (strncasecmp(buf, "req", 3) == 0) {
+                node = lamb_queue_pop(queue);
+                nn_send(fd, node ? node->val : "0", node ? len : 1, 0);
+                if (node) {
                     free(node->val);
                     free(node);
-                    nn_freemsg(buf);
-                    lamb_errlog(config.logfile, "socket %s from %s", nn_strerror(nn_errno()), client->addr);
-                    break;
                 }
-                free(node->val);
-                free(node);
+                nn_freemsg(buf);
             }
-            nn_freemsg(buf);
         }
     }
 
     nn_close(fd);
     nn_freemsg((char *)client);
+    printf("-> connection closed from %s\n", client->addr);
+    lamb_errlog(config.logfile, "connection closed from %s", client->addr);
+
     pthread_exit(NULL);
 }
 
@@ -222,77 +242,29 @@ int lamb_server_init(int *sock, const char *listen, int port) {
     return 0;
 }
 
-lamb_queue_t *lamb_queue_add(lamb_pool_t *self, lamb_queue_t *queue) {
-    if (!queue) {
-        return NULL;
+int lamb_child_server(int *sock, const char *listen, unsigned short *port) {
+    int fd;
+    char addr[128];
+
+    fd = nn_socket(AF_SP, NN_PAIR);
+    if (fd < 0) {
+        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
+        return -1;
     }
+    
+    while (true) {
+        sprintf(addr, "tcp://%s:%u", listen, *port);
 
-    if (self->len) {
-        self->tail->next = queue;
-        self->tail = queue;
-    } else {
-        self->head = self->tail = queue;
-    }
-    ++self->len;
-
-    return queue;
-}
-
-void lamb_queue_del(lamb_pool_t *self, int id) {
-    lamb_queue_t *prev;
-    lamb_queue_t *curr;
-
-    prev = NULL;
-    curr = self->head;
-
-    while (curr != NULL) {
-        if (curr->id == id) {
-            if (prev) {
-                prev->next = curr->next;
-            } else {
-                self->head = curr->next;
-            }
-
-            --self->len;
-            free(curr);
+        if (nn_bind(fd, addr) > 0) {
             break;
         }
 
-        prev = curr;
-        curr = curr->next;
+        (*port)++;
     }
 
-    return;
-}
-
-lamb_queue_t *lamb_find_queue(lamb_pool_t *self, int id) {
-    lamb_queue_t *queue;
-
-    queue = self->head;
+    *sock = fd;
     
-    while (queue != NULL) {
-        if (queue->id == id) {
-            break;
-        }
-        queue = queue->next;
-    }
-
-    return queue;
-}
-
-lamb_pool_t *lamb_pool_new(void) {
-    lamb_pool_t *self;
-    
-    self = (lamb_pool_t *)malloc(sizeof(lamb_pool_t));
-    if (!self) {
-        return NULL;
-    }
-
-    self->len = 0;
-    self->head = NULL;
-    self->tail = NULL;
-
-    return self;
+    return 0;
 }
 
 void *lamb_stat_loop(void *arg) {
@@ -306,7 +278,7 @@ void *lamb_stat_loop(void *arg) {
             if (reply != NULL) {
                 freeReplyObject(reply);
             }
-            printf("-> node: %d, len: %lld\n", queue->id, queue->len);
+            printf("-> queue: %d, len: %lld\n", queue->id, queue->len);
             queue = queue->next;
         }
 
@@ -344,11 +316,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "WorkerThread", &conf->worker_thread) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'WorkerThread' parameter\n");
         goto error;
     }
 

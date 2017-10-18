@@ -24,19 +24,18 @@
 #include "server.h"
 #include "utils.h"
 #include "config.h"
+#include "queue.h"
 #include "keyword.h"
 #include "security.h"
 #include "message.h"
 
+static int mt, mo;
 static int aid = 0;
 static lamb_db_t db;
 static lamb_db_t mdb;
 static lamb_cache_t rdb;
 static lamb_caches_t cache;
-static lamb_cache_t black;
-static lamb_queue_t client;
-static lamb_list_t *queue;
-static lamb_list_t *storage;
+static lamb_queue_t *storage;
 static lamb_queues_t channel;
 static lamb_group_t group;
 static lamb_account_t account;
@@ -46,7 +45,7 @@ static lamb_keywords_t keywords;
 static lamb_config_t config;
 
 int main(int argc, char *argv[]) {
-    bool daemon = false;
+    bool background = false;
     char *file = "server.conf";
 
     int opt = 0;
@@ -62,7 +61,7 @@ int main(int argc, char *argv[]) {
             file = optarg;
             break;
         case 'd':
-            daemon = true;
+            background = true;
             break;
         }
         opt = getopt(argc, argv, optstring);
@@ -74,7 +73,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Daemon mode */
-    if (daemon) {
+    if (background) {
         lamb_daemon();
     }
 
@@ -100,16 +99,9 @@ void lamb_event_loop(void) {
         printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
     }
 
-    /* Work Queue Initialization */
-    queue = lamb_list_new();
-    if (queue == NULL) {
-        lamb_errlog(config.logfile, "Lamb work queue initialization failed ", 0);
-        return;
-    }
-
     /* Storage Queue Initialization */
-    storage = lamb_list_new();
-    if (storage == NULL) {
+    storage = lamb_queue_new(0);
+    if (!storage) {
         lamb_errlog(config.logfile, "Lamb storage queue initialization failed ", 0);
         return;
     }
@@ -121,13 +113,6 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Blacklist Cache Initialization */
-    err = lamb_cache_connect(&black, config.black_host, config.black_port, NULL, config.black_db);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to cache server", 0);
-        return;
-    }
-    
     /* Cache Node Initialization */
     memset(&cache, 0, sizeof(cache));
     lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7);
@@ -170,9 +155,12 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Open Client Queue */
-    lamb_init_queues(&account);
+    /* Connect to MT server */
+    lamb_nn_connect(mt, &account);
 
+    /* Connect to MO server */
+    lamb_nn_connect(mo, &account);
+    
     /* Fetch company information */
     memset(&company, 0, sizeof(company));
     err = lamb_company_get(&db, account.company, &company);
@@ -558,6 +546,80 @@ void lamb_init_queues(lamb_account_t *account) {
     return;
 }
 
+int lamb_mt_connect(int *sock, lamb_client_t *client, lamb_config_t *cfg) {
+    int fd, rc;
+    char *buf;
+    char url[128];
+    lamb_req_t req;
+    lamb_rep_t *rep;
+    long long timeout;
+    
+    fd = nn_socket(AF_SP, NN_REQ);
+    if (fd < 0) {
+        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
+        return -1;
+    }
+
+    timeout = cfg->timeout;
+    nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &timeout, sizeof(timeout));
+    
+    sprintf(url, "tcp://%s:%d", cfg->mt_host, cfg->mt_port);
+    if (nn_connect(fd, url) < 0) {
+        nn_close(fd);
+        lamb_errlog(cfg->logfile, "can't connect to %s server", cfg->mt_host);
+        return -1;
+    }
+
+    memset(&req, 0, sizeof(req));
+    req.id = client->account->id;
+    memcpy(req.addr, cfg->listen, 16);
+
+    rc = nn_send(fd, (char *)&req, sizeof(req), 0);
+    if (rc < 0) {
+        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
+        nn_close(fd);
+        return -1;
+    }
+
+    buf = NULL;
+    rc = nn_recv(fd, &buf, NN_MSG, 0);
+    if (rc < 0) {
+        nn_close(fd);
+        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
+        return -1;
+    }
+    
+    if (rc != sizeof(lamb_rep_t)) {
+        nn_close(fd);
+        nn_freemsg(buf);
+        lamb_errlog(cfg->logfile, "socket protocol packet error", 0);
+        return -1;
+    }
+
+    nn_close(fd);
+    rep = (lamb_rep_t *)buf;
+
+    fd = nn_socket(AF_SP, NN_PAIR);
+    if (fd < 0) {
+        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
+        return -1;
+    }
+
+    nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &timeout, sizeof(timeout));
+
+    sprintf(url, "tcp://%s:%d", rep->addr, rep->port);
+    if (nn_connect(fd, url) < 0) {
+        nn_close(fd);
+        lamb_errlog(cfg->logfile, "can't connect to %s server", cfg->mt_host);
+        return -1;
+    }
+
+    *sock = fd;
+    nn_freemsg(buf);
+
+    return 0;
+}
+
 int lamb_read_config(lamb_config_t *conf, const char *file) {
     if (!conf) {
         return -1;
@@ -576,16 +638,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     
     if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_bool(&cfg, "Daemon", &conf->daemon) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Daemon' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "WorkQueue", &conf->work_queue) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'WorkQueue' parameter\n");
         goto error;
     }
 
@@ -624,36 +676,26 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "BlackHost", conf->black_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'BlackHost' parameter\n");
+    if (lamb_get_string(&cfg, "MtHost", conf->mt_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid MT server IP address\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "BlackPort", &conf->black_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'BlackPort' parameter\n");
+    if (lamb_get_int(&cfg, "MtPort", &conf->mt_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MtPort' parameter\n");
         goto error;
     }
 
-    if (conf->black_port < 1 || conf->black_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid blacklist cache port number\n");
+    if (lamb_get_string(&cfg, "MoHost", conf->mo_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid MO server IP address\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "BlackPassword", conf->black_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'BlackPassword' parameter\n");
+    if (lamb_get_int(&cfg, "MoPort", &conf->mo_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MoPort' parameter\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "BlackDb", &conf->black_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'BlackDb' parameter\n");
-        goto error;
-    }
-    
-    if (conf->black_db < 0 || conf->black_db > 65535) {
-        fprintf(stderr, "ERROR: Invalid blacklist cache database name\n");
-        goto error;
-    }
-    
     if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
         goto error;

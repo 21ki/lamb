@@ -36,6 +36,8 @@ lamb_node_t *lamb_queue_push(lamb_queue_t *self, void *val) {
     lamb_node_t *node;
     node = (lamb_node_t *)malloc(sizeof(lamb_node_t));
 
+    pthread_mutex_lock(&self->lock);
+
     if (node) {
         node->val = val;
         node->next = NULL;
@@ -48,6 +50,8 @@ lamb_node_t *lamb_queue_push(lamb_queue_t *self, void *val) {
         ++self->len;
     }
 
+    pthread_mutex_unlock(&self->lock);
+    
     return node;
 }
 
@@ -56,6 +60,8 @@ lamb_node_t *lamb_queue_pop(lamb_queue_t *self) {
         return NULL;
     }
 
+    pthread_mutex_lock(&self->lock);
+    
     lamb_node_t *node = self->head;
 
     if (--self->len) {
@@ -64,6 +70,7 @@ lamb_node_t *lamb_queue_pop(lamb_queue_t *self) {
         self->head = self->tail = NULL;
     }
 
+    pthread_mutex_unlock(&self->lock);
     node->next = NULL;
 
     return node;

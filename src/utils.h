@@ -25,20 +25,21 @@
 #define LAMB_CTCC    2
 #define LAMB_CUCC    3
 
-#pragma pack(1)
-
 #define LAMB_MAX_OPERATOR 4
 
+#pragma pack(1)
+
 typedef struct {
-    int type;
-} lamb_nn_type;
+    int id;
+    char addr[16];
+    char token[128];
+} lamb_req_t;
 
 typedef struct {
     int id;
     char addr[16];
     int port;
-    char token[128];
-} lamb_client_t;
+} lamb_rep_t;
 
 typedef struct {
     int type;

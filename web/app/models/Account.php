@@ -106,7 +106,7 @@ class AccountModel {
                 if ($sth->execute()) {
                     $result = $sth->fetch();
                     if ($result !== false) {
-                        $this->redis->hMSet('account.' . $result['username'], $data);
+                        $this->redis->hMSet('account.' . $result['username'], $result);
                         return true;
                     }
                 }

@@ -40,6 +40,14 @@ typedef struct {
 } lamb_config_t;
 
 typedef struct {
+    unsigned long long recv;
+    unsigned long long sub;
+    unsigned long long rep;
+    unsigned long long delv;
+    unsigned long long err;
+} lamb_status_t;
+
+typedef struct {
     unsigned int sequenceId;
     unsigned long long id;
 } lamb_confirmed_t;

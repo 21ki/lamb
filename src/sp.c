@@ -20,31 +20,33 @@
 #include "list.h"
 #include "queue.h"
 #include "cache.h"
-#include "leveldb.h"
 
 static cmpp_sp_t cmpp;
+static lamb_mq_t queue;
 static lamb_cache_t rdb;
-static lamb_leveldb_t cache;
 static lamb_config_t config;
-static lamb_list_t *recovery;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
-static lamb_queue_t send_queue;
-static lamb_queue_t recv_queue;
 static lamb_heartbeat_t heartbeat;
 static lamb_confirmed_t confirmed;
+static unsigned long long total;
+static lamb_status_t status;
 
 int main(int argc, char *argv[]) {
-    char *file = "lamb.conf";
+    char *file = "sp.conf";
+    bool background = false;
 
     int opt = 0;
-    char *optstring = "c:";
+    char *optstring = "c:d";
     opt = getopt(argc, argv, optstring);
 
     while (opt != -1) {
         switch (opt) {
         case 'c':
             file = optarg;
+            break;
+        case 'd':
+            background = true;
             break;
         }
         opt = getopt(argc, argv, optstring);
@@ -57,8 +59,8 @@ int main(int argc, char *argv[]) {
     }
 
     /* Daemon mode */
-    if (config.daemon) {
-        //lamb_daemon();
+    if (background) {
+        lamb_daemon();
     }
 
     /* Signal event processing */
@@ -78,20 +80,6 @@ void lamb_event_loop(void) {
 
     lamb_set_process("lamb-gateway");
 
-    /* Storage Queue Initialization */
-    recovery = lamb_list_new();
-    if (recovery == NULL) {
-        lamb_errlog(config.logfile, "Lamb recovery queue initialization failed ", 0);
-        return;
-    }
-    
-    /* Cache Initialization */
-    err = lamb_level_init(&cache, config.cache);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open leveldb cache database", 0);
-        return;
-    }
-
     /* Redis Initialization */
     err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
@@ -101,33 +89,21 @@ void lamb_event_loop(void) {
 
     /* Message queue initialization */
     char name[64];
-    lamb_queue_opt sopt, ropt;
-    struct mq_attr sattr, rattr;
+    lamb_queue_opt opt;
+    struct mq_attr attr;
 
-    sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    sattr.mq_maxmsg = 8;
-    sattr.mq_msgsize = sizeof(lamb_message_t);
-    sopt.attr = &sattr;
-    
+    opt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
+    attr.mq_maxmsg = 8;
+    attr.mq_msgsize = sizeof(lamb_message_t);
+    opt.attr = &attr;
+
     sprintf(name, "/gw.%d.message", config.id);
-    err = lamb_queue_open(&send_queue, name, &sopt);
+    err = lamb_mq_open(&queue, name, &opt);
     if (err) {
         lamb_errlog(config.logfile, "Can't open %s queue", name);
         return;
     }
 
-    ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
-    rattr.mq_maxmsg = 65535;
-    rattr.mq_msgsize = sizeof(lamb_message_t);
-    ropt.attr = &rattr;
-    
-    sprintf(name, "/gw.%d.deliver", config.id);
-    err = lamb_queue_open(&recv_queue, name, &ropt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open %s queue", name);
-        return;
-    }
-    
     /* Cmpp client initialization */
     err = lamb_cmpp_init(&cmpp, &config);
     if (err) {
@@ -571,14 +547,9 @@ int lamb_save_logfile(char *file, void *data) {
     return 0;
 }
 
-void *lamb_online_update(void *data) {
+void *lamb_stat_loop(void *data) {
     int err;
     redisReply *reply = NULL;
-
-    err = lamb_cpu_affinity(pthread_self());
-    if (err) {
-        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
-    }
 
     while (true) {
         pthread_mutex_lock(&(rdb.lock));
@@ -593,30 +564,27 @@ void *lamb_online_update(void *data) {
     pthread_exit(NULL);
 }
 
-void *lamb_recovery_loop(void *data) {
-    int err;
-    char *key = NULL;
-    lamb_list_node_t *node;
+void *lamb_online_update(void *data) {
+    lamb_client_t *client;
+    redisReply *reply = NULL;
+    unsigned long long last, error;
+
+    last = 0;
+    client = (lamb_client_t *)data;
 
     while (true) {
-        pthread_mutex_lock(&recovery->lock);
-        node = lamb_list_lpop(recovery);
-        pthread_mutex_unlock(&recovery->lock);
-
-        if (!node) {
-            lamb_sleep(50);
-            continue;
+        error = status.timeo + status.fmt + status.len + status.err;
+        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu error %llu", client->account->id, getpid(), (unsigned long long)((total - last) / 5), error);
+        if (reply != NULL) {
+            freeReplyObject(reply);
+            reply = NULL;
+        } else {
+            lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
         }
 
-        key = (char *)node->val;
-        err = lamb_level_delete(&cache, key, strlen(key));
-        if (err) {
-            lamb_errlog(config.logfile, "Can't delete message resources from leveldb", 0);
-            lamb_sleep(1000);
-        }
-
-        free(key);
-        free(node);
+        printf("-> [status] recv: %llu, store: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n", status.recv, status.store, status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
+        total = 0;
+        sleep(5);
     }
 
     pthread_exit(NULL);

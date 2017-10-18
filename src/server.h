@@ -10,7 +10,6 @@
 
 #include "cache.h"
 #include "queue.h"
-#include "list.h"
 #include "db.h"
 #include "group.h"
 #include "account.h"
@@ -27,18 +26,16 @@
 typedef struct {
     int id;
     bool debug;
-    bool daemon;
-    int work_queue;
     int work_threads;
     char logfile[128];
     char redis_host[16];
     int redis_port;
     char redis_password[64];
     int redis_db;
-    char black_host[16];
-    int black_port;
-    char black_password[64];
-    int black_db;
+    char mt_host[16];
+    int mt_port;
+    char mo_host[16];
+    int mo_port;
     char db_host[16];
     int db_port;
     char db_user[64];
@@ -56,7 +53,6 @@ typedef struct {
     lamb_db_t *db;
     lamb_cache_t *rdb;
     lamb_cache_t *cache;
-    lamb_list_t *queue;
     lamb_list_t *storage;
     lamb_queues_t *channel;
     lamb_account_t *account;
