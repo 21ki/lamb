@@ -23,15 +23,16 @@
 #include <sys/epoll.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <nanomsg/nn.h>
+#include <nanomsg/pair.h>
+#include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "ismg.h"
 #include "utils.h"
 #include "cache.h"
-#include "socket.h"
 #include "config.h"
 
-static lamb_amqp_t *mt;
-static lamb_amqp_t *mo;
+static int mt, mo;
 static cmpp_ismg_t cmpp;
 static lamb_cache_t rdb;
 static lamb_status_t status;
@@ -73,7 +74,7 @@ int main(int argc, char *argv[]) {
     int err;
 
     /* Redis Cache */
-    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
+    err = lamb_cache_connect(&rdb, "127.0.0.1", 6379, NULL, 0);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to redis server", 0);
         return -1;
@@ -283,19 +284,7 @@ void lamb_work_loop(lamb_client_t *client) {
     }
 
     /* Connect to MT server */
-    mt = lamb_amqp_new();
-    if (!mt) {
-        lamb_errlog(config.logfile, "lamb mt server initialization failed", 0);
-        return;
-    }
     
-    err = lamb_amqp_connect(mt, config.mt_host, config.mt_port, config.timeout);
-    if (err) {
-        lamb_amqp_destroy(mt);
-        lamb_errlog(config.logfile, "can't connect to mt %s server", config.mt_host);
-        return;
-    }
-
     /* Epoll Events */
     int epfd, nfds;
     struct epoll_event ev, events[32];
@@ -600,21 +589,17 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
+    if (lamb_get_string(&cfg, "AcHost", conf->ac_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
     }
 
-    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
+    if (lamb_get_int(&cfg, "AcPort", &conf->ac_port) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
     }
 
-    if (conf->redis_port < 1 || conf->redis_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid redis port number\n");
+    if (conf->ac_port < 1 || conf->ac_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid AC port number\n");
         goto error;
-    }
-
-    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'redisDb' parameter\n");
     }
 
     if (lamb_get_string(&cfg, "MtHost", conf->mt_host, 16) != 0) {

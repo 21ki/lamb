@@ -120,16 +120,15 @@ void *lamb_work_loop(void *arg) {
     lamb_node_t *node;
     lamb_queue_t *queue;
     lamb_client_t *client;
-    lamb_submit_t *submit;
     
     client = (lamb_client_t *)arg;
 
-    printf("-> New client from %lu connectd\n", client->addr);
+    printf("-> New client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
     queue = lamb_find_queue(list_pools, client->id);
     if (!queue) {
-        queue = lamb_queue_new(message->account);
+        queue = lamb_queue_new(client->id);
         if (queue) {
             lamb_queue_add(list_pools, queue);
         }
@@ -160,46 +159,41 @@ void *lamb_work_loop(void *arg) {
     }
 
     /* Start event processing */
-    int length;
-    lamb_nn_type *req;
+    int len;
 
-    length = sizeof(lamb_submit_t);
+    len = sizeof(lamb_submit_t);
     
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
-        req = (lamb_nn_type *)buf;
-
-        if (rc >= sizeof(req)) {
-            switch (req->type) {
-            case LAMB_NN_PULL:
-                node = lamb_queue_pop(queue);
-                if (node) {
-                    if (nn_send(fd, node->val, length, 0) < 0) {
-                        free(node->val);
-                        free(node);
-                        lamb_errlog(config.logfile, "socket %s from %s", nn_strerror(nn_errno()), client->addr);
-                        goto exit;
-                    }
-                    free(node->val);
-                    free(node);
-                }
-                break;
-            case LAMB_NN_PUSH:
-                submit = (lamb_submit_t *)malloc(sizeof(lamb_submit_t));
-                if (submit && ((rc - sizeof(req)) < sizeof(lamb_submit_t))) {
-                    memcpy(submit, (buf + sizeof(req)), rc - sizeof(req));
-                    lamb_queue_push(queue, submit);
-                }
-            }
+        
+        if (rc < 0) {
+            break;
         }
 
-        if (rc > 0) {
+        if (rc == len) {
+            node = lamb_queue_push(queue, buf);
+            nn_send(fd, node ? "ack" : "err", 4, 0);
+            continue;
+        }
+
+        if (rc >= 3 && (strncasecmp(buf, "req", 3) == 0)) {
+            node = lamb_queue_pop(queue);
+            if (node) {
+                if (nn_send(fd, node->val, len, 0) < 0) {
+                    free(node->val);
+                    free(node);
+                    nn_freemsg(buf);
+                    lamb_errlog(config.logfile, "socket %s from %s", nn_strerror(nn_errno()), client->addr);
+                    break;
+                }
+                free(node->val);
+                free(node);
+            }
             nn_freemsg(buf);
         }
     }
 
-exit:
     nn_close(fd);
     nn_freemsg((char *)client);
     pthread_exit(NULL);
@@ -228,7 +222,7 @@ int lamb_server_init(int *sock, const char *listen, int port) {
     return 0;
 }
 
-lamb_node_t *lamb_queue_add(lamb_pool_t *self, lamb_queue_t *queue) {
+lamb_queue_t *lamb_queue_add(lamb_pool_t *self, lamb_queue_t *queue) {
     if (!queue) {
         return NULL;
     }
@@ -271,7 +265,7 @@ void lamb_queue_del(lamb_pool_t *self, int id) {
     return;
 }
 
-lamb_node_t *lamb_find_queue(lamb_pool_t *self, int id) {
+lamb_queue_t *lamb_find_queue(lamb_pool_t *self, int id) {
     lamb_queue_t *queue;
 
     queue = self->head;

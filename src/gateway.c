@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "gateway.h"
-#include "queue.h"
 
 int lamb_gateway_get(lamb_db_t *db, int id, lamb_gateway_t *gateway) {
     char *column;
@@ -87,7 +86,7 @@ int lamb_gateway_get_all(lamb_db_t *db, lamb_gateways_t *gateways, int size) {
     return 0;
 }
 
-int lamb_gateway_queue_open(lamb_gateway_queues_t *queues, int qlen, lamb_gateways_t *gateways, int glen, lamb_queue_opt *opt, int type) {
+int lamb_gateway_queue_open(lamb_gateway_queues_t *queues, int qlen, lamb_gateways_t *gateways, int glen, lamb_mq_opt *opt, int type) {
     int err;
     char name[128];
 
@@ -105,7 +104,7 @@ int lamb_gateway_queue_open(lamb_gateway_queues_t *queues, int qlen, lamb_gatewa
                 sprintf(name, "/gw.%d.deliver", gateways->list[i]->id);
             }
 
-            err = lamb_queue_open(&(q->queue), name, opt);
+            err = lamb_mq_open(&(q->queue), name, opt);
             if (err) {
                 j--;
                 free(q);

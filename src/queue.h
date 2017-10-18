@@ -9,12 +9,14 @@
 #ifndef _LAMB_QUEUE_H
 #define _LAMB_QUEUE_H
 
+#include <pthread.h>
+
 typedef struct lamb_node_t {
     void *val;
     struct lamb_node_t *next;
 } lamb_node_t;
 
-typedef struct lamb_node_t {
+typedef struct lamb_queue_t {
     int id;
     long long len;
     pthread_mutex_t lock;

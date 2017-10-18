@@ -5,6 +5,9 @@
  * Update: 2017-07-14
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "queue.h"
 
 lamb_queue_t *lamb_queue_new(int id) {

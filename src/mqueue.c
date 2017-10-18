@@ -22,7 +22,7 @@ int lamb_mq_open(lamb_mq_t *queue, char *name, lamb_mq_opt *opt) {
     return 0;
 }
 
-int lamb_mq_send(lamb_queue_t *queue, const char *val, size_t len, unsigned int prio) {
+int lamb_mq_send(lamb_mq_t *queue, const char *val, size_t len, unsigned int prio) {
     return mq_send(queue->mqd, val, len, prio);
 }
 
@@ -44,6 +44,6 @@ int lamb_mq_getattr(lamb_mq_t *queue, lamb_mq_attr *qattr) {
     return 0;
 }
 
-int lamb_mq_close(lamb_queue_t *queue) {
+int lamb_mq_close(lamb_mq_t *queue) {
     return mq_close(queue->mqd);
 }

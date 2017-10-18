@@ -193,68 +193,6 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
     return 0;
 }
 
-int lamb_account_queue_open(lamb_account_queues_t *queues, int qlen, lamb_accounts_t *accounts, int alen, lamb_queue_opt *opt, int type) {
-    int err;
-    char name[128];
-
-    queues->len = 0;
-    memset(name, 0, sizeof(name));
-
-    for (int i = 0, j = 0; (i < alen) && (i < qlen) && (accounts->list[i] != NULL); i++, j++) {
-        lamb_account_queue_t *q = NULL;
-        q = (lamb_account_queue_t *)calloc(1, sizeof(lamb_account_queue_t));
-        if (q != NULL) {
-            q->id = accounts->list[i]->id;
-
-            /* Open send queue */
-            if (type == LAMB_QUEUE_SEND) {
-                sprintf(name, "/cli.%d.message", accounts->list[i]->id);
-            } else {
-                sprintf(name, "/cli.%d.deliver", accounts->list[i]->id);
-            }
-            
-            err = lamb_queue_open(&(q->queue), name, opt);
-            if (err) {
-                j--;
-                free(q);
-                continue;
-            }
-
-            queues->list[j] = q;
-            queues->len++;
-        } else {
-            if (j > 0) {
-                j--;
-            }
-        }
-    }
-
-    return 0;
-}
-
-int lamb_account_epoll_add(int epfd, struct epoll_event *event, lamb_account_queues_t *queues, int len, int type) {
-    int err;
-
-    for (int i = 0; (i < queues->len) && (i < len) && (queues->list[i] != NULL); i++) {
-        switch (type) {
-        case LAMB_QUEUE_SEND:
-            event->events = EPOLLIN;
-            break;
-        case LAMB_QUEUE_RECV:
-            event->events = EPOLLOUT;
-            break;
-        }
-
-        event->data.fd = queues->list[i]->queue.mqd;
-        err = epoll_ctl(epfd, EPOLL_CTL_ADD, queues->list[i]->queue.mqd, event);
-        if (err == -1) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 int lamb_account_spcode_process(char *code, char *spcode, size_t size) {
     size_t len;
 
