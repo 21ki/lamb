@@ -157,18 +157,10 @@ void *lamb_sender_loop(void *data) {
         msgFmt = 0;
     }
 
-    int count = 0;
-    unsigned long long start_time;
-    unsigned long long next_summary_time;
-
-    start_time = lamb_now_microsecond();
-    next_summary_time = start_time + 1000000;
-    
     while (true) {
         if (!cmpp.ok) {
             count = 0;
             lamb_sleep(1000);
-            start_time = lamb_now_microsecond();
             continue;
         }
 
@@ -185,8 +177,6 @@ void *lamb_sender_loop(void *data) {
                 strcpy(spcode, config.spcode);
             }
             
-            now_time = lamb_now_microsecond();
-
             /* Message Encode Convert */
             int length;
             char content[256];
@@ -209,18 +199,13 @@ void *lamb_sender_loop(void *data) {
 
             printf("-> [sending] Message %llu phone: %s, msgFmt: %d, length: %d to %s OK\n", submit->id, submit->phone, msgFmt, length, config.host);
 
-            count++;
-
-            err = lamb_wait_confirmation(&cond, &mutex, config.timeout);
-            
             if (err == ETIMEDOUT) {
                 printf("-> [error] wait message %llu confirmation timeout", submit->id);
                 lamb_errlog(config.logfile, "Wait submit message confirmation timeout", 0);
                 lamb_sleep(config.interval * 1000);
             }
 
-            /* Flow Monitoring And Control */
-            lamb_flow_limit(&start_time, &now_time, &next_summary_time, &count, config.concurrent);
+            lamb_sleep(10);
         } else {
             lamb_sleep(10);
         }
@@ -559,32 +544,6 @@ void *lamb_stat_loop(void *data) {
             freeReplyObject(reply);
         }
         sleep(3);
-    }
-
-    pthread_exit(NULL);
-}
-
-void *lamb_online_update(void *data) {
-    lamb_client_t *client;
-    redisReply *reply = NULL;
-    unsigned long long last, error;
-
-    last = 0;
-    client = (lamb_client_t *)data;
-
-    while (true) {
-        error = status.timeo + status.fmt + status.len + status.err;
-        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu error %llu", client->account->id, getpid(), (unsigned long long)((total - last) / 5), error);
-        if (reply != NULL) {
-            freeReplyObject(reply);
-            reply = NULL;
-        } else {
-            lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
-        }
-
-        printf("-> [status] recv: %llu, store: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n", status.recv, status.store, status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
-        total = 0;
-        sleep(5);
     }
 
     pthread_exit(NULL);
