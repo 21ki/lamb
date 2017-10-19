@@ -24,8 +24,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <nanomsg/nn.h>
-#include <nanomsg/pair.h>
-#include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "ismg.h"
 #include "utils.h"

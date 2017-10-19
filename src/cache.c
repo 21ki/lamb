@@ -140,7 +140,7 @@ int lamb_cache_hget(lamb_cache_t *cache, char *key, char *field, char *buff, siz
     return 0;
 }
 
-int lamb_nodes_connect(lamb_caches_t *cache, int len, char *nodes[], int size) {
+int lamb_nodes_connect(lamb_caches_t *cache, int len, char *nodes[], int size, int db) {
     int err;
     char host[16];
     int port = 0;
@@ -153,7 +153,7 @@ int lamb_nodes_connect(lamb_caches_t *cache, int len, char *nodes[], int size) {
         lamb_hp_parse(nodes[i], host, &port);
         node = (lamb_cache_t *)calloc(1, sizeof(lamb_cache_t));
         if (node != NULL) {
-            err = lamb_cache_connect(node, host, port, NULL, 0);
+            err = lamb_cache_connect(node, host, port, NULL, db);
             if (!err) {
                 cache->nodes[j] = node;
                 cache->len++;

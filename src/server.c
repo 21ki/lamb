@@ -113,9 +113,9 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Cache Node Initialization */
+    /* Cache Cluster Initialization */
     memset(&cache, 0, sizeof(cache));
-    lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7);
+    lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 1);
     if (cache.len != 7) {
         lamb_errlog(config.logfile, "connect to cache cluster server failed", 0);
         return;

@@ -8,7 +8,7 @@ LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcr
 all: sp ismg server deliver mtserv test
 
 sp: src/sp.c src/sp.h $(OBJS)
-	$(CC) $(CFLAGS) $(MACRO) src/sp.c $(OBJS) $(LIBS) -o sp
+	$(CC) $(CFLAGS) $(MACRO) src/sp.c $(OBJS) $(LIBS) -lnanomsg -o sp
 
 ismg: src/ismg.c src/ismg.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/ismg.c $(OBJS) $(LIBS) -lnanomsg -o ismg
@@ -28,8 +28,8 @@ mo: src/mo.c src/mo.h $(OBJS) src/pool.o
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
 
-test: src/test.c src/test.h src/utils.o src/queue.o
-	$(CC) $(CFLAGS) $(MACRO) src/test.c src/utils.o src/queue.o $(LIBS) -o test
+test: src/test.c src/test.h src/utils.o src/mqueue.o
+	$(CC) $(CFLAGS) $(MACRO) src/test.c src/utils.o src/mqueue.o $(LIBS) -o test
 
 src/account.o: src/account.c src/account.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/account.c -o src/account.o

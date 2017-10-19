@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include "utils.h"
+#include "cache.h"
 
 typedef struct {
     int id;
@@ -35,15 +36,18 @@ typedef struct {
     int redis_port;
     char redis_password[64];
     int redis_db;
-    char cache[128];
+    char md_host[16];
+    int md_port;
+    char *nodes[7];
     lamb_operator_t sp;
 } lamb_config_t;
 
 typedef struct {
-    unsigned long long recv;
     unsigned long long sub;
+    unsigned long long ack;
     unsigned long long rep;
     unsigned long long delv;
+    unsigned long long timeo;
     unsigned long long err;
 } lamb_status_t;
 
@@ -60,12 +64,15 @@ typedef struct {
 void lamb_event_loop(void);
 void *lamb_sender_loop(void *data);
 void *lamb_deliver_loop(void *data);
+void *lamb_work_loop(void *data);
 void *lamb_cmpp_keepalive(void *data);
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config);
 int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config);
 int lamb_save_logfile(char *file, void *data);
-void *lamb_online_update(void *data);
-void *lamb_recovery_loop(void *data);
+void *lamb_stat_loop(void *data);
 int lamb_read_config(lamb_config_t *conf, const char *file);
+int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id);
+unsigned long long lamb_get_cache(lamb_caches_t *caches, unsigned long long msgId);
+int lamb_del_cache(lamb_caches_t *caches, unsigned long long msgId);
 
 #endif

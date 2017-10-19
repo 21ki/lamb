@@ -108,6 +108,7 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_stat_loop, NULL, 1);
 
     int rc, len;
+    lamb_req_t *req;
 
     len = sizeof(lamb_req_t);
     
@@ -121,11 +122,19 @@ void lamb_event_loop(void) {
             continue;
         }
 
+        req = (lamb_req_t *)buf;
+
+        if (req->id < 1) {
+            nn_freemsg(buf);
+            lamb_errlog(config.logfile, "Invalid request from client", 0);
+            continue;
+        }
+
         struct timeval now;
         struct timespec timeout;
         gettimeofday(&now, NULL);
         timeout.tv_sec = now.tv_sec + 5;
-            
+
         pthread_mutex_lock(&mutex);
         memset(&resp, 0, sizeof(resp));
         lamb_start_thread(lamb_work_loop,  (void *)buf, 1);
