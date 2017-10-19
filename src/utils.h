@@ -30,18 +30,6 @@
 #pragma pack(1)
 
 typedef struct {
-    int id;
-    char addr[16];
-    char token[128];
-} lamb_req_t;
-
-typedef struct {
-    int id;
-    char addr[16];
-    int port;
-} lamb_rep_t;
-
-typedef struct {
     int type;
     char data[508];
 } lamb_message_t;

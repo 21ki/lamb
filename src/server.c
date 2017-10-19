@@ -102,7 +102,7 @@ void lamb_event_loop(void) {
     /* Storage Queue Initialization */
     storage = lamb_queue_new(0);
     if (!storage) {
-        lamb_errlog(config.logfile, "Lamb storage queue initialization failed ", 0);
+        lamb_errlog(config.logfile, "storage queue initialization failed ", 0);
         return;
     }
 
@@ -116,15 +116,15 @@ void lamb_event_loop(void) {
     /* Cache Node Initialization */
     memset(&cache, 0, sizeof(cache));
     lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7);
-    if (cache.len < 1) {
-        lamb_errlog(config.logfile, "Can't connect to cache node server", 0);
+    if (cache.len != 7) {
+        lamb_errlog(config.logfile, "connect to cache cluster server failed", 0);
         return;
     }
 
     /* Postgresql Database  */
     err = lamb_db_init(&db);
     if (err) {
-        lamb_errlog(config.logfile, "Can't initialize postgresql database handle", 0);
+        lamb_errlog(config.logfile, "postgresql database initialization failed", 0);
         return;
     }
 
@@ -137,7 +137,7 @@ void lamb_event_loop(void) {
     /* Postgresql Database  */
     err = lamb_db_init(&mdb);
     if (err) {
-        lamb_errlog(config.logfile, "Can't initialize message database handle", 0);
+        lamb_errlog(config.logfile, "postgresql database initialization failed", 0);
         return;
     }
 
@@ -546,76 +546,37 @@ void lamb_init_queues(lamb_account_t *account) {
     return;
 }
 
-int lamb_mt_connect(int *sock, lamb_client_t *client, lamb_config_t *cfg) {
-    int fd, rc;
-    char *buf;
-    char url[128];
-    lamb_req_t req;
-    lamb_rep_t *rep;
-    long long timeout;
-    
-    fd = nn_socket(AF_SP, NN_REQ);
-    if (fd < 0) {
-        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
+int lamb_cache_message(lamb_cache_t *cache, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HMSET %llu spid %s spcode %s phone %s account %d company %d charge %d",
+                         message->id, message->spid, message->spcode, message->phone, account->id, company->id, account->charge_type);
+    if (reply == NULL) {
         return -1;
     }
 
-    timeout = cfg->timeout;
-    nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &timeout, sizeof(timeout));
-    
-    sprintf(url, "tcp://%s:%d", cfg->mt_host, cfg->mt_port);
-    if (nn_connect(fd, url) < 0) {
-        nn_close(fd);
-        lamb_errlog(cfg->logfile, "can't connect to %s server", cfg->mt_host);
-        return -1;
+    freeReplyObject(reply);
+
+    return 0;
+}
+
+int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {
+    char *column;
+    char sql[512];
+    PGresult *res = NULL;
+
+    if (message != NULL) {
+        column = "id, msgid, spid, spcode, phone, content, status, account, company";
+        sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, %u, '%s', '%s', '%s', '%s', %d, %d, %d)", column,
+                (long long int)message->id, 0, message->spid, message->spcode, message->phone, message->content, 6, account->id, company->id);
+        res = PQexec(db->conn, sql);
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            PQclear(res);
+            return -1;
+        }
+
+        PQclear(res);
     }
-
-    memset(&req, 0, sizeof(req));
-    req.id = client->account->id;
-    memcpy(req.addr, cfg->listen, 16);
-
-    rc = nn_send(fd, (char *)&req, sizeof(req), 0);
-    if (rc < 0) {
-        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
-        nn_close(fd);
-        return -1;
-    }
-
-    buf = NULL;
-    rc = nn_recv(fd, &buf, NN_MSG, 0);
-    if (rc < 0) {
-        nn_close(fd);
-        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-    
-    if (rc != sizeof(lamb_rep_t)) {
-        nn_close(fd);
-        nn_freemsg(buf);
-        lamb_errlog(cfg->logfile, "socket protocol packet error", 0);
-        return -1;
-    }
-
-    nn_close(fd);
-    rep = (lamb_rep_t *)buf;
-
-    fd = nn_socket(AF_SP, NN_PAIR);
-    if (fd < 0) {
-        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-
-    nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &timeout, sizeof(timeout));
-
-    sprintf(url, "tcp://%s:%d", rep->addr, rep->port);
-    if (nn_connect(fd, url) < 0) {
-        nn_close(fd);
-        lamb_errlog(cfg->logfile, "can't connect to %s server", cfg->mt_host);
-        return -1;
-    }
-
-    *sock = fd;
-    nn_freemsg(buf);
 
     return 0;
 }

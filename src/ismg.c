@@ -30,6 +30,7 @@
 #include "ismg.h"
 #include "utils.h"
 #include "cache.h"
+#include "socket.h"
 #include "config.h"
 
 static int mt, mo;
@@ -284,11 +285,19 @@ void lamb_work_loop(lamb_client_t *client) {
     }
 
     /* Connect to MT server */
-    err = lamb_mt_connect(&mt, client, &config);
+    lamb_nn_option opt;
+
+    memset(&opt, 0, sizeof(opt));
+    opt.id = client->account->id;
+    memcpy(opt.addr, config.listen, 16);
+    opt.timeout = config.timeout;
+    
+    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port);
     if (err) {
+        lamb_errlog(config.logfile, "can't connect to mt %s server", config.mt_host);
         return;
     }
-    
+
     /* Epoll Events */
     int epfd, nfds;
     struct epoll_event ev, events[32];
@@ -302,7 +311,7 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_start_thread(lamb_online_update, client, 1);
 
     /* Client Message Deliver */
-    //lamb_start_thread(lamb_deliver_loop, client, 1);
+    lamb_start_thread(lamb_deliver_loop, client, 1);
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -312,7 +321,7 @@ void lamb_work_loop(lamb_client_t *client) {
             err = cmpp_recv(client->sock, &pack, sizeof(pack));
             if (err) {
                 if (err == -1) {
-                    lamb_errlog(config.logfile, "Connection is closed by the client %s\n", client->addr);
+                    lamb_errlog(config.logfile, "connection closed by client %s\n", client->addr);
                     break;
                 }
                 continue;
@@ -420,7 +429,19 @@ void *lamb_deliver_loop(void *data) {
     client = (lamb_client_t *)data;
 
     /* Connect to MO server */
+    lamb_nn_option opt;
 
+    memset(&opt, 0, sizeof(opt));
+    opt.id = client->account->id;
+    memcpy(opt.addr, config.listen, 16);
+    opt.timeout = config.timeout;
+    
+    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
+        pthread_exit(NULL);
+    }
+    
     while (true) {
         memset(&message, 0 , sizeof(message));
         //ret = lamb_amqp_pull(mo, (char *)&message, sizeof(message), 3000);
@@ -472,83 +493,11 @@ void *lamb_deliver_loop(void *data) {
                 }
             }
         }
+
+        lamb_sleep(1000);
     }
 
     pthread_exit(NULL);
-}
-
-int lamb_mt_connect(int *sock, lamb_client_t *client, lamb_config_t *cfg) {
-    int fd, rc;
-    char *buf;
-    char url[128];
-    lamb_req_t req;
-    lamb_rep_t *rep;
-    long long timeout;
-    
-    fd = nn_socket(AF_SP, NN_REQ);
-    if (fd < 0) {
-        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-
-    timeout = cfg->timeout;
-    nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &timeout, sizeof(timeout));
-    
-    sprintf(url, "tcp://%s:%d", cfg->mt_host, cfg->mt_port);
-    if (nn_connect(fd, url) < 0) {
-        nn_close(fd);
-        lamb_errlog(cfg->logfile, "can't connect to %s server", cfg->mt_host);
-        return -1;
-    }
-
-    memset(&req, 0, sizeof(req));
-    req.id = client->account->id;
-    memcpy(req.addr, cfg->listen, 16);
-
-    rc = nn_send(fd, (char *)&req, sizeof(req), 0);
-    if (rc < 0) {
-        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
-        nn_close(fd);
-        return -1;
-    }
-
-    buf = NULL;
-    rc = nn_recv(fd, &buf, NN_MSG, 0);
-    if (rc < 0) {
-        nn_close(fd);
-        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-    
-    if (rc != sizeof(lamb_rep_t)) {
-        nn_close(fd);
-        nn_freemsg(buf);
-        lamb_errlog(cfg->logfile, "socket protocol packet error", 0);
-        return -1;
-    }
-
-    nn_close(fd);
-    rep = (lamb_rep_t *)buf;
-
-    fd = nn_socket(AF_SP, NN_PAIR);
-    if (fd < 0) {
-        lamb_errlog(cfg->logfile, "socket %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-
-    nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &timeout, sizeof(timeout));
-
-    sprintf(url, "tcp://%s:%d", rep->addr, rep->port);
-    if (nn_connect(fd, url) < 0) {
-        nn_close(fd);
-        lamb_errlog(cfg->logfile, "can't connect to %s server", cfg->mt_host);
-        return -1;
-    }
-
-    *sock = fd;
-    nn_freemsg(buf);
-
-    return 0;
 }
 
 void *lamb_online_update(void *data) {

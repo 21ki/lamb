@@ -71,5 +71,7 @@ void *lamb_online_update(void *data);
 void lamb_init_queues(lamb_account_t *account);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 void lamb_reload(int signum);
+int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
+int lamb_cache_message(lamb_cache_t *cache, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
 
 #endif

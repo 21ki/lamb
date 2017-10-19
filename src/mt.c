@@ -27,6 +27,7 @@
 #include "utils.h"
 #include "config.h"
 #include "cache.h"
+#include "socket.h"
 #include "pool.h"
 #include "mt.h"
 
@@ -161,12 +162,14 @@ void *lamb_work_loop(void *arg) {
     }
     
     /* Client channel initialization */
-    unsigned short port = 7001;
+    unsigned short port = 8001;
     err = lamb_child_server(&fd, config.listen, &port);
     if (err) {
-        port = 0;
+        pthread_cond_signal(&cond);
         lamb_errlog(config.logfile, "lamb can't find available port", 0);
+        pthread_exit(NULL);
     }
+
     pthread_mutex_lock(&mutex);
 
     resp.id = client->id;
@@ -174,8 +177,7 @@ void *lamb_work_loop(void *arg) {
     resp.port = port;
 
     pthread_mutex_unlock(&mutex);
-
-    pthread_cond_signal(&cond);    
+    pthread_cond_signal(&cond);
 
     /* Start event processing */
     int len;
@@ -184,10 +186,20 @@ void *lamb_work_loop(void *arg) {
     
     while (true) {
         char *buf = NULL;
-        rc = nn_recv(fd, &buf, NN_MSG, 0);
+        rc = nn_recv(fd, &buf, NN_MSG, NN_DONTWAIT);
         
         if (rc < 0) {
-            break;
+            if (err > 3) {
+                break;
+            }
+            
+            if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
+                err++;
+                lamb_sleep(1000);
+            }
+
+            lamb_sleep(10);
+            continue;
         }
 
         if (rc == len) {
@@ -206,8 +218,8 @@ void *lamb_work_loop(void *arg) {
                     free(node->val);
                     free(node);
                 }
-                nn_freemsg(buf);
             }
+            nn_freemsg(buf);
         }
     }
 

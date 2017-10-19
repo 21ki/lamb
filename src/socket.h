@@ -8,20 +8,29 @@
 #ifndef _LAMB_SOCKET_H
 #define _LAMB_SOCKET_H
 
-#include <stdbool.h>
+#pragma pack(1)
 
-#define LAMB_SOCK_SEND 1
-#define LAMB_SOCK_RECV 2
+typedef struct {
+    int id;
+    char addr[16];
+    char token[128];
+} lamb_req_t;
 
-int lamb_sock_create(void);
-int lamb_sock_bind(int fd, const char *addr, unsigned short port, int backlog);
-int lamb_sock_connect(int fd, const char *addr, unsigned short port, unsigned long long timeout);
-int lamb_sock_nonblock(int fd, bool enable);
-int lamb_sock_tcpnodelay(int fd, bool enable);
-int lamb_sock_send(int fd, const char *buff, size_t len, unsigned long long timeout);
-int lamb_sock_recv(int fd, char *buff, size_t len, unsigned long long timeout);
-int lamb_sock_readable(int fd, unsigned long long millisecond);
-int lamb_sock_writable(int fd, unsigned long long millisecond);
-int lamb_sock_timeout(int fd, int type, unsigned long long millisecond);
+typedef struct {
+    int id;
+    char addr[16];
+    int port;
+} lamb_rep_t;
+
+typedef struct {
+    int id;
+    char addr[16];
+    char token[40];
+    long long timeout;
+} lamb_nn_option;
+
+#pragma pack()
+
+int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port);
 
 #endif
