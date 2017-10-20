@@ -27,19 +27,20 @@
 #include "utils.h"
 #include "config.h"
 #include "cache.h"
+#include "queue.h"
 #include "socket.h"
 #include "pool.h"
-#include "mt.h"
+#include "md.h"
 
 static lamb_cache_t rdb;
+static lamb_queue_t *queue;
 static lamb_config_t config;
-static lamb_pool_t *list_pools;
 static lamb_rep_t resp;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 
 int main(int argc, char *argv[]) {
-    char *file = "mt.conf";
+    char *file = "md.conf";
     bool background = false;
 
     int opt = 0;
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
     lamb_signal_processing();
 
     /* Start Main Event Thread */
-    lamb_set_process("lamb-mtd");
+    lamb_set_process("lamb-mdd");
     lamb_event_loop();
 
     return 0;
@@ -85,9 +86,9 @@ void lamb_event_loop(void) {
     pthread_mutex_init(&mutex, NULL);
     
     /* Client Queue Pools Initialization */
-    list_pools = lamb_pool_new();
-    if (!list_pools) {
-        lamb_errlog(config.logfile, "lamb node pool initialization failed", 0);
+    queue = lamb_queue_new(0);
+    if (!queue) {
+        lamb_errlog(config.logfile, "lamb queue initialization failed", 0);
         return;
     }
 
@@ -126,7 +127,7 @@ void lamb_event_loop(void) {
 
         if (req->id < 1) {
             nn_freemsg(buf);
-            lamb_errlog(config.logfile, "Invalid request from client", 0);
+            lamb_errlog(config.logfile, "Requests from unidentified clients", 0);
             continue;
         }
 
@@ -148,30 +149,14 @@ void *lamb_work_loop(void *arg) {
     int err;
     int fd, rc;
     lamb_node_t *node;
-    lamb_queue_t *queue;
     lamb_req_t *client;
     
     client = (lamb_req_t *)arg;
 
     printf("-> new client from %s connectd\n", client->addr);
 
-    /* Client queue initialization */
-    queue = lamb_pool_find(list_pools, client->id);
-    if (!queue) {
-        queue = lamb_queue_new(client->id);
-        if (queue) {
-            lamb_pool_add(list_pools, queue);
-        }
-    }
-
-    if (!queue) {
-        nn_freemsg((char *)client);
-        lamb_errlog(config.logfile, "can't create queue for client %s", client->addr);
-        pthread_exit(NULL);
-    }
-    
     /* Client channel initialization */
-    unsigned short port = 10001;
+    unsigned short port = 30001;
     err = lamb_child_server(&fd, config.listen, &port);
     if (err) {
         pthread_cond_signal(&cond);
@@ -191,7 +176,7 @@ void *lamb_work_loop(void *arg) {
     /* Start event processing */
     int len;
 
-    len = sizeof(lamb_submit_t);
+    len = sizeof(lamb_message_t);
     
     while (true) {
         char *buf = NULL;
@@ -266,13 +251,13 @@ int lamb_server_init(int *sock, const char *listen, int port) {
 int lamb_child_server(int *sock, const char *listen, unsigned short *port) {
     int fd;
     char addr[128];
-
+    
     fd = nn_socket(AF_SP, NN_PAIR);
     if (fd < 0) {
         lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
         return -1;
     }
-    
+
     while (true) {
         sprintf(addr, "tcp://%s:%u", listen, *port);
 
@@ -289,19 +274,14 @@ int lamb_child_server(int *sock, const char *listen, unsigned short *port) {
 }
 
 void *lamb_stat_loop(void *arg) {
-    lamb_queue_t *queue;
     redisReply *reply;
     
     while (true) {
-        queue = list_pools->head;
-        while (queue != NULL) {
-            reply = redisCommand(rdb.handle, "HMSET client.%d queue %lld", queue->id, queue->len);
-            if (reply != NULL) {
-                freeReplyObject(reply);
-            }
-            printf("-> queue: %d, len: %lld\n", queue->id, queue->len);
-            queue = queue->next;
+        reply = redisCommand(rdb.handle, "HMSET md.%d queue %lld", config.id, queue->len);
+        if (reply != NULL) {
+            freeReplyObject(reply);
         }
+        printf("-> queue: %d, len: %lld\n", queue->id, queue->len);
 
         lamb_sleep(3000);
     }

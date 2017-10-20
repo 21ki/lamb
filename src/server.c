@@ -24,18 +24,20 @@
 #include "server.h"
 #include "utils.h"
 #include "config.h"
-#include "queue.h"
+#include "socket.h"
 #include "keyword.h"
 #include "security.h"
 #include "message.h"
 
-static int mt, mo;
+
 static int aid = 0;
 static lamb_db_t db;
 static lamb_db_t mdb;
+static int mt, mo, md;
 static lamb_cache_t rdb;
 static lamb_caches_t cache;
 static lamb_queue_t *storage;
+static lamb_queue_t *billing;
 static lamb_queues_t channel;
 static lamb_group_t group;
 static lamb_account_t account;
@@ -43,6 +45,7 @@ static lamb_company_t company;
 static lamb_templates_t template;
 static lamb_keywords_t keywords;
 static lamb_config_t config;
+static pthread_mutex_t lock;
 
 int main(int argc, char *argv[]) {
     bool background = false;
@@ -67,6 +70,11 @@ int main(int argc, char *argv[]) {
         opt = getopt(argc, argv, optstring);
     }
 
+    if (aid < 1) {
+        fprintf(stderr, "Invalid account number\n");
+        return -1;
+    }
+    
     /* Read lamb configuration file */
     if (lamb_read_config(&config, file) != 0) {
         return -1;
@@ -156,11 +164,33 @@ void lamb_event_loop(void) {
     }
 
     /* Connect to MT server */
-    lamb_nn_connect(mt, &account);
+    lamb_nn_option opt;
 
-    /* Connect to MO server */
-    lamb_nn_connect(mo, &account);
+    memset(&opt, 0, sizeof(opt));
+    opt.id = aid;
+    strcpy(opt.addr, "127.0.0.1");
+    opt.timeout = config.timeout;
     
+    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connect to MT %s server", config.mt_host);
+        return;
+    }
+    
+    /* Connect to MO server */
+    err = lamb_nn_connect(&mo, &option, config.mo_host, config.mo_port);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
+        return;
+    }
+
+    /* Connect to MD server */    
+    err = lamb_nn_connect(&md, &option, config.md_host, config.md_port);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connect to MD %s server", config.mo_host);
+        return;
+    }
+
     /* Fetch company information */
     memset(&company, 0, sizeof(company));
     err = lamb_company_get(&db, account.company, &company);
@@ -195,67 +225,39 @@ void lamb_event_loop(void) {
     }
         
     /* Fetch Channel Queue*/
-    lamb_queue_opt gopt;
-    gopt.flag = O_WRONLY | O_NONBLOCK;
-    gopt.attr = NULL;
+    lamb_mq_opt opts;
+    opts.flag = O_WRONLY | O_NONBLOCK;
+    opts.attr = NULL;
 
     memset(&channel, 0, sizeof(channel));
-    err = lamb_each_queue(&group, &gopt, &channel, LAMB_MAX_CHANNEL);
+    err = lamb_each_queue(&group, &opts, &channel, LAMB_MAX_CHANNEL);
     if (err) {
         if (channel.len < 1) {
             return;
         }
     }
 
-    /* Start sender worker threads */
+    pthread_mutex_init(&lock, NULL);
+    
+    /* Start sender thread */
     long cpus = lamb_get_cpu();
-    lamb_start_thread(lamb_worker_loop, NULL, config.work_threads > cpus ? cpus : config.work_threads);
+    lamb_start_thread(lamb_work_loop, NULL, config.work_threads > cpus ? cpus : config.work_threads);
 
-    /* Start Billing and Update thread */
-    lamb_start_thread(lamb_save_message, NULL, 1);
+    /* Start deliver thread */
+    lamb_start_thread(lamb_deliver_loop, NULL, 1);
+    
+    /* Start billing thread */
+    lamb_start_thread(lamb_billing_loop, NULL, 1);
 
-    /* Start online status thread */
-    lamb_start_thread(lamb_online_update, NULL, 1);
+    /* Start storage thread */
+    lamb_start_thread(lamb_store_loop, NULL, 1);
 
-    err = lamb_cpu_affinity(pthread_self());
-    if (err) {
-        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
-    }
+    /* Start status thread */
+    lamb_start_thread(lamb_stat_loop, NULL, 1);
 
-    /* Read queue message */
-    lamb_list_node_t *node;
-    lamb_message_t *message;
-
+    /* Master control loop*/
     while (true) {
-        message = (lamb_message_t *)calloc(1 , sizeof(lamb_message_t));
-        if (!message) {
-            lamb_errlog(config.logfile, "Lamb message queue allocate memory failed", 0);
-            lamb_sleep(1000);
-            continue;
-        }
-
-        ret = lamb_queue_receive(&client, (char *)message, sizeof(lamb_message_t), 0);
-        if (ret < 1) {
-            free(message);
-            lamb_sleep(10);
-            continue;
-        }
-
-        while (true) {
-            if (queue->len < config.work_queue) {
-                pthread_mutex_lock(&queue->lock);
-                node = lamb_list_rpush(queue, lamb_list_node_new(message));
-                pthread_mutex_unlock(&queue->lock);
-                if (node == NULL) {
-                    lamb_errlog(config.logfile, "Memory cannot be allocated for the workd queue", 0);
-                    lamb_sleep(3000);
-                }
-                break;
-            }
-
-            lamb_sleep(10);
-        }
-
+        lamb_sleep(3000);
     }
 
     return;
@@ -269,32 +271,40 @@ void lamb_reload(int signum) {
     return;
 }
 
-void *lamb_worker_loop(void *data) {
+void *lamb_work_loop(void *data) {
     int err;
-    lamb_list_node_t *ret;
-    lamb_list_node_t *node;
-    lamb_message_t *message;
+    char *buf;
+    int rc, len;
     lamb_submit_t *submit;
 
+    len = sizeof(lamb_submit_t);
+    
     err = lamb_cpu_affinity(pthread_self());
     if (err) {
         lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
     }
     
     while (true) {
-        pthread_mutex_lock(&queue->lock);
-        node = lamb_list_lpop(queue);
-        pthread_mutex_unlock(&queue->lock);
+        submit = NULL;
 
-        if (node != NULL) {
-            message = (lamb_message_t *)node->val;
-            submit = (lamb_submit_t *)&message->data;
+        pthread_mutex_lock(&lock);
+        rc = nn_send(mt, "req", 4, 0);
+        if (rc > 0) {
+            rc = nn_recv(mt, &buf, NN_MSG, 0);
+            if (rc == len) {
+                submit = (lamb_submit_t *)buf;
+            }
+        }
+        pthread_mutex_unlock(&lock);
 
-            printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
+        if (submit != NULL) {
+
+            //printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
 
             /* Check Message Encoded Convert */
             int codeds[] = {0, 8, 11, 15};
             if (!lamb_check_msgfmt(submit->msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
+                nn_freemsg(buf);
                 continue;
             }
 
@@ -310,7 +320,8 @@ void *lamb_worker_loop(void *data) {
             } else if (submit->msgFmt == 15) {
                 fromcode = "GBK";
             } else {
-                printf("-> [encoded] message encoded %d not support\n", submit->msgFmt);
+                //printf("-> [encoded] message encoded %d not support\n", submit->msgFmt);
+                nn_freemsg(buf);
                 continue;
             }
             
@@ -318,14 +329,15 @@ void *lamb_worker_loop(void *data) {
                 memset(content, 0, sizeof(content));
                 err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), fromcode, "UTF-8", &submit->length);
                 if (err || (submit->length == 0)) {
-                    printf("-> [encoded] Message encoding conversion failed\n");
+                    nn_freemsg(buf);
+                    //printf("-> [encoded] Message encoding conversion failed\n");
                     continue;
                 }
 
                 submit->msgFmt = 11;
                 memset(submit->content, 0, 160);
                 memcpy(submit->content, content, submit->length);
-                printf("-> [encoded] Message encoding conversion successfull\n");
+                //printf("-> [encoded] Message encoding conversion successfull\n");
             }
 
             printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
@@ -334,20 +346,22 @@ void *lamb_worker_loop(void *data) {
             if (account.policy != LAMB_POL_EMPTY) {
                 if (lamb_security_check(&black, account.policy, submit->phone)) {
                     if (account.policy == LAMB_BLACKLIST) {
-                        printf("-> [policy] The security check not pass\n");
+                        nn_freemsg(buf);
+                        //printf("-> [policy] The security check not pass\n");
                         continue;
                     }
                 } else {
                     if (account.policy == LAMB_WHITELIST) {
-                        printf("-> [policy] The security check not pass\n");
+                        nn_freemsg(buf);
+                        //printf("-> [policy] The security check not pass\n");
                         continue;
                     }
                 }
-                printf("-> [policy] The Security check OK\n");
+                //printf("-> [policy] The Security check OK\n");
             }
 
             /* SpCode Processing  */
-            printf("-> [spcode] check message spcode extended\n");
+            //printf("-> [spcode] check message spcode extended\n");
             if (account.extended) {
                 lamb_account_spcode_process(account.spcode, submit->spcode, 20);
             } else {
@@ -357,26 +371,28 @@ void *lamb_worker_loop(void *data) {
             /* Template Processing */
             if (account.check_template) {
                 if (!lamb_template_check(&template, submit->content, submit->length)) {
-                    printf("-> [template] The template check will not pass\n");
+                    nn_freemsg(buf);
+                    //printf("-> [template] The template check will not pass\n");
                     continue;
                 }
-                printf("-> [template] The template check OK\n");
+                //printf("-> [template] The template check OK\n");
             }
 
             /* Keywords Filtration */
             if (account.check_keyword) {
                 if (lamb_keyword_check(&keywords, submit->content)) {
-                    printf("-> [keyword] The keyword check not pass\n");
+                    nn_freemsg(buf);
+                    //printf("-> [keyword] The keyword check not pass\n");
                     continue;
                 }
-                printf("-> [keyword] The keyword check OK\n");
+                //printf("-> [keyword] The keyword check OK\n");
             }
 
         routing:
             /* Routing Scheduling */
             if (channel.len > 0) {
                 for (int i = 0; i < channel.len; i++) {
-                    err = lamb_queue_send(channel.queues[i], (char *)message, sizeof(lamb_message_t), 0);
+                    err = lamb_mq_send(channel.queues[i], (char *)submit, sizeof(lamb_submit_t), 0);
                     if (err) {
                         if ((i + 1) > channel.len) {
                             i = 0;
@@ -602,6 +618,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
+    if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
+        goto error;
+    }
+
     if (lamb_get_int(&cfg, "WorkThreads", &conf->work_threads) != 0) {
         fprintf(stderr, "ERROR: Can't read 'WorkThreads' parameter\n");
         goto error;
@@ -654,6 +675,16 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_int(&cfg, "MoPort", &conf->mo_port) != 0) {
         fprintf(stderr, "ERROR: Can't read 'MoPort' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MdHost", conf->md_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid MD server IP address\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "MdPort", &conf->md_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MdPort' parameter\n");
         goto error;
     }
 

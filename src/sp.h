@@ -15,7 +15,6 @@
 typedef struct {
     int id;
     bool debug;
-    bool daemon;
     char host[16];
     int port;
     char user[64];

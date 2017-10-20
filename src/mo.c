@@ -39,7 +39,7 @@ static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 
 int main(int argc, char *argv[]) {
-    char *file = "mt.conf";
+    char *file = "mo.conf";
     bool background = false;
 
     int opt = 0;
@@ -171,7 +171,7 @@ void *lamb_work_loop(void *arg) {
     }
     
     /* Client channel initialization */
-    unsigned short port = 9001;
+    unsigned short port = 20001;
     err = lamb_child_server(&fd, config.listen, &port);
     if (err) {
         pthread_cond_signal(&cond);
@@ -212,7 +212,7 @@ void *lamb_work_loop(void *arg) {
         }
 
         if (rc == len) {
-            node = lamb_queue_push(queue, buf);
+            lamb_queue_push(queue, buf);
             continue;
         }
 
@@ -317,6 +317,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     config_t cfg;
     if (lamb_read_file(&cfg, file) != 0) {
         fprintf(stderr, "ERROR: Can't open the %s configuration file\n", file);
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
         goto error;
     }
 

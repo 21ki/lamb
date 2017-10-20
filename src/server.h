@@ -26,6 +26,7 @@
 typedef struct {
     int id;
     bool debug;
+    long long timeout;
     int work_threads;
     char logfile[128];
     char redis_host[16];
@@ -36,6 +37,8 @@ typedef struct {
     int mt_port;
     char mo_host[16];
     int mo_port;
+    char md_host[16];
+    int md_port;
     char db_host[16];
     int db_port;
     char db_user[64];

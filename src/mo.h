@@ -13,6 +13,7 @@
 #include "queue.h"
 
 typedef struct {
+    int id;
     bool debug;
     char listen[16];
     int port;
