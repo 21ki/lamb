@@ -31,3 +31,22 @@ create table message_201809 partition of message for values from ('2018-09-01') 
 create table message_201810 partition of message for values from ('2018-10-01') to ('2018-11-01');
 create table message_201811 partition of message for values from ('2018-11-01') to ('2018-12-01');
 
+CREATE TABLE report (
+   id bigint NOT NULL,
+   spcode varchar(21) NOT NULL,
+   phone varchar(21),
+   status int NOT NULL,
+   submit_time varchar(10),
+   done_time varchar(10),
+   account int NOT NULL,
+   company int NOT NULL,
+   create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+);
+
+CREATE TABLE deliver (
+   id bigint NOT NULL,
+   spcode varchar(21) NOT NULL,
+   phone varchar(21) NOT NULL,
+   content text NOT NULL,
+   create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+);

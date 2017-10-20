@@ -38,7 +38,7 @@ static lamb_cache_t rdb;
 static lamb_caches_t cache;
 static lamb_queue_t *storage;
 static lamb_queue_t *billing;
-static lamb_queues_t channel;
+static lamb_queue_t *channel;
 static lamb_group_t group;
 static lamb_account_t account;
 static lamb_company_t company;
@@ -223,20 +223,27 @@ void lamb_event_loop(void) {
             lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
         }
     }
-        
-    /* Fetch Channel Queue*/
+
+    /* Channel Initialization */
     lamb_mq_opt opts;
+
+    channel = lamb_queue_new(aid);
+
+    if (!channel) {
+        lamb_errlog(config.logfile, "channel queue initialization failed", 0);
+        return;
+    }
+
     opts.flag = O_WRONLY | O_NONBLOCK;
     opts.attr = NULL;
 
-    memset(&channel, 0, sizeof(channel));
-    err = lamb_each_queue(&group, &opts, &channel, LAMB_MAX_CHANNEL);
-    if (err) {
-        if (channel.len < 1) {
-            return;
-        }
+    err = lamb_open_channel(&group, channel, &opts);
+    if (err || channel->len < 1) {
+        lamb_errlog(config.logfile, "No gateway channel available", 0);
+        return;
     }
 
+    /* Thread lock initialization */
     pthread_mutex_init(&lock, NULL);
     
     /* Start sender thread */
@@ -272,11 +279,15 @@ void lamb_reload(int signum) {
 }
 
 void *lamb_work_loop(void *data) {
-    int err;
+    int i, err;
     char *buf;
     int rc, len;
+    bool success;
+    lamb_bill_t *bill;
+    lamb_store_t *store;
     lamb_submit_t *submit;
-
+    lamb_mq_t *queue;
+    
     len = sizeof(lamb_submit_t);
     
     err = lamb_cpu_affinity(pthread_self());
@@ -340,26 +351,28 @@ void *lamb_work_loop(void *data) {
                 //printf("-> [encoded] Message encoding conversion successfull\n");
             }
 
-            printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
+            //printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
 
             /* Blacklist and Whitelist */
-            if (account.policy != LAMB_POL_EMPTY) {
-                if (lamb_security_check(&black, account.policy, submit->phone)) {
-                    if (account.policy == LAMB_BLACKLIST) {
-                        nn_freemsg(buf);
-                        //printf("-> [policy] The security check not pass\n");
-                        continue;
-                    }
-                } else {
-                    if (account.policy == LAMB_WHITELIST) {
-                        nn_freemsg(buf);
-                        //printf("-> [policy] The security check not pass\n");
-                        continue;
-                    }
-                }
-                //printf("-> [policy] The Security check OK\n");
-            }
-
+            /* 
+               if (account.policy != LAMB_POL_EMPTY) {
+               if (lamb_security_check(&black, account.policy, submit->phone)) {
+               if (account.policy == LAMB_BLACKLIST) {
+               nn_freemsg(buf);
+               //printf("-> [policy] The security check not pass\n");
+               continue;
+               }
+               } else {
+               if (account.policy == LAMB_WHITELIST) {
+               nn_freemsg(buf);
+               //printf("-> [policy] The security check not pass\n");
+               continue;
+               }
+               }
+               //printf("-> [policy] The Security check OK\n");
+               }
+            */
+            
             /* SpCode Processing  */
             //printf("-> [spcode] check message spcode extended\n");
             if (account.extended) {
@@ -379,53 +392,66 @@ void *lamb_work_loop(void *data) {
             }
 
             /* Keywords Filtration */
-            if (account.check_keyword) {
-                if (lamb_keyword_check(&keywords, submit->content)) {
-                    nn_freemsg(buf);
-                    //printf("-> [keyword] The keyword check not pass\n");
-                    continue;
-                }
-                //printf("-> [keyword] The keyword check OK\n");
-            }
+            /* 
+               if (account.check_keyword) {
+               if (lamb_keyword_check(&keywords, submit->content)) {
+               nn_freemsg(buf);
+               //printf("-> [keyword] The keyword check not pass\n");
+               continue;
+               }
+               //printf("-> [keyword] The keyword check OK\n");
+               }
+            */
 
-        routing:
-            /* Routing Scheduling */
-            if (channel.len > 0) {
-                for (int i = 0; i < channel.len; i++) {
-                    err = lamb_mq_send(channel.queues[i], (char *)submit, sizeof(lamb_submit_t), 0);
-                    if (err) {
-                        if ((i + 1) > channel.len) {
-                            i = 0;
-                            lamb_sleep(10);
-                        }
-                        continue;
-                    }
+        routing:; /* Routing Scheduling */
+            success = false;
+            queue = channel->head;
+
+            while (queue != NULL) {
+                err = lamb_mq_send(queue, (char *)submit, sizeof(lamb_submit_t), 0);
+                if (err) {
+                    queue = queue->next;
+                } else {
+                    success = true;
                     break;
                 }
-            } else {
-                printf("-> [channel] No gateway channels available\n");
-                lamb_sleep(3000);
+            }
+
+            if (!success) {
+                if (channel->len < 1) {
+                    printf("-> [channel] No gateway channels available\n");
+                }
+                lamb_sleep(10);
                 goto routing;
             }
 
-            /* Billing Processing */
+            /* Cache message information */
+            i = (submit->id % cache.len);
+            pthread_mutex_lock(&cache.nodes[i]->lock);
+            err = lamb_cache_message(cache.nodes[i], &account, &company, submit);
+            pthread_mutex_unlock(&cache.nodes[i]->lock);
+
+            if (err) {
+                lamb_errlog(config.logfile, "lamb cache message failed", 0);
+                lamb_sleep(1000);
+            }
+            
+            /* Save message to billing queue */
             if (account.charge_type == LAMB_CHARGE_SUBMIT) {
-                pthread_mutex_lock(&(rdb.lock));
-                err = lamb_company_billing(&rdb, company.id, -1, &(company.money));
-                pthread_mutex_unlock(&(rdb.lock));
-                if (err) {
-                    lamb_errlog(config.logfile, "Lamb Account %d for company %d chargeback failure", account.id, company.id);
-                    lamb_sleep(3000);
+                bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
+                if (bill) {
+                    bill->id = company.id;
+                    bill->money = -1;
+                    lamb_queue_push(billing, bill);
                 }
             }
-        
-            /* Send Message to Storage */
-            pthread_mutex_lock(&storage->lock);
-            ret = lamb_list_rpush(storage, node);
-            pthread_mutex_unlock(&storage->lock);
-            if (ret == NULL) {
-                lamb_errlog(config.logfile, "Memory cannot be allocated for the storage queue", 0);
-                lamb_sleep(3000);
+
+            /* Save message to storage queue */
+            store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
+            if (store) {
+                store->type = LAMB_SUBMIT;
+                store->val = submit;
+                lamb_queue_push(storage, submit);
             }
         } else {
             lamb_sleep(10);
@@ -435,68 +461,175 @@ void *lamb_work_loop(void *data) {
     pthread_exit(NULL);
 }
 
-void *lamb_save_message(void *data) {
-    int i, err;
-    lamb_list_node_t *node;
-    lamb_submit_t *submit;
+void *lamb_deliver_loop(void *data) {
+    char *buf;
+    int i, rc, len;
+    lamb_bill_t *bill;
+    lamb_store_t *store;
+    lamb_report_t *report;
+    lamb_deliver_t *deliver;
     lamb_message_t *message;
 
+    len = sizeof(lamb_message_t);
+    
     while (true) {
-        pthread_mutex_lock(&storage->lock);
-        node = lamb_list_lpop(storage);
-        pthread_mutex_unlock(&storage->lock);
+        rc = nn_send(md, "req", 4, 0);
 
-        if (node == NULL) {
-            lamb_sleep(10);
+        if (rc < 0) {
+            lamb_sleep(1000);
             continue;
         }
 
-        /* Write Message to Cache */
-        message = (lamb_message_t *)node->val;
-        submit = (lamb_submit_t *)&message->data;
-        i = (submit->id % cache.len);
-        pthread_mutex_lock(&(cache.nodes[i]->lock));
-        err = lamb_cache_message(cache.nodes[i], &account, &company, submit);
-        pthread_mutex_unlock(&(cache.nodes[i]->lock));
-        if (err) {
-            lamb_errlog(config.logfile, "Write submit message to cache failure", 0);
-            lamb_sleep(1000);
+        rc = nn_recv(md, &buf, NN_MSG, 0);
+        if (rc != len) {
+            nn_freemsg(buf);
+            continue;
         }
 
-        /* Write Message to Database */
-        err = lamb_write_message(&mdb, &account, &company, submit);
-        if (err) {
-            lamb_errlog(config.logfile, "Write submit message to database failure", 0);
-            lamb_sleep(1000);
+        message = (lamb_message_t *)buf;
+
+        if (message->type == LAMB_REPORT) {
+            lamb_report_t *tmp;
+            report = (lamb_report_t *)&message->data;
+
+            tmp = (lamb_report_t *)malloc(sizeof(lamb_report_t));
+            if (tmp) {
+                memcpy(tmp, report, sizeof(lamb_report_t));
+                store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
+
+                if (store) {
+                    store->type = LAMB_REPORT;
+                    store->val = tmp;
+                    lamb_queue_push(storage, store);
+                } else {
+                    free(tmp);
+                }
+            }
+
+            char spid[6];
+            char spcode[24];
+            int charge, acc, comp;
+
+            i = (report->id % cache.len);
+            pthread_mutex_lock(&cache.nodes[i]->lock);
+            lamb_cache_query(cache.nodes[i], spid, spcode, &acc, &comp, &charge);
+            pthread_mutex_unlock(&cache.nodes[i]->lock);
+
+            /* Billing processing */
+            if (charge == LAMB_CHARGE_SUCCESS) {
+                bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
+                if (bill) {
+                    bill->id = comp;
+                    bill->money = (report->status == 1) ? -1 : 1;
+                    lamb_queue_push(billing, bill);
+                }
+            }
+
+            continue;
         }
 
-        free(node);
-        free(message);
+        if (message->type == LAMB_DELIVER) {
+            lamb_deliver_t *tmp;
+            deliver = (lamb_deliver_t *)&message->data;
+
+            nn_send(mo, deliver, sizeof(lamb_deliver_t), 0);
+
+            tmp = (lamb_deliver_t *)malloc(sizeof(lamb_deliver_t));
+            
+            if (tmp) {
+                memcpy(tmp, deliver, sizeof(lamb_deliver_t));
+                store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
+
+                if (store) {
+                    store->type = LAMB_DELIVER;
+                    store->val = deliver;
+
+                    lamb_queue_push(storage, store);
+                }
+            }
+        }
     }
 
     pthread_exit(NULL);
 }
 
-int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *list, int size) {
+void *lamb_store_loop(void *data) {
+    int err;
+    lamb_node_t *node;
+    lamb_store_t *store;
+    lamb_submit_t *submit;
+    lamb_deliver_t *deliver;
+    
+    while (true) {
+        node = lamb_queue_pop(storage);
+
+        if (!node) {
+            lamb_sleep(10);
+            continue;
+        }
+
+        store = (lamb_store_t *)node->val;
+
+        if (store->type == LAMB_SUBMIT) {
+            submit = (lamb_submit_t *)store->val;
+            lamb_write_message(&mdb, &account, &company, submit);
+        }
+
+        if (store->type == LAMB_DELIVER) {
+            deliver = (lamb_deliver_t *)store->val;
+            lamb_write_deliver(&mdb, &account, &company, deliver);
+        }
+
+        free(store->val);
+        free(store);
+        free(node);
+    }
+
+    pthread_exit(NULL);
+}
+
+void *lamb_billing_loop(void *data) {
+    int err;
+    lamb_bill_t *bill;
+    lamb_node_t *node;
+    
+    while (true) {
+        node = lamb_queue_pop(billing);
+
+        if (!node) {
+            lamb_sleep(10);
+            continue;
+        }
+
+        bill = (lamb_bill_t *)node->val;
+        err = lamb_company_billing(bill->id, bill->money);
+        if (err) {
+            lamb_errlog(config.logfile, "Account %d billing money %d failure", bill->id, bill->money);
+        }
+
+        free(bill);
+        free(node);
+    }
+
+    pthread_exit(NULL);
+}
+
+int lamb_open_channel(lamb_group_t *group, lamb_queue_t *channel, lamb_mq_opt *opt) {
     int err;
     char name[128];
-    lamb_queue_t *queue;
+    lamb_mq_t *queue;
 
-    list->len = 0;
-
-    for (int i = 0, j = 0; (i < group->len) && (group->channels[i] != NULL) && (i < size); i++, j++) {
-        queue = (lamb_queue_t *)calloc(1, sizeof(lamb_queue_t));
+    for (int i = 0; (i < group->len) && (group->channels[i] != NULL); i++) {
+        queue = (lamb_mq_t *)calloc(1, sizeof(lamb_mq_t));
         if (queue != NULL) {
             sprintf(name, "/gw.%d.message", group->channels[i]->id);
-            err = lamb_queue_open(queue, name, opt);
+            err = lamb_mq_open(queue, name, opt);
             if (err) {
-                j--;
                 lamb_errlog(config.logfile, "Can't open %s gateway queue", name);
                 continue;
             }
 
-            list->queues[j] = queue;
-            list->len++;
+            lamb_queue_push(channel, queue);
         } else {
             return -1;
         }
@@ -505,7 +638,7 @@ int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *lis
     return 0;
 }
 
-void *lamb_online_update(void *data) {
+void *lamb_stat_loop(void *data) {
     int err;
     redisReply *reply = NULL;
 
@@ -516,7 +649,8 @@ void *lamb_online_update(void *data) {
 
     while (true) {
         pthread_mutex_lock(&(rdb.lock));
-        reply = redisCommand(rdb.handle, "HMSET server.%d pid %u queue %u storage %u", account.id, getpid(), queue->len, storage->len);
+        reply = redisCommand(rdb.handle, "HMSET server.%d pid %u queue %u storage %u", account.id, getpid(),
+                             queue->len, storage->len);
         pthread_mutex_unlock(&(rdb.lock));
         if (reply != NULL) {
             freeReplyObject(reply);
@@ -527,51 +661,54 @@ void *lamb_online_update(void *data) {
     pthread_exit(NULL);
 }
 
-void lamb_init_queues(lamb_account_t *account) {
-    int err;
-    char name[128];
-    lamb_queue_opt sopt, ropt;
-    struct mq_attr sattr, rattr;
-    
-    sopt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    sattr.mq_maxmsg = 65535;
-    sattr.mq_msgsize = 512;
-    sopt.attr = &sattr;
-
-    sprintf(name, "/cli.%d.message", account->id);
-    err = lamb_queue_open(&client, name, &sopt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open %s client queue", name);
-    }
-
-    lamb_queue_t deliver;
-
-    ropt.flag = O_CREAT | O_WRONLY | O_NONBLOCK;
-    rattr.mq_maxmsg = 65535;
-    rattr.mq_msgsize = 512;
-    ropt.attr = &rattr;
-
-    sprintf(name, "/cli.%d.deliver", account->id);
-    err = lamb_queue_open(&deliver, name, &ropt);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't open %s client queue", name);
-    } else {
-        lamb_queue_close(&deliver);
-    }
-
-    return;
-}
-
 int lamb_cache_message(lamb_cache_t *cache, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {
     redisReply *reply = NULL;
 
     reply = redisCommand(cache->handle, "HMSET %llu spid %s spcode %s phone %s account %d company %d charge %d",
-                         message->id, message->spid, message->spcode, message->phone, account->id, company->id, account->charge_type);
+                         message->id, message->spid, message->spcode, message->phone, account->id, company->id,
+                         account->charge_type);
     if (reply == NULL) {
         return -1;
     }
 
     freeReplyObject(reply);
+
+    return 0;
+}
+
+int lamb_cache_query(lamb_cache_t *cache, char *spid, char *spcode, int *account, int *company, int *charge) {
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HMGET %llu spid spcode account company charge");
+
+    if (reply != NULL) {
+        if ((reply->type == REDIS_REPLY_ARRAY) && (reply->elements == 5)) {
+            if (reply->element[0]->len > 0) {
+                memcpy(spid, reply->element[0]->str, reply->element[0]->len);
+            }
+
+            if (reply->element[1]->len > 0) {
+                memcpy(spcode, reply->element[1]->str, reply->element[1]->len);
+            }
+
+            if (reply->element[2]->len > 0) {
+                *account = atoi(reply->element[2]->str);
+            }
+
+            if (reply->element[3]->len > 0) {
+                *company = atoi(reply->element[3]->str);
+            }
+
+            if (reply->element[4]->len > 0) {
+                *charge = atoi(reply->element[4]->str);
+            }
+
+        }
+
+        freeReplyObject(reply);
+    } else {
+        return -1;
+    }
 
     return 0;
 }
@@ -584,7 +721,30 @@ int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *c
     if (message != NULL) {
         column = "id, msgid, spid, spcode, phone, content, status, account, company";
         sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, %u, '%s', '%s', '%s', '%s', %d, %d, %d)", column,
-                (long long int)message->id, 0, message->spid, message->spcode, message->phone, message->content, 6, account->id, company->id);
+                (long long int)message->id, 0, message->spid, message->spcode, message->phone, message->content,
+                6, account->id, company->id);
+
+        res = PQexec(db->conn, sql);
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            PQclear(res);
+            return -1;
+        }
+
+        PQclear(res);
+    }
+
+    return 0;
+}
+
+int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_deliver_t *message) {
+    char *column;
+    char sql[512];
+    PGresult *res = NULL;
+
+    if (message != NULL) {
+        column = "id, spcode, phone, content";
+        sprintf(sql, "INSERT INTO deliver(%s) VALUES(%lld, '%s', '%s', '%s')", column, (long long int)message->id,
+                message->spcode, message->phone, message->content);
         res = PQexec(db->conn, sql);
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
             PQclear(res);

@@ -53,28 +53,26 @@ typedef struct {
 } lamb_config_t;
 
 typedef struct {
-    lamb_db_t *db;
-    lamb_cache_t *rdb;
-    lamb_cache_t *cache;
-    lamb_list_t *storage;
-    lamb_queues_t *channel;
-    lamb_account_t *account;
-    lamb_group_t *group;
-    lamb_company_t *company;
-    lamb_templates_t *template;
-} lamb_work_object_t;
+    int id;
+    int money;
+} lamb_bill_t;
+
+typedef struct {
+    int type;
+    void *val;
+} lamb_store_t;
 
 void lamb_event_loop(void);
-void lamb_work_loop(lamb_account_t *account);
-void *lamb_worker_loop(void *data);
-lamb_gateway_queue_t *lamb_find_queue(int id, lamb_gateway_queues_t *queues);
-void *lamb_save_message(void *data);
-int lamb_each_queue(lamb_group_t *group, lamb_queue_opt *opt, lamb_queues_t *list, int size);
-void *lamb_online_update(void *data);
-void lamb_init_queues(lamb_account_t *account);
-int lamb_read_config(lamb_config_t *conf, const char *file);
 void lamb_reload(int signum);
-int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
+void *lamb_work_loop(void *data);
+void *lamb_deliver_loop(void *data);
+void *lamb_store_loop(void *data);
+void *lamb_billing_loop(void *data);
+void *lamb_stat_loop(void *data);
+int lamb_open_channel(lamb_group_t *group, lamb_queue_t *channel, lamb_mq_opt *opt);
 int lamb_cache_message(lamb_cache_t *cache, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
+int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
+int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_deliver_t *message);
+int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif
