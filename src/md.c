@@ -14,7 +14,6 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/time.h>
-#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/signal.h>
 #include <arpa/inet.h>
@@ -174,9 +173,12 @@ void *lamb_work_loop(void *arg) {
     pthread_cond_signal(&cond);
 
     /* Start event processing */
-    int len;
+    int len, rlen, dlen;
+    lamb_message_t *message;
 
     len = sizeof(lamb_message_t);
+    rlen = sizeof(lamb_report_t);
+    dlen = sizeof(lamb_deliver_t);
     
     while (true) {
         char *buf = NULL;
@@ -196,24 +198,39 @@ void *lamb_work_loop(void *arg) {
             continue;
         }
 
-        if (rc == len) {
-            lamb_queue_push(queue, buf);
+        if (rc != len && rc != rlen && rc != dlen) {
+            nn_freemsg(buf);
             continue;
         }
 
-        if (rc >= 3) {
-            if (strncasecmp(buf, "bye", 3) == 0) {
-                nn_freemsg(buf);
-                break;
-            } else if (strncasecmp(buf, "req", 3) == 0) {
-                node = lamb_queue_pop(queue);
-                nn_send(fd, node ? node->val : "0", node ? len : 1, 0);
-                if (node) {
-                    free(node->val);
-                    free(node);
+        message = (lamb_message_t *)buf;
+
+        if (message->type == LAMB_REQ) {
+            node = lamb_queue_pop(queue);
+            if (node) {
+                message = (lamb_message_t *)node->val;
+                if (message->type == LAMB_REPORT) {
+                    nn_send(fd, message, rlen, 0);
+                } else if (message->type == LAMB_DELIVER) {
+                    nn_send(fd, message, dlen, 0);
                 }
+                nn_freemsg(message);
+                free(node);
+            } else {
+                nn_send(fd, "0", 1, 0);    
             }
             nn_freemsg(buf);
+            continue;
+        }
+
+        if (message->type == LAMB_REPORT || message->type == LAMB_DELIVER) {
+            lamb_queue_push(queue, message);
+            continue;
+        }
+
+        if (message->type == LAMB_BYE) {
+            nn_freemsg(buf);
+            break;
         }
     }
 

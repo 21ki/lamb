@@ -36,6 +36,7 @@ int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port) 
 
     memset(&req, 0, sizeof(req));
     req.id = opt->id;
+    req.type = opt->type;
     memcpy(req.addr, opt->addr, 16);
 
     rc = nn_send(fd, (char *)&req, sizeof(req), 0);
@@ -60,7 +61,7 @@ int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port) 
     nn_close(fd);
     rep = (lamb_rep_t *)buf;
 
-    fd = nn_socket(AF_SP, NN_PAIR);
+    fd = nn_socket(AF_SP, opt->type);
     if (fd < 0) {
         return 5;
     }

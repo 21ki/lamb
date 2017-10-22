@@ -13,10 +13,12 @@
 
 #define lamb_errlog(f, fmt, ...) lamb_log_error(f, __FILE__, __LINE__, fmt, __VA_ARGS__)
 
+#define LAMB_REQ     0
 #define LAMB_SUBMIT  1
 #define LAMB_DELIVER 2
 #define LAMB_REPORT  3
 #define LAMB_UPDATE  4
+#define LAMB_BYE     5
 
 #define LAMB_CMCC    1
 #define LAMB_CTCC    2
@@ -28,10 +30,10 @@
 
 typedef struct {
     int type;
-    char data[508];
 } lamb_message_t;
 
 typedef struct {
+    int type;
     unsigned long long id;
     char spid[8];
     char spcode[24];
@@ -42,6 +44,8 @@ typedef struct {
 } lamb_submit_t;
 
 typedef struct {
+    int type;
+    int account;
     unsigned long long id;
     char spcode[24];
     char phone[24];
@@ -51,6 +55,8 @@ typedef struct {
 } lamb_report_t;
 
 typedef struct {
+    int type;
+    int account;
     unsigned long long id;
     char phone[24];
     char spcode[24];

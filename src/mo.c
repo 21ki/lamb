@@ -189,10 +189,16 @@ void *lamb_work_loop(void *arg) {
     pthread_cond_signal(&cond);
 
     /* Start event processing */
-    int len;
+    int account;
+    int len, rlen, dlen;
+    lamb_report_t *report;
+    lamb_deliver_t *deliver;
+    lamb_message_t *message;
 
     len = sizeof(lamb_message_t);
-    
+    rlen = sizeof(lamb_report_t);
+    dlen = sizeof(lamb_deliver_t);
+
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, NN_DONTWAIT);
@@ -211,24 +217,58 @@ void *lamb_work_loop(void *arg) {
             continue;
         }
 
-        if (rc == len) {
-            lamb_queue_push(queue, buf);
+        if (rc != len && rc != rlen && rc != dlen) {
+            nn_freemsg(buf);
             continue;
         }
 
-        if (rc >= 3) {
-            if (strncasecmp(buf, "bye", 3) == 0) {
-                nn_freemsg(buf);
-                break;
-            } else if (strncasecmp(buf, "req", 3) == 0) {
-                node = lamb_queue_pop(queue);
-                nn_send(fd, node ? node->val : "0", node ? len : 1, 0);
-                if (node) {
-                    free(node->val);
-                    free(node);
+        message = (lamb_message_t *)buf;
+
+        if (message->type == LAMB_REQ) {
+            node = lamb_queue_pop(queue);
+            if (node) {
+                message = (lamb_message_t *)node->val;
+                if (message->type == LAMB_REPORT) {
+                    nn_send(fd, message, rlen, 0);
+                } else if (message->type == LAMB_DELIVER) {
+                    nn_send(fd, message, dlen, 0);
                 }
+                nn_freemsg(message);
+                free(node);
+            } else {
+                nn_send(fd, "0", 1, 0);    
             }
             nn_freemsg(buf);
+            continue;
+        }
+
+        if (message->type == LAMB_REPORT || message->type == LAMB_DELIVER) {
+            if (message->type == LAMB_REPORT) {
+                report = (lamb_report_t *)buf;
+                account = report->account;
+            } else {
+                deliver = (lamb_deliver_t *)buf;
+                account = deliver->account;
+            }
+
+            queue = lamb_pool_find(list_pools, account);
+            if (!queue) {
+                queue = lamb_queue_new(account);
+                if (queue) {
+                    lamb_pool_add(list_pools, queue);
+                }
+            }
+
+            if (queue) {
+                lamb_queue_push(queue, message);
+            }
+
+            continue;
+        }
+
+        if (message->type == LAMB_BYE) {
+            nn_freemsg(buf);
+            break;
         }
     }
 

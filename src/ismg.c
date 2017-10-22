@@ -24,6 +24,8 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <nanomsg/nn.h>
+#include <nanomsg/pair.h>
+#include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "ismg.h"
 #include "utils.h"
@@ -268,13 +270,15 @@ void lamb_work_loop(lamb_client_t *client) {
     cmpp_pack_t pack;
     lamb_submit_t submit;
     unsigned long long msgId;
+    lamb_message_t bye;
 
     gid = getpid();
     lamb_set_process("lamb-client");
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
     memset(&status, 0, sizeof(lamb_status_t));
-    
+    bye.type = LAMB_BYE;
+
     /* Redis Cache */
     err = lamb_cache_connect(&rdb, "127.0.0.1", 6379, NULL, 0);
     if (err) {
@@ -287,6 +291,7 @@ void lamb_work_loop(lamb_client_t *client) {
 
     memset(&opt, 0, sizeof(opt));
     opt.id = client->account->id;
+    opt.type = NN_PAIR;
     memcpy(opt.addr, config.listen, 16);
     opt.timeout = config.timeout;
     
@@ -306,10 +311,10 @@ void lamb_work_loop(lamb_client_t *client) {
     epoll_ctl(epfd, EPOLL_CTL_ADD, client->sock->fd, &ev);
 
     /* Start Client Status Update Thread */
-    lamb_start_thread(lamb_online_update, client, 1);
+    lamb_start_thread(lamb_stat_loop, client, 1);
 
     /* Client Message Deliver */
-    lamb_start_thread(lamb_deliver_loop, client, 1);
+    //lamb_start_thread(lamb_deliver_loop, client, 1);
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -347,6 +352,7 @@ void lamb_work_loop(lamb_client_t *client) {
 
                 /* Message Resolution */
                 memset(&submit, 0, sizeof(lamb_submit_t));
+                submit.type = LAMB_SUBMIT;
                 submit.id = msgId;
                 strcpy(submit.spid, client->account->username);
                 cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit.phone, 24, 21);
@@ -406,9 +412,9 @@ void lamb_work_loop(lamb_client_t *client) {
 
 exit:
     close(epfd);
-    nn_send(mt, "bye", 4, 0);
-    nn_close(mt);
     cmpp_sock_close(client->sock);
+    nn_send(mt, &bye, sizeof(bye), 0);
+    nn_close(mt);
     pthread_cond_destroy(&cond);
     pthread_mutex_destroy(&mutex);
     
@@ -416,12 +422,13 @@ exit:
 }
 
 void *lamb_deliver_loop(void *data) {
-    int err;
-    ssize_t ret = 0;
-    lamb_message_t message;
+    char *buf;
+    int rc, err;
+    lamb_message_t req;
     lamb_client_t *client;
-    lamb_deliver_t *deliver;
     lamb_report_t *report;
+    lamb_deliver_t *deliver;
+    lamb_message_t *message;
     unsigned int sequenceId;
 
     client = (lamb_client_t *)data;
@@ -431,6 +438,7 @@ void *lamb_deliver_loop(void *data) {
 
     memset(&opt, 0, sizeof(opt));
     opt.id = client->account->id;
+    opt.type = NN_REQ;
     memcpy(opt.addr, config.listen, 16);
     opt.timeout = config.timeout;
     
@@ -440,65 +448,82 @@ void *lamb_deliver_loop(void *data) {
         pthread_exit(NULL);
     }
     
+    int rlen, dlen;
+
+    rlen = sizeof(lamb_report_t);
+    dlen = sizeof(lamb_deliver_t);
+
+    req.type = LAMB_REQ;
+
     while (true) {
-        memset(&message, 0 , sizeof(message));
-        //ret = lamb_amqp_pull(mo, (char *)&message, sizeof(message), 3000);
-        if (ret > 0) {
-            switch (message.type) {
-            case LAMB_DELIVER:;
-                deliver = (lamb_deliver_t *)&message.data;
-                sequenceId = confirmed.sequenceId = cmpp_sequence();
-                confirmed.msgId = deliver->id;
-            deliver:
-                err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
-                if (err) {
-                    status.err++;
-                    lamb_errlog(config.logfile, "sending 'cmpp_deliver' packet to client %s failed", client->addr);
-                    lamb_sleep(3000);
-                    goto deliver;
-                }
+        rc = nn_send(mo, &req, sizeof(req), 0);
 
-                status.delv++;
-                break;
-            case LAMB_REPORT:;
-                report = (lamb_report_t *)&message.data;
-                sequenceId = confirmed.sequenceId = cmpp_sequence();
-                confirmed.msgId = report->id;
-            report:
-                err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
-                if (err) {
-                    status.err++;
-                    lamb_errlog(config.logfile, "sending 'cmpp_report' packet to client %s failed", client->addr);
-                    lamb_sleep(3000);
-                    goto report;
-                }
+        if (rc < 0) {
+            lamb_sleep(1000);
+            continue;
+        }
 
-                status.delv++;
-                break;
-            default:
-                continue;
+        rc = nn_recv(mo, &buf, NN_MSG, 0);
+        if (rc < 0) {
+            lamb_sleep(1000);
+            continue;
+        }
+
+        if (rc != rlen && rc != dlen) {
+            lamb_sleep(1000);
+            continue;
+        }
+
+        message = (lamb_message_t *)buf;
+
+        if (message->type == LAMB_REPORT) {
+            report = (lamb_report_t *)message;
+            sequenceId = confirmed.sequenceId = cmpp_sequence();
+            confirmed.msgId = report->id;
+            
+        report:
+            err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
+            if (err) {
+                status.err++;
+                lamb_errlog(config.logfile, "sending 'cmpp_report' packet to client %s failed", client->addr);
+                lamb_sleep(3000);
+                goto report;
             }
+        } else if (message->type == LAMB_DELIVER) {
+            deliver = (lamb_deliver_t *)message;
+            sequenceId = confirmed.sequenceId = cmpp_sequence();
+            confirmed.msgId = deliver->id;
 
-            /* Waiting for message confirmation */
-            err = lamb_wait_confirmation(&cond, &mutex, 3);
-
-            if (err == ETIMEDOUT) {
-                status.timeo++;
-                if (message.type == LAMB_DELIVER) {
-                    goto deliver;
-                } else if (message.type == LAMB_REPORT) {
-                    goto report;
-                }
+        deliver:
+            err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
+            if (err) {
+                status.err++;
+                lamb_errlog(config.logfile, "sending 'cmpp_deliver' packet to client %s failed", client->addr);
+                lamb_sleep(3000);
+                goto deliver;
             }
         }
 
+        /* Waiting for message confirmation */
+        err = lamb_wait_confirmation(&cond, &mutex, 3);
+
+        if (err == ETIMEDOUT) {
+            status.timeo++;
+            if (message->type == LAMB_REPORT) {
+                goto report;
+            } else if (message->type == LAMB_DELIVER) {
+                goto deliver;
+            }
+        }
+
+        nn_freemsg(buf);
         lamb_sleep(1000);
     }
 
     pthread_exit(NULL);
 }
 
-void *lamb_online_update(void *data) {
+void *lamb_stat_loop(void *data) {
     lamb_client_t *client;
     redisReply *reply = NULL;
     unsigned long long last, error;

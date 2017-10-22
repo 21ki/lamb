@@ -9,6 +9,7 @@
 #define _LAMB_TEMPLATE_H
 
 #include "db.h"
+#include "queue.h"
 
 typedef struct {
     int id;

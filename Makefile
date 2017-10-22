@@ -2,7 +2,7 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
 MACRO = -D_GNU_SOURCE
-OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/mqueue.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/message.o src/socket.o
+OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/mqueue.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/socket.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre
 
 all: sp ismg server mt mo md test
@@ -14,7 +14,7 @@ ismg: src/ismg.c src/ismg.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/ismg.c $(OBJS) $(LIBS) -lnanomsg -o ismg
 
 server: src/server.c src/server.h $(OBJS)
-	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -o server
+	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -lnanomsg -o server
 
 deliver: src/deliver.c src/deliver.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) $(LIBS) -o deliver
@@ -84,9 +84,6 @@ src/template.o: src/template.c src/template.h
 
 src/route.o: src/route.c src/route.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/route.c -o src/route.o
-
-src/message.o: src/message.c src/message.h
-	$(CC) $(CFLAGS) $(MACRO) -c src/message.c -o src/message.o
 
 src/socket.o: src/socket.c src/socket.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/socket.c -o src/socket.o

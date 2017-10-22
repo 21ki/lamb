@@ -306,13 +306,12 @@ void *lamb_deliver_loop(void *data) {
         case CMPP_DELIVER:;
             /* Cmpp Deliver */
             unsigned char registered_delivery;
-            message = (lamb_message_t *)calloc(1, sizeof(lamb_message_t));
             cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, &registered_delivery, 1);
 
             if (registered_delivery == 1) {
                 status.rep++;
-                message->type = LAMB_REPORT;
-                report = (lamb_report_t *)&message->data;
+                report = (lamb_report_t *)calloc(1, sizeof(lamb_report_t));
+                report->type = LAMB_REPORT;
                 memset(stat, 0, sizeof(stat));
                 
                 /* Msg_Id */
@@ -349,15 +348,15 @@ void *lamb_deliver_loop(void *data) {
                     report->status = 6;
                 }
 
-                lamb_queue_push(storage, message);
+                lamb_queue_push(storage, report);
 
                 printf("-> [received] msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n", report->id, report->phone, stat, report->submitTime, report->doneTime);
                 
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
             } else {
                 status.delv++;
-                message->type = LAMB_DELIVER;
-                deliver = (lamb_deliver_t *)&message->data;
+                deliver = (lamb_deliver_t *)calloc(1, sizeof(lamb_deliver_t));
+                deliver->type = LAMB_DELIVER;
 
                 /* Msg_Id */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_id, &deliver->id, 8);
@@ -385,7 +384,7 @@ void *lamb_deliver_loop(void *data) {
                    deliver->id, deliver->phone, deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length);
                 */
 
-                lamb_queue_push(storage, message);
+                lamb_queue_push(storage, deliver);
 
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, deliver->id, 0);
             }
@@ -433,6 +432,7 @@ void *lamb_work_loop(void *data) {
     int rc;
     lamb_node_t *node;
     lamb_report_t *report;
+    lamb_deliver_t *deliver;
     lamb_message_t *message;
     unsigned long long msgId;
 
@@ -447,7 +447,7 @@ void *lamb_work_loop(void *data) {
         message = (lamb_message_t *)node->val;
 
         if (message->type == LAMB_REPORT) {
-            report = (lamb_report_t *)&message->data;
+            report = (lamb_report_t *)message;
             msgId = report->id;
             report->id = lamb_get_cache(&cache, report->id);
             
@@ -459,7 +459,13 @@ void *lamb_work_loop(void *data) {
             lamb_del_cache(&cache, msgId);
         }
 
-        rc = nn_send(md, message, sizeof(lamb_message_t), 0);
+        if (message->type == LAMB_REPORT) {
+            rc = nn_send(md, report, sizeof(lamb_report_t), 0);
+        } else {
+            deliver = (lamb_deliver_t *)message;
+            rc = nn_send(md, deliver, sizeof(lamb_deliver_t), 0);
+        }
+        
         if (rc < 0) {
             lamb_save_logfile(config.backfile, message);
         }
@@ -567,12 +573,12 @@ int lamb_save_logfile(char *file, void *data) {
 
     switch (message->type) {
     case LAMB_REPORT:
-        report = (lamb_report_t *)&message->data;
+        report = (lamb_report_t *)data;
         fprintf(fp, "%d,%llu,%s,%d,%s,%s\n", LAMB_REPORT, report->id, report->phone, report->status,
                 report->submitTime, report->doneTime);
         break;
     case LAMB_DELIVER:
-        deliver = (lamb_deliver_t *)&message->data;
+        deliver = (lamb_deliver_t *)data;
         fprintf(fp, "%d,%llu,%s,%s,%s,%d,%d,%s\n", LAMB_DELIVER, deliver->id, deliver->phone,
                 deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length, deliver->content);
         break;

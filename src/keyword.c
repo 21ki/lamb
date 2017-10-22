@@ -26,8 +26,8 @@ int lamb_keyword_get_all(lamb_db_t *db, lamb_queue_t *keys) {
 
     rows = PQntuples(res);
 
-    for (int i = 0; (i < rows) && (i < size); i++) {
-        lamb_keyword_t key = (lamb_keyword_t *)malloc(sizeof(lamb_keyword_t));
+    for (int i = 0; i < rows; i++) {
+        lamb_keyword_t *key = (lamb_keyword_t *)malloc(sizeof(lamb_keyword_t));
         if (key) {
             key->id = atoi(PQgetvalue(res, i, 0));
             key->val = lamb_strdup(PQgetvalue(res, i, 1));

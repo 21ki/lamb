@@ -52,7 +52,7 @@ int lamb_template_get_all(lamb_db_t *db, int id, lamb_queue_t *templates) {
 
     rows = PQntuples(res);
 
-    for (int i = 0; (i < rows) && (i < size); i++) {
+    for (int i = 0; i < rows; i++) {
         lamb_template_t *t = NULL;
         t = (lamb_template_t *)calloc(1, sizeof(lamb_template_t));
         if (t != NULL) {
@@ -72,7 +72,7 @@ bool lamb_template_check(lamb_template_t *template, char *content, int len) {
     char pattern[512];
 
     memset(pattern, 0, sizeof(pattern));
-    sprintf(pattern, "【%s】%s", template->name, templates->contents);
+    sprintf(pattern, "【%s】%s", template->name, template->contents);
     if (lamb_pcre_regular(pattern, content, len)) {
         return true;
     }

@@ -19,17 +19,19 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <errno.h>
+#include <nanomsg/nn.h>
+#include <nanomsg/pair.h>
+#include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "server.h"
-#include "utils.h"
 #include "config.h"
 #include "socket.h"
 #include "keyword.h"
 #include "security.h"
-#include "message.h"
 
 
 static int aid = 0;
+static long long money;
 static lamb_db_t db;
 static lamb_db_t mdb;
 static int mt, mo, md;
@@ -97,8 +99,9 @@ int main(int argc, char *argv[]) {
 }
 
 void lamb_event_loop(void) {
-    int err, ret;
+    int err;
 
+    money = 0;
     lamb_set_process("lamb-server");
 
     err = lamb_signal(SIGHUP, lamb_reload);
@@ -116,7 +119,7 @@ void lamb_event_loop(void) {
     /* Billing Queue Initialization */
     billing = lamb_queue_new(aid);
     if (!billing) {
-        lamb_errlog(config.logfile, "billing queue initialization failed");
+        lamb_errlog(config.logfile, "billing queue initialization failed", 0);
         return;
     }
 
@@ -174,6 +177,7 @@ void lamb_event_loop(void) {
 
     memset(&opt, 0, sizeof(opt));
     opt.id = aid;
+    opt.type = NN_PAIR;
     strcpy(opt.addr, "127.0.0.1");
     opt.timeout = config.timeout;
     
@@ -184,19 +188,21 @@ void lamb_event_loop(void) {
     }
     
     /* Connect to MO server */
-    err = lamb_nn_connect(&mo, &option, config.mo_host, config.mo_port);
+    /*
+    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
         return;
     }
-
+    */
     /* Connect to MD server */    
-    err = lamb_nn_connect(&md, &option, config.md_host, config.md_port);
+    /*
+    err = lamb_nn_connect(&md, &opt, config.md_host, config.md_port);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MD %s server", config.mo_host);
         return;
     }
-
+    */
     /* Fetch company information */
     memset(&company, 0, sizeof(company));
     err = lamb_company_get(&db, account.company, &company);
@@ -266,7 +272,7 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_work_loop, NULL, config.work_threads > cpus ? cpus : config.work_threads);
 
     /* Start deliver thread */
-    lamb_start_thread(lamb_deliver_loop, NULL, 1);
+    //lamb_start_thread(lamb_deliver_loop, NULL, 1);
     
     /* Start billing thread */
     lamb_start_thread(lamb_billing_loop, NULL, 1);
@@ -305,6 +311,7 @@ void *lamb_work_loop(void *data) {
     lamb_mq_t *channel;
     lamb_template_t *template;
     lamb_keyword_t *keyword;
+    lamb_message_t req;
 
     len = sizeof(lamb_submit_t);
     
@@ -313,11 +320,19 @@ void *lamb_work_loop(void *data) {
         lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
     }
     
+    req.type = LAMB_REQ;
+
     while (true) {
         submit = NULL;
 
+        rc = nn_recv(mt, &buf, NN_MSG, 0);
+
+        if (rc > 0) {
+            submit = (lamb_submit_t *)buf;
+        }
+        /*
         pthread_mutex_lock(&lock);
-        rc = nn_send(mt, "req", 4, 0);
+        rc = nn_send(mt, &req, sizeof(req), 0);
         if (rc > 0) {
             rc = nn_recv(mt, &buf, NN_MSG, 0);
             if (rc == len) {
@@ -325,6 +340,7 @@ void *lamb_work_loop(void *data) {
             }
         }
         pthread_mutex_unlock(&lock);
+    */
 
         if (submit != NULL) {
             //printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
@@ -342,7 +358,7 @@ void *lamb_work_loop(void *data) {
             } else if (submit->msgFmt == 15) {
                 fromcode = "GBK";
             } else {
-                //printf("-> [encoded] message encoded %d not support\n", submit->msgFmt);
+                printf("-> [encoded] message encoded %d not support\n", submit->msgFmt);
                 nn_freemsg(buf);
                 continue;
             }
@@ -351,7 +367,7 @@ void *lamb_work_loop(void *data) {
                 memset(content, 0, sizeof(content));
                 err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), fromcode, "UTF-8", &submit->length);
                 if (err || (submit->length == 0)) {
-                    //printf("-> [encoded] Message encoding conversion failed\n");
+                    printf("-> [encoded] Message encoding conversion failed\n");
                     nn_freemsg(buf);
                     continue;
                 }
@@ -359,10 +375,10 @@ void *lamb_work_loop(void *data) {
                 submit->msgFmt = 11;
                 memset(submit->content, 0, 160);
                 memcpy(submit->content, content, submit->length);
-                //printf("-> [encoded] Message encoding conversion successfull\n");
+                printf("-> [encoded] Message encoding conversion successfull\n");
             }
 
-            //printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
+            printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
 
             /* Blacklist and Whitelist */
             /* 
@@ -385,8 +401,8 @@ void *lamb_work_loop(void *data) {
             */
             
             /* SpCode Processing  */
-            //printf("-> [spcode] check message spcode extended\n");
             if (account.extended) {
+                printf("-> [spcode] check message spcode extended\n");
                 lamb_spcode_process(account.spcode, submit->spcode, 20);
             } else {
                 strcpy(submit->spcode, account.spcode);
@@ -399,7 +415,7 @@ void *lamb_work_loop(void *data) {
 
                 while (node != NULL) {
                     template = (lamb_template_t *)node->val;
-                    if (lamb_template_check(&template, submit->content, submit->length)) {
+                    if (lamb_template_check(template, submit->content, submit->length)) {
                         success = true;
                         break;
                     }
@@ -407,12 +423,12 @@ void *lamb_work_loop(void *data) {
                 } 
 
                 if (!success) {
-                    //printf("-> [template] The template check will not pass\n");
+                    printf("-> [template] The template check will not pass\n");
                     nn_freemsg(buf);
                     continue;
                     
                 }
-                //printf("-> [template] The template check OK\n");
+                printf("-> [template] The template check OK\n");
             }
 
             /* Keywords Filtration */
@@ -422,7 +438,7 @@ void *lamb_work_loop(void *data) {
 
                 while (node != NULL) {
                     keyword = (lamb_keyword_t *)node->val;
-                    if (lamb_keyword_check(&keyword, submit->content)) {
+                    if (lamb_keyword_check(keyword, submit->content)) {
                         success = true;
                         break;
                     }
@@ -430,16 +446,16 @@ void *lamb_work_loop(void *data) {
                 }
                
                 if (success) {
-                    //printf("-> [keyword] The keyword check not pass\n");
+                    printf("-> [keyword] The keyword check not pass\n");
                     nn_freemsg(buf);
                     continue;
                 }
-                //printf("-> [keyword] The keyword check OK\n");
+                printf("-> [keyword] The keyword check OK\n");
            }
 
         routing: /* Routing Scheduling */
             success = false;
-            channel = channels->head;
+            node = channels->head;
 
             while (node != NULL) {
                 channel = (lamb_mq_t *)node->val;
@@ -456,9 +472,12 @@ void *lamb_work_loop(void *data) {
                 if (channels->len < 1) {
                     printf("-> [channel] No gateway channel available\n");
                 }
+                printf("-> [channel] busy all channels\n");
                 lamb_sleep(100);
                 goto routing;
             }
+
+            //printf("-> [channel] Message sent to %d channel\n", channel->id);
 
             /* Cache message information */
             i = (submit->id % cache.len);
@@ -486,7 +505,7 @@ void *lamb_work_loop(void *data) {
             if (store) {
                 store->type = LAMB_SUBMIT;
                 store->val = submit;
-                lamb_queue_push(storage, submit);
+                lamb_queue_push(storage, store);
             }
         } else {
             lamb_sleep(1000);
@@ -498,17 +517,21 @@ void *lamb_work_loop(void *data) {
 
 void *lamb_deliver_loop(void *data) {
     char *buf;
-    int i, rc, len;
+    int i, rc, err;
     lamb_bill_t *bill;
     lamb_store_t *store;
+    lamb_message_t req;
     lamb_report_t *report;
     lamb_deliver_t *deliver;
     lamb_message_t *message;
 
-    len = sizeof(lamb_message_t);
-    
+    int rlen = sizeof(lamb_report_t);
+    int dlen = sizeof(lamb_deliver_t);
+
+    req.type = LAMB_REQ;
+
     while (true) {
-        rc = nn_send(md, "req", 4, 0);
+        rc = nn_send(md, &req, sizeof(req), 0);
 
         if (rc < 0) {
             lamb_sleep(1000);
@@ -516,41 +539,40 @@ void *lamb_deliver_loop(void *data) {
         }
 
         rc = nn_recv(md, &buf, NN_MSG, 0);
-        if (rc != len) {
-            nn_freemsg(buf);
+        if (rc < 0) {
+            lamb_sleep(1000);
+            continue;
+        }
+
+        if (rc != rlen && rc != dlen) {
+            lamb_sleep(1000);
             continue;
         }
 
         message = (lamb_message_t *)buf;
 
         if (message->type == LAMB_REPORT) {
-            lamb_report_t *tmp;
-            report = (lamb_report_t *)&message->data;
-
-            tmp = (lamb_report_t *)malloc(sizeof(lamb_report_t));
-            if (tmp) {
-                memcpy(tmp, report, sizeof(lamb_report_t));
-                store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
-
-                if (store) {
-                    store->type = LAMB_REPORT;
-                    store->val = tmp;
-                    lamb_queue_push(storage, store);
-                } else {
-                    free(tmp);
-                }
-            }
-
             char spid[6];
             char spcode[24];
-            int charge, acc, comp;
+            int acc, comp, charge;
 
+            /* Get cached message information */
+            report = (lamb_report_t *)buf;
             i = (report->id % cache.len);
             pthread_mutex_lock(&cache.nodes[i]->lock);
-            lamb_cache_query(cache.nodes[i], spid, spcode, &acc, &comp, &charge);
+            err = lamb_cache_query(cache.nodes[i], report->id, spid, spcode, &acc, &comp, &charge);
             pthread_mutex_unlock(&cache.nodes[i]->lock);
 
             /* Billing processing */
+            if (err) {
+                printf("query cache failure from %d node", i);
+                lamb_errlog(config.logfile, "query cache failure from %d node", i);
+                nn_freemsg(buf);
+                continue;
+            }
+
+            report->account = acc;
+
             if (charge == LAMB_CHARGE_SUCCESS) {
                 bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
                 if (bill) {
@@ -560,27 +582,35 @@ void *lamb_deliver_loop(void *data) {
                 }
             }
 
+            nn_send(mo, report, sizeof(lamb_report_t), 0);
+
+            /* Store report to database */
+            store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
+
+            if (store) {
+                store->type = LAMB_REPORT;
+                store->val = report;
+                lamb_queue_push(storage, store);
+            } else {
+                nn_freemsg(buf);
+            }
+
             continue;
         }
 
         if (message->type == LAMB_DELIVER) {
-            lamb_deliver_t *tmp;
-            deliver = (lamb_deliver_t *)&message->data;
+            deliver = (lamb_deliver_t *)buf;
 
-            nn_send(mo, deliver, sizeof(lamb_deliver_t), 0);
+            //nn_send(mo, deliver, sizeof(lamb_deliver_t), 0);
 
-            tmp = (lamb_deliver_t *)malloc(sizeof(lamb_deliver_t));
-            
-            if (tmp) {
-                memcpy(tmp, deliver, sizeof(lamb_deliver_t));
-                store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
+            store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
 
-                if (store) {
-                    store->type = LAMB_DELIVER;
-                    store->val = deliver;
-
-                    lamb_queue_push(storage, store);
-                }
+            if (store) {
+                store->type = LAMB_DELIVER;
+                store->val = deliver;
+                lamb_queue_push(storage, store);
+            } else {
+                nn_freemsg(buf);
             }
         }
     }
@@ -589,7 +619,6 @@ void *lamb_deliver_loop(void *data) {
 }
 
 void *lamb_store_loop(void *data) {
-    int err;
     lamb_node_t *node;
     lamb_store_t *store;
     lamb_submit_t *submit;
@@ -615,7 +644,7 @@ void *lamb_store_loop(void *data) {
             lamb_write_deliver(&mdb, &account, &company, deliver);
         }
 
-        free(store->val);
+        nn_freemsg(store->val);
         free(store);
         free(node);
     }
@@ -637,7 +666,7 @@ void *lamb_billing_loop(void *data) {
         }
 
         bill = (lamb_bill_t *)node->val;
-        err = lamb_company_billing(bill->id, bill->money);
+        err = lamb_company_billing(&rdb, bill->id, bill->money, &money);
         if (err) {
             lamb_errlog(config.logfile, "Account %d billing money %d failure", bill->id, bill->money);
         }
@@ -684,8 +713,7 @@ void *lamb_stat_loop(void *data) {
 
     while (true) {
         pthread_mutex_lock(&(rdb.lock));
-        reply = redisCommand(rdb.handle, "HMSET server.%d pid %u queue %u storage %u", account.id, getpid(),
-                             queue->len, storage->len);
+        reply = redisCommand(rdb.handle, "HMSET server.%d pid %u", account.id, getpid());
         pthread_mutex_unlock(&(rdb.lock));
         if (reply != NULL) {
             freeReplyObject(reply);
@@ -711,41 +739,53 @@ int lamb_cache_message(lamb_cache_t *cache, lamb_account_t *account, lamb_compan
     return 0;
 }
 
-int lamb_cache_query(lamb_cache_t *cache, char *spid, char *spcode, int *account, int *company, int *charge) {
+int lamb_cache_query(lamb_cache_t *cache, unsigned long long id, char *spid, char *spcode, int *account, int *company, int *charge) {
+    int err = 0;
     redisReply *reply = NULL;
 
-    reply = redisCommand(cache->handle, "HMGET %llu spid spcode account company charge");
+    reply = redisCommand(cache->handle, "HMGET %llu spid spcode account company charge", id);
 
     if (reply != NULL) {
         if ((reply->type == REDIS_REPLY_ARRAY) && (reply->elements == 5)) {
             if (reply->element[0]->len > 0) {
                 memcpy(spid, reply->element[0]->str, reply->element[0]->len);
+            } else {
+                err = -1;
             }
 
             if (reply->element[1]->len > 0) {
                 memcpy(spcode, reply->element[1]->str, reply->element[1]->len);
+            } else {
+                err = -1;
             }
 
             if (reply->element[2]->len > 0) {
                 *account = atoi(reply->element[2]->str);
+            } else {
+                err = -1;
             }
 
             if (reply->element[3]->len > 0) {
                 *company = atoi(reply->element[3]->str);
+            } else {
+                err = -1;
             }
 
             if (reply->element[4]->len > 0) {
                 *charge = atoi(reply->element[4]->str);
+            } else {
+                err = -1;
             }
 
+        } else {
+            err = -1;
         }
-
         freeReplyObject(reply);
     } else {
-        return -1;
+        err = -1;
     }
 
-    return 0;
+    return err;
 }
 
 int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {

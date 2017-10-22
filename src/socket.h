@@ -10,8 +10,12 @@
 
 #pragma pack(1)
 
+#define LAMB_NN_PUSH 1
+#define LAMB_NN_PULL 2
+
 typedef struct {
     int id;
+    int type;
     char addr[16];
     char token[128];
 } lamb_req_t;
@@ -24,6 +28,7 @@ typedef struct {
 
 typedef struct {
     int id;
+    int type;
     char addr[16];
     char token[40];
     long long timeout;
