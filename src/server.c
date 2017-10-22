@@ -334,7 +334,7 @@ void *lamb_work_loop(void *data) {
 
             /* Message Encoded Convert */
             char *fromcode;
-            char content[256];
+            char content[512];
 
             if (submit->msgFmt == 0) {
                 fromcode = "ASCII";
