@@ -73,6 +73,7 @@ int lamb_open_channel(lamb_group_t *group, lamb_queue_t *channels, lamb_mq_opt *
 int lamb_cache_message(lamb_cache_t *cache, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
 int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
 int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_deliver_t *message);
+int lamb_spcode_process(char *code, char *spcode, size_t size);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

@@ -330,16 +330,9 @@ void *lamb_work_loop(void *data) {
         pthread_mutex_unlock(&lock);
 
         if (submit != NULL) {
-
             //printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
 
-            /* Check Message Encoded Convert */
-            int codeds[] = {0, 8, 11, 15};
-            if (!lamb_check_msgfmt(submit->msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
-                nn_freemsg(buf);
-                continue;
-            }
-
+            /* Message Encoded Convert */
             char *fromcode;
             char content[256];
 
@@ -356,13 +349,13 @@ void *lamb_work_loop(void *data) {
                 nn_freemsg(buf);
                 continue;
             }
-            
+
             if (fromcode != NULL) {
                 memset(content, 0, sizeof(content));
                 err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), fromcode, "UTF-8", &submit->length);
                 if (err || (submit->length == 0)) {
-                    nn_freemsg(buf);
                     //printf("-> [encoded] Message encoding conversion failed\n");
+                    nn_freemsg(buf);
                     continue;
                 }
 
@@ -397,7 +390,7 @@ void *lamb_work_loop(void *data) {
             /* SpCode Processing  */
             //printf("-> [spcode] check message spcode extended\n");
             if (account.extended) {
-                lamb_account_spcode_process(account.spcode, submit->spcode, 20);
+                lamb_spcode_process(account.spcode, submit->spcode, 20);
             } else {
                 strcpy(submit->spcode, account.spcode);
             }
@@ -797,6 +790,23 @@ int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *c
         }
 
         PQclear(res);
+    }
+
+    return 0;
+}
+
+int lamb_spcode_process(char *code, char *spcode, size_t size) {
+    size_t len;
+
+    len = strlen(code);
+    
+    if (len > strlen(spcode)) {
+        memcpy(spcode, code, len >= size ? (size - 1) : len);
+        return 0;
+    }
+
+    for (int i = 0; (i < len) && (i < (size - 1)); i++) {
+        spcode[i] = code[i];
     }
 
     return 0;

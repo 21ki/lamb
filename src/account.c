@@ -193,20 +193,4 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
     return 0;
 }
 
-int lamb_account_spcode_process(char *code, char *spcode, size_t size) {
-    size_t len;
-
-    len = strlen(code);
-    
-    if (len > strlen(spcode)) {
-        memcpy(spcode, code, len >= size ? (size - 1) : len);
-        return 0;
-    }
-
-    for (int i = 0; (i < len) && (i < (size - 1)); i++) {
-        spcode[i] = code[i];
-    }
-
-    return 0;
-}
 

@@ -40,6 +40,5 @@ typedef struct {
 int lamb_account_get(lamb_cache_t *cache, char *username, lamb_account_t *account);
 int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account);
 int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size);
-int lamb_account_spcode_process(char *code, char *spcode, size_t size);
 
 #endif
