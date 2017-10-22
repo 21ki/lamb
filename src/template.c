@@ -36,13 +36,12 @@ int lamb_template_get(lamb_db_t *db, int id, lamb_template_t *template) {
     return 0;
 }
 
-int lamb_template_get_all(lamb_db_t *db, int id, lamb_templates_t *templates, int size) {
+int lamb_template_get_all(lamb_db_t *db, int id, lamb_queue_t *templates) {
     int rows = 0;
     char *column;
     char sql[256];
     PGresult *res = NULL;
-    
-    templates->len = 0;
+
     column = "id, name, contents, account";
     sprintf(sql, "SELECT %s FROM template WHERE account = %d ORDER BY id", column, id);
     res = PQexec(db->conn, sql);
@@ -53,7 +52,7 @@ int lamb_template_get_all(lamb_db_t *db, int id, lamb_templates_t *templates, in
 
     rows = PQntuples(res);
 
-    for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
+    for (int i = 0; (i < rows) && (i < size); i++) {
         lamb_template_t *t = NULL;
         t = (lamb_template_t *)calloc(1, sizeof(lamb_template_t));
         if (t != NULL) {
@@ -61,12 +60,7 @@ int lamb_template_get_all(lamb_db_t *db, int id, lamb_templates_t *templates, in
             strncpy(t->name, PQgetvalue(res, i, 1), 63);
             strncpy(t->contents, PQgetvalue(res, i, 2), 511);
             t->account = atoi(PQgetvalue(res, i, 3));
-            templates->list[i] = t;
-            templates->len++;
-        } else {
-            if (j > 0) {
-                j--;
-            }
+            lamb_queue_push(templates, t);
         }
     }
 
@@ -74,15 +68,13 @@ int lamb_template_get_all(lamb_db_t *db, int id, lamb_templates_t *templates, in
     return 0;
 }
 
-bool lamb_template_check(lamb_templates_t *templates, char *content, int len) {
+bool lamb_template_check(lamb_template_t *template, char *content, int len) {
     char pattern[512];
 
-    for (int i = 0; (i < templates->len) && (templates->list[i] != NULL); i++) {
-        memset(pattern, 0, sizeof(pattern));
-        sprintf(pattern, "【%s】%s", templates->list[i]->name, templates->list[i]->contents);
-        if (lamb_pcre_regular(pattern, content, len)) {
-            return true;
-        }
+    memset(pattern, 0, sizeof(pattern));
+    sprintf(pattern, "【%s】%s", template->name, templates->contents);
+    if (lamb_pcre_regular(pattern, content, len)) {
+        return true;
     }
 
     return false;

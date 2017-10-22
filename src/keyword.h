@@ -9,15 +9,14 @@
 #define _LAMB_KEYWORD_H
 
 #include "db.h"
-
-#define LAMB_MAX_KEYWORD 1024
+#include "queue.h"
 
 typedef struct {
-    int len;
-    char *list[LAMB_MAX_KEYWORD];
-} lamb_keywords_t;
+    int id;
+    char *val;
+} lamb_keyword_t;
 
-int lamb_keyword_get_all(lamb_db_t *db, lamb_keywords_t *keys, int size);
-bool lamb_keyword_check(lamb_keywords_t *keys, char *content);
+int lamb_keyword_get_all(lamb_db_t *db, lamb_queue_t *keys);
+bool lamb_keyword_check(lamb_keyword_t *key, char *content);
 
 #endif

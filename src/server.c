@@ -38,12 +38,12 @@ static lamb_cache_t rdb;
 static lamb_caches_t cache;
 static lamb_queue_t *storage;
 static lamb_queue_t *billing;
-static lamb_queue_t *channel;
 static lamb_group_t group;
 static lamb_account_t account;
 static lamb_company_t company;
-static lamb_templates_t template;
-static lamb_keywords_t keywords;
+static lamb_queue_t *channels;
+static lamb_queue_t *templates;
+static lamb_queue_t *keywords;
 static lamb_config_t config;
 static pthread_mutex_t lock;
 
@@ -108,9 +108,30 @@ void lamb_event_loop(void) {
     }
 
     /* Storage Queue Initialization */
-    storage = lamb_queue_new(0);
+    storage = lamb_queue_new(aid);
     if (!storage) {
         lamb_errlog(config.logfile, "storage queue initialization failed ", 0);
+        return;
+    }
+
+    /* Channel Queue Initialization */
+    channels = lamb_queue_new(aid);
+    if (!channels) {
+        lamb_errlog(config.logfile, "channels queue initialization failed ", 0);
+        return;
+    }
+
+    /* Template Queue Initialization */
+    templates = lamb_queue_new(aid);
+    if (!templates) {
+        lamb_errlog(config.logfile, "template queue initialization failed ", 0);
+        return;
+    }
+
+    /* Keyword Queue Initialization */
+    keywords = lamb_queue_new(aid);
+    if (!keywords) {
+        lamb_errlog(config.logfile, "keyword queue initialization failed ", 0);
         return;
     }
 
@@ -200,8 +221,7 @@ void lamb_event_loop(void) {
     }
 
     /* Fetch template information */
-    memset(&template, 0, sizeof(template));
-    err = lamb_template_get_all(&db, account.id, &template, LAMB_MAX_TEMPLATE);
+    err = lamb_template_get_all(&db, account.id, templates);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch template information", 0);
         return;
@@ -216,9 +236,8 @@ void lamb_event_loop(void) {
     }
 
     /* Fetch keyword information */
-    memset(&keywords, 0, sizeof(keywords));
     if (account.check_keyword) {
-        err = lamb_keyword_get_all(&db, &keywords, LAMB_MAX_KEYWORD);
+        err = lamb_keyword_get_all(&db, keywords);
         if (err) {
             lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
         }
@@ -227,9 +246,8 @@ void lamb_event_loop(void) {
     /* Channel Initialization */
     lamb_mq_opt opts;
 
-    channel = lamb_queue_new(aid);
-
-    if (!channel) {
+    channels = lamb_queue_new(aid);
+    if (!channels) {
         lamb_errlog(config.logfile, "channel queue initialization failed", 0);
         return;
     }
@@ -237,8 +255,8 @@ void lamb_event_loop(void) {
     opts.flag = O_WRONLY | O_NONBLOCK;
     opts.attr = NULL;
 
-    err = lamb_open_channel(&group, channel, &opts);
-    if (err || channel->len < 1) {
+    err = lamb_open_channel(&group, channels, &opts);
+    if (err || channels->len < 1) {
         lamb_errlog(config.logfile, "No gateway channel available", 0);
         return;
     }
@@ -286,8 +304,11 @@ void *lamb_work_loop(void *data) {
     lamb_bill_t *bill;
     lamb_store_t *store;
     lamb_submit_t *submit;
-    lamb_mq_t *queue;
-    
+    lamb_node_t *node;
+    lamb_mq_t *channel;
+    lamb_template_t *template;
+    lamb_keyword_t *keyword;
+
     len = sizeof(lamb_submit_t);
     
     err = lamb_cpu_affinity(pthread_self());
@@ -383,34 +404,58 @@ void *lamb_work_loop(void *data) {
 
             /* Template Processing */
             if (account.check_template) {
-                if (!lamb_template_check(&template, submit->content, submit->length)) {
-                    nn_freemsg(buf);
+                success = false;
+                node = templates->head;
+
+                while (node != NULL) {
+                    template = (lamb_template_t *)node->val;
+                    if (lamb_template_check(&template, submit->content, submit->length)) {
+                        success = true;
+                        break;
+                    }
+                    node = node->next;
+                } 
+
+                if (!success) {
                     //printf("-> [template] The template check will not pass\n");
+                    nn_freemsg(buf);
                     continue;
+                    
                 }
                 //printf("-> [template] The template check OK\n");
             }
 
             /* Keywords Filtration */
-            /* 
-               if (account.check_keyword) {
-               if (lamb_keyword_check(&keywords, submit->content)) {
-               nn_freemsg(buf);
-               //printf("-> [keyword] The keyword check not pass\n");
-               continue;
-               }
-               //printf("-> [keyword] The keyword check OK\n");
-               }
-            */
+            if (account.check_keyword) {
+                success = false;
+                node = keywords->head;
 
-        routing:; /* Routing Scheduling */
+                while (node != NULL) {
+                    keyword = (lamb_keyword_t *)node->val;
+                    if (lamb_keyword_check(&keyword, submit->content)) {
+                        success = true;
+                        break;
+                    }
+                    node = node->next;
+                }
+               
+                if (success) {
+                    //printf("-> [keyword] The keyword check not pass\n");
+                    nn_freemsg(buf);
+                    continue;
+                }
+                //printf("-> [keyword] The keyword check OK\n");
+           }
+
+        routing: /* Routing Scheduling */
             success = false;
-            queue = channel->head;
+            channel = channels->head;
 
-            while (queue != NULL) {
-                err = lamb_mq_send(queue, (char *)submit, sizeof(lamb_submit_t), 0);
+            while (node != NULL) {
+                channel = (lamb_mq_t *)node->val;
+                err = lamb_mq_send(channel, (char *)submit, sizeof(lamb_submit_t), 0);
                 if (err) {
-                    queue = queue->next;
+                    node = node->next;
                 } else {
                     success = true;
                     break;
@@ -418,10 +463,10 @@ void *lamb_work_loop(void *data) {
             }
 
             if (!success) {
-                if (channel->len < 1) {
-                    printf("-> [channel] No gateway channels available\n");
+                if (channels->len < 1) {
+                    printf("-> [channel] No gateway channel available\n");
                 }
-                lamb_sleep(10);
+                lamb_sleep(100);
                 goto routing;
             }
 
@@ -454,7 +499,7 @@ void *lamb_work_loop(void *data) {
                 lamb_queue_push(storage, submit);
             }
         } else {
-            lamb_sleep(10);
+            lamb_sleep(1000);
         }
     }
 
@@ -614,7 +659,7 @@ void *lamb_billing_loop(void *data) {
     pthread_exit(NULL);
 }
 
-int lamb_open_channel(lamb_group_t *group, lamb_queue_t *channel, lamb_mq_opt *opt) {
+int lamb_open_channel(lamb_group_t *group, lamb_queue_t *channels, lamb_mq_opt *opt) {
     int err;
     char name[128];
     lamb_mq_t *queue;
@@ -629,7 +674,7 @@ int lamb_open_channel(lamb_group_t *group, lamb_queue_t *channel, lamb_mq_opt *o
                 continue;
             }
 
-            lamb_queue_push(channel, queue);
+            lamb_queue_push(channels, queue);
         } else {
             return -1;
         }
