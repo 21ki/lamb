@@ -16,7 +16,6 @@
 #include <sys/time.h>
 #include <sched.h>
 #include <pthread.h>
-#include <sys/epoll.h>
 #include <arpa/inet.h>
 #include <signal.h>
 #include <errno.h>
@@ -114,24 +113,10 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Channel Queue Initialization */
-    channels = lamb_queue_new(aid);
-    if (!channels) {
-        lamb_errlog(config.logfile, "channels queue initialization failed ", 0);
-        return;
-    }
-
-    /* Template Queue Initialization */
-    templates = lamb_queue_new(aid);
-    if (!templates) {
-        lamb_errlog(config.logfile, "template queue initialization failed ", 0);
-        return;
-    }
-
-    /* Keyword Queue Initialization */
-    keywords = lamb_queue_new(aid);
-    if (!keywords) {
-        lamb_errlog(config.logfile, "keyword queue initialization failed ", 0);
+    /* Billing Queue Initialization */
+    billing = lamb_queue_new(aid);
+    if (!billing) {
+        lamb_errlog(config.logfile, "billing queue initialization failed");
         return;
     }
 
@@ -220,7 +205,13 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Fetch template information */
+    /* Template information Initialization */
+    templates = lamb_queue_new(aid);
+    if (!templates) {
+        lamb_errlog(config.logfile, "template queue initialization failed ", 0);
+        return;
+    }
+
     err = lamb_template_get_all(&db, account.id, templates);
     if (err) {
         lamb_errlog(config.logfile, "Can't fetch template information", 0);
@@ -235,7 +226,13 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Fetch keyword information */
+    /* Keyword information Initialization */
+    keywords = lamb_queue_new(aid);
+    if (!keywords) {
+        lamb_errlog(config.logfile, "keyword queue initialization failed ", 0);
+        return;
+    }
+
     if (account.check_keyword) {
         err = lamb_keyword_get_all(&db, keywords);
         if (err) {
@@ -246,14 +243,14 @@ void lamb_event_loop(void) {
     /* Channel Initialization */
     lamb_mq_opt opts;
 
+    opts.flag = O_WRONLY | O_NONBLOCK;
+    opts.attr = NULL;
+
     channels = lamb_queue_new(aid);
     if (!channels) {
         lamb_errlog(config.logfile, "channel queue initialization failed", 0);
         return;
     }
-
-    opts.flag = O_WRONLY | O_NONBLOCK;
-    opts.attr = NULL;
 
     err = lamb_open_channel(&group, channels, &opts);
     if (err || channels->len < 1) {
