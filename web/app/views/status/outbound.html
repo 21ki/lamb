@@ -94,18 +94,25 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>通道名称</th><th>通道类型</th><th>IP 地址</th><th>通道状态</th><th>当前并发</th><th>错误数量</th></tr>
+            <tr><th>#</th><th>通道名称</th><th>通道类型</th><th>IP 地址</th><th>通道状态</th><th>流量速度</th><th>错误统计</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>cmcc01</td><td>cmpp/2.0</td><td>112.2.28.45</td><td><span class="badge badge-success">正 常</span></td><td>300/s</td><td>0</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>cmcc01</td><td>cmpp/2.0</td><td>112.2.28.46</td><td><span class="badge badge-success">正 常</span></td><td>1200/s</td><td>0</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>cmcc01</td><td>cmpp/2.0</td><td>112.2.28.47</td><td><span class="badge badge-success">正 常</span></td><td>500/s</td><td>1</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>cmcc01</td><td>cmpp/2.0</td><td>112.2.28.48</td><td><span class="badge badge-success">正 常</span></td><td>450/s</td><td>8</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>cmcc01</td><td>cmpp/2.0</td><td>112.2.28.49</td><td><span class="badge badge-success">正 常</span></td><td>1500/s</td><td>0</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>cmcc01</td><td>cmpp/2.0</td><td>112.2.28.50</td><td><span class="badge badge-default">超 时</span></td><td>0/s</td><td>0</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>cmcc01</td><td>cmpp/2.0</td><td>112.2.28.51</td><td><span class="badge badge-default">超 时</span></td><td>0/s</td><td>5</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>cmcc01</td><td>cmpp/2.0</td><td>112.2.28.52</td><td><span class="badge badge-danger">错 误</span></td><td>0/s</td><td>0</td></tr>
-            <tr><td><span class="glyphicon glyphicon-globe"></span></td><td>cmcc01</td><td>cmpp/2.0</td><td>112.2.28.53</td><td><span class="badge badge-success">正 常</span></td><td>300/s</td><td>0</td></tr>
+            <?php
+              foreach ($gateway as $g) {
+                echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',$g['name'],'</td>';
+                echo '<td>cmpp/2.0</td><td>',$g['host'],'</td>';
+
+                if ($g['status'] == 1) {
+                  echo '<td><span class="badge badge-success">正 常</span></td>';
+                } else if ($g['status'] == -1) {
+                  echo '<td><span class="badge badge-danger">错 误</span></td>';
+                } else {
+                  echo '<td><span class="badge badge-default">超 时</span></td>';
+                }
+
+                echo '<td>',$g['speed'],'/s</td><td>',$g['error'],'</td></tr>';
+              }
+            ?>
           </tbody>
         </table>
       </div>

@@ -227,6 +227,8 @@ void *lamb_push_loop(void *arg) {
             nn_freemsg(buf);
             break;
         }
+
+        nn_freemsg(buf);
     }
 
     nn_close(fd);
