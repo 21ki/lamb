@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <nanomsg/nn.h>
+#include <nanomsg/pair.h>
 #include <cmpp.h>
 #include "config.h"
 #include "mqueue.h"
@@ -130,10 +131,11 @@ void lamb_event_loop(void) {
 
     memset(&option, 0, sizeof(option));
     option.id = config.id;
+    option.type = LAMB_NN_PUSH;
     memcpy(option.addr, config.host, 16);
     option.timeout = config.timeout;
     
-    err = lamb_nn_connect(&md, &option, config.md_host, config.md_port);
+    err = lamb_nn_connect(&md, &option, config.md_host, config.md_port, NN_PAIR);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MD %s server", config.md_host);
         return;

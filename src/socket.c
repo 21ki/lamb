@@ -12,7 +12,7 @@
 #include <nanomsg/reqrep.h>
 #include "socket.h"
 
-int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port) {
+int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, int protocol) {
     int fd, rc;
     char *buf;
     char url[128];
@@ -61,7 +61,7 @@ int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port) 
     nn_close(fd);
     rep = (lamb_rep_t *)buf;
 
-    fd = nn_socket(AF_SP, opt->type);
+    fd = nn_socket(AF_SP, protocol);
     if (fd < 0) {
         return 5;
     }

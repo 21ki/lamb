@@ -177,32 +177,32 @@ void lamb_event_loop(void) {
 
     memset(&opt, 0, sizeof(opt));
     opt.id = aid;
-    opt.type = NN_PAIR;
+    opt.type = LAMB_NN_PULL;
     strcpy(opt.addr, "127.0.0.1");
     opt.timeout = config.timeout;
     
-    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port);
+    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_REQ);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MT %s server", config.mt_host);
         return;
     }
     
     /* Connect to MO server */
-    /*
-    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port);
+    opt.type = LAMB_NN_PUSH;
+    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
         return;
     }
-    */
-    /* Connect to MD server */    
-    /*
-    err = lamb_nn_connect(&md, &opt, config.md_host, config.md_port);
+
+    /* Connect to MD server */
+    opt.type = LAMB_NN_PULL;
+    err = lamb_nn_connect(&md, &opt, config.md_host, config.md_port, NN_REQ);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MD %s server", config.mo_host);
         return;
     }
-    */
+
     /* Fetch company information */
     memset(&company, 0, sizeof(company));
     err = lamb_company_get(&db, account.company, &company);
@@ -272,7 +272,7 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_work_loop, NULL, config.work_threads > cpus ? cpus : config.work_threads);
 
     /* Start deliver thread */
-    //lamb_start_thread(lamb_deliver_loop, NULL, 1);
+    lamb_start_thread(lamb_deliver_loop, NULL, 1);
     
     /* Start billing thread */
     lamb_start_thread(lamb_billing_loop, NULL, 1);
@@ -325,22 +325,18 @@ void *lamb_work_loop(void *data) {
     while (true) {
         submit = NULL;
 
-        rc = nn_recv(mt, &buf, NN_MSG, 0);
+        /* Request */
+        rc = nn_send(mt, &req, sizeof(req), 0);
+        if (rc < 0) {
+            lamb_sleep(1000);
+            continue;
+        }
 
-        if (rc > 0) {
+        /* Response */
+        rc = nn_recv(mt, &buf, NN_MSG, 0);
+        if (rc >= len) {
             submit = (lamb_submit_t *)buf;
         }
-        /*
-        pthread_mutex_lock(&lock);
-        rc = nn_send(mt, &req, sizeof(req), 0);
-        if (rc > 0) {
-            rc = nn_recv(mt, &buf, NN_MSG, 0);
-            if (rc == len) {
-                submit = (lamb_submit_t *)buf;
-            }
-        }
-        pthread_mutex_unlock(&lock);
-    */
 
         if (submit != NULL) {
             //printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
@@ -451,7 +447,7 @@ void *lamb_work_loop(void *data) {
                     continue;
                 }
                 printf("-> [keyword] The keyword check OK\n");
-           }
+            }
 
         routing: /* Routing Scheduling */
             success = false;
@@ -508,6 +504,7 @@ void *lamb_work_loop(void *data) {
                 lamb_queue_push(storage, store);
             }
         } else {
+            nn_freemsg(buf);
             lamb_sleep(1000);
         }
     }
@@ -545,6 +542,7 @@ void *lamb_deliver_loop(void *data) {
         }
 
         if (rc != rlen && rc != dlen) {
+            nn_freemsg(buf);
             lamb_sleep(1000);
             continue;
         }
@@ -565,7 +563,6 @@ void *lamb_deliver_loop(void *data) {
 
             /* Billing processing */
             if (err) {
-                printf("query cache failure from %d node", i);
                 lamb_errlog(config.logfile, "query cache failure from %d node", i);
                 nn_freemsg(buf);
                 continue;
@@ -573,7 +570,16 @@ void *lamb_deliver_loop(void *data) {
 
             report->account = acc;
 
-            if (charge == LAMB_CHARGE_SUCCESS) {
+            //printf("-> msgId: %llu, acc: %llu, comp: %d, charge: %d\n", report->id, acc, comp, charge);
+            int coin = 0;
+
+            if ((report->status == 1) && (charge == LAMB_CHARGE_SUCCESS)) {
+                coin = 1;
+            } else if ((report->status != 1) && (charge == LAMB_CHARGE_SUBMIT)) {
+                coin = -1;
+            }
+
+            if (coin != 0) {
                 bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
                 if (bill) {
                     bill->id = comp;
@@ -582,7 +588,8 @@ void *lamb_deliver_loop(void *data) {
                 }
             }
 
-            nn_send(mo, report, sizeof(lamb_report_t), 0);
+
+            nn_send(mo, report, rlen, 0);
 
             /* Store report to database */
             store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
@@ -612,7 +619,11 @@ void *lamb_deliver_loop(void *data) {
             } else {
                 nn_freemsg(buf);
             }
+
+            continue;
         }
+
+        nn_freemsg(buf);
     }
 
     pthread_exit(NULL);
@@ -666,7 +677,9 @@ void *lamb_billing_loop(void *data) {
         }
 
         bill = (lamb_bill_t *)node->val;
+        pthread_mutex_lock(&(rdb.lock));
         err = lamb_company_billing(&rdb, bill->id, bill->money, &money);
+        pthread_mutex_unlock(&(rdb.lock));
         if (err) {
             lamb_errlog(config.logfile, "Account %d billing money %d failure", bill->id, bill->money);
         }
@@ -727,9 +740,8 @@ void *lamb_stat_loop(void *data) {
 int lamb_cache_message(lamb_cache_t *cache, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {
     redisReply *reply = NULL;
 
-    reply = redisCommand(cache->handle, "HMSET %llu spid %s spcode %s phone %s account %d company %d charge %d",
-                         message->id, message->spid, message->spcode, message->phone, account->id, company->id,
-                         account->charge_type);
+    reply = redisCommand(cache->handle, "HMSET %llu spid %s spcode %s account %d company %d charge %d",
+                         message->id, message->spid, message->spcode, account->id, company->id, account->charge_type);
     if (reply == NULL) {
         return -1;
     }

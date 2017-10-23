@@ -291,11 +291,11 @@ void lamb_work_loop(lamb_client_t *client) {
 
     memset(&opt, 0, sizeof(opt));
     opt.id = client->account->id;
-    opt.type = NN_PAIR;
+    opt.type = LAMB_NN_PUSH;
     memcpy(opt.addr, config.listen, 16);
     opt.timeout = config.timeout;
     
-    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port);
+    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_PAIR);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to mt %s server", config.mt_host);
         return;
@@ -314,7 +314,7 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_start_thread(lamb_stat_loop, client, 1);
 
     /* Client Message Deliver */
-    //lamb_start_thread(lamb_deliver_loop, client, 1);
+    lamb_start_thread(lamb_deliver_loop, client, 1);
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -438,11 +438,11 @@ void *lamb_deliver_loop(void *data) {
 
     memset(&opt, 0, sizeof(opt));
     opt.id = client->account->id;
-    opt.type = NN_REQ;
+    opt.type = LAMB_NN_PULL;
     memcpy(opt.addr, config.listen, 16);
     opt.timeout = config.timeout;
     
-    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port);
+    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_REQ);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
         pthread_exit(NULL);
@@ -470,6 +470,7 @@ void *lamb_deliver_loop(void *data) {
         }
 
         if (rc != rlen && rc != dlen) {
+            nn_freemsg(buf);
             lamb_sleep(1000);
             continue;
         }
@@ -489,6 +490,7 @@ void *lamb_deliver_loop(void *data) {
                 lamb_sleep(3000);
                 goto report;
             }
+            status.rep++;
         } else if (message->type == LAMB_DELIVER) {
             deliver = (lamb_deliver_t *)message;
             sequenceId = confirmed.sequenceId = cmpp_sequence();
@@ -502,6 +504,7 @@ void *lamb_deliver_loop(void *data) {
                 lamb_sleep(3000);
                 goto deliver;
             }
+            status.rep++;
         }
 
         /* Waiting for message confirmation */
@@ -541,7 +544,7 @@ void *lamb_stat_loop(void *data) {
             lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
         }
 
-        printf("-> [status] recv: %llu, store: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n", status.recv, status.store, status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
+        printf("-> [status] recv: %llu, store: %llu, rep: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n", status.recv, status.store, status.rep, status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
         total = 0;
         sleep(5);
     }

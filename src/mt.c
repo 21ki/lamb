@@ -24,7 +24,6 @@
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
 #include <nanomsg/reqrep.h>
-#include <nanomsg/pipeline.h>
 #include "utils.h"
 #include "config.h"
 #include "cache.h"
@@ -117,6 +116,10 @@ void lamb_event_loop(void) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
+        if (rc < 0) {
+            continue;
+        }
+        
         if (rc != len) {
             nn_freemsg(buf);
             lamb_errlog(config.logfile, "Invalid request from client", 0);
@@ -136,13 +139,13 @@ void lamb_event_loop(void) {
         
         gettimeofday(&now, NULL);
         timeout.tv_sec = now.tv_sec + 3;
-        memset(&resp, 0, sizeof(resp));
 
         pthread_mutex_lock(&mutex);
+        memset(&resp, 0, sizeof(resp));
 
-        if (req->type == NN_PULL) {
+        if (req->type == LAMB_NN_PULL) {
             lamb_start_thread(lamb_pull_loop,  (void *)buf, 1);
-        } else if (req->type == NN_PAIR) {
+        } else if (req->type == LAMB_NN_PUSH) {
             lamb_start_thread(lamb_push_loop,  (void *)buf, 1);
         } else {
             nn_freemsg(buf);
@@ -252,6 +255,7 @@ void *lamb_push_loop(void *arg) {
 
 void *lamb_pull_loop(void *arg) {
     int err;
+    char *buf;
     int fd, rc;
     lamb_node_t *node;
     lamb_queue_t *queue;
@@ -278,7 +282,7 @@ void *lamb_pull_loop(void *arg) {
     
     /* Client channel initialization */
     unsigned short port = 10001;
-    err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
+    err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
         lamb_errlog(config.logfile, "lamb can't find available port", 0);
@@ -302,17 +306,43 @@ void *lamb_pull_loop(void *arg) {
     slen = sizeof(lamb_submit_t);
     
     while (true) {
-        node = lamb_queue_pop(queue);
-        if (node) {
-        send:
-            rc = nn_send(fd, node->val, slen, 0);
-            if (rc != slen) {
-                lamb_sleep(1000);
-                goto send;
-            }
-            nn_freemsg(node->val);
-            free(node);
+        rc = nn_recv(fd, &buf, NN_MSG, 0);
+
+        if (rc < 0) {
+            lamb_sleep(1000);
+            continue;
         }
+
+        if (rc < len) {
+            nn_freemsg(buf);
+            lamb_sleep(1000);
+            continue;
+        }
+
+        message = (lamb_message_t *)buf;
+
+        if (message->type == LAMB_REQ) {
+            node = lamb_queue_pop(queue);
+            if (node) {
+                rc = nn_send(fd, node->val, slen, 0);
+                if (rc != slen) {
+                    nn_freemsg(node->val);
+                    free(node);
+                    lamb_sleep(1000);
+                }
+            } else {
+                nn_send(fd, "0", 1, 0);
+            }
+            nn_freemsg(buf);
+            continue;
+        }
+
+        if (message->type == LAMB_BYE) {
+            nn_freemsg(buf);
+            break;
+        }
+        
+        nn_freemsg(buf);
     }
 
     nn_close(fd);

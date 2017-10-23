@@ -137,17 +137,26 @@ void lamb_event_loop(void) {
 
         pthread_mutex_lock(&mutex);
         memset(&resp, 0, sizeof(resp));
-        lamb_start_thread(lamb_work_loop,  (void *)buf, 1);
+
+        if (req->type == LAMB_NN_PULL) {
+            lamb_start_thread(lamb_pull_loop,  (void *)buf, 1);
+        } else if (req->type == LAMB_NN_PUSH) {
+            lamb_start_thread(lamb_push_loop,  (void *)buf, 1);
+        } else {
+            nn_freemsg(buf);
+            pthread_mutex_unlock(&mutex);
+            continue;
+        }
+
         pthread_cond_timedwait(&cond, &mutex, &timeout);
         nn_send(fd, (char *)&resp, sizeof(resp), 0);
         pthread_mutex_unlock(&mutex);
     }
 }
 
-void *lamb_work_loop(void *arg) {
+void *lamb_push_loop(void *arg) {
     int err;
     int fd, rc;
-    lamb_node_t *node;
     lamb_queue_t *queue;
     lamb_req_t *client;
     
@@ -172,7 +181,7 @@ void *lamb_work_loop(void *arg) {
     
     /* Client channel initialization */
     unsigned short port = 20001;
-    err = lamb_child_server(&fd, config.listen, &port);
+    err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
     if (err) {
         pthread_cond_signal(&cond);
         lamb_errlog(config.logfile, "lamb can't find available port", 0);
@@ -224,6 +233,120 @@ void *lamb_work_loop(void *arg) {
 
         message = (lamb_message_t *)buf;
 
+        if (message->type == LAMB_REPORT || message->type == LAMB_DELIVER) {
+            if (message->type == LAMB_REPORT) {
+                printf("-> [received] received a report message\n");
+                report = (lamb_report_t *)buf;
+                account = report->account;
+            } else {
+                printf("-> [received] received a deliver message\n");
+                deliver = (lamb_deliver_t *)buf;
+                account = deliver->account;
+            }
+
+            printf("-> account: %llu\n", account);
+            
+            queue = lamb_pool_find(list_pools, account);
+            if (!queue) {
+                queue = lamb_queue_new(account);
+                if (queue) {
+                    lamb_pool_add(list_pools, queue);
+                }
+            }
+
+            if (queue) {
+                printf("-> [store] store message to queue\n");
+                lamb_queue_push(queue, message);
+            }
+
+            continue;
+        }
+
+        if (message->type == LAMB_BYE) {
+            nn_freemsg(buf);
+            break;
+        }
+
+        nn_freemsg(buf);
+    }
+
+    nn_close(fd);
+    nn_freemsg((char *)client);
+    printf("-> connection closed from %s\n", client->addr);
+    lamb_errlog(config.logfile, "connection closed from %s", client->addr);
+
+    pthread_exit(NULL);
+}
+
+void *lamb_pull_loop(void *arg) {
+    int err;
+    int fd, rc;
+    lamb_node_t *node;
+    lamb_queue_t *queue;
+    lamb_req_t *client;
+    
+    client = (lamb_req_t *)arg;
+
+    printf("-> new client from %s connectd\n", client->addr);
+
+    /* Client queue initialization */
+    queue = lamb_pool_find(list_pools, client->id);
+    if (!queue) {
+        queue = lamb_queue_new(client->id);
+        if (queue) {
+            lamb_pool_add(list_pools, queue);
+        }
+    }
+
+    if (!queue) {
+        nn_freemsg((char *)client);
+        lamb_errlog(config.logfile, "can't create queue for client %s", client->addr);
+        pthread_exit(NULL);
+    }
+    
+    /* Client channel initialization */
+    unsigned short port = 20001;
+    err = lamb_child_server(&fd, config.listen, &port, NN_REP);
+    if (err) {
+        pthread_cond_signal(&cond);
+        lamb_errlog(config.logfile, "lamb can't find available port", 0);
+        pthread_exit(NULL);
+    }
+
+    pthread_mutex_lock(&mutex);
+
+    resp.id = client->id;
+    memcpy(resp.addr, config.listen, 16);
+    resp.port = port;
+
+    pthread_mutex_unlock(&mutex);
+    pthread_cond_signal(&cond);
+
+    /* Start event processing */
+    int len, rlen, dlen;
+    lamb_message_t *message;
+
+    len = sizeof(lamb_message_t);
+    rlen = sizeof(lamb_report_t);
+    dlen = sizeof(lamb_deliver_t);
+
+    while (true) {
+        char *buf = NULL;
+        rc = nn_recv(fd, &buf, NN_MSG, 0);
+        
+        if (rc < 0) {
+            lamb_sleep(1000);
+            continue;
+        }
+
+        if (rc < len) {
+            nn_freemsg(buf);
+            lamb_sleep(1000);
+            continue;
+        }
+        
+        message = (lamb_message_t *)buf;
+
         if (message->type == LAMB_REQ) {
             node = lamb_queue_pop(queue);
             if (node) {
@@ -242,34 +365,12 @@ void *lamb_work_loop(void *arg) {
             continue;
         }
 
-        if (message->type == LAMB_REPORT || message->type == LAMB_DELIVER) {
-            if (message->type == LAMB_REPORT) {
-                report = (lamb_report_t *)buf;
-                account = report->account;
-            } else {
-                deliver = (lamb_deliver_t *)buf;
-                account = deliver->account;
-            }
-
-            queue = lamb_pool_find(list_pools, account);
-            if (!queue) {
-                queue = lamb_queue_new(account);
-                if (queue) {
-                    lamb_pool_add(list_pools, queue);
-                }
-            }
-
-            if (queue) {
-                lamb_queue_push(queue, message);
-            }
-
-            continue;
-        }
-
         if (message->type == LAMB_BYE) {
             nn_freemsg(buf);
             break;
         }
+
+        nn_freemsg(buf);
     }
 
     nn_close(fd);
@@ -303,11 +404,11 @@ int lamb_server_init(int *sock, const char *listen, int port) {
     return 0;
 }
 
-int lamb_child_server(int *sock, const char *listen, unsigned short *port) {
+int lamb_child_server(int *sock, const char *listen, unsigned short *port, int protocol) {
     int fd;
     char addr[128];
     
-    fd = nn_socket(AF_SP, NN_PAIR);
+    fd = nn_socket(AF_SP, protocol);
     if (fd < 0) {
         lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
         return -1;

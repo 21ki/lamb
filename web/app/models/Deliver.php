@@ -13,7 +13,15 @@ class DeliverModel {
     private $table = 'deliver';
     
     public function __construct() {
-        $this->db = Yaf\Registry::get('db');
+        try {
+            $this->config = Yaf\Registry::get('config');
+            $config = $this->config->msg;
+            $options = [PDO::ATTR_PERSISTENT => true];
+            $this->db = new PDO('pgsql:host=' . $config->host . ';port=' . $config->port . ';dbname=' . $config->name, $config->user, $config->pass, $options);
+            $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log($e->getMessage(), 0);
+        }
     }
 
     public function getAll() {

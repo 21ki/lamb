@@ -50,6 +50,7 @@ typedef struct {
 typedef struct {
     unsigned long long recv;
     unsigned long long store;
+    unsigned long long rep;
     unsigned long long delv;
     unsigned long long ack;
     unsigned long long timeo;

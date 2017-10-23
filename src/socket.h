@@ -36,6 +36,6 @@ typedef struct {
 
 #pragma pack()
 
-int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port);
+int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, int protocol);
 
 #endif
