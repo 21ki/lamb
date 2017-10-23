@@ -74,6 +74,7 @@ int lamb_open_channel(lamb_group_t *group, lamb_queue_t *channels, lamb_mq_opt *
 void *lamb_stat_loop(void *data);
 int lamb_cache_message(lamb_cache_t *cache, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
 int lamb_cache_query(lamb_cache_t *cache, unsigned long long id, char *spid, char *spcode, int *account, int *company, int *charge);
+int lamb_write_report(lamb_db_t *db, lamb_report_t *message);
 int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
 int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_deliver_t *message);
 int lamb_spcode_process(char *code, char *spcode, size_t size);

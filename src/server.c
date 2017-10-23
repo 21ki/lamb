@@ -632,6 +632,7 @@ void *lamb_deliver_loop(void *data) {
 void *lamb_store_loop(void *data) {
     lamb_node_t *node;
     lamb_store_t *store;
+    lamb_report_t *report;
     lamb_submit_t *submit;
     lamb_deliver_t *deliver;
     
@@ -648,9 +649,10 @@ void *lamb_store_loop(void *data) {
         if (store->type == LAMB_SUBMIT) {
             submit = (lamb_submit_t *)store->val;
             lamb_write_message(&mdb, &account, &company, submit);
-        }
-
-        if (store->type == LAMB_DELIVER) {
+        } else if (store->type == LAMB_REPORT) {
+            report = (lamb_report_t *)store->val;
+            lamb_write_report(&mdb, report);
+        } else if (store->type == LAMB_DELIVER) {
             deliver = (lamb_deliver_t *)store->val;
             lamb_write_deliver(&mdb, &account, &company, deliver);
         }
@@ -798,6 +800,25 @@ int lamb_cache_query(lamb_cache_t *cache, unsigned long long id, char *spid, cha
     }
 
     return err;
+}
+
+int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {
+    char sql[512];
+    PGresult *res = NULL;
+
+    if (message != NULL) {
+        sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld", message->status, (long long)message->id);
+
+        res = PQexec(db->conn, sql);
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            PQclear(res);
+            return -1;
+        }
+
+        PQclear(res);
+    }
+
+    return 0;
 }
 
 int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {
