@@ -78,10 +78,10 @@
         </ol>
       </div>
       <div class="row statistics">
-        <span class="item">通道数量: <span class="badge badge-success">14</span></span>
-        <span class="item">平均并发: <span class="badge badge-default">1200/s</span></span>
-        <span class="item">通道故障: <span class="badge badge-success">14</span></span>
-        <span class="item">错误总数: <span class="badge badge-danger">14</span></span>
+        <span class="item">通道数量: <span class="badge badge-success"><?php echo count($gateway);?></span></span>
+        <span class="item">平均流量: <span class="badge badge-default">0/s</span></span>
+        <span class="item">通道故障: <span class="badge badge-success">0</span></span>
+        <span class="item">错误统计: <span class="badge badge-danger">0</span></span>
         <span class="item pull-right">
           <span class="glyphicon glyphicon-flag"></span>
           <select onchange="window.location=this.value">
@@ -105,9 +105,9 @@
                 if ($g['status'] == 1) {
                   echo '<td><span class="badge badge-success">正 常</span></td>';
                 } else if ($g['status'] == -1) {
-                  echo '<td><span class="badge badge-danger">错 误</span></td>';
+                  echo '<td><span class="badge badge-default">未 知</span></td>';
                 } else {
-                  echo '<td><span class="badge badge-default">超 时</span></td>';
+                  echo '<td><span class="badge badge-danger">超 时</span></td>';
                 }
 
                 echo '<td>',$g['speed'],'/s</td><td>',$g['error'],'</td></tr>';
