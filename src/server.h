@@ -55,6 +55,17 @@ typedef struct {
 } lamb_config_t;
 
 typedef struct {
+    unsigned long long toal;
+    unsigned long long sub;
+    unsigned long long rep;
+    unsigned long long delv;
+    unsigned long long fmt;
+    unsigned long long blk;
+    unsigned long long tmp;
+    unsigned long long key;
+} lamb_status_t;
+
+typedef struct {
     int id;
     int money;
 } lamb_bill_t;

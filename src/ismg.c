@@ -36,11 +36,11 @@
 static int mt, mo;
 static cmpp_ismg_t cmpp;
 static lamb_cache_t rdb;
-static lamb_status_t status;
 static lamb_config_t config;
-static lamb_confirmed_t confirmed;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
+static lamb_status_t status;
+static lamb_confirmed_t confirmed;
 static unsigned long long total = 0;
 
 int main(int argc, char *argv[]) {
@@ -543,7 +543,9 @@ void *lamb_stat_loop(void *data) {
             lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
         }
 
-        printf("-> [status] recv: %llu, store: %llu, rep: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n", status.recv, status.store, status.rep, status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
+        printf("-[ %s ]-> recv: %llu, store: %llu, rep: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n",
+               client->account->username, status.recv, status.store, status.rep, status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
+
         total = 0;
         sleep(5);
     }

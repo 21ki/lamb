@@ -46,6 +46,7 @@ static lamb_queue_t *channels;
 static lamb_queue_t *templates;
 static lamb_queue_t *keywords;
 static lamb_config_t config;
+static lamb_status_t status;
 static pthread_mutex_t lock;
 
 int main(int argc, char *argv[]) {
@@ -314,6 +315,7 @@ void *lamb_work_loop(void *data) {
     lamb_message_t req;
 
     len = sizeof(lamb_submit_t);
+    memset(&status, 0, sizeof(status));
     
     err = lamb_cpu_affinity(pthread_self());
     if (err) {
@@ -339,6 +341,7 @@ void *lamb_work_loop(void *data) {
         }
 
         if (submit != NULL) {
+            status.toal++;
             //printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
 
             /* Message Encoded Convert */
@@ -354,6 +357,7 @@ void *lamb_work_loop(void *data) {
             } else if (submit->msgFmt == 15) {
                 fromcode = "GBK";
             } else {
+                status.fmt++;
                 printf("-> [encoded] message encoded %d not support\n", submit->msgFmt);
                 nn_freemsg(buf);
                 continue;
@@ -363,8 +367,9 @@ void *lamb_work_loop(void *data) {
                 memset(content, 0, sizeof(content));
                 err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), fromcode, "UTF-8", &submit->length);
                 if (err || (submit->length == 0)) {
-                    printf("-> [encoded] Message encoding conversion failed\n");
+                    status.fmt++;
                     nn_freemsg(buf);
+                    printf("-> [encoded] Message encoding conversion failed\n");
                     continue;
                 }
 
@@ -381,12 +386,14 @@ void *lamb_work_loop(void *data) {
                if (account.policy != LAMB_POL_EMPTY) {
                if (lamb_security_check(&black, account.policy, submit->phone)) {
                if (account.policy == LAMB_BLACKLIST) {
+               status.blk++;
                nn_freemsg(buf);
                //printf("-> [policy] The security check not pass\n");
                continue;
                }
                } else {
                if (account.policy == LAMB_WHITELIST) {
+               status.blk++;
                nn_freemsg(buf);
                //printf("-> [policy] The security check not pass\n");
                continue;
@@ -419,6 +426,7 @@ void *lamb_work_loop(void *data) {
                 } 
 
                 if (!success) {
+                    status.tmp++;
                     printf("-> [template] The template check will not pass\n");
                     nn_freemsg(buf);
                     continue;
@@ -442,8 +450,9 @@ void *lamb_work_loop(void *data) {
                 }
                
                 if (success) {
-                    printf("-> [keyword] The keyword check not pass\n");
+                    status.key++;
                     nn_freemsg(buf);
+                    printf("-> [keyword] The keyword check not pass\n");
                     continue;
                 }
                 printf("-> [keyword] The keyword check OK\n");
@@ -460,6 +469,7 @@ void *lamb_work_loop(void *data) {
                     node = node->next;
                 } else {
                     success = true;
+                    status.sub++;
                     break;
                 }
             }
@@ -468,7 +478,7 @@ void *lamb_work_loop(void *data) {
                 if (channels->len < 1) {
                     printf("-> [channel] No gateway channel available\n");
                 }
-                printf("-> [channel] busy all channels\n");
+                //printf("-> [channel] busy all channels\n");
                 lamb_sleep(100);
                 goto routing;
             }
@@ -554,6 +564,8 @@ void *lamb_deliver_loop(void *data) {
             char spcode[24];
             int acc, comp, charge;
 
+            status.rep++;
+
             /* Get cached message information */
             report = (lamb_report_t *)buf;
             i = (report->id % cache.len);
@@ -608,6 +620,7 @@ void *lamb_deliver_loop(void *data) {
         if (message->type == LAMB_DELIVER) {
             deliver = (lamb_deliver_t *)buf;
 
+            status.delv++;
             //nn_send(mo, deliver, sizeof(lamb_deliver_t), 0);
 
             store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
@@ -648,11 +661,9 @@ void *lamb_store_loop(void *data) {
 
         if (store->type == LAMB_SUBMIT) {
             submit = (lamb_submit_t *)store->val;
-            printf("-[submit]-> %llu\n", submit->id);
             lamb_write_message(&mdb, &account, &company, submit);
         } else if (store->type == LAMB_REPORT) {
             report = (lamb_report_t *)store->val;
-            printf("-[report]-> %llu\n", report->id);
             lamb_write_report(&mdb, report);
         } else if (store->type == LAMB_DELIVER) {
             deliver = (lamb_deliver_t *)store->val;
@@ -735,6 +746,10 @@ void *lamb_stat_loop(void *data) {
         if (reply != NULL) {
             freeReplyObject(reply);
         }
+
+        printf("-[ %s ]-> store: %lld, bill: %lld, toal: %llu, sub: %llu, rep: %llu, delv: %llu, fmt: %llu, blk: %llu, tmp: %llu, key: %llu\n",
+               account.username, storage->len, billing->len, status.toal, status.sub, status.rep, status.delv, status.fmt, status.blk, status.tmp, status.key);
+
         sleep(3);
     }
 
