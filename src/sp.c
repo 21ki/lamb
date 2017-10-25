@@ -352,7 +352,7 @@ void *lamb_deliver_loop(void *data) {
 
                 lamb_queue_push(storage, report);
 
-                printf("-> [received] msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n", report->id, report->phone, stat, report->submitTime, report->doneTime);
+                //printf("-> [received] msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n", report->id, report->phone, stat, report->submitTime, report->doneTime);
                 
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
             } else {
@@ -621,7 +621,10 @@ int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned lon
     
     i = (msgId % caches->len);
 
+    pthread_mutex_lock(&caches->nodes[i]->lock);
     reply = redisCommand(caches->nodes[i]->handle, "SET %llu %llu", msgId, id);
+    pthread_mutex_unlock(&caches->nodes[i]->lock);
+
     if (reply == NULL) {
         return -1;
     }
@@ -637,7 +640,10 @@ unsigned long long lamb_get_cache(lamb_caches_t *caches, unsigned long long msgI
 
     i = (msgId % caches->len);
 
+    pthread_mutex_lock(&caches->nodes[i]->lock);
     reply = redisCommand(caches->nodes[i]->handle, "GET %llu", msgId);
+    pthread_mutex_unlock(&caches->nodes[i]->lock);
+    
     if (reply != NULL) {
         if (reply->type == REDIS_REPLY_STRING) {
             id = (reply->len > 0) ? strtoull(reply->str, NULL, 10) : 0;
@@ -654,7 +660,10 @@ int lamb_del_cache(lamb_caches_t *caches, unsigned long long msgId) {
 
     i = (msgId % caches->len);
 
+    pthread_mutex_lock(&caches->nodes[i]->lock);
     reply = redisCommand(caches->nodes[i]->handle, "DEL %llu", msgId);
+    pthread_mutex_unlock(&caches->nodes[i]->lock);
+    
     if (reply == NULL) {
         return -1;
     }

@@ -235,17 +235,13 @@ void *lamb_push_loop(void *arg) {
 
         if (message->type == LAMB_REPORT || message->type == LAMB_DELIVER) {
             if (message->type == LAMB_REPORT) {
-                printf("-> [received] received a report message\n");
                 report = (lamb_report_t *)buf;
                 account = report->account;
             } else {
-                printf("-> [received] received a deliver message\n");
                 deliver = (lamb_deliver_t *)buf;
                 account = deliver->account;
             }
 
-            printf("-> account: %llu\n", account);
-            
             queue = lamb_pool_find(list_pools, account);
             if (!queue) {
                 queue = lamb_queue_new(account);
@@ -255,7 +251,6 @@ void *lamb_push_loop(void *arg) {
             }
 
             if (queue) {
-                printf("-> [store] store message to queue\n");
                 lamb_queue_push(queue, message);
             }
 

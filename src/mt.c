@@ -324,12 +324,11 @@ void *lamb_pull_loop(void *arg) {
         if (message->type == LAMB_REQ) {
             node = lamb_queue_pop(queue);
             if (node) {
-                rc = nn_send(fd, node->val, slen, 0);
-                if (rc != slen) {
-                    nn_freemsg(node->val);
-                    free(node);
+                if (nn_send(fd, node->val, slen, 0) != slen) {
                     lamb_sleep(1000);
                 }
+                nn_freemsg(node->val);
+                free(node);
             } else {
                 nn_send(fd, "0", 1, 0);
             }

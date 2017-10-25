@@ -520,7 +520,6 @@ void *lamb_deliver_loop(void *data) {
         }
 
         nn_freemsg(buf);
-        lamb_sleep(1000);
     }
 
     pthread_exit(NULL);

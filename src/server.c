@@ -374,7 +374,7 @@ void *lamb_work_loop(void *data) {
                 printf("-> [encoded] Message encoding conversion successfull\n");
             }
 
-            printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
+            //printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
 
             /* Blacklist and Whitelist */
             /* 
@@ -648,9 +648,11 @@ void *lamb_store_loop(void *data) {
 
         if (store->type == LAMB_SUBMIT) {
             submit = (lamb_submit_t *)store->val;
+            printf("-[submit]-> %llu\n", submit->id);
             lamb_write_message(&mdb, &account, &company, submit);
         } else if (store->type == LAMB_REPORT) {
             report = (lamb_report_t *)store->val;
+            printf("-[report]-> %llu\n", report->id);
             lamb_write_report(&mdb, report);
         } else if (store->type == LAMB_DELIVER) {
             deliver = (lamb_deliver_t *)store->val;
