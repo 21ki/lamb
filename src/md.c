@@ -32,7 +32,7 @@
 #include "md.h"
 
 static lamb_cache_t rdb;
-static lamb_queue_t *queue;
+static lamb_pool_t *pools;
 static lamb_config_t config;
 static lamb_rep_t resp;
 static pthread_cond_t cond;
@@ -85,9 +85,9 @@ void lamb_event_loop(void) {
     pthread_mutex_init(&mutex, NULL);
     
     /* Client Queue Pools Initialization */
-    queue = lamb_queue_new(0);
-    if (!queue) {
-        lamb_errlog(config.logfile, "lamb queue initialization failed", 0);
+    pools = lamb_pool_new();
+    if (!pools) {
+        lamb_errlog(config.logfile, "lamb queue pool initialization failed", 0);
         return;
     }
 
@@ -162,11 +162,27 @@ void *lamb_push_loop(void *arg) {
     int err;
     int fd, rc;
     lamb_req_t *client;
+    lamb_queue_t *queue;
     
     client = (lamb_req_t *)arg;
 
     printf("-> new client from %s connectd\n", client->addr);
 
+    /* client queue initialization */
+    queue = lamb_pool_find(pools, client->id);
+    if (!queue) {
+        queue = lamb_queue_new(client->id);
+        if (queue) {
+            lamb_pool_add(pools, queue);
+        }
+    }
+
+    if (!queue) {
+        nn_freemsg((char *)client);
+        lamb_errlog(config.logfile, "can't create queue for client %s", client->addr);
+        pthread_exit(NULL);
+    }
+    
     /* Client channel initialization */
     unsigned short port = 30001;
     err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
@@ -195,19 +211,9 @@ void *lamb_push_loop(void *arg) {
     
     while (true) {
         char *buf = NULL;
-        rc = nn_recv(fd, &buf, NN_MSG, NN_DONTWAIT);
+        rc = nn_recv(fd, &buf, NN_MSG, 0);
         
         if (rc < 0) {
-            if (err > 3) {
-                break;
-            }
-            
-            if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
-                err++;
-                lamb_sleep(1000);
-            }
-
-            lamb_sleep(10);
             continue;
         }
 
@@ -242,9 +248,11 @@ void *lamb_push_loop(void *arg) {
 void *lamb_pull_loop(void *arg) {
     int err;
     int fd, rc;
+    long long timeout;
     lamb_node_t *node;
     lamb_req_t *client;
-    
+    lamb_queue_t *queue;
+
     client = (lamb_req_t *)arg;
 
     printf("-> new client from %s connectd\n", client->addr);
@@ -267,26 +275,31 @@ void *lamb_pull_loop(void *arg) {
     pthread_mutex_unlock(&mutex);
     pthread_cond_signal(&cond);
 
+    timeout = config.timeout;
+    nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
+    
     /* Start event processing */
     int len, rlen, dlen;
     lamb_message_t *message;
 
+    queue = pools->head;
     len = sizeof(lamb_message_t);
     rlen = sizeof(lamb_report_t);
     dlen = sizeof(lamb_deliver_t);
-    
+
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
         if (rc < 0) {
-            lamb_sleep(1000);
+            if (nn_errno() == ETIMEDOUT) {
+                break;
+            }
             continue;
         }
 
         if (rc < len) {
             nn_freemsg(buf);
-            lamb_sleep(1000);
             continue;
         }
 
@@ -304,8 +317,9 @@ void *lamb_pull_loop(void *arg) {
                 nn_freemsg(message);
                 free(node);
             } else {
-                nn_send(fd, "0", 1, 0);    
+                nn_send(fd, "0", 1, 0);
             }
+
             nn_freemsg(buf);
             continue;
         }
@@ -376,13 +390,22 @@ int lamb_child_server(int *sock, const char *listen, unsigned short *port, int p
 
 void *lamb_stat_loop(void *arg) {
     redisReply *reply;
-    
+    lamb_queue_t *queue;
+    long long length = 0;    
+
     while (true) {
-        reply = redisCommand(rdb.handle, "HMSET md.%d queue %lld", config.id, queue->len);
+        queue = pools->head;        
+
+        while (queue != NULL) {
+            length += queue->len;
+            printf("-> queue: %d, len: %lld\n", queue->id, length);
+            queue = queue->next;
+        }
+
+        reply = redisCommand(rdb.handle, "HMSET md.%d queue %lld", config.id, length);
         if (reply != NULL) {
             freeReplyObject(reply);
         }
-        printf("-> queue: %d, len: %lld\n", queue->id, queue->len);
 
         lamb_sleep(3000);
     }

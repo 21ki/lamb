@@ -33,7 +33,7 @@
 
 static lamb_cache_t rdb;
 static lamb_config_t config;
-static lamb_pool_t *list_pools;
+static lamb_pool_t *pools;
 static lamb_rep_t resp;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
@@ -83,11 +83,11 @@ void lamb_event_loop(void) {
 
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
-    
+
     /* Client Queue Pools Initialization */
-    list_pools = lamb_pool_new();
-    if (!list_pools) {
-        lamb_errlog(config.logfile, "lamb node pool initialization failed", 0);
+    pools = lamb_pool_new();
+    if (!pools) {
+        lamb_errlog(config.logfile, "node pool initialization failed", 0);
         return;
     }
 
@@ -162,19 +162,19 @@ void lamb_event_loop(void) {
 void *lamb_push_loop(void *arg) {
     int err;
     int fd, rc;
-    lamb_queue_t *queue;
     lamb_req_t *client;
+    lamb_queue_t *queue;
     
     client = (lamb_req_t *)arg;
 
     printf("-> new client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
-    queue = lamb_pool_find(list_pools, client->id);
+    queue = lamb_pool_find(pools, client->id);
     if (!queue) {
         queue = lamb_queue_new(client->id);
         if (queue) {
-            lamb_pool_add(list_pools, queue);
+            lamb_pool_add(pools, queue);
         }
     }
 
@@ -257,6 +257,7 @@ void *lamb_pull_loop(void *arg) {
     int err;
     char *buf;
     int fd, rc;
+    long long timeout;
     lamb_node_t *node;
     lamb_queue_t *queue;
     lamb_req_t *client;
@@ -266,11 +267,11 @@ void *lamb_pull_loop(void *arg) {
     printf("-> new client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
-    queue = lamb_pool_find(list_pools, client->id);
+    queue = lamb_pool_find(pools, client->id);
     if (!queue) {
         queue = lamb_queue_new(client->id);
         if (queue) {
-            lamb_pool_add(list_pools, queue);
+            lamb_pool_add(pools, queue);
         }
     }
 
@@ -298,6 +299,9 @@ void *lamb_pull_loop(void *arg) {
     pthread_mutex_unlock(&mutex);
     pthread_cond_signal(&cond);
 
+    timeout = config.timeout;
+    nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
+    
     /* Start event processing */
     int len, slen;
     lamb_message_t *message;
@@ -309,7 +313,9 @@ void *lamb_pull_loop(void *arg) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
         if (rc < 0) {
-            lamb_sleep(1000);
+            if (nn_errno() == ETIMEDOUT) {
+                break;
+            }
             continue;
         }
 
@@ -405,7 +411,7 @@ void *lamb_stat_loop(void *arg) {
     redisReply *reply;
     
     while (true) {
-        queue = list_pools->head;
+        queue = pools->head;
         while (queue != NULL) {
             reply = redisCommand(rdb.handle, "HMSET client.%d queue %lld", queue->id, queue->len);
             if (reply != NULL) {

@@ -29,7 +29,7 @@ lamb_queue_t *lamb_queue_new(int id) {
 }
 
 lamb_node_t *lamb_queue_push(lamb_queue_t *self, void *val) {
-    if (!val) {
+    if (!self || !val) {
         return NULL;
     }
 
@@ -56,7 +56,7 @@ lamb_node_t *lamb_queue_push(lamb_queue_t *self, void *val) {
 }
 
 lamb_node_t *lamb_queue_pop(lamb_queue_t *self) {
-    if (!self->len) {
+    if (!self || !self->len) {
         return NULL;
     }
 

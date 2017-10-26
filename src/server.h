@@ -89,6 +89,8 @@ int lamb_write_report(lamb_db_t *db, lamb_report_t *message);
 int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
 int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_deliver_t *message);
 int lamb_spcode_process(char *code, char *spcode, size_t size);
+void lamb_get_today(const char *pfx, char *val);
+void lamb_new_table(lamb_db_t *db);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

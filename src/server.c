@@ -267,6 +267,9 @@ void lamb_event_loop(void) {
 
     /* Thread lock initialization */
     pthread_mutex_init(&lock, NULL);
+
+    /* Message Table initialization */
+    lamb_new_table(&mdb);
     
     /* Start sender thread */
     long cpus = lamb_get_cpu();
@@ -753,6 +756,7 @@ void *lamb_stat_loop(void *data) {
         sleep(3);
     }
 
+    
     pthread_exit(NULL);
 }
 
@@ -821,10 +825,13 @@ int lamb_cache_query(lamb_cache_t *cache, unsigned long long id, char *spid, cha
 
 int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {
     char sql[512];
+    char table[128];
     PGresult *res = NULL;
 
+    lamb_get_today("message_", table);
+
     if (message != NULL) {
-        sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld", message->status, (long long)message->id);
+        sprintf(sql, "UPDATE %s SET status = %d WHERE id = %lld", table, message->status, (long long)message->id);
 
         res = PQexec(db->conn, sql);
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -841,12 +848,15 @@ int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {
 int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {
     char *column;
     char sql[512];
+    char table[128];
     PGresult *res = NULL;
 
+    lamb_get_today("message_", table);
+    
     if (message != NULL) {
-        column = "id, msgid, spid, spcode, phone, content, status, account, company";
-        sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, %u, '%s', '%s', '%s', '%s', %d, %d, %d)", column,
-                (long long int)message->id, 0, message->spid, message->spcode, message->phone, message->content,
+        column = "id, spid, spcode, phone, content, status, account, company";
+        sprintf(sql, "INSERT INTO %s(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)", table, column,
+                (long long int)message->id, message->spid, message->spcode, message->phone, message->content,
                 6, account->id, company->id);
 
         res = PQexec(db->conn, sql);
@@ -897,6 +907,41 @@ int lamb_spcode_process(char *code, char *spcode, size_t size) {
     }
 
     return 0;
+}
+
+void lamb_get_today(const char *pfx, char *val) {
+    time_t rawtime;
+    struct tm *t;
+
+    time(&rawtime);
+    t = localtime(&rawtime);
+    sprintf(val, "%s%4d%02d%02d", pfx, t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
+
+    return;
+}
+
+void lamb_new_table(lamb_db_t *db) {
+    char sql[512];
+    char table[128];
+    PGresult *res = NULL;
+    const char *prefix = "message_";
+    
+    lamb_get_today(prefix, table);
+
+    sprintf(sql, "CREATE TABLE IF NOT EXISTS %s(id bigint NOT NULL,spid varchar(6) NOT NULL,"
+            "spcode varchar(21) NOT NULL,phone varchar(21) NOT NULL,content text NOT NULL,status int NOT NULL,"
+            "account int NOT NULL, company int NOT NULL, create_time timestamp without time zone NOT NULL "
+            "default now()::timestamp(0) without time zone);", table);
+    
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        printf("-> lamb_new_table() sql exec error\n");
+        return;
+    }
+
+    PQclear(res);
+    return;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

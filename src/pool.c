@@ -5,12 +5,11 @@
  * Update: 2017-07-14
  */
 
-
 #include <stdlib.h>
 #include "pool.h"
 
 lamb_queue_t *lamb_pool_add(lamb_pool_t *self, lamb_queue_t *queue) {
-    if (!queue) {
+    if (!self || !queue) {
         return NULL;
     }
 
@@ -26,6 +25,10 @@ lamb_queue_t *lamb_pool_add(lamb_pool_t *self, lamb_queue_t *queue) {
 }
 
 void lamb_pool_del(lamb_pool_t *self, int id) {
+    if (!self) {
+        return;
+    }
+    
     lamb_queue_t *prev;
     lamb_queue_t *curr;
 
@@ -53,6 +56,10 @@ void lamb_pool_del(lamb_pool_t *self, int id) {
 }
 
 lamb_queue_t *lamb_pool_find(lamb_pool_t *self, int id) {
+    if (!self) {
+        return NULL;
+    }
+    
     lamb_queue_t *queue;
 
     queue = self->head;

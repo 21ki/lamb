@@ -276,6 +276,7 @@ void *lamb_push_loop(void *arg) {
 void *lamb_pull_loop(void *arg) {
     int err;
     int fd, rc;
+    long long timeout;
     lamb_node_t *node;
     lamb_queue_t *queue;
     lamb_req_t *client;
@@ -317,6 +318,9 @@ void *lamb_pull_loop(void *arg) {
     pthread_mutex_unlock(&mutex);
     pthread_cond_signal(&cond);
 
+    timeout = config.timeout;
+    nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
+    
     /* Start event processing */
     int len, rlen, dlen;
     lamb_message_t *message;
@@ -330,7 +334,9 @@ void *lamb_pull_loop(void *arg) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
         
         if (rc < 0) {
-            lamb_sleep(1000);
+            if (nn_errno() == ETIMEDOUT) {
+                break;
+            }
             continue;
         }
 
