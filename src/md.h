@@ -9,6 +9,8 @@
 #define _LAMB_MD_H
 
 #include <stdbool.h>
+#include "pool.h"
+#include "queue.h"
 
 typedef struct {
     int id;

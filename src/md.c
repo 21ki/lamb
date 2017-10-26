@@ -26,9 +26,7 @@
 #include "utils.h"
 #include "config.h"
 #include "cache.h"
-#include "queue.h"
 #include "socket.h"
-#include "pool.h"
 #include "md.h"
 
 static lamb_cache_t rdb;
@@ -169,9 +167,9 @@ void *lamb_push_loop(void *arg) {
     printf("-> new client from %s connectd\n", client->addr);
 
     /* client queue initialization */
-    queue = lamb_pool_find(pools, client->id);
+    queue = lamb_pool_find(pools, 0);
     if (!queue) {
-        queue = lamb_queue_new(client->id);
+        queue = lamb_queue_new(0);
         if (queue) {
             lamb_pool_add(pools, queue);
         }
@@ -252,10 +250,25 @@ void *lamb_pull_loop(void *arg) {
     lamb_node_t *node;
     lamb_req_t *client;
     lamb_queue_t *queue;
-
+    
     client = (lamb_req_t *)arg;
 
     printf("-> new client from %s connectd\n", client->addr);
+
+    /* client queue initialization */
+    queue = lamb_pool_find(pools, 0);
+    if (!queue) {
+        queue = lamb_queue_new(0);
+        if (queue) {
+            lamb_pool_add(pools, queue);
+        }
+    }
+
+    if (!queue) {
+        nn_freemsg((char *)client);
+        lamb_errlog(config.logfile, "can't create queue for client %s", client->addr);
+        pthread_exit(NULL);
+    }
 
     /* Client channel initialization */
     unsigned short port = 30001;
@@ -282,11 +295,10 @@ void *lamb_pull_loop(void *arg) {
     int len, rlen, dlen;
     lamb_message_t *message;
 
-    queue = pools->head;
     len = sizeof(lamb_message_t);
     rlen = sizeof(lamb_report_t);
     dlen = sizeof(lamb_deliver_t);
-
+    
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
@@ -394,11 +406,12 @@ void *lamb_stat_loop(void *arg) {
     long long length = 0;    
 
     while (true) {
+        length = 0;
         queue = pools->head;        
 
         while (queue != NULL) {
             length += queue->len;
-            printf("-> queue: %d, len: %lld\n", queue->id, length);
+            printf("-> queue: %d, len: %lld\n", queue->id, queue->len);
             queue = queue->next;
         }
 
