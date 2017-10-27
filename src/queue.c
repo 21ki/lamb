@@ -1,4 +1,3 @@
-
 /* 
  * Lamb Gateway Platform
  * Copyright (C) 2017 typefo <typefo@qq.com>
