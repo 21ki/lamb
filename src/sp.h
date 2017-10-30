@@ -51,6 +51,7 @@ typedef struct {
 } lamb_status_t;
 
 typedef struct {
+    int account;
     unsigned int sequenceId;
     unsigned long long id;
 } lamb_confirmed_t;
@@ -70,8 +71,8 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config);
 int lamb_save_logfile(char *file, void *data);
 void *lamb_stat_loop(void *data);
 int lamb_read_config(lamb_config_t *conf, const char *file);
-int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id);
-unsigned long long lamb_get_cache(lamb_caches_t *caches, unsigned long long msgId);
+int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id, int account);
+int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account);
 int lamb_del_cache(lamb_caches_t *caches, unsigned long long msgId);
 
 #endif

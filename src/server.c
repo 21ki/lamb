@@ -102,9 +102,11 @@ int main(int argc, char *argv[]) {
 void lamb_event_loop(void) {
     int err;
 
-    money = 0;
     lamb_set_process("lamb-server");
 
+    money = 0;
+    memset(&status, 0, sizeof(status));
+    
     err = lamb_signal(SIGHUP, lamb_reload);
     if (err) {
         printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
@@ -318,7 +320,6 @@ void *lamb_work_loop(void *data) {
     lamb_message_t req;
 
     len = sizeof(lamb_submit_t);
-    memset(&status, 0, sizeof(status));
     
     err = lamb_cpu_affinity(pthread_self());
     if (err) {
@@ -344,7 +345,7 @@ void *lamb_work_loop(void *data) {
         }
 
         if (submit != NULL) {
-            status.toal++;
+            ++status.toal;
             //printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
 
             /* Message Encoded Convert */

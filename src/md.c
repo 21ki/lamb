@@ -29,10 +29,11 @@
 #include "socket.h"
 #include "md.h"
 
+static lamb_rep_t resp;
 static lamb_cache_t rdb;
 static lamb_pool_t *pools;
 static lamb_config_t config;
-static lamb_rep_t resp;
+static lamb_queue_t *delivery;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 
@@ -89,6 +90,12 @@ void lamb_event_loop(void) {
         return;
     }
 
+    delivery = lamb_queue_new(0);
+    if (!delivery) {
+        lamb_errlog(config.logfile, "delivery queue initialization failed", 0);
+        return;
+    }
+    
     /* Redis Cache Initialization */
     err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
@@ -166,21 +173,6 @@ void *lamb_push_loop(void *arg) {
 
     printf("-> new client from %s connectd\n", client->addr);
 
-    /* client queue initialization */
-    queue = lamb_pool_find(pools, 0);
-    if (!queue) {
-        queue = lamb_queue_new(0);
-        if (queue) {
-            lamb_pool_add(pools, queue);
-        }
-    }
-
-    if (!queue) {
-        nn_freemsg((char *)client);
-        lamb_errlog(config.logfile, "can't create queue for client %s", client->addr);
-        pthread_exit(NULL);
-    }
-    
     /* Client channel initialization */
     unsigned short port = 30001;
     err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
@@ -201,8 +193,9 @@ void *lamb_push_loop(void *arg) {
 
     /* Start event processing */
     int len, rlen, dlen;
+    lamb_report_t *report;
     lamb_message_t *message;
-
+    
     len = sizeof(lamb_message_t);
     rlen = sizeof(lamb_report_t);
     dlen = sizeof(lamb_deliver_t);
@@ -222,11 +215,33 @@ void *lamb_push_loop(void *arg) {
 
         message = (lamb_message_t *)buf;
 
-        if (message->type == LAMB_REPORT || message->type == LAMB_DELIVER) {
-            lamb_queue_push(queue, message);
+        /* Report */
+        if (message->type == LAMB_REPORT) {
+            report = (lamb_report_t *)message;
+            queue = lamb_pool_find(pools, report->account);
+            if (!queue) {
+                queue = lamb_queue_new(report->account);
+                if (queue) {
+                    lamb_pool_add(pools, queue);
+                }
+            }
+
+            if (queue) {
+                lamb_queue_push(queue, message);
+            } else {
+                nn_freemsg(buf);
+            }
+
             continue;
         }
 
+        /* Delivery */
+        if (message->type == LAMB_DELIVER) {
+            lamb_queue_push(delivery, message);
+            continue;
+        }
+
+        /* Close */
         if (message->type == LAMB_BYE) {
             nn_freemsg(buf);
             break;

@@ -204,6 +204,7 @@ void *lamb_sender_loop(void *data) {
 
         if (ret > 0) {
             confirmed.id = submit.id;
+            confirmed.account = submit.account;
 
             if (config.extended) {
                 sprintf(spcode, "%s%s", config.spcode, submit.spcode);
@@ -231,7 +232,7 @@ void *lamb_sender_loop(void *data) {
                 continue;
             }
 
-            err = lamb_wait_confirmation(&cond, &mutex, 3);
+            err = lamb_wait_confirmation(&cond, &mutex, 7);
 
             if (err == ETIMEDOUT) {
                 status.timeo++;
@@ -302,7 +303,7 @@ void *lamb_deliver_loop(void *data) {
             }
 
             pthread_cond_signal(&cond);
-            lamb_set_cache(&cache, msgId, confirmed.id);
+            lamb_set_cache(&cache, msgId, confirmed.id, confirmed.account);
             
             break;
         case CMPP_DELIVER:;
@@ -432,12 +433,13 @@ void *lamb_cmpp_keepalive(void *data) {
 
 void *lamb_work_loop(void *data) {
     int rc;
+    int account;
     lamb_node_t *node;
     lamb_report_t *report;
     lamb_deliver_t *deliver;
     lamb_message_t *message;
     unsigned long long msgId;
-
+    
     while (true) {
         node = lamb_queue_pop(storage);
 
@@ -449,11 +451,12 @@ void *lamb_work_loop(void *data) {
         message = (lamb_message_t *)node->val;
 
         if (message->type == LAMB_REPORT) {
+            account = 0;
             report = (lamb_report_t *)message;
             msgId = report->id;
-            report->id = lamb_get_cache(&cache, report->id);
+            lamb_get_cache(&cache, &report->id, &account);
             
-            if (report->id < 1) {
+            if (report->id < 1 || account < 1) {
                 goto done;
             }
 
@@ -615,14 +618,14 @@ void *lamb_stat_loop(void *data) {
     pthread_exit(NULL);
 }
 
-int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id) {
+int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id, int account) {
     int i;
     redisReply *reply = NULL;
     
     i = (msgId % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "SET %llu %llu", msgId, id);
+    reply = redisCommand(caches->nodes[i]->handle, "HSET %llu id %llu account %d", msgId, id, account);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
 
     if (reply == NULL) {
@@ -633,25 +636,27 @@ int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned lon
     return 0;
 }
 
-unsigned long long lamb_get_cache(lamb_caches_t *caches, unsigned long long msgId) {
+int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account) {
     int i;
     redisReply *reply = NULL;
-    unsigned long long id = 0;
 
-    i = (msgId % caches->len);
+    i = (*id % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "GET %llu", msgId);
+    reply = redisCommand(caches->nodes[i]->handle, "HGET %llu id account", *id);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
     
     if (reply != NULL) {
-        if (reply->type == REDIS_REPLY_STRING) {
-            id = (reply->len > 0) ? strtoull(reply->str, NULL, 10) : 0;
+        if (reply->type == REDIS_REPLY_ARRAY) {
+            if (reply->elements == 2) {
+                *id = (reply->element[0]->len > 0) ? strtoull(reply->element[0]->str, NULL, 10) : 0;
+                *account = (reply->element[1]->len > 0) ? atoi(reply->element[1]->str) : 0;
+            }
         }
         freeReplyObject(reply);
     }
 
-    return id;
+    return 0;
 }
 
 int lamb_del_cache(lamb_caches_t *caches, unsigned long long msgId) {
