@@ -30,6 +30,12 @@
 
 typedef struct {
     int type;
+    int len;
+    void *val;
+} lamb_embed_t;
+
+typedef struct {
+    int type;
 } lamb_message_t;
 
 typedef struct {

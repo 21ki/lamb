@@ -306,7 +306,7 @@ void lamb_reload(int signum) {
 }
 
 void *lamb_work_loop(void *data) {
-    int i, err;
+    int err;
     char *buf;
     int rc, len;
     bool success;
@@ -488,20 +488,9 @@ void *lamb_work_loop(void *data) {
             }
 
             //printf("-> [channel] Message sent to %d channel\n", channel->id);
-
-            /* Cache message information */
-            i = (submit->id % cache.len);
-            pthread_mutex_lock(&cache.nodes[i]->lock);
-            err = lamb_cache_message(cache.nodes[i], &account, &company, submit);
-            pthread_mutex_unlock(&cache.nodes[i]->lock);
-
-            if (err) {
-                lamb_errlog(config.logfile, "lamb cache message failed", 0);
-                lamb_sleep(1000);
-            }
             
             /* Save message to billing queue */
-            if (account.charge_type == LAMB_CHARGE_SUBMIT) {
+            if (account.charge == LAMB_CHARGE_SUBMIT) {
                 bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
                 if (bill) {
                     bill->id = company.id;
@@ -527,8 +516,8 @@ void *lamb_work_loop(void *data) {
 }
 
 void *lamb_deliver_loop(void *data) {
+    int rc;
     char *buf;
-    int i, rc, err;
     lamb_bill_t *bill;
     lamb_store_t *store;
     lamb_message_t req;
@@ -564,46 +553,29 @@ void *lamb_deliver_loop(void *data) {
         message = (lamb_message_t *)buf;
 
         if (message->type == LAMB_REPORT) {
-            char spid[6];
-            char spcode[24];
-            int acc, comp, charge;
-
             status.rep++;
-
-            /* Get cached message information */
             report = (lamb_report_t *)buf;
-            i = (report->id % cache.len);
-            pthread_mutex_lock(&cache.nodes[i]->lock);
-            err = lamb_cache_query(cache.nodes[i], report->id, spid, spcode, &acc, &comp, &charge);
-            pthread_mutex_unlock(&cache.nodes[i]->lock);
 
-            /* Billing processing */
-            if (err) {
-                lamb_errlog(config.logfile, "query cache failure from %d node", i);
-                nn_freemsg(buf);
-                continue;
-            }
-
-            report->account = acc;
-
+            report->account = account.id;
+            memcpy(report->spcode, account.spcode, 20);
+            
             //printf("-> msgId: %llu, acc: %llu, comp: %d, charge: %d\n", report->id, acc, comp, charge);
             int coin = 0;
 
-            if ((report->status == 1) && (charge == LAMB_CHARGE_SUCCESS)) {
+            if ((report->status == 1) && (account.charge == LAMB_CHARGE_SUCCESS)) {
                 coin = 1;
-            } else if ((report->status != 1) && (charge == LAMB_CHARGE_SUBMIT)) {
+            } else if ((report->status != 1) && (account.charge == LAMB_CHARGE_SUBMIT)) {
                 coin = -1;
             }
 
             if (coin != 0) {
                 bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
                 if (bill) {
-                    bill->id = comp;
+                    bill->id = company.id;
                     bill->money = (report->status == 1) ? -1 : 1;
                     lamb_queue_push(billing, bill);
                 }
             }
-
 
             nn_send(mo, report, rlen, 0);
 
@@ -759,69 +731,6 @@ void *lamb_stat_loop(void *data) {
 
     
     pthread_exit(NULL);
-}
-
-int lamb_cache_message(lamb_cache_t *cache, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {
-    redisReply *reply = NULL;
-
-    reply = redisCommand(cache->handle, "HMSET %llu spid %s spcode %s account %d company %d charge %d",
-                         message->id, message->spid, message->spcode, account->id, company->id, account->charge_type);
-    if (reply == NULL) {
-        return -1;
-    }
-
-    freeReplyObject(reply);
-
-    return 0;
-}
-
-int lamb_cache_query(lamb_cache_t *cache, unsigned long long id, char *spid, char *spcode, int *account, int *company, int *charge) {
-    int err = 0;
-    redisReply *reply = NULL;
-
-    reply = redisCommand(cache->handle, "HMGET %llu spid spcode account company charge", id);
-
-    if (reply != NULL) {
-        if ((reply->type == REDIS_REPLY_ARRAY) && (reply->elements == 5)) {
-            if (reply->element[0]->len > 0) {
-                memcpy(spid, reply->element[0]->str, reply->element[0]->len);
-            } else {
-                err = -1;
-            }
-
-            if (reply->element[1]->len > 0) {
-                memcpy(spcode, reply->element[1]->str, reply->element[1]->len);
-            } else {
-                err = -1;
-            }
-
-            if (reply->element[2]->len > 0) {
-                *account = atoi(reply->element[2]->str);
-            } else {
-                err = -1;
-            }
-
-            if (reply->element[3]->len > 0) {
-                *company = atoi(reply->element[3]->str);
-            } else {
-                err = -1;
-            }
-
-            if (reply->element[4]->len > 0) {
-                *charge = atoi(reply->element[4]->str);
-            } else {
-                err = -1;
-            }
-
-        } else {
-            err = -1;
-        }
-        freeReplyObject(reply);
-    } else {
-        err = -1;
-    }
-
-    return err;
 }
 
 int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {

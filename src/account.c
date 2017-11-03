@@ -66,7 +66,7 @@ int lamb_account_get(lamb_cache_t *cache, char *username, lamb_account_t *accoun
 
     /* Charge Type */
     if (reply->element[5]->len > 0) {
-        account->charge_type = atoi(reply->element[5]->str);
+        account->charge = atoi(reply->element[5]->str);
     }
 
     /* IP Address */
@@ -134,7 +134,7 @@ int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account) {
     strncpy(account->username, PQgetvalue(res, 0, 1), 7);
     strncpy(account->spcode, PQgetvalue(res, 0, 2), 20);
     account->company = atoi(PQgetvalue(res, 0, 3));
-    account->charge_type = atoi(PQgetvalue(res, 0, 4));
+    account->charge = atoi(PQgetvalue(res, 0, 4));
     strncpy(account->ip_addr, PQgetvalue(res, 0, 5), 15);
     account->concurrent = atoi(PQgetvalue(res, 0, 6));
     account->route = atoi(PQgetvalue(res, 0, 7));
@@ -172,7 +172,7 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
             strncpy(a->username, PQgetvalue(res, i, 1), 7);
             strncpy(a->spcode, PQgetvalue(res, i, 2), 20);
             a->company = atoi(PQgetvalue(res, i, 3));
-            a->charge_type = atoi(PQgetvalue(res, i, 4));
+            a->charge = atoi(PQgetvalue(res, i, 4));
             strncpy(a->ip_addr, PQgetvalue(res, i, 5), 15);
             a->concurrent = atoi(PQgetvalue(res, i, 6));
             a->route = atoi(PQgetvalue(res, i, 7));

@@ -157,6 +157,7 @@ void lamb_event_loop(void) {
 void *lamb_push_loop(void *arg) {
     int err;
     int fd, rc;
+    long long timeout;
     lamb_queue_t *queue;
     lamb_req_t *client;
     
@@ -197,6 +198,9 @@ void *lamb_push_loop(void *arg) {
     pthread_mutex_unlock(&mutex);
     pthread_cond_signal(&cond);
 
+    timeout = config.timeout;
+    nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
+    
     /* Start event processing */
     int account;
     int len, rlen, dlen;
@@ -210,19 +214,14 @@ void *lamb_push_loop(void *arg) {
 
     while (true) {
         char *buf = NULL;
-        rc = nn_recv(fd, &buf, NN_MSG, NN_DONTWAIT);
+        rc = nn_recv(fd, &buf, NN_MSG, 0);
         
         if (rc < 0) {
-            if (err > 3) {
-                break;
+            if (nn_errno() == ETIMEDOUT) {
+                if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
+                    break;
+                }
             }
-            
-            if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
-                err++;
-                lamb_sleep(1000);
-            }
-
-            lamb_sleep(10);
             continue;
         }
 
@@ -335,7 +334,9 @@ void *lamb_pull_loop(void *arg) {
         
         if (rc < 0) {
             if (nn_errno() == ETIMEDOUT) {
-                break;
+                if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
+                    break;
+                }
             }
             continue;
         }

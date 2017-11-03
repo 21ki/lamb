@@ -22,7 +22,7 @@ typedef struct {
     char password[64];
     char spcode[24];
     int company;
-    int charge_type;
+    int charge;
     char ip_addr[16];
     int route;
     bool extended;
