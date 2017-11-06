@@ -18,9 +18,8 @@ typedef struct {
     char listen[16];
     int port;
     long long timeout;
-    char redis_host[16];
-    int redis_port;
-    int redis_db;
+    char ac_host[16];
+    int ac_port;
     char logfile[128];
 } lamb_config_t;
 

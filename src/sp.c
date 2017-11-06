@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
+#include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "config.h"
 #include "mqueue.h"
@@ -23,9 +24,9 @@
 #include "socket.h"
 #include "sp.h"
 
-static int md;
+static int mt;
+static int mo;
 static cmpp_sp_t cmpp;
-static lamb_mq_t queue;
 static lamb_cache_t rdb;
 static lamb_caches_t cache;
 static lamb_queue_t *storage;
@@ -94,13 +95,6 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Redis Initialization */
-    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
-    if (err) {
-        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
-        return;
-    }
-
     /* Cache Cluster Initialization */
     memset(&cache, 0, sizeof(cache));
     lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 2);
@@ -109,35 +103,24 @@ void lamb_event_loop(void) {
         return;
     }
     
-    /* Message queue initialization */
-    char name[64];
-    lamb_mq_opt opt;
-    struct mq_attr attr;
+    /* Connect to MT Server */
+    lamb_nn_option opt;
 
-    opt.flag = O_CREAT | O_RDWR | O_NONBLOCK;
-    attr.mq_maxmsg = 8;
-    attr.mq_msgsize = sizeof(lamb_submit_t);
-    opt.attr = &attr;
+    memset(&opt, 0, sizeof(opt));
+    opt.id = config.id;
+    opt.type = LAMB_NN_PULL;
 
-    sprintf(name, "/gw.%d.message", config.id);
-    err = lamb_mq_open(&queue, name, &opt);
+    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_REQ, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "Can't open %s queue", name);
+        lamb_errlog(config.logfile, "can't connect to MT %s server", config.mt_host);
         return;
     }
-
-    /* Connect to MD server */
-    lamb_nn_option option;
-
-    memset(&option, 0, sizeof(option));
-    option.id = config.id;
-    option.type = LAMB_NN_PUSH;
-    memcpy(option.addr, config.host, 16);
-    option.timeout = config.timeout;
     
-    err = lamb_nn_connect(&md, &option, config.md_host, config.md_port, NN_PAIR);
+    /* Connect to MO Server */
+    opt.type = LAMB_NN_PUSH;
+    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to MD %s server", config.md_host);
+        lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
         return;
     }
     
@@ -171,15 +154,17 @@ void lamb_event_loop(void) {
 }
 
 void *lamb_sender_loop(void *data) {
-    int err;
-    int msgFmt;
-    ssize_t ret;
+    char *buf;
     char spcode[21];
     long long delayed;
-    lamb_submit_t submit;
+    lamb_message_t req;
+    lamb_submit_t *submit;
     unsigned int sequenceId;
-
+    int rc, err, len, msgFmt;
+    
+    req.type = LAMB_REQ;
     memset(spcode, 0, sizeof(spcode));
+    len = sizeof(lamb_submit_t);
     
     if (strcasecmp(config.encoding, "ASCII") == 0) {
         msgFmt = 0;
@@ -199,56 +184,67 @@ void *lamb_sender_loop(void *data) {
             continue;
         }
 
-        memset(&submit, 0, sizeof(submit));
-        ret = lamb_mq_receive(&queue, (char *)&submit, sizeof(submit), 0);
+        submit = NULL;
 
-        if (ret > 0) {
-            confirmed.id = submit.id;
-            confirmed.account = submit.account;
-
-            if (config.extended) {
-                sprintf(spcode, "%s%s", config.spcode, submit.spcode);
-            } else {
-                strcpy(spcode, config.spcode);
-            }
-            
-            /* Message Encode Convert */
-            int length;
-            char content[256];
-            memset(content, 0, sizeof(content));
-            err = lamb_encoded_convert(submit.content, submit.length, content, sizeof(content), "UTF-8", config.encoding, &length);
-            if (err || (length == 0)) {
-                continue;
-            }
-
-            sequenceId = confirmed.sequenceId = cmpp_sequence();
-            err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit.phone, content, length, msgFmt, true);
-            total++;
-            status.sub++;
-            
-            if (err) {
-                status.err++;
-                lamb_sleep(config.interval * 1000);
-                continue;
-            }
-
-            err = lamb_wait_confirmation(&cond, &mutex, 7);
-
-            if (err == ETIMEDOUT) {
-                status.timeo++;
-                lamb_sleep(config.interval * 1000);
-            }
-
-            if (config.concurrent > 1000000) {
-                delayed = 1000000;
-            } else {
-                delayed = 1000000 / config.concurrent;
-            }
-
-            lamb_msleep(delayed);
-        } else {
-            lamb_sleep(10);
+        rc = nn_send(mt, &req, sizeof(req), 0);
+        if (rc < 0) {
+            lamb_sleep(1000);
+            continue;
         }
+
+        rc = nn_recv(mt, &buf, NN_MSG, 0);
+        if (rc < len) {
+            nn_freemsg(buf);
+            lamb_sleep(1000);
+            continue;
+        }
+        
+        submit = (lamb_submit_t *)buf;
+
+        /* Message Processing */
+        confirmed.id = submit->id;
+        confirmed.account = submit->account;
+
+        if (config.extended) {
+            sprintf(spcode, "%s%s", config.spcode, submit->spcode);
+        } else {
+            strcpy(spcode, config.spcode);
+        }
+            
+        /* Message Encode Convert */
+        int length;
+        char content[256];
+        memset(content, 0, sizeof(content));
+        err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), "UTF-8", config.encoding, &length);
+        if (err || (length == 0)) {
+            continue;
+        }
+
+        sequenceId = confirmed.sequenceId = cmpp_sequence();
+        err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, content, length, msgFmt, true);
+        total++;
+        status.sub++;
+            
+        if (err) {
+            status.err++;
+            lamb_sleep(config.interval * 1000);
+            continue;
+        }
+
+        err = lamb_wait_confirmation(&cond, &mutex, 7);
+
+        if (err == ETIMEDOUT) {
+            status.timeo++;
+            lamb_sleep(config.interval * 1000);
+        }
+
+        if (config.concurrent > 1000000) {
+            delayed = 1000000;
+        } else {
+            delayed = 1000000 / config.concurrent;
+        }
+
+        lamb_msleep(delayed);
     }
 
     pthread_exit(NULL);
@@ -465,10 +461,10 @@ void *lamb_work_loop(void *data) {
         }
 
         if (message->type == LAMB_REPORT) {
-            rc = nn_send(md, report, sizeof(lamb_report_t), 0);
+            rc = nn_send(mo, report, sizeof(lamb_report_t), 0);
         } else {
             deliver = (lamb_deliver_t *)message;
-            rc = nn_send(md, deliver, sizeof(lamb_deliver_t), 0);
+            rc = nn_send(mo, deliver, sizeof(lamb_deliver_t), 0);
         }
         
         if (rc < 0) {
@@ -782,28 +778,31 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+    if (lamb_get_string(&cfg, "AcHost", conf->ac_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'AcHost' parameter\n");
+    }
+
+    if (lamb_get_int(&cfg, "AcPort", &conf->ac_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'AcPort' parameter\n");
+    }
+    
+    if (lamb_get_string(&cfg, "MtHost", conf->mt_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid MtHost IP address\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+    if (lamb_get_int(&cfg, "MtPort", &conf->mt_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MtPort' parameter\n");
         goto error;
     }
 
-    if (conf->redis_port < 1 || conf->redis_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid redis port number\n");
+    if (lamb_get_string(&cfg, "MoHost", conf->mo_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid MoHost IP address\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+    if (lamb_get_int(&cfg, "MoPort", &conf->mo_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MoPort' parameter\n");
         goto error;
     }
 
@@ -852,16 +851,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     }
     conf->nodes[6] = lamb_strdup(node);
 
-    if (lamb_get_string(&cfg, "MdHost", conf->md_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid MD server IP address\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "MdPort", &conf->md_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MdPort' parameter\n");
-        goto error;
-    }
-    
     lamb_config_destroy(&cfg);
     return 0;
 error:

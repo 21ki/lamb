@@ -41,6 +41,7 @@ typedef struct {
 typedef struct {
     int type;
     int account;
+    int channel;
     unsigned long long id;
     char spid[8];
     char spcode[24];

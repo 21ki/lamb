@@ -27,14 +27,13 @@
 #include "config.h"
 #include "cache.h"
 #include "socket.h"
+#include "pool.h"
 #include "scheduler.h"
 
-static int ac;
+//static int ac;
 static lamb_rep_t resp;
-static lamb_cache_t rdb;
 static lamb_pool_t *pools;
 static lamb_config_t config;
-static lamb_queue_t *delivery;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 
@@ -87,24 +86,17 @@ void lamb_event_loop(void) {
     /* Client Queue Pools Initialization */
     pools = lamb_pool_new();
     if (!pools) {
-        lamb_errlog(config.logfile, "lamb queue pool initialization failed", 0);
+        lamb_errlog(config.logfile, "queue pool initialization failed", 0);
         return;
     }
 
-    lamb_nn_option opt;
-
-    memset(&opt, 0, sizeof(opt));
-    opt.id = config.id;
-    opt.type = LAMB_REQ;
-
-    err = lamb_nn_connect(&ac, &opt, config.ac_host, config.ac_port, NN_REQ);
-    
     /* MT Server Initialization */
-    err = lamb_server_init(&fd, config.listen, config.port);
+    err = lamb_nn_server(&fd, config.listen, config.port, NN_REP);
     if (err) {
+        lamb_errlog(config.logfile, "scheduler initialization failed", 0);
         return;
     }
-
+    
     /* Start Data Acquisition Thread */
     lamb_start_thread(lamb_stat_loop, NULL, 1);
 
@@ -165,26 +157,14 @@ void *lamb_push_loop(void *arg) {
     long long timeout;
     lamb_req_t *client;
     lamb_queue_t *queue;
-    lamb_queue_t *channel;
-    lamb_account_t account;
 
     client = (lamb_req_t *)arg;
 
     printf("-> new client from %s connectd\n", client->addr);
 
-    channel = lamb_queue_new(client->id);
-    if (channel) {
-        lamb_errlog(config.logfile, "channel initialization failed", 0);
-        pthread_exit(NULL);
-    }
-
-    err = lamb_account_get();
-    
-    err = lamb_get_route();
-    
     /* Client channel initialization */
-    unsigned short port = config.listen + 1;
-    err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
+    unsigned short port = config.port + 1;
+    err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
         lamb_errlog(config.logfile, "lamb can't find available port", 0);
@@ -204,11 +184,13 @@ void *lamb_push_loop(void *arg) {
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
 
     /* Start event processing */
-    int len;
-    lamb_submit_t *message;
-
+    int len, slen;
+    lamb_submit_t *submit;
+    lamb_message_t *message;
+    
     queue = NULL;
-    len = sizeof(lamb_submit_t);
+    len = sizeof(lamb_message_t);
+    slen = sizeof(lamb_submit_t);
     
     while (true) {
         char *buf = NULL;
@@ -223,36 +205,32 @@ void *lamb_push_loop(void *arg) {
             continue;
         }
 
-        if (rc < len) {
+        if (rc != len && rc != slen) {
+            nn_send(fd, "0", 1, NN_DONTWAIT);
             nn_freemsg(buf);
             continue;
         }
 
-        message = (lamb_submit_t *)buf;
+        message = (lamb_message_t *)buf;
 
-        /* Report */
-        if (message->type == LAMB_REPORT) {
-            report = (lamb_report_t *)message;
-            queue = lamb_pool_find(pools, report->account);
+        /* Submit */
+        if (message->type == LAMB_SUBMIT) {
+            submit = (lamb_submit_t *)message;
+            queue = lamb_pool_find(pools, submit->channel);
             if (!queue) {
-                queue = lamb_queue_new(report->account);
+                queue = lamb_queue_new(submit->channel);
                 if (queue) {
                     lamb_pool_add(pools, queue);
                 }
             }
 
-            if (queue) {
-                lamb_queue_push(queue, message);
+            if (queue && queue->len < 16) {
+                lamb_queue_push(queue, submit);
             } else {
+                nn_send(fd, "ok", 2, NN_DONTWAIT);
                 nn_freemsg(buf);
             }
 
-            continue;
-        }
-
-        /* Delivery */
-        if (message->type == LAMB_DELIVER) {
-            lamb_queue_push(delivery, message);
             continue;
         }
 
@@ -301,7 +279,7 @@ void *lamb_pull_loop(void *arg) {
     }
 
     /* Client channel initialization */
-    unsigned short port = config.listen + 1;
+    unsigned short port = config.port + 1;
     err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
@@ -354,7 +332,7 @@ void *lamb_pull_loop(void *arg) {
                 free(node->val);
                 free(node);
             } else {
-                nn_send(fd, "0", 1, 0);
+                nn_send(fd, "0", 1, NN_DONTWAIT);
             }
 
             nn_freemsg(buf);
@@ -377,56 +355,7 @@ void *lamb_pull_loop(void *arg) {
     pthread_exit(NULL);
 }
 
-int lamb_server_init(int *sock, const char *listen, int port) {
-    int fd;
-    char addr[128];
-
-    sprintf(addr, "tcp://%s:%d", listen, port);
-    
-    fd = nn_socket(AF_SP, NN_REP);
-    if (fd < 0) {
-        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-
-    if (nn_bind(fd, addr) < 0) {
-        nn_close(fd);
-        lamb_errlog(config.logfile, "bind %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-
-    *sock = fd;
-
-    return 0;
-}
-
-int lamb_child_server(int *sock, const char *listen, unsigned short *port, int protocol) {
-    int fd;
-    char addr[128];
-    
-    fd = nn_socket(AF_SP, protocol);
-    if (fd < 0) {
-        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-
-    while (true) {
-        sprintf(addr, "tcp://%s:%u", listen, *port);
-
-        if (nn_bind(fd, addr) > 0) {
-            break;
-        }
-
-        (*port)++;
-    }
-
-    *sock = fd;
-    
-    return 0;
-}
-
 void *lamb_stat_loop(void *arg) {
-    redisReply *reply;
     lamb_queue_t *queue;
     long long length = 0;    
 
@@ -440,15 +369,21 @@ void *lamb_stat_loop(void *arg) {
             queue = queue->next;
         }
 
-        reply = redisCommand(rdb.handle, "HMSET md.%d queue %lld", config.id, length);
-        if (reply != NULL) {
-            freeReplyObject(reply);
-        }
-
         lamb_sleep(3000);
     }
 
     pthread_exit(NULL);
+}
+
+int lamb_child_server(int *sock, const char *host, unsigned short *port, int protocol) {
+    while (true) {
+        if (!lamb_nn_server(sock, host, *port, protocol)) {
+            break;
+        }
+        (*port)++;
+    }
+
+    return 0;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
@@ -485,6 +420,14 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
         goto error;
+    }
+
+    if (lamb_get_string(&cfg, "AcHost", conf->ac_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
+    }
+
+    if (lamb_get_int(&cfg, "AcPort", &conf->ac_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
     }
 
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {

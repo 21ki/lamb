@@ -31,10 +31,10 @@
 #include "pool.h"
 #include "mt.h"
 
-static lamb_cache_t rdb;
+//static int ac;
+static lamb_rep_t resp;
 static lamb_config_t config;
 static lamb_pool_t *pools;
-static lamb_rep_t resp;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 
@@ -79,7 +79,8 @@ int main(int argc, char *argv[]) {
 }
 
 void lamb_event_loop(void) {
-    int fd, err;
+    int fd;
+    char addr[128];
 
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
@@ -91,16 +92,18 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Redis Cache Initialization */
-    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
-    if (err) {
-        lamb_errlog(config.logfile, "can't connect to redis %s server", config.redis_host);
+    /* Server Initialization */
+    fd = nn_socket(AF_SP, NN_REP);
+    if (fd < 0) {
+        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
         return;
     }
 
-    /* MT Server Initialization */
-    err = lamb_server_init(&fd, config.listen, config.port);
-    if (err) {
+    sprintf(addr, "tcp://%s:%d", config.listen, config.port);
+
+    if (nn_bind(fd, addr) < 0) {
+        nn_close(fd);
+        lamb_errlog(config.logfile, "bind %s", nn_strerror(nn_errno()));
         return;
     }
 
@@ -186,7 +189,7 @@ void *lamb_push_loop(void *arg) {
     }
     
     /* Client channel initialization */
-    unsigned short port = 10001;
+    unsigned short port = config.port + 1;
     err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
     if (err) {
         pthread_cond_signal(&cond);
@@ -322,7 +325,7 @@ void *lamb_pull_loop(void *arg) {
 
         if (rc < len) {
             nn_freemsg(buf);
-            lamb_sleep(1000);
+            nn_send(fd, "0", 1, NN_DONTWAIT);
             continue;
         }
 
@@ -331,14 +334,13 @@ void *lamb_pull_loop(void *arg) {
         if (message->type == LAMB_REQ) {
             node = lamb_queue_pop(queue);
             if (node) {
-                if (nn_send(fd, node->val, slen, 0) != slen) {
-                    lamb_sleep(1000);
-                }
+                nn_send(fd, node->val, slen, NN_DONTWAIT);
                 nn_freemsg(node->val);
                 free(node);
             } else {
-                nn_send(fd, "0", 1, 0);
+                nn_send(fd, "0", 1, NN_DONTWAIT);
             }
+
             nn_freemsg(buf);
             continue;
         }
@@ -359,65 +361,24 @@ void *lamb_pull_loop(void *arg) {
     pthread_exit(NULL);
 }
 
-int lamb_server_init(int *sock, const char *listen, int port) {
-    int fd;
-    char addr[128];
 
-    sprintf(addr, "tcp://%s:%d", listen, port);
-    
-    fd = nn_socket(AF_SP, NN_REP);
-    if (fd < 0) {
-        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-
-    if (nn_bind(fd, addr) < 0) {
-        nn_close(fd);
-        lamb_errlog(config.logfile, "bind %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-
-    *sock = fd;
-
-    return 0;
-}
-
-int lamb_child_server(int *sock, const char *listen, unsigned short *port, int protocol) {
-    int fd;
-    char addr[128];
-
-    fd = nn_socket(AF_SP, protocol);
-    if (fd < 0) {
-        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
-        return -1;
-    }
-    
+int lamb_child_server(int *sock, const char *host, unsigned short *port, int protocol) {
     while (true) {
-        sprintf(addr, "tcp://%s:%u", listen, *port);
-
-        if (nn_bind(fd, addr) > 0) {
+        if (!lamb_nn_server(sock, host, *port, protocol)) {
             break;
         }
-
         (*port)++;
     }
 
-    *sock = fd;
-    
     return 0;
 }
 
 void *lamb_stat_loop(void *arg) {
     lamb_queue_t *queue;
-    redisReply *reply;
     
     while (true) {
         queue = pools->head;
         while (queue != NULL) {
-            reply = redisCommand(rdb.handle, "HMSET client.%d queue %lld", queue->id, queue->len);
-            if (reply != NULL) {
-                freeReplyObject(reply);
-            }
             printf("-> queue: %d, len: %lld\n", queue->id, queue->len);
             queue = queue->next;
         }
@@ -464,23 +425,14 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+    if (lamb_get_string(&cfg, "AcHost", conf->ac_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
     }
 
-    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+    if (lamb_get_int(&cfg, "AcPort", &conf->ac_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
     }
-
-    if (conf->redis_port < 1 || conf->redis_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid redis port number\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
-    }
-
+    
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;

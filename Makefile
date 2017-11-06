@@ -5,7 +5,7 @@ MACRO = -D_GNU_SOURCE
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/mqueue.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/socket.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre
 
-all: sp ismg server mt mo md test
+all: sp ismg server mt mo scheduler deliver test
 
 sp: src/sp.c src/sp.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/sp.c $(OBJS) $(LIBS) -lnanomsg -o sp
@@ -16,17 +16,17 @@ ismg: src/ismg.c src/ismg.h $(OBJS)
 server: src/server.c src/server.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -lnanomsg -o server
 
-deliver: src/deliver.c src/deliver.h $(OBJS)
-	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) $(LIBS) -o deliver
-
 mt: src/mt.c src/mt.h $(OBJS) src/pool.o
 	$(CC) $(CFLAGS) $(MACRO) src/mt.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mt
 
 mo: src/mo.c src/mo.h $(OBJS) src/pool.o
 	$(CC) $(CFLAGS) $(MACRO) src/mo.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mo
 
-md: src/md.c src/md.h $(OBJS) src/pool.o
-	$(CC) $(CFLAGS) $(MACRO) src/md.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o md
+scheduler: src/scheduler.c src/scheduler.h $(OBJS) src/pool.o
+	$(CC) $(CFLAGS) $(MACRO) src/scheduler.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o scheduler
+
+deliver: src/deliver.c src/deliver.h $(OBJS) src/pool.o
+	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o deliver
 
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
@@ -105,5 +105,5 @@ install:
 
 clean:
 	rm -f src/*.o
-	rm -f ismg server deliver sp
+	rm -f ismg mt mo server scheduler deliver sp test
 

@@ -31,14 +31,13 @@ typedef struct {
     int concurrent;
     char backfile[128];
     char logfile[128];
-    char redis_host[16];
-    int redis_port;
-    char redis_password[64];
-    int redis_db;
-    char md_host[16];
-    int md_port;
+    char ac_host[16];
+    int ac_port;
+    char mt_host[16];
+    int mt_port;
+    char mo_host[16];
+    int mo_port;
     char *nodes[7];
-    lamb_operator_t sp;
 } lamb_config_t;
 
 typedef struct {
