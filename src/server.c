@@ -34,15 +34,15 @@ static int aid = 0;
 static long long money;
 static lamb_db_t db;
 static lamb_db_t mdb;
-static int mt, mo, md;
+static int mt, mo;
+static int scheduler, deliverd;
 static lamb_cache_t rdb;
 static lamb_caches_t cache;
 static lamb_queue_t *storage;
 static lamb_queue_t *billing;
-static lamb_group_t group;
+static lamb_queue_t *channels;
 static lamb_account_t account;
 static lamb_company_t company;
-static lamb_queue_t *channels;
 static lamb_queue_t *templates;
 static lamb_queue_t *keywords;
 static lamb_config_t config;
@@ -175,16 +175,15 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Connect to MT server */
+
     lamb_nn_option opt;
 
     memset(&opt, 0, sizeof(opt));
     opt.id = aid;
     opt.type = LAMB_NN_PULL;
-    strcpy(opt.addr, "127.0.0.1");
-    opt.timeout = config.timeout;
-    
-    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_REQ);
+
+    /* Connect to MT server */    
+    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_REQ, config.timeout);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MT %s server", config.mt_host);
         return;
@@ -192,20 +191,28 @@ void lamb_event_loop(void) {
     
     /* Connect to MO server */
     opt.type = LAMB_NN_PUSH;
-    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR);
+    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR, config.timeout);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
         return;
     }
 
-    /* Connect to MD server */
-    opt.type = LAMB_NN_PULL;
-    err = lamb_nn_connect(&md, &opt, config.md_host, config.md_port, NN_REQ);
+    /* Connect to Scheduler server */
+    opt.type = LAMB_NN_PUSH;
+    err = lamb_nn_connect(&scheduler, &opt, config.scheduler_host, config.scheduler_port, NN_REQ, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to MD %s server", config.mo_host);
+        lamb_errlog(config.logfile, "can't connect to Scheduler %s server", config.scheduler_host);
         return;
     }
 
+    /* Connect to Deliver server */
+    opt.type = LAMB_NN_PULL;
+    err = lamb_nn_connect(&deliverd, &opt, config.deliver_host, config.deliver_port, NN_REQ, config.timeout);
+    if (err) {
+        lamb_errlog(config.logfile, "can't connect to deliver %s server", config.deliver_host);
+        return;
+    }
+    
     /* Fetch company information */
     memset(&company, 0, sizeof(company));
     err = lamb_company_get(&db, account.company, &company);
@@ -228,13 +235,18 @@ void lamb_event_loop(void) {
     }
 
     /* Fetch group information */
-    memset(&group, 0, sizeof(group));
-    err = lamb_group_get(&db, account.route, &group, LAMB_MAX_CHANNEL);
-    if (err) {
-        lamb_errlog(config.logfile, "No channel routing available", 0);
+    channels = lamb_queue_new(aid);
+    if (!channels) {
+        lamb_errlog(config.logfile, "channels queue initialization failed", 0);
         return;
     }
 
+    err = lamb_group_get(&db, account.route, channels);
+    if (channels->len < 1) {
+        lamb_errlog(config.logfile, "No channel routing available", 0);
+        return;
+    }
+    
     /* Keyword information Initialization */
     keywords = lamb_queue_new(aid);
     if (!keywords) {
@@ -247,24 +259,6 @@ void lamb_event_loop(void) {
         if (err) {
             lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
         }
-    }
-
-    /* Channel Initialization */
-    lamb_mq_opt opts;
-
-    opts.flag = O_WRONLY | O_NONBLOCK;
-    opts.attr = NULL;
-
-    channels = lamb_queue_new(aid);
-    if (!channels) {
-        lamb_errlog(config.logfile, "channel queue initialization failed", 0);
-        return;
-    }
-
-    err = lamb_open_channel(&group, channels, &opts);
-    if (err || channels->len < 1) {
-        lamb_errlog(config.logfile, "No gateway channel available", 0);
-        return;
     }
 
     /* Thread lock initialization */
@@ -314,11 +308,11 @@ void *lamb_work_loop(void *data) {
     lamb_store_t *store;
     lamb_submit_t *submit;
     lamb_node_t *node;
-    lamb_mq_t *channel;
     lamb_template_t *template;
     lamb_keyword_t *keyword;
     lamb_message_t req;
-
+    lamb_channel_t *channel;
+    
     len = sizeof(lamb_submit_t);
     
     err = lamb_cpu_affinity(pthread_self());
@@ -462,20 +456,25 @@ void *lamb_work_loop(void *data) {
                 printf("-> [keyword] The keyword check OK\n");
             }
 
-        routing: /* Routing Scheduling */
+            /* Scheduling */
+        routing:
             success = false;
             node = channels->head;
 
             while (node != NULL) {
-                channel = (lamb_mq_t *)node->val;
-                err = lamb_mq_send(channel, (char *)submit, sizeof(lamb_submit_t), 0);
-                if (err) {
-                    node = node->next;
-                } else {
-                    success = true;
-                    status.sub++;
-                    break;
+                channel = (lamb_channel_t *)node->val;
+                submit->channel = channel->id;
+                rc = nn_send(scheduler, (char *)submit, sizeof(lamb_submit_t), 0);
+                if (rc > 0) {
+                    rc = nn_recv(scheduler, &buf, NN_MSG, 0);
+                    if (rc >= 2 && (strncmp(buf, "ok", 2) == 0)) {
+                        success = true;
+                        status.sub++;
+                        break;
+                    }
                 }
+
+                node = node->next;
             }
 
             if (!success) {
@@ -531,14 +530,14 @@ void *lamb_deliver_loop(void *data) {
     req.type = LAMB_REQ;
 
     while (true) {
-        rc = nn_send(md, &req, sizeof(req), 0);
+        rc = nn_send(deliverd, &req, sizeof(req), 0);
 
         if (rc < 0) {
             lamb_sleep(1000);
             continue;
         }
 
-        rc = nn_recv(md, &buf, NN_MSG, 0);
+        rc = nn_recv(deliverd, &buf, NN_MSG, 0);
         if (rc < 0) {
             lamb_sleep(1000);
             continue;
@@ -935,13 +934,23 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "MdHost", conf->md_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid MD server IP address\n");
+    if (lamb_get_string(&cfg, "SchedulerHost", conf->scheduler_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid scheduler server IP address\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "MdPort", &conf->md_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MdPort' parameter\n");
+    if (lamb_get_int(&cfg, "SchedulerPort", &conf->scheduler_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read scheduler server port parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DeliverHost", conf->deliver_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Invalid deliver server IP address\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "DeliverPort", &conf->deliver_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read deliver server port parameter\n");
         goto error;
     }
 

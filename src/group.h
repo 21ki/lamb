@@ -9,6 +9,7 @@
 #define _LAMB_GROUP_H
 
 #include "db.h"
+#include "queue.h"
 #include "channel.h"
 
 #define LAMB_MAX_GROUP 1024
@@ -24,6 +25,6 @@ typedef struct {
     lamb_group_t *list[LAMB_MAX_GROUP];
 } lamb_groups_t;
 
-int lamb_group_get(lamb_db_t *db, int id, lamb_group_t *group, int size);
+int lamb_group_get(lamb_db_t *db, int id, lamb_queue_t *channels);
 
 #endif
