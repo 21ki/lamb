@@ -13,12 +13,10 @@
 
 #define lamb_errlog(f, fmt, ...) lamb_log_error(f, __FILE__, __LINE__, fmt, __VA_ARGS__)
 
-#define LAMB_REQ     0
 #define LAMB_SUBMIT  1
 #define LAMB_DELIVER 2
 #define LAMB_REPORT  3
 #define LAMB_UPDATE  4
-#define LAMB_BYE     5
 
 #define LAMB_CMCC    1
 #define LAMB_CTCC    2

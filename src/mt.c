@@ -38,6 +38,7 @@ static lamb_pool_t *pools;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 
+
 int main(int argc, char *argv[]) {
     char *file = "mt.conf";
     bool background = false;
@@ -137,11 +138,14 @@ void lamb_event_loop(void) {
             continue;
         }
 
+
         struct timeval now;
         struct timespec timeout;
         
         gettimeofday(&now, NULL);
-        timeout.tv_sec = now.tv_sec + 3;
+        timeout.tv_sec = now.tv_sec;
+        timeout.tv_nsec = now.tv_usec * 1000;
+        timeout.tv_sec += 3;
 
         pthread_mutex_lock(&mutex);
         memset(&resp, 0, sizeof(resp));
@@ -284,7 +288,7 @@ void *lamb_pull_loop(void *arg) {
     }
     
     /* Client channel initialization */
-    unsigned short port = 10001;
+    unsigned short port = config.port + 1;
     err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
@@ -293,7 +297,6 @@ void *lamb_pull_loop(void *arg) {
     }
 
     pthread_mutex_lock(&mutex);
-
     resp.id = client->id;
     memcpy(resp.addr, config.listen, 16);
     resp.port = port;

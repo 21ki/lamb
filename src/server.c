@@ -181,14 +181,15 @@ void lamb_event_loop(void) {
     memset(&opt, 0, sizeof(opt));
     opt.id = aid;
     opt.type = LAMB_NN_PULL;
-
-    /* Connect to MT server */    
+    memcpy(opt.addr, "127.0.0.1", 10);
+    
+    /* Connect to MT server */
     err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_REQ, config.timeout);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MT %s server", config.mt_host);
         return;
     }
-    
+
     /* Connect to MO server */
     opt.type = LAMB_NN_PUSH;
     err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR, config.timeout);
@@ -323,191 +324,192 @@ void *lamb_work_loop(void *data) {
     req.type = LAMB_REQ;
 
     while (true) {
-        submit = NULL;
 
         /* Request */
         rc = nn_send(mt, &req, sizeof(req), 0);
+        
         if (rc < 0) {
-            lamb_sleep(1000);
             continue;
         }
 
         /* Response */
         rc = nn_recv(mt, &buf, NN_MSG, 0);
-        if (rc >= len) {
-            submit = (lamb_submit_t *)buf;
+
+        if (rc < len) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+                lamb_sleep(1000);
+            }
+            continue;
         }
 
-        if (submit != NULL) {
-            ++status.toal;
-            //printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
+        submit = (lamb_submit_t *)buf;
+            
+        ++status.toal;
+        //printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
 
-            /* Message Encoded Convert */
-            char *fromcode;
-            char content[512];
+        /* Message Encoded Convert */
+        char *fromcode;
+        char content[512];
 
-            if (submit->msgFmt == 0) {
-                fromcode = "ASCII";
-            } else if (submit->msgFmt == 8) {
-                fromcode = "UCS-2";
-            } else if (submit->msgFmt == 11) {
-                fromcode = NULL;
-            } else if (submit->msgFmt == 15) {
-                fromcode = "GBK";
-            } else {
+        if (submit->msgFmt == 0) {
+            fromcode = "ASCII";
+        } else if (submit->msgFmt == 8) {
+            fromcode = "UCS-2";
+        } else if (submit->msgFmt == 11) {
+            fromcode = NULL;
+        } else if (submit->msgFmt == 15) {
+            fromcode = "GBK";
+        } else {
+            status.fmt++;
+            printf("-> [encoded] message encoded %d not support\n", submit->msgFmt);
+            nn_freemsg(buf);
+            continue;
+        }
+
+        if (fromcode != NULL) {
+            memset(content, 0, sizeof(content));
+            err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), fromcode, "UTF-8", &submit->length);
+            if (err || (submit->length == 0)) {
                 status.fmt++;
-                printf("-> [encoded] message encoded %d not support\n", submit->msgFmt);
                 nn_freemsg(buf);
+                printf("-> [encoded] Message encoding conversion failed\n");
                 continue;
             }
 
-            if (fromcode != NULL) {
-                memset(content, 0, sizeof(content));
-                err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), fromcode, "UTF-8", &submit->length);
-                if (err || (submit->length == 0)) {
-                    status.fmt++;
-                    nn_freemsg(buf);
-                    printf("-> [encoded] Message encoding conversion failed\n");
-                    continue;
-                }
+            submit->msgFmt = 11;
+            memset(submit->content, 0, 160);
+            memcpy(submit->content, content, submit->length);
+            printf("-> [encoded] Message encoding conversion successfull\n");
+        }
 
-                submit->msgFmt = 11;
-                memset(submit->content, 0, 160);
-                memcpy(submit->content, content, submit->length);
-                printf("-> [encoded] Message encoding conversion successfull\n");
-            }
+        //printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
 
-            //printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
-
-            /* Blacklist and Whitelist */
-            /* 
-               if (account.policy != LAMB_POL_EMPTY) {
-               if (lamb_security_check(&black, account.policy, submit->phone)) {
-               if (account.policy == LAMB_BLACKLIST) {
-               status.blk++;
-               nn_freemsg(buf);
-               //printf("-> [policy] The security check not pass\n");
-               continue;
-               }
-               } else {
-               if (account.policy == LAMB_WHITELIST) {
-               status.blk++;
-               nn_freemsg(buf);
-               //printf("-> [policy] The security check not pass\n");
-               continue;
-               }
-               }
-               //printf("-> [policy] The Security check OK\n");
-               }
-            */
+        /* Blacklist and Whitelist */
+        /* 
+           if (account.policy != LAMB_POL_EMPTY) {
+           if (lamb_security_check(&black, account.policy, submit->phone)) {
+           if (account.policy == LAMB_BLACKLIST) {
+           status.blk++;
+           nn_freemsg(buf);
+           //printf("-> [policy] The security check not pass\n");
+           continue;
+           }
+           } else {
+           if (account.policy == LAMB_WHITELIST) {
+           status.blk++;
+           nn_freemsg(buf);
+           //printf("-> [policy] The security check not pass\n");
+           continue;
+           }
+           }
+           //printf("-> [policy] The Security check OK\n");
+           }
+        */
             
-            /* SpCode Processing  */
-            if (account.extended) {
-                printf("-> [spcode] check message spcode extended\n");
-                lamb_spcode_process(account.spcode, submit->spcode, 20);
-            } else {
-                strcpy(submit->spcode, account.spcode);
-            }
+        /* SpCode Processing  */
+        if (account.extended) {
+            printf("-> [spcode] check message spcode extended\n");
+            lamb_spcode_process(account.spcode, submit->spcode, 20);
+        } else {
+            strcpy(submit->spcode, account.spcode);
+        }
 
-            /* Template Processing */
-            if (account.check_template) {
-                success = false;
-                node = templates->head;
-
-                while (node != NULL) {
-                    template = (lamb_template_t *)node->val;
-                    if (lamb_template_check(template, submit->content, submit->length)) {
-                        success = true;
-                        break;
-                    }
-                    node = node->next;
-                } 
-
-                if (!success) {
-                    status.tmp++;
-                    printf("-> [template] The template check will not pass\n");
-                    nn_freemsg(buf);
-                    continue;
-                    
-                }
-                printf("-> [template] The template check OK\n");
-            }
-
-            /* Keywords Filtration */
-            if (account.check_keyword) {
-                success = false;
-                node = keywords->head;
-
-                while (node != NULL) {
-                    keyword = (lamb_keyword_t *)node->val;
-                    if (lamb_keyword_check(keyword, submit->content)) {
-                        success = true;
-                        break;
-                    }
-                    node = node->next;
-                }
-               
-                if (success) {
-                    status.key++;
-                    nn_freemsg(buf);
-                    printf("-> [keyword] The keyword check not pass\n");
-                    continue;
-                }
-                printf("-> [keyword] The keyword check OK\n");
-            }
-
-            /* Scheduling */
-        routing:
+        /* Template Processing */
+        if (account.check_template) {
             success = false;
-            node = channels->head;
+            node = templates->head;
 
             while (node != NULL) {
-                channel = (lamb_channel_t *)node->val;
-                submit->channel = channel->id;
-                rc = nn_send(scheduler, (char *)submit, sizeof(lamb_submit_t), 0);
-                if (rc > 0) {
-                    rc = nn_recv(scheduler, &buf, NN_MSG, 0);
-                    if (rc >= 2 && (strncmp(buf, "ok", 2) == 0)) {
-                        success = true;
-                        status.sub++;
-                        break;
-                    }
+                template = (lamb_template_t *)node->val;
+                if (lamb_template_check(template, submit->content, submit->length)) {
+                    success = true;
+                    break;
                 }
-
                 node = node->next;
-            }
+            } 
 
             if (!success) {
-                if (channels->len < 1) {
-                    printf("-> [channel] No gateway channel available\n");
+                status.tmp++;
+                printf("-> [template] The template check will not pass\n");
+                nn_freemsg(buf);
+                continue;
+                    
+            }
+            printf("-> [template] The template check OK\n");
+        }
+
+        /* Keywords Filtration */
+        if (account.check_keyword) {
+            success = false;
+            node = keywords->head;
+
+            while (node != NULL) {
+                keyword = (lamb_keyword_t *)node->val;
+                if (lamb_keyword_check(keyword, submit->content)) {
+                    success = true;
+                    break;
                 }
-                //printf("-> [channel] busy all channels\n");
-                lamb_sleep(100);
-                goto routing;
+                node = node->next;
+            }
+               
+            if (success) {
+                status.key++;
+                nn_freemsg(buf);
+                printf("-> [keyword] The keyword check not pass\n");
+                continue;
+            }
+            printf("-> [keyword] The keyword check OK\n");
+        }
+
+        /* Scheduling */
+    routing:
+        success = false;
+        node = channels->head;
+
+        while (node != NULL) {
+            channel = (lamb_channel_t *)node->val;
+            submit->channel = channel->id;
+            rc = nn_send(scheduler, (char *)submit, sizeof(lamb_submit_t), 0);
+            if (rc > 0) {
+                rc = nn_recv(scheduler, &buf, NN_MSG, 0);
+                if (rc >= 2 && (strncmp(buf, "ok", 2) == 0)) {
+                    success = true;
+                    status.sub++;
+                    break;
+                }
             }
 
-            //printf("-> [channel] Message sent to %d channel\n", channel->id);
+            node = node->next;
+        }
+
+        if (!success) {
+            if (channels->len < 1) {
+                printf("-> [channel] No gateway channel available\n");
+            }
+            //printf("-> [channel] busy all channels\n");
+            lamb_sleep(100);
+            goto routing;
+        }
+
+        //printf("-> [channel] Message sent to %d channel\n", channel->id);
             
-            /* Save message to billing queue */
-            if (account.charge == LAMB_CHARGE_SUBMIT) {
-                bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
-                if (bill) {
-                    bill->id = company.id;
-                    bill->money = -1;
-                    lamb_queue_push(billing, bill);
-                }
+        /* Save message to billing queue */
+        if (account.charge == LAMB_CHARGE_SUBMIT) {
+            bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
+            if (bill) {
+                bill->id = company.id;
+                bill->money = -1;
+                lamb_queue_push(billing, bill);
             }
+        }
 
-            /* Save message to storage queue */
-            store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
-            if (store) {
-                store->type = LAMB_SUBMIT;
-                store->val = submit;
-                lamb_queue_push(storage, store);
-            }
-        } else {
-            nn_freemsg(buf);
-            lamb_sleep(1000);
+        /* Save message to storage queue */
+        store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
+        if (store) {
+            store->type = LAMB_SUBMIT;
+            store->val = submit;
+            lamb_queue_push(storage, store);
         }
     }
 
@@ -538,14 +540,12 @@ void *lamb_deliver_loop(void *data) {
         }
 
         rc = nn_recv(deliverd, &buf, NN_MSG, 0);
-        if (rc < 0) {
-            lamb_sleep(1000);
-            continue;
-        }
 
         if (rc != rlen && rc != dlen) {
-            nn_freemsg(buf);
-            lamb_sleep(1000);
+            if (rc > 0) {
+                nn_freemsg(buf);
+                lamb_sleep(1000);
+            }
             continue;
         }
 

@@ -26,12 +26,7 @@ typedef struct {
 void lamb_event_loop(void);
 void *lamb_push_loop(void *arg);
 void *lamb_pull_loop(void *arg);
-int lamb_server_init(int *sock, const char *addr, int port);
 int lamb_child_server(int *sock, const char *listen, unsigned short *port, int protocol);
-lamb_pool_t *lamb_pool_new(void);
-lamb_queue_t *lamb_queue_add(lamb_pool_t *self, lamb_queue_t *queue);
-void lamb_queue_del(lamb_pool_t *self, int id);
-lamb_queue_t *lamb_find_queue(lamb_pool_t *self, int id);
 void *lamb_stat_loop(void *arg);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 

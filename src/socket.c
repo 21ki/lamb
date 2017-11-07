@@ -61,7 +61,6 @@ int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, 
         return 1;
     }
 
-    buf = NULL;
     rc = nn_recv(fd, &buf, NN_MSG, 0);
     if (rc < 0) {
         nn_close(fd);
@@ -79,6 +78,7 @@ int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, 
 
     fd = nn_socket(AF_SP, protocol);
     if (fd < 0) {
+        nn_freemsg(buf);
         return 4;
     }
 
@@ -86,7 +86,9 @@ int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, 
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &timeo, sizeof(timeo));
 
     sprintf(url, "tcp://%s:%d", rep->addr, rep->port);
+
     if (nn_connect(fd, url) < 0) {
+        nn_freemsg(buf);
         nn_close(fd);
         return 5;
     }

@@ -135,8 +135,11 @@ void lamb_event_loop(void) {
 
         struct timeval now;
         struct timespec timeout;
+        
         gettimeofday(&now, NULL);
-        timeout.tv_sec = now.tv_sec + 5;
+        timeout.tv_sec = now.tv_sec;
+        timeout.tv_nsec = now.tv_usec * 1000;
+        timeout.tv_sec += 3;
 
         pthread_mutex_lock(&mutex);
         memset(&resp, 0, sizeof(resp));

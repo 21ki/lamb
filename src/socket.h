@@ -10,8 +10,11 @@
 
 #pragma pack(1)
 
+#define LAMB_REQ     0
 #define LAMB_NN_PUSH 1
 #define LAMB_NN_PULL 2
+#define LAMB_NN_PING 3
+#define LAMB_BYE     4
 
 typedef struct {
     int id;
