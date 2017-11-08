@@ -169,7 +169,7 @@ void lamb_event_loop(void) {
 void *lamb_push_loop(void *arg) {
     int err;
     int fd, rc;
-    long long timeout;
+    int timeout;
     lamb_req_t *client;
     lamb_queue_t *queue;
     
@@ -223,7 +223,7 @@ void *lamb_push_loop(void *arg) {
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
-        
+
         if (rc < 0) {
             if (nn_errno() == ETIMEDOUT) {
                 if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
@@ -263,7 +263,7 @@ void *lamb_pull_loop(void *arg) {
     int err;
     char *buf;
     int fd, rc;
-    long long timeout;
+    int timeout;
     lamb_node_t *node;
     lamb_queue_t *queue;
     lamb_req_t *client;

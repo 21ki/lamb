@@ -163,7 +163,7 @@ void lamb_event_loop(void) {
 void *lamb_push_loop(void *arg) {
     int err;
     int fd, rc;
-    long long timeout;
+    int timeout;
     lamb_queue_t *queue;
     lamb_req_t *client;
     
@@ -281,7 +281,7 @@ void *lamb_push_loop(void *arg) {
 void *lamb_pull_loop(void *arg) {
     int err;
     int fd, rc;
-    long long timeout;
+    int timeout;
     lamb_node_t *node;
     lamb_queue_t *queue;
     lamb_req_t *client;
