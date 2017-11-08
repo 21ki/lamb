@@ -338,7 +338,7 @@ void *lamb_work_loop(void *data) {
         if (rc < len) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(1000);
+                lamb_sleep(100);
             }
             continue;
         }
@@ -470,7 +470,7 @@ void *lamb_work_loop(void *data) {
         while (node != NULL) {
             channel = (lamb_channel_t *)node->val;
             submit->channel = channel->id;
-            if (nn_send(scheduler, (char *)submit, sizeof(lamb_submit_t), 0)) {
+            if (nn_send(scheduler, (char *)submit, sizeof(lamb_submit_t), 0) > 0) {
                 rc = nn_recv(scheduler, &buf, NN_MSG, 0);
                 if (rc > 1 && (strncmp(buf, "ok", 2) == 0)) {
                     success = true;
@@ -531,7 +531,7 @@ void *lamb_deliver_loop(void *data) {
     req.type = LAMB_REQ;
 
     while (true) {
-        rc = nn_send(deliverd, &req, sizeof(req), 0);
+        rc = nn_send(deliverd, &req, sizeof(req), NN_DONTWAIT);
 
         if (rc < 0) {
             lamb_sleep(1000);
@@ -543,7 +543,7 @@ void *lamb_deliver_loop(void *data) {
         if (rc != rlen && rc != dlen) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(1000);
+                lamb_sleep(100);
             }
             continue;
         }

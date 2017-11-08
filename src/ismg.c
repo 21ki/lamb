@@ -455,7 +455,7 @@ void *lamb_deliver_loop(void *data) {
     req.type = LAMB_REQ;
 
     while (true) {
-        rc = nn_send(mo, &req, sizeof(req), 0);
+        rc = nn_send(mo, &req, sizeof(req), NN_DONTWAIT);
 
         if (rc < 0) {
             lamb_sleep(1000);
@@ -470,7 +470,7 @@ void *lamb_deliver_loop(void *data) {
 
         if (rc != rlen && rc != dlen) {
             nn_freemsg(buf);
-            lamb_sleep(1000);
+            lamb_sleep(100);
             continue;
         }
 

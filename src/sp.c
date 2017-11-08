@@ -186,7 +186,7 @@ void *lamb_sender_loop(void *data) {
 
         submit = NULL;
 
-        rc = nn_send(mt, &req, sizeof(req), 0);
+        rc = nn_send(mt, &req, sizeof(req), NN_DONTWAIT);
         if (rc < 0) {
             lamb_sleep(1000);
             continue;
@@ -196,7 +196,7 @@ void *lamb_sender_loop(void *data) {
         if (rc < len) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(1000);
+                lamb_sleep(100);
             }
             continue;
         }
