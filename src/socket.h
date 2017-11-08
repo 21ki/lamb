@@ -38,8 +38,8 @@ typedef struct {
 
 #pragma pack()
 
-int lamb_nn_request(int *sock, const char *host, int port, long long timeout);
-int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, int protocol, long long timeout);
+int lamb_nn_request(int *sock, const char *host, int port, int timeout);
+int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, int protocol, int timeout);
 int lamb_nn_server(int *sock, const char *listen, unsigned short port, int protocol);
 
 #endif

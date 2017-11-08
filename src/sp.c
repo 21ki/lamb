@@ -27,7 +27,7 @@
 static int mt;
 static int mo;
 static cmpp_sp_t cmpp;
-static lamb_cache_t rdb;
+//static lamb_cache_t rdb;
 static lamb_caches_t cache;
 static lamb_queue_t *storage;
 static lamb_config_t config;
@@ -194,8 +194,10 @@ void *lamb_sender_loop(void *data) {
 
         rc = nn_recv(mt, &buf, NN_MSG, 0);
         if (rc < len) {
-            nn_freemsg(buf);
-            lamb_sleep(1000);
+            if (rc > 0) {
+                nn_freemsg(buf);
+                lamb_sleep(1000);
+            }
             continue;
         }
         
@@ -217,6 +219,7 @@ void *lamb_sender_loop(void *data) {
         memset(content, 0, sizeof(content));
         err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), "UTF-8", config.encoding, &length);
         if (err || (length == 0)) {
+            nn_freemsg(buf);
             continue;
         }
 
@@ -227,6 +230,7 @@ void *lamb_sender_loop(void *data) {
             
         if (err) {
             status.err++;
+            nn_freemsg(buf);
             lamb_sleep(config.interval * 1000);
             continue;
         }
@@ -244,6 +248,7 @@ void *lamb_sender_loop(void *data) {
             delayed = 1000000 / config.concurrent;
         }
 
+        nn_freemsg(buf);
         lamb_msleep(delayed);
     }
 
@@ -348,7 +353,7 @@ void *lamb_deliver_loop(void *data) {
                 }
 
                 lamb_queue_push(storage, report);
-
+                
                 //printf("-> [received] msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n", report->id, report->phone, stat, report->submitTime, report->doneTime);
                 
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
@@ -429,10 +434,9 @@ void *lamb_cmpp_keepalive(void *data) {
 
 void *lamb_work_loop(void *data) {
     int rc;
-    int account;
     lamb_node_t *node;
     lamb_report_t *report;
-    lamb_deliver_t *deliver;
+    //lamb_deliver_t *deliver;
     lamb_message_t *message;
     unsigned long long msgId;
     
@@ -447,24 +451,23 @@ void *lamb_work_loop(void *data) {
         message = (lamb_message_t *)node->val;
 
         if (message->type == LAMB_REPORT) {
-            account = 0;
             report = (lamb_report_t *)message;
+
             msgId = report->id;
-            lamb_get_cache(&cache, &report->id, &account);
-            
-            if (report->id < 1 || account < 1) {
+            lamb_get_cache(&cache, &report->id, &report->account);
+
+            if (report->id > 0 && report->account > 0) {
+                /* Clean Message Cache */
+                lamb_del_cache(&cache, msgId);
+            } else {
                 goto done;
             }
-
-            /* Delete message cache record */
-            lamb_del_cache(&cache, msgId);
         }
 
         if (message->type == LAMB_REPORT) {
-            rc = nn_send(mo, report, sizeof(lamb_report_t), 0);
+            rc = nn_send(mo, message, sizeof(lamb_report_t), 0);
         } else {
-            deliver = (lamb_deliver_t *)message;
-            rc = nn_send(mo, deliver, sizeof(lamb_deliver_t), 0);
+            rc = nn_send(mo, message, sizeof(lamb_deliver_t), 0);
         }
         
         if (rc < 0) {
@@ -472,7 +475,7 @@ void *lamb_work_loop(void *data) {
         }
 
     done:
-        free(node->val);
+        free(message);
         free(node);
     }
 
@@ -591,20 +594,20 @@ int lamb_save_logfile(char *file, void *data) {
 }
 
 void *lamb_stat_loop(void *data) {
-    redisReply *reply = NULL;
-    unsigned long long last, error;
+    //unsigned long long last, error;
 
-    last = 0;
+    //last = 0;
 
     while (true) {
-        error = status.err + status.timeo;
-        reply = redisCommand(rdb.handle, "HMSET gateway.%d pid %u status %d speed %llu error %llu", config.id, getpid(), cmpp.ok ? 1 : 0, (unsigned long long)((total - last) / 5), error);
-        if (reply != NULL) {
-            freeReplyObject(reply);
-        } else {
-            lamb_errlog(config.logfile, "lamb exec redis command error", 0);
-        }
-
+        /* 
+           error = status.err + status.timeo;
+           reply = redisCommand(rdb.handle, "HMSET gateway.%d pid %u status %d speed %llu error %llu", config.id, getpid(), cmpp.ok ? 1 : 0, (unsigned long long)((total - last) / 5), error);
+           if (reply != NULL) {
+           freeReplyObject(reply);
+           } else {
+           lamb_errlog(config.logfile, "lamb exec redis command error", 0);
+           }
+        */
         printf("-> [status] queue: %llu, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu, err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv, status.timeo, status.err);
 
         total = 0;
@@ -621,7 +624,7 @@ int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned lon
     i = (msgId % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "HSET %llu id %llu account %d", msgId, id, account);
+    reply = redisCommand(caches->nodes[i]->handle, "HMSET %llu id %llu account %d", msgId, id, account);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
 
     if (reply == NULL) {
@@ -639,7 +642,7 @@ int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account) 
     i = (*id % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "HGET %llu id account", *id);
+    reply = redisCommand(caches->nodes[i]->handle, "HMGET %llu id account", *id);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
     
     if (reply != NULL) {

@@ -289,20 +289,13 @@ void lamb_work_loop(lamb_client_t *client) {
     /* Connect to MT server */
     lamb_nn_option opt;
 
-    err = lamb_nn_connect(&mt, config.mt_host, config.mt_port, config.timeout);
-    if (err) {
-        lamb_errlog(config.logfile, "can't connect to mt %s server", config.mt_host);
-        return;
-    }
-
     memset(&opt, 0, sizeof(opt));
     opt.id = client->account->id;
     opt.type = LAMB_NN_PUSH;
     memcpy(opt.addr, config.listen, 16);
-
-    err = lamb_nn_request(mt, &opt, NN_REQ, config.timeout);
+    
+    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_PAIR, config.timeout);
     if (err) {
-        nn_close(mt);
         lamb_errlog(config.logfile, "can't connect to mt %s server", config.mt_host);
         return;
     }
@@ -447,9 +440,8 @@ void *lamb_deliver_loop(void *data) {
     opt.id = client->account->id;
     opt.type = LAMB_NN_PULL;
     memcpy(opt.addr, config.listen, 16);
-    opt.timeout = config.timeout;
     
-    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_REQ);
+    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_REQ, config.timeout);
     if (err) {
         lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
         pthread_exit(NULL);

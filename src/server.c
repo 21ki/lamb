@@ -470,10 +470,9 @@ void *lamb_work_loop(void *data) {
         while (node != NULL) {
             channel = (lamb_channel_t *)node->val;
             submit->channel = channel->id;
-            rc = nn_send(scheduler, (char *)submit, sizeof(lamb_submit_t), 0);
-            if (rc > 0) {
+            if (nn_send(scheduler, (char *)submit, sizeof(lamb_submit_t), 0)) {
                 rc = nn_recv(scheduler, &buf, NN_MSG, 0);
-                if (rc >= 2 && (strncmp(buf, "ok", 2) == 0)) {
+                if (rc > 1 && (strncmp(buf, "ok", 2) == 0)) {
                     success = true;
                     status.sub++;
                     break;
@@ -679,30 +678,6 @@ void *lamb_billing_loop(void *data) {
     }
 
     pthread_exit(NULL);
-}
-
-int lamb_open_channel(lamb_group_t *group, lamb_queue_t *channels, lamb_mq_opt *opt) {
-    int err;
-    char name[128];
-    lamb_mq_t *queue;
-
-    for (int i = 0; (i < group->len) && (group->channels[i] != NULL); i++) {
-        queue = (lamb_mq_t *)calloc(1, sizeof(lamb_mq_t));
-        if (queue != NULL) {
-            sprintf(name, "/gw.%d.message", group->channels[i]->id);
-            err = lamb_mq_open(queue, name, opt);
-            if (err) {
-                lamb_errlog(config.logfile, "Can't open %s gateway queue", name);
-                continue;
-            }
-
-            lamb_queue_push(channels, queue);
-        } else {
-            return -1;
-        }
-    }
-
-    return 0;
 }
 
 void *lamb_stat_loop(void *data) {

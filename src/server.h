@@ -83,7 +83,6 @@ void *lamb_work_loop(void *data);
 void *lamb_deliver_loop(void *data);
 void *lamb_store_loop(void *data);
 void *lamb_billing_loop(void *data);
-int lamb_open_channel(lamb_group_t *group, lamb_queue_t *channels, lamb_mq_opt *opt);
 void *lamb_stat_loop(void *data);
 int lamb_write_report(lamb_db_t *db, lamb_report_t *message);
 int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);

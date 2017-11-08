@@ -12,10 +12,10 @@
 #include <nanomsg/reqrep.h>
 #include "socket.h"
 
-int lamb_nn_request(int *sock, const char *host, int port, long long timeout) {
+int lamb_nn_request(int *sock, const char *host, int port, int timeout) {
     int fd;
     char url[128];
-    long long timeo;
+    int timeo;
     
     fd = nn_socket(AF_SP, NN_REQ);
     if (fd < 0) {
@@ -36,14 +36,14 @@ int lamb_nn_request(int *sock, const char *host, int port, long long timeout) {
     return 0;
 }
 
-int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, int protocol, long long timeout) {
+int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, int protocol, int timeout) {
     int err;
     int fd, rc;
     char *buf;
     char url[128];
     lamb_req_t req;
     lamb_rep_t *rep;
-    long long timeo;
+    int timeo;
     
     err = lamb_nn_request(&fd, host, port, timeout);
     if (err || fd < 0) {

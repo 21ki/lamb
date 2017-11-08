@@ -229,8 +229,9 @@ void *lamb_push_loop(void *arg) {
 
             if (queue && queue->len < 16) {
                 lamb_queue_push(queue, submit);
-            } else {
                 nn_send(fd, "ok", 2, NN_DONTWAIT);
+            } else {
+                nn_send(fd, "0", 1, NN_DONTWAIT);
                 nn_freemsg(buf);
             }
 
@@ -322,6 +323,7 @@ void *lamb_pull_loop(void *arg) {
         }
 
         if (rc < len) {
+            nn_send(fd, "0", 1, NN_DONTWAIT);
             nn_freemsg(buf);
             continue;
         }
@@ -331,8 +333,8 @@ void *lamb_pull_loop(void *arg) {
         if (message->type == LAMB_REQ) {
             node = lamb_queue_pop(queue);
             if (node) {
-                nn_send(fd, node->val, sizeof(lamb_submit_t), 0);
-                free(node->val);
+                nn_send(fd, node->val, sizeof(lamb_submit_t), NN_DONTWAIT);
+                nn_freemsg(node->val);
                 free(node);
             } else {
                 nn_send(fd, "0", 1, NN_DONTWAIT);
