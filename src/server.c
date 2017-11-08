@@ -338,7 +338,7 @@ void *lamb_work_loop(void *data) {
         if (rc < len) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(100);
+                lamb_sleep(10);
             }
             continue;
         }
@@ -487,7 +487,7 @@ void *lamb_work_loop(void *data) {
                 printf("-> [channel] No gateway channel available\n");
             }
             //printf("-> [channel] busy all channels\n");
-            lamb_sleep(100);
+            lamb_sleep(10);
             goto routing;
         }
 
@@ -543,7 +543,7 @@ void *lamb_deliver_loop(void *data) {
         if (rc != rlen && rc != dlen) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(100);
+                lamb_sleep(10);
             }
             continue;
         }

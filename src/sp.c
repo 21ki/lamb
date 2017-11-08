@@ -196,7 +196,7 @@ void *lamb_sender_loop(void *data) {
         if (rc < len) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(100);
+                lamb_sleep(10);
             }
             continue;
         }
