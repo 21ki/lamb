@@ -242,10 +242,10 @@ void *lamb_sender_loop(void *data) {
             lamb_sleep(config.interval * 1000);
         }
 
-        if (config.concurrent > 1000000) {
-            delayed = 1000000;
+        if (config.concurrent > 1000) {
+            delayed = 1000;
         } else {
-            delayed = 1000000 / config.concurrent;
+            delayed = 1000 / config.concurrent;
         }
 
         nn_freemsg(buf);

@@ -120,7 +120,7 @@ void lamb_msleep(unsigned long long microsecond) {
     struct timeval timeout;
 
     timeout.tv_sec = microsecond / 1000000;
-    timeout.tv_usec = microsecond  % 1000000;
+    timeout.tv_usec = microsecond % 1000000;
     select(0, NULL, NULL, NULL, &timeout);
 
     return;
