@@ -7,69 +7,66 @@
  */
 
 class GroupController extends Yaf\Controller_Abstract {
-    public function init() {
-        $this->request = $this->getRequest();
-        $this->response = $this->getResponse();
-    }
-    
     public function indexAction() {
-        $gid = $this->request->getQuery('id', null);
-        $gateway = new GatewayModel();
-        $gateways = [];
+        $request = $this->getRequest();
+        $group = new GroupModel();
+        $groups = $group->getAll();
 
-        foreach ($gateway->getAll() as $g) {
-            $gateways[$g['id']] = $g['id'];
-            $gateways[$g['id']] = $g['name'];
+        foreach ($groups as &$g) {
+            $g['total'] = $group->total($g['id']);
         }
 
-        $channel = new ChannelModel();
-        $this->getView()->assign('gid', intval($gid));
-        $this->getView()->assign('channels', $channel->getAll($gid));
-        $this->getView()->assign('gateways', $gateways);
+        $gateway = new GatewayModel();
+        
+        $this->getView()->assign('groups', $groups);
+        $this->getView()->assign('gateways', $gateway->getAll());
+
         return true;
     }
-    
+
     public function createAction() {
-        if ($this->request->isPost()) {
-            $group = new GroupModel();
-            $group->create($this->request->getPost());
-            $response = $this->getResponse();
-            $response->setRedirect('/routing');
-            $response->response();
-        }
+        $name = $this->getRequest()->getPost('name');
+        $data = $this->getRequest()->getPost('channels');
 
-        return false;
-    }
-
-    public function deleteAction() {
-        $success = false;
-        $id = $this->request->getQuery('id');
+        $channels = $this->duplicate_removal($data);
 
         $group = new GroupModel();
-        if ($group->delete($id)) {
+        $gid = $group->create(['name' => $name, 'description' => 'no description']);
+
+        if ($gid > 0) {
             $channel = new ChannelModel();
-            $success = $channel->deleteAll($id);
+            foreach ($channels as $chan) {
+                $chan['gid'] = $gid;
+                $chan['operator'] = 1 | (1 << 1) | (1 << 2);
+                $channel->create($chan);
+            }
         }
-        
-        $response['status'] = $success ? 200 : 400;
-        $response['message'] = $success ? 'success' : 'failed';
-        header('Content-type: application/json');
-        echo json_encode($response);
+
+        $response = $this->getResponse();
+        $response->setRedirect('/routing');
+        $response->response();
 
         return false;
     }
 
-    public function updateAction() {
-        if ($this->request->isPost()) {
-            $group = new GroupModel();
-            $id = $this->request->getPost('id', null);
-            $group->change($id, $this->request->getPost());
+    private function duplicate_removal(array $data = null) {
+        $result = [];
+        
+        foreach ($data as $v1) {
+            $have = true;
+            foreach ($result as $v2) {
+                if ($v1['id'] == $v2['id']) {
+                    $have = false;
+                }
+            }
+
+            if ($have) {
+                $result[] = $v1;
+            }
         }
 
-        $this->response->setRedirect('/routing');
-        $this->response->response();
-
-        return false;
+        return $result;
     }
 }
+
 

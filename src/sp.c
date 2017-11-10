@@ -155,6 +155,7 @@ void lamb_event_loop(void) {
 
 void *lamb_sender_loop(void *data) {
     char *buf;
+    char *tocode;
     char spcode[21];
     long long delayed;
     lamb_message_t req;
@@ -168,14 +169,16 @@ void *lamb_sender_loop(void *data) {
     
     if (strcasecmp(config.encoding, "ASCII") == 0) {
         msgFmt = 0;
+        tocode = "ASCII";
     } else if (strcasecmp(config.encoding, "UCS-2") == 0) {
         msgFmt = 8;
+        tocode = "UCS-2BE";
     } else if (strcasecmp(config.encoding, "UTF-8") == 0) {
         msgFmt = 11;
-    } else if (strcasecmp(config.encoding, "GBK") == 0) {
-        msgFmt = 15;
+        tocode = "UTF-8";
     } else {
-        msgFmt = 0;
+        msgFmt = 15;
+        tocode = "GBK";
     }
 
     while (true) {
@@ -196,7 +199,7 @@ void *lamb_sender_loop(void *data) {
         if (rc < len) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(10);
+                lamb_sleep(100);
             }
             continue;
         }
@@ -217,7 +220,7 @@ void *lamb_sender_loop(void *data) {
         int length;
         char content[256];
         memset(content, 0, sizeof(content));
-        err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), "UTF-8", config.encoding, &length);
+        err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), "UTF-8", tocode, &length);
         if (err || (length == 0)) {
             nn_freemsg(buf);
             continue;

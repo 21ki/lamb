@@ -338,7 +338,7 @@ void *lamb_work_loop(void *data) {
         if (rc < len) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(10);
+                lamb_sleep(100);
             }
             continue;
         }
@@ -355,7 +355,7 @@ void *lamb_work_loop(void *data) {
         if (submit->msgFmt == 0) {
             fromcode = "ASCII";
         } else if (submit->msgFmt == 8) {
-            fromcode = "UCS-2";
+            fromcode = "UCS-2BE";
         } else if (submit->msgFmt == 11) {
             fromcode = NULL;
         } else if (submit->msgFmt == 15) {

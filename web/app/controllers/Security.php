@@ -51,9 +51,8 @@ class SecurityController extends Yaf\Controller_Abstract {
             }
         }
 
-        $url = 'http://' . $_SERVER['SERVER_ADDR'] . ':' . $_SERVER['SERVER_PORT'] . '/security/' . $module;
         $response = $this->getResponse();
-        $response->setRedirect($url);
+        $response->setRedirect('/security/' . $module);
         $response->response();
         return false;
     }

@@ -470,7 +470,7 @@ void *lamb_deliver_loop(void *data) {
 
         if (rc != rlen && rc != dlen) {
             nn_freemsg(buf);
-            lamb_sleep(10);
+            lamb_sleep(100);
             continue;
         }
 

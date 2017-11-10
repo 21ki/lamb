@@ -1,14 +1,14 @@
 <?php
 
 /*
- * The Route Model
+ * The Routing Model
  * Link http://github.com/typefo/lamb
  * Copyright (C) typefo <typefo@qq.com>
  */
 
 use Tool\Filter;
 
-class RouteModel {
+class RoutingModel {
     public $db = null;
     private $table = 'routes';
     private $column = ['spcode', 'account', 'description'];

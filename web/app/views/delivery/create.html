@@ -5,11 +5,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>message - lamb</title>
+    <title>routes - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/bootstrap-datetimepicker.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/message.css">
+    <link type="text/css" rel="stylesheet" href="/css/all.css">
+    <link type="text/css" rel="stylesheet" href="/css/flat/blue.css">
+    <link type="text/css" rel="stylesheet" href="/css/routes.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -74,70 +75,62 @@
     <div class="container">
       <div class="row">
         <ol class="breadcrumb">
-          <li><a href="/cdr">Home</a></li>
-          <li><a href="/message">Message</a></li>
-          <li class="active">Data</li>
+          <li><a href="/status">Home</a></li>
+          <li><a href="/routes">Routes</a></li>
+          <li class="active">Create</li>
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
-      <div class="row query">
-        <form class="form-inline" action="/message" method="get">
-          <div class="form-group">
-            <label>发送时间: </label>
-	        <input type="text" id="message-begin" class="form-control" name="begin" value="2017-08-11 08:00:00" />
-            -
-            <input type="text" id="message-end" class="form-control" name="end" value="2017-08-11 20:00:00" />
-          </div>
-          <div class="form-group">
-            <label>帐 号: </label>
-	        <input type="text" id="message-account" class="form-control" placeholder="请输入帐号" name="account" />
-          </div>
-          <div class="form-group">
-            <label>服务号码: </label>
-	        <input type="text" id="message-spcode" class="form-control" name="spcode" placeholder="请输入号码" />
-          </div>
-          <div class="form-group">
-            <label>状 态: </label>
-	        <select class="form-control" name="status" style="width:100px">
-              <option value="1">DELIVRD</option>
-              <option value="2">EXPIRED</option>
-              <option value="3">DELETED</option>
-              <option value="4">UNDELIV</option>
-              <option value="5">ACCEPTD</option>
-              <option value="6">UNKNOWN</option>
-              <option value="7">REJECTD</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>手机号码: </label>
-	        <input type="text" id="message-phone" class="form-control" name="phone" placeholder="请输入号码" />
-          </div>
-          <button type="submit" id="query" class="btn btn-success btn-sm pull-right" name="sub" value="ok">查 询</button>
-        </form>
-      </div>
-      <div class="row"><hr /></div>
       <div class="row">
-        <table class="table table-hover">
-          <thead>
-            <tr><th>#</th><th>帐 号</th><th>服务号码</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th>发送时间</th></tr>
-          </thead>
-          <tbody>
-            <?php
-              foreach ($messages as $m) {
-                $status = [1 => 'DELIVRD', 2 => 'EXPIRED', 3 => 'DELETED', 4 => 'UNDELIV', 5 => 'ACCEPTD', 6 => 'UNKNOWN', 7 => 'REJECTD'];
-                echo '<tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>',$m['spid'],'</td><td>',$m['spcode'],'</td>';
-                echo '<td>',$m['phone'],'</td><td>',lamb_output($m['content'], 24),'</td><td>',$status[$m['status']],'</td><td>',$m['create_time'],'</td></tr>';
-              }
-            ?>
-          </tbody>
-        </table>
+        <div class="container main">
+          <form class="form-horizontal" action="create" method="post">
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label"> 接入号码:</label>
+              <div class="col-xs-3 col-sm-3 col-md-3">
+                <input type="text" class="form-control" name="spcode" placeholder="Enter Code" required="required">
+              </div>
+              <div class="col-xs-3 col-sm-3 col-md-3">
+                <span class="help-block">上行接入号码，例如 106508008</span>
+              </div>
+            </div>
+            <div id="route" class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">绑定帐号:</label>
+              <div class="col-xs-3 col-sm-3">
+                <select class="form-control" name="account">
+                  <?php
+                    foreach ($accounts as $a) {
+                      echo '<option value="',$a['username'],'">',$a['username'],' (',$companys[$a['company']]['name'],')</option>';
+                    }
+                  ?>
+                </select>
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">绑定下发短信接收帐号</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">备注信息:</label>
+              <div class="col-xs-3 col-sm-3">
+                <input type="text" class="form-control" name="description" placeholder="Enter Description" />
+              </div>
+              <div class="col-xs-3 col-sm-3">
+                <span class="help-block">相关备注信息说明</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="col-sm-offset-4 col-xs-3 col-sm-3">
+                <button type="submit" id="submit" class="btn btn-success">创 建</button>
+                <a class="btn btn-default" href="/routes">取 消</a>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 </div>
-<script src="/js/jquery.min.js"></script>
-<script src="/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="/js/bootstrap-datetimepicker.min.js"></script>
-<script type="text/javascript" src="/js/locales/bootstrap-datetimepicker.zh-CN.js" charset="UTF-8"></script>
+<script type="text/javascript" src="/js/jquery.min.js"></script>
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/icheck.min.js"></script>
 <script type="text/javascript">
   $('li.dropdown').mouseover(function() {   
   $(this).addClass('open');
@@ -145,17 +138,12 @@
   $(this).removeClass('open');
   });
 
-  // datetimepicker
-  $('#message-begin').datetimepicker({
-    format: 'yyyy-mm-dd hh:ii:ss',
-    language: 'zh-CN',
-    autoclose: true
+  $(document).ready(function(){
+  $('.call').iCheck({
+  checkboxClass: 'icheckbox_flat-blue',
+  radioClass: 'iradio_flat-blue',
+  increaseArea: '20%'
   });
-
-  $('#message-end').datetimepicker({
-    format: 'yyyy-mm-dd hh:ii:ss',
-    language: 'zh-CN',
-    autoclose: true
   });
 </script>
 </body>

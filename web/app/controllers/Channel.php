@@ -6,82 +6,73 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
+use Tool\Filter;
+
 class ChannelController extends Yaf\Controller_Abstract {
+    public function indexAction() {
+        $route = new RoutingModel();
+        $this->getView()->assign('routes', $route->getAll());
+        return true;
+    }
+
     public function createAction() {
         $request = $this->getRequest();
+        $account = new AccountModel();
 
         if ($request->isPost()) {
-            $data['id'] = $request->getPost('id', null);
-            $data['gid'] = $request->getPost('gid', null);
-            $data['weight'] = $request->getPost('weight', 1);
-            $cmcc = $request->getPost('cmcc', null);
-            $ctcc = $request->getPost('ctcc', null);
-            $cucc = $request->getPost('cucc', null);
-            $other = $request->getPost('other', null);
-
-            $operator = 0;
-            if ($cmcc === 'on') {$operator |= 1;}
-            if ($ctcc === 'on') {$operator |= (1 << 1);}
-            if ($cucc === 'on') {$operator |= (1 << 2);}
-            if ($other === 'on') {$operator |= (1 << 3);}
-
-            $data['operator'] = $operator;
-
-            $group = new GroupModel();
-
-            if ($group->isExist($data['gid'])) {
-                $channel = new ChannelModel();
-                $channel->create($data);
-            }
-
+            $route = new RoutingModel();
+            $route->create($request->getPost());
             $response = $this->getResponse();
-            $response->setRedirect('/group?id=' . intval($data['gid']));
+            $response->setRedirect('/routing');
             $response->response();
+            return false;
         }
 
-        return false;
+        $company = new CompanyModel();
+        $list = array();
+        foreach ($company->getAll() as $key => $val) {
+            $list[$val['id']] = $val;
+        }
+
+        $this->getView()->assign('companys', $list);
+        $this->getView()->assign('accounts', $account->getAll());
+        return true;
+    }
+
+    public function editAction() {
+        $request = $this->getRequest();
+        $route = new RoutingModel();
+
+        if ($request->isPost()) {
+            $route->change($request->getPost('id'), $request->getPost());
+            $response = $this->getResponse();
+            $response->setRedirect('/routing');
+            $response->response();
+            return false;
+        }
+
+        $company = new CompanyModel();
+        $list = array();
+        foreach ($company->getAll() as $key => $val) {
+            $list[$val['id']] = $val;
+        }
+
+        $this->getView()->assign('companys', $list);
+        
+        $account = new AccountModel();
+        $this->getView()->assign('accounts', $account->getAll());
+        $this->getView()->assign('route', $route->get($request->getQuery('id', null)));
+        return true;
     }
 
     public function deleteAction() {
-        $success = false;
         $request = $this->getRequest();
-
-        $channel = new ChannelModel();
-        if ($channel->delete($request->getQuery('id', null), $request->getQuery('gid', null))) {
-            $success = true;
-        }
-
+        $route = new RoutingModel();
+        $success = $route->delete($request->getQuery('id'));
         $response['status'] = $success ? 200 : 400;
         $response['message'] = $success ? 'success' : 'failed';
         header('Content-type: application/json');
         echo json_encode($response);
-
-        return false;
-    }
-
-    public function updateAction() {
-        $request = $this->getRequest();
-
-        $gid = $request->getPost('gid', null);
-        
-        if ($request->isPost()) {
-            $data['id'] = $request->getPost('id', null);
-            $data['gid'] = $request->getPost('gid', null);
-            $data['weight'] = $request->getPost('weight', null);
-            $operator = 0;
-            $operator |= $request->getPost('cmcc', false) ? 1 : 0;
-            $operator |= $request->getPost('ctcc', false) ? (1 << 1) : 0;
-            $operator |= $request->getPost('cucc', false) ? (1 << 2) : 0;
-            $operator |= $request->getPost('other', false) ? (1 << 3) : 0;
-            $data['operator'] = $operator;
-            $channel = new ChannelModel();
-            $channel->change($data);
-        }
-
-        $response = $this->getResponse();
-        $response->setRedirect('/group?id=' . intval($gid));
-        $response->response();
-
         return false;
     }
 }
