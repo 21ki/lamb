@@ -34,7 +34,7 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">路由管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/channel">上行路由</a></li>
+                <li><a href="/routing">上行路由</a></li>
                 <li><a href="/delivery">下发路由</a></li>
               </ul>
             </li>
@@ -56,7 +56,7 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/security/lists">黑白名单库</a></li>
+                <li><a href="/security/database">黑白名单库</a></li>
                 <li><a href="/security/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
@@ -73,20 +73,43 @@
     <div class="container">
       <div class="row">
         <ol class="breadcrumb">
-          <li><a href="/cdr">Home</a></li>
-          <li><a href="#">Lists</a></li>
-          <li class="active">Data</li>
-          <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
+          <li><a href="#">Home</a></li>
+          <li class="active">Database</li>
+          <li class="pull-right add"><a class="btn btn-success btn-xs" href="#"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
         </ol>
       </div>
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>列表名称</th><th>数据类型</th><th>列表数量</th><th>创建时间</th><th>查 询</th><th>添 加</th><th>删 除</th><th>导 出</th></tr>
+            <tr><th>#</th><th>数据库名称</th><th>数据类型</th><th>号码数量</th><th>创建时间</th><th>查 询</th><th>删 除</th><th>操 作</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-remove-sign"></span></td><td>黑名单</td><td>黑名单</td><td><?php echo $blacklist;?></td><td>2017-05-08 08:55:00</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('blacklist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="phoneImport('blacklist')"><span class="glyphicon glyphicon-plus-sign"></span> 添 加</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span> 导 出</a></td></tr>
-            <tr><td><span class="glyphicon glyphicon-ok-sign text-success"></span></td><td>白名单</td><td>白名单</td><td><?php echo $whitelist;?></td><td>2017-05-08 08:55:00</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('whitelist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="phoneImport('whitelist')"><span class="glyphicon glyphicon-plus-sign"></span> 添 加</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-download-alt"></span> 导 出</a></td></tr>
+            <tr><td><span class="glyphicon glyphicon-paperclip"></span></td><td>魔拜单车</td><td>黑名单</td><td><?php echo $blacklist;?></td><td>2017-05-08 08:55:00</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('blacklist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    操 作 <span class="caret"></span>
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a href="#">导入号码</a></li>
+                    <li><a href="#">导出号码</a></li>
+                    <li><a href="#">编辑数据库</a></li>
+                    <li><a href="#">删除数据库</a></li>
+                  </ul>
+                </div>
+            </td></tr>
+            <tr><td><span class="glyphicon glyphicon-paperclip"></span></td><td>系统测试</td><td>白名单</td><td><?php echo $whitelist;?></td><td>2017-05-08 08:55:00</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('whitelist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    操 作 <span class="caret"></span>
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a href="#">导入号码</a></li>
+                    <li><a href="#">导出号码</a></li>
+                    <li><a href="#">编辑数据库</a></li>
+                    <li><a href="#">删除数据库</a></li>
+                  </ul>
+                </div>
+            </td></tr>
           </tbody>
         </table>
       </div>

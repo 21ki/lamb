@@ -10,51 +10,62 @@ use Tool\Filter;
 
 class RoutingModel {
     public $db = null;
-    private $table = 'routes';
-    private $column = ['spcode', 'account', 'description'];
+    private $table = 'routing';
+    private $column = ['name', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
     }
 
-    public function get($id = null) {
-        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($id);
+    public function get($gid = null) {
+        $group = [];
+        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($gid);
         $sth = $this->db->query($sql);
         if ($sth) {
-            $result = $sth->fetch();
-            if ($result !== false) {
-                return $result;
-            }
+            $group = $sth->fetch();
         }
 
-        return null;
+        return $group;
     }
     
     public function getAll() {
-        $result = [];
+        $groups = [];
         $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id';
         $sth = $this->db->query($sql);
         if ($sth) {
-            $result = $sth->fetchAll();
+            $groups = $sth->fetchAll();
         }
 
-        return $result;
+        return $groups;
     }
 
-    public function create(array $data) {
+    public function create(array $data = null) {
         $data = $this->checkArgs($data);
 
-        if (count($data) === count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(spcode, account, description) VALUES(:spcode, :account, :description)';
-            $sth = $this->db->prepare($sql);
-            
-            foreach ($data as $key => $val) {
-                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        $sql = 'INSERT INTO ' . $this->table . '(name, description) VALUES(:name, :description) returning id';
+        $sth = $this->db->prepare($sql);
+
+        if (isset($data['name'], $data['description'])) {
+            $sth->bindParam(':name', $data['name'],PDO::PARAM_STR);
+            $sth->bindValue(':description', $data['description'], PDO::PARAM_STR);
+            if ($sth->execute()) {
+                $result = $sth->fetch();
+                return intval($result['id']);
             }
-            
-            return $sth->execute();
         }
-        
+
+        return 0;
+    }
+
+    public function delete($gid = null) {
+        $gid = intval($gid);
+
+        if (!$this->isUsed($gid)) {
+            $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($gid);
+            if ($this->db->query($sql)) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -72,27 +83,45 @@ class RoutingModel {
                 $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
             }
 
-            return $sth->execute();
+            if ($sth->execute()) {
+                return true;
+            }
         }
 
         return false;
     }
     
-    public function delete($id = null) {
-        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
-        if ($this->db->query($sql)) {
-            return true;
+    public function isUsed($gid = NULL) {
+        $sql = 'SELECT count(id) AS total FROM account WHERE route = ' . intval($gid);
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            if (intval($result['total']) > 0) {
+                return true;
+            }
         }
 
         return false;
     }
 
-    public function isExist($id = null) {
-        $result = false;
-        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+    public function total($gid = null) {
+        $count = 0;
+        $sql = 'SELECT count(id) AS total FROM channels WHERE gid = ' . intval($gid);
         $sth = $this->db->query($sql);
-        if ($sth && ($result = $sth->fetch()) !== false) {
-            if ($result['count'] > 0) {
+        if ($sth) {
+            $result = $sth->fetch();
+            $count = intval($result['total']);
+        }
+
+        return $count;
+    }
+
+    public function isExist($gid = null) {
+        $sql = 'SELECT count(id) AS total FROM groups WHERE id = ' . intval($gid);
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $result = $sth->fetch();
+            if (intval($result['total']) > 0) {
                 return true;
             }
         }
@@ -106,11 +135,8 @@ class RoutingModel {
 
         foreach ($data as $key => $val) {
             switch ($key) {
-            case 'spcode':
-                $res['spcode'] = Filter::alpha($val, null, 1, 32);
-                break;
-            case 'account':
-                $res['account'] = Filter::number($val, null);
+            case 'name':
+                $res['name'] = Filter::string($val, null, 3, 32);
                 break;
             case 'description':
                 $res['description'] = Filter::string($val, 'no description', 1, 64);
@@ -120,7 +146,6 @@ class RoutingModel {
 
         return $res;
     }
-
     
     public function keyAssembly(array $data) {
     	$text = '';

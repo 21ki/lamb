@@ -57,7 +57,7 @@ CREATE TABLE gateway (
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
-CREATE TABLE groups (
+CREATE TABLE routing (
     id serial PRIMARY KEY NOT NULL,
     name varchar(64) NOT NULL,
     description text NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE channels (
     operator int NOT NULL
 );
 
-CREATE TABLE routes (
+CREATE TABLE delivery (
     id serial PRIMARY KEY NOT NULL,
     spcode varchar(32) NOT NULL,
     account int NOT NULL,
@@ -106,15 +106,11 @@ CREATE TABLE statistical (
     datetime date NOT NULL
 );
 
-CREATE TABLE blacklist (
-    phone bigint UNIQUE NOT NULL
+CREATE TABLE database (
+    id int UNIQUE NOT NULL,
+    name varchar(64) NOT NULL,
+    type int NOT NULL,
+    total bigint NOT NULL,
+    description text NOT NULL,
+    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
-
-CREATE UNIQUE INDEX idx_blacklist on blacklist(phone);
-
-CREATE TABLE whitelist (
-    phone bigint UNIQUE NOT NULL
-);
-
-CREATE UNIQUE INDEX idx_whitelist on whitelist(phone);
-

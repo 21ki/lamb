@@ -1,24 +1,24 @@
 <?php
 
 /*
- * The Group Controller
+ * The Routing Controller
  * Link http://github.com/typefo/lamb
  * Copyright (C) typefo <typefo@qq.com>
  */
 
-class GroupController extends Yaf\Controller_Abstract {
+class RoutingController extends Yaf\Controller_Abstract {
     public function indexAction() {
         $request = $this->getRequest();
-        $group = new GroupModel();
-        $groups = $group->getAll();
+        $routing = new RoutingModel();
+        $routings = $routing->getAll();
 
-        foreach ($groups as &$g) {
-            $g['total'] = $group->total($g['id']);
+        foreach ($routings as &$r) {
+            $r['total'] = $routing->total($r['id']);
         }
 
         $gateway = new GatewayModel();
         
-        $this->getView()->assign('groups', $groups);
+        $this->getView()->assign('groups', $routings);
         $this->getView()->assign('gateways', $gateway->getAll());
 
         return true;
@@ -30,10 +30,10 @@ class GroupController extends Yaf\Controller_Abstract {
 
         $channels = $this->duplicate_removal($data);
 
-        $group = new GroupModel();
-        $gid = $group->create(['name' => $name, 'description' => 'no description']);
+        $routing = new RoutingModel();
+        $rid = $routing->create(['name' => $name, 'description' => 'no description']);
 
-        if ($gid > 0) {
+        if ($rid > 0) {
             $channel = new ChannelModel();
             foreach ($channels as $chan) {
                 $chan['gid'] = $gid;
@@ -68,5 +68,3 @@ class GroupController extends Yaf\Controller_Abstract {
         return $result;
     }
 }
-
-

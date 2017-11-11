@@ -34,7 +34,7 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">路由管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/channel">上行路由</a></li>
+                <li><a href="/routing">上行路由</a></li>
                 <li><a href="/delivery">下发路由</a></li>
               </ul>
             </li>
@@ -56,7 +56,7 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/security/lists">黑白名单库</a></li>
+                <li><a href="/security/database">黑白名单库</a></li>
                 <li><a href="/security/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
@@ -111,7 +111,7 @@
   });
 
   function show() {
-    var templete = '<form class="form-horizontal" action="/channel/create" method="post" style="width:420px">'+
+    var templete = '<form class="form-horizontal" action="/channels/create" method="post" style="width:420px">'+
         '<div class="form-group">'+
         '<label class="col-sm-3 control-label">通&nbsp;&nbsp;&nbsp;&nbsp;道 </label>'+
         '<div class="col-sm-8">'+
@@ -158,11 +158,11 @@
   }
 
   function edit(id, gid, name) {
-        var url = '/api/channel?id=' + id + '&gid=' + gid;
+        var url = '/api/channels?id=' + id + '&gid=' + gid;
         $.get(url, function(resp, stat) {
           if (stat == 'success') {
             var channel = resp.data;
-            var templete = '<form class="form-horizontal" action="/channel/update" method="post" style="width:420px">'+
+            var templete = '<form class="form-horizontal" action="/channels/update" method="post" style="width:420px">'+
             '<div class="form-group">'+
             '<label class="col-sm-3 control-label">通&nbsp;&nbsp;&nbsp;&nbsp;道 </label>'+
             '<div class="col-sm-8">'+
@@ -211,7 +211,7 @@
   layer.confirm('亲，确定要删除？', {
       btn: ['是','否'], icon: 3
     }, function(){
-      var url = '/channel/delete?id=' + id + '&gid=' + gid;
+      var url = '/channels/delete?id=' + id + '&gid=' + gid;
       $.get(url, function(){
         layer.msg('删除成功!', {icon: 1, time: 1000});
         setTimeout(function() {

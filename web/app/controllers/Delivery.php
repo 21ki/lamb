@@ -1,75 +1,79 @@
 <?php
 
 /*
- * The Group Controller
+ * The Delivery Route Controller
  * Link http://github.com/typefo/lamb
  * Copyright (C) typefo <typefo@qq.com>
  */
 
-class GroupController extends Yaf\Controller_Abstract {
-    public function init() {
-        $this->request = $this->getRequest();
-        $this->response = $this->getResponse();
-    }
-    
+use Tool\Filter;
+
+class DeliveryController extends Yaf\Controller_Abstract {
     public function indexAction() {
-        $gid = $this->request->getQuery('id', null);
-        $gateway = new GatewayModel();
-        $gateways = [];
-
-        foreach ($gateway->getAll() as $g) {
-            $gateways[$g['id']] = $g['id'];
-            $gateways[$g['id']] = $g['name'];
-        }
-
-        $channel = new ChannelModel();
-        $this->getView()->assign('gid', intval($gid));
-        $this->getView()->assign('channels', $channel->getAll($gid));
-        $this->getView()->assign('gateways', $gateways);
+        $request = $this->getRequest();
+        $route = new DeliveryModel();
+        $this->getView()->assign('routes', $route->getAll());
         return true;
     }
-    
+
     public function createAction() {
-        if ($this->request->isPost()) {
-            $group = new GroupModel();
-            $group->create($this->request->getPost());
+        $request = $this->getRequest();
+        $account = new AccountModel();
+
+        if ($request->isPost()) {
+            $route = new DeliveryModel();
+            $route->create($request->getPost());
             $response = $this->getResponse();
-            $response->setRedirect('/routing');
+            $response->setRedirect('/delivery');
             $response->response();
+            return false;
         }
 
-        return false;
+        $company = new CompanyModel();
+        $list = array();
+        foreach ($company->getAll() as $key => $val) {
+            $list[$val['id']] = $val;
+        }
+
+        $this->getView()->assign('companys', $list);
+        $this->getView()->assign('accounts', $account->getAll());
+        return true;
+    }
+
+    public function editAction() {
+        $request = $this->getRequest();
+        $route = new DeliveryModel();
+
+        if ($request->isPost()) {
+            $route->change($request->getPost('id'), $request->getPost());
+            $response = $this->getResponse();
+            $response->setRedirect('/delivery');
+            $response->response();
+            return false;
+        }
+
+        $company = new CompanyModel();
+        $list = array();
+        foreach ($company->getAll() as $key => $val) {
+            $list[$val['id']] = $val;
+        }
+
+        $this->getView()->assign('companys', $list);
+        
+        $account = new AccountModel();
+        $this->getView()->assign('accounts', $account->getAll());
+        $this->getView()->assign('route', $route->get($request->getQuery('id', null)));
+        return true;
     }
 
     public function deleteAction() {
-        $success = false;
-        $id = $this->request->getQuery('id');
-
-        $group = new GroupModel();
-        if ($group->delete($id)) {
-            $channel = new ChannelModel();
-            $success = $channel->deleteAll($id);
-        }
-        
+        $request = $this->getRequest();
+        $route = new DeliveryModel();
+        $success = $route->delete($request->getQuery('id'));
         $response['status'] = $success ? 200 : 400;
         $response['message'] = $success ? 'success' : 'failed';
         header('Content-type: application/json');
         echo json_encode($response);
-
-        return false;
-    }
-
-    public function updateAction() {
-        if ($this->request->isPost()) {
-            $group = new GroupModel();
-            $id = $this->request->getPost('id', null);
-            $group->change($id, $this->request->getPost());
-        }
-
-        $this->response->setRedirect('/routing');
-        $this->response->response();
-
         return false;
     }
 }
-
