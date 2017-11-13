@@ -14,7 +14,7 @@
 
 typedef struct {
     int id;
-    int gid;
+    int rid;
     int weight;
     int operator;
 } lamb_channel_t;

@@ -60,11 +60,12 @@
                 <li><a href="/security/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
+                <li><a href="/system/status">系统状态</a></li>
               </ul>
             </li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
-            <li><a href="/system/option"><span class="glyphicon glyphicon-cog"></span> 系统设置</a></li>
+            <li><a href="/settings"><span class="glyphicon glyphicon-cog"></span> 系统设置</a></li>
             <li><a href="/logout"><span class="glyphicon glyphicon-log-out"></span> 退 出</a></li>
           </ul>
         </div>
@@ -86,11 +87,11 @@
           </thead>
           <tbody>
             <?php
-              foreach ($routes as $r) {
-                echo '<tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>',$r['spcode'],'</td><td>',$r['account'],'</td>';
-                echo '<td>',$r['description'],'</td><td>',$r['create_time'],'</td>';
-                echo '<td><button class="btn btn-default btn-xs" onclick="deleteRoute(',$r['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
-                echo '<td><a class="btn btn-default btn-xs" href="/delivery/edit?id=',$r['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
+              foreach ($deliverys as $d) {
+                echo '<tr><td><span class="glyphicon glyphicon-asterisk"></span></td><td>',$d['spcode'],'</td><td>',$accounts[$d['account']]['username'],'</td>';
+                echo '<td>',$d['description'],'</td><td>',$d['create_time'],'</td>';
+                echo '<td><button class="btn btn-default btn-xs" onclick="deleteRoute(',$d['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
+                echo '<td><a class="btn btn-default btn-xs" href="/delivery/edit?id=',$d['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
               }
             ?>
           </tbody>
@@ -112,7 +113,7 @@
     layer.confirm('亲，确定要删除？', {
       btn: ['是','否'], icon: 3
     }, function(){
-      var url = '/routes/delete?id=' + id;
+      var url = '/delivery/delete?id=' + id;
       $.get(url, function(){
         layer.msg('删除成功!', {icon: 1, time: 1000});
         setTimeout(function() {

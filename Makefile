@@ -2,7 +2,7 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
 MACRO = -D_GNU_SOURCE
-OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/group.o src/mqueue.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/route.o src/socket.o
+OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/routing.o src/mqueue.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/delivery.o src/socket.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre
 
 all: sp ismg server mt mo scheduler deliver test
@@ -55,8 +55,8 @@ src/db.o: src/db.c src/db.h
 src/gateway.o: src/gateway.c src/gateway.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/gateway.c -o src/gateway.o
 
-src/group.o: src/group.c src/group.h
-	$(CC) $(CFLAGS) $(MACRO) -c src/group.c -o src/group.o
+src/routing.o: src/routing.c src/routing.h
+	$(CC) $(CFLAGS) $(MACRO) -c src/routing.c -o src/routing.o
 
 src/queue.o: src/queue.c src/queue.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/queue.c -o src/queue.o
@@ -82,8 +82,8 @@ src/keyword.o: src/keyword.c src/keyword.h
 src/template.o: src/template.c src/template.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/template.c -o src/template.o
 
-src/route.o: src/route.c src/route.h
-	$(CC) $(CFLAGS) $(MACRO) -c src/route.c -o src/route.o
+src/delivery.o: src/delivery.c src/delivery.h
+	$(CC) $(CFLAGS) $(MACRO) -c src/delivery.c -o src/delivery.o
 
 src/socket.o: src/socket.c src/socket.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/socket.c -o src/socket.o

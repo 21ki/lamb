@@ -106,7 +106,7 @@ class RoutingModel {
 
     public function total($gid = null) {
         $count = 0;
-        $sql = 'SELECT count(id) AS total FROM channels WHERE gid = ' . intval($gid);
+        $sql = 'SELECT count(id) AS total FROM channels WHERE rid = ' . intval($gid);
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetch();

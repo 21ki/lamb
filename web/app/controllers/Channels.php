@@ -13,7 +13,7 @@ class ChannelsController extends Yaf\Controller_Abstract {
     }
     
     public function indexAction() {
-        $gid = $this->request->getQuery('id', null);
+        $rid = $this->request->getQuery('id', null);
         $gateway = new GatewayModel();
         $gateways = [];
 
@@ -23,8 +23,8 @@ class ChannelsController extends Yaf\Controller_Abstract {
         }
 
         $channel = new ChannelModel();
-        $this->getView()->assign('gid', intval($gid));
-        $this->getView()->assign('channels', $channel->getAll($gid));
+        $this->getView()->assign('rid', intval($rid));
+        $this->getView()->assign('channels', $channel->getAll($rid));
         $this->getView()->assign('gateways', $gateways);
         return true;
     }
@@ -33,7 +33,7 @@ class ChannelsController extends Yaf\Controller_Abstract {
         $request = $this->getRequest();
         if ($request->isPost()) {
             $data['id'] = $request->getPost('id', null);
-            $data['gid'] = $request->getPost('gid', null);
+            $data['rid'] = $request->getPost('rid', null);
             $data['weight'] = $request->getPost('weight', 1);
             $cmcc = $request->getPost('cmcc', null);
             $ctcc = $request->getPost('ctcc', null);
@@ -46,12 +46,12 @@ class ChannelsController extends Yaf\Controller_Abstract {
             if ($other === 'on') {$operator |= (1 << 3);}
             $data['operator'] = $operator;
             $group = new GroupModel();
-            if ($group->isExist($data['gid'])) {
+            if ($group->isExist($data['rid'])) {
                 $channel = new ChannelModel();
                 $channel->create($data);
             }
             $response = $this->getResponse();
-            $response->setRedirect('/channels?id=' . intval($data['gid']));
+            $response->setRedirect('/channels?id=' . intval($data['rid']));
             $response->response();
         }
         return false;
@@ -71,11 +71,11 @@ class ChannelsController extends Yaf\Controller_Abstract {
     }
     public function updateAction() {
         $request = $this->getRequest();
-        $gid = $request->getPost('gid', null);
+        $rid = $request->getPost('rid', null);
         
         if ($request->isPost()) {
             $data['id'] = $request->getPost('id', null);
-            $data['gid'] = $request->getPost('gid', null);
+            $data['rid'] = $request->getPost('rid', null);
             $data['weight'] = $request->getPost('weight', null);
             $operator = 0;
             $operator |= $request->getPost('cmcc', false) ? 1 : 0;
@@ -87,7 +87,7 @@ class ChannelsController extends Yaf\Controller_Abstract {
             $channel->change($data);
         }
         $response = $this->getResponse();
-        $response->setRedirect('/channels?id=' . intval($gid));
+        $response->setRedirect('/channels?id=' . intval($rid));
         $response->response();
         return false;
     }

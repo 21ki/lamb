@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>blacklist and whitelist - lamb</title>
+    <title>database - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link type="text/css" rel="stylesheet" href="/css/blacklist.css">
@@ -60,11 +60,12 @@
                 <li><a href="/security/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
+                <li><a href="/system/status">系统状态</a></li>
               </ul>
             </li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
-            <li><a href="/system/option"><span class="glyphicon glyphicon-cog"></span> 系统设置</a></li>
+            <li><a href="/settings"><span class="glyphicon glyphicon-cog"></span> 系统设置</a></li>
             <li><a href="/logout"><span class="glyphicon glyphicon-log-out"></span> 退 出</a></li>
           </ul>
         </div>
@@ -75,16 +76,16 @@
         <ol class="breadcrumb">
           <li><a href="#">Home</a></li>
           <li class="active">Database</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="#"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
         </ol>
       </div>
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>数据库名称</th><th>数据类型</th><th>号码数量</th><th>创建时间</th><th>查 询</th><th>删 除</th><th>操 作</th></tr>
+            <tr><th>#</th><th>数据库名称</th><th>数据类型</th><th>号码数量</th><th>备注信息</th><th>查 询</th><th>删 除</th><th>操 作</th></tr>
           </thead>
           <tbody>
-            <tr><td><span class="glyphicon glyphicon-paperclip"></span></td><td>魔拜单车</td><td>黑名单</td><td><?php echo $blacklist;?></td><td>2017-05-08 08:55:00</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('blacklist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td>
+            <tr><td><span class="glyphicon glyphicon-paperclip"></span></td><td>魔拜单车</td><td>黑名单</td><td><?php echo $blacklist;?></td><td>no description</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('blacklist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td>
                 <div class="btn-group">
                   <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     操 作 <span class="caret"></span>
@@ -97,7 +98,7 @@
                   </ul>
                 </div>
             </td></tr>
-            <tr><td><span class="glyphicon glyphicon-paperclip"></span></td><td>系统测试</td><td>白名单</td><td><?php echo $whitelist;?></td><td>2017-05-08 08:55:00</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('whitelist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td>
+            <tr><td><span class="glyphicon glyphicon-paperclip"></span></td><td>系统测试</td><td>白名单</td><td><?php echo $whitelist;?></td><td>no description</td><td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="query('whitelist')"><span class="glyphicon glyphicon-search"></span> 查 询</a></td><td><a class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</a></td><td>
                 <div class="btn-group">
                   <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     操 作 <span class="caret"></span>
@@ -125,6 +126,44 @@
     $(this).removeClass('open');
   });
 
+  function show() {
+    var templete = '<form class="form-horizontal" action="/database/create" method="post" style="width:395px;margin-top:30px;margin-left:15px">'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">数据名称:</label>'+
+        '<div class="col-sm-8">'+
+        '<input type="text" class="form-control" name="name" placeholder="Enter name" minlength="3" required="required">'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">数据类型:</label>'+
+        '<div class="col-sm-8">'+
+        '<select class="form-control" name="type" required="required">'+
+        '<option value="1">黑名单</option>'+
+        '<option value="2">白名单</option>'+
+        '</select>'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">备注信息:</label>'+
+        '<div class="col-sm-8">'+
+        '<input type="text" class="form-control" name="description" placeholder="Enter description">'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<div class="col-sm-offset-3 col-sm-8">'+
+        '<button type="submit" class="btn btn-success">创 建</button><a href="javascript:void(0);" onClick="layer.closeAll()" class="btn btn-default" style="margin-left:15px">取 消</a>'+
+        '</div>'+
+        '</div>'+
+        '</form>';
+
+    layer.open({
+      type: 1,
+      title: '添加通道',
+      area: ['425px', '285px'],
+      content: templete
+    });
+  }
+  
   function deletePhone(phone) {
     layer.confirm('亲，确定要将 ' + phone +  ' 号码删除？', {
       btn: ['是','否'], icon: 3

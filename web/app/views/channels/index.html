@@ -60,11 +60,12 @@
                 <li><a href="/security/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
+                <li><a href="/system/status">系统状态</a></li>
               </ul>
             </li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
-            <li><a href="/system/option"><span class="glyphicon glyphicon-cog"></span> 系统设置</a></li>
+            <li><a href="/settings"><span class="glyphicon glyphicon-cog"></span> 系统设置</a></li>
             <li><a href="/logout"><span class="glyphicon glyphicon-log-out"></span> 退 出</a></li>
           </ul>
         </div>
@@ -73,7 +74,7 @@
     <div class="container">
       <div class="row">
         <ol class="breadcrumb">
-          <li><a href="/cdr">Home</a></li>
+          <li><a href="#">Home</a></li>
           <li><a href="/routing">Group</a></li>
           <li class="active">Channel</li>
           <li class="pull-right add"><a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 添 加</a></li>
@@ -91,8 +92,8 @@
                 $operator .= (intval($c['operator']) & (1 << 1)) ? '电信 ' : '';
                 $operator .= (intval($c['operator']) & (1 << 2)) ? '联通 ' : '';
                 echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',$gateways[$c['id']],'</td><td>',$c['weight'],'</td><td>',$operator,'</td>';
-                echo '<td><button class="btn btn-default btn-xs" onclick="deleteChannel(',$c['id'],',',$c['gid'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
-                echo '<td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="edit(',$c['id'],',',$c['gid'],',',"'",$gateways[$c['id']],"'",')"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>';
+                echo '<td><button class="btn btn-default btn-xs" onclick="deleteChannel(',$c['id'],',',$c['rid'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
+                echo '<td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="edit(',$c['id'],',',$c['rid'],',',"'",$gateways[$c['id']],"'",')"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>';
               }
             ?>
           </tbody>
@@ -115,7 +116,7 @@
         '<div class="form-group">'+
         '<label class="col-sm-3 control-label">通&nbsp;&nbsp;&nbsp;&nbsp;道 </label>'+
         '<div class="col-sm-8">'+
-        '<input type="hidden" name="gid" value="<?php echo $gid;?>">'+
+        '<input type="hidden" name="rid" value="<?php echo $rid;?>">'+
         '<select class="form-control" name="id" required="required">'+
         <?php
           foreach ($gateways as $key => $val) {
@@ -167,7 +168,7 @@
             '<label class="col-sm-3 control-label">通&nbsp;&nbsp;&nbsp;&nbsp;道 </label>'+
             '<div class="col-sm-8">'+
             '<input type="hidden" name="id" value="' + channel.id + '">'+
-            '<input type="hidden" name="gid" value="' + channel.gid + '">'+
+            '<input type="hidden" name="rid" value="' + channel.rid + '">'+
             '<select class="form-control" disabled="disabled">'+
             '<option>' + name + '</option>'+
             '</select>'+

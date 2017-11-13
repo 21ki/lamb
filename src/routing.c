@@ -7,17 +7,17 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "group.h"
+#include "routing.h"
 #include "channel.h"
 
-int lamb_group_get(lamb_db_t *db, int id, lamb_queue_t *channels) {
+int lamb_get_routing(lamb_db_t *db, int id, lamb_queue_t *routing) {
     int rows;
     char *column;
     char sql[256];
     PGresult *res = NULL;
 
-    column = "id, gid, weight";
-    sprintf(sql, "SELECT %s FROM channels WHERE gid = %d ORDER BY weight ASC", column, id);
+    column = "id, rid, weight";
+    sprintf(sql, "SELECT %s FROM channels WHERE rid = %d ORDER BY weight ASC", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -31,9 +31,9 @@ int lamb_group_get(lamb_db_t *db, int id, lamb_queue_t *channels) {
         channel = (lamb_channel_t *)calloc(1, sizeof(lamb_channel_t));
         if (channel != NULL) {
             channel->id = atoi(PQgetvalue(res, i, 0));
-            channel->gid = atoi(PQgetvalue(res, i, 1));
+            channel->rid = atoi(PQgetvalue(res, i, 1));
             channel->weight = atoi(PQgetvalue(res, i, 2));
-            lamb_queue_push(channels, channel);
+            lamb_queue_push(routing, channel);
         }
     }
 

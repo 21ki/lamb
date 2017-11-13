@@ -40,7 +40,7 @@ static lamb_cache_t rdb;
 static lamb_caches_t cache;
 static lamb_queue_t *storage;
 static lamb_queue_t *billing;
-static lamb_queue_t *channels;
+static lamb_queue_t *routing;
 static lamb_account_t account;
 static lamb_company_t company;
 static lamb_queue_t *templates;
@@ -236,14 +236,14 @@ void lamb_event_loop(void) {
     }
 
     /* Fetch group information */
-    channels = lamb_queue_new(aid);
-    if (!channels) {
-        lamb_errlog(config.logfile, "channels queue initialization failed", 0);
+    routing = lamb_queue_new(aid);
+    if (!routing) {
+        lamb_errlog(config.logfile, "routing queue initialization failed", 0);
         return;
     }
 
-    err = lamb_group_get(&db, account.route, channels);
-    if (channels->len < 1) {
+    err = lamb_get_routing(&db, account.route, routing);
+    if (routing->len < 1) {
         lamb_errlog(config.logfile, "No channel routing available", 0);
         return;
     }
@@ -465,7 +465,7 @@ void *lamb_work_loop(void *data) {
         /* Scheduling */
     routing:
         success = false;
-        node = channels->head;
+        node = routing->head;
 
         while (node != NULL) {
             channel = (lamb_channel_t *)node->val;
@@ -483,7 +483,7 @@ void *lamb_work_loop(void *data) {
         }
 
         if (!success) {
-            if (channels->len < 1) {
+            if (routing->len < 1) {
                 printf("-> [channel] No gateway channel available\n");
             }
             //printf("-> [channel] busy all channels\n");
@@ -741,7 +741,7 @@ int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *c
         column = "id, spid, spcode, phone, content, status, account, company";
         sprintf(sql, "INSERT INTO %s(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)", table, column,
                 (long long int)message->id, message->spid, message->spcode, message->phone, message->content,
-                6, account->id, company->id);
+                0, account->id, company->id);
 
         res = PQexec(db->conn, sql);
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {

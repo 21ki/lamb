@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS message (
 
 create index msg_idx ON message(id, status);
 
-CREATE TABLE deliver (
+CREATE TABLE delivery (
    id bigint NOT NULL,
    spcode varchar(21) NOT NULL,
    phone varchar(21) NOT NULL,

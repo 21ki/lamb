@@ -11,8 +11,16 @@ use Tool\Filter;
 class DeliveryController extends Yaf\Controller_Abstract {
     public function indexAction() {
         $request = $this->getRequest();
-        $route = new DeliveryModel();
-        $this->getView()->assign('routes', $route->getAll());
+        $delivery = new DeliveryModel();
+        $account = new AccountModel();
+        $accounts = [];
+
+        foreach ($account->getAll() as $a) {
+            $accounts[$a['id']] = $a;
+        }
+        
+        $this->getView()->assign('deliverys', $delivery->getAll());
+        $this->getView()->assign('accounts', $accounts);
         return true;
     }
 

@@ -66,7 +66,7 @@ CREATE TABLE routing (
 
 CREATE TABLE channels (
     id int NOT NULL,
-    gid int NOT NULL,
+    rid int NOT NULL,
     weight int NOT NULL,
     operator int NOT NULL
 );

@@ -28,11 +28,15 @@
 #include "cache.h"
 #include "socket.h"
 #include "deliver.h"
+#include "delivery.h"
 
 //static int ac;
+static lamb_db_t db;
+static lamb_db_t mdb;
 static lamb_rep_t resp;
 static lamb_pool_t *pools;
 static lamb_config_t config;
+static lamb_queue_t *storage;
 static lamb_queue_t *delivery;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
@@ -78,7 +82,7 @@ int main(int argc, char *argv[]) {
 }
 
 void lamb_event_loop(void) {
-    int fd;
+    int fd, err;
     char addr[128];
 
     pthread_cond_init(&cond, NULL);
@@ -91,9 +95,49 @@ void lamb_event_loop(void) {
         return;
     }
 
+    /* Storage queue initialization */
+    storage = lamb_queue_new(0);
+    if (!storage) {
+        lamb_errlog(config.logfile, "storage queue initialization failed", 0);
+        return;
+    }
+
+    /* deliveryy queue initialization */
     delivery = lamb_queue_new(0);
     if (!delivery) {
         lamb_errlog(config.logfile, "delivery queue initialization failed", 0);
+        return;
+    }
+
+    /* Postgresql Database  */
+    err = lamb_db_init(&db);
+    if (err) {
+        lamb_errlog(config.logfile, "postgresql database initialization failed", 0);
+        return;
+    }
+
+    err = lamb_db_connect(&db, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to postgresql database", 0);
+        return;
+    }
+
+    /* Postgresql Database  */
+    err = lamb_db_init(&mdb);
+    if (err) {
+        lamb_errlog(config.logfile, "postgresql database initialization failed", 0);
+        return;
+    }
+
+    err = lamb_db_connect(&mdb, config.msg_host, config.msg_port, config.msg_user, config.msg_password, config.msg_name);
+    if (err) {
+        lamb_errlog(config.logfile, "Can't connect to postgresql database", 0);
+        return;
+    }
+
+    err = lamb_get_delivery(&db, delivery);
+    if (err) {
+        lamb_errlog(config.logfile, "get delivery routing failed", 0);
         return;
     }
     
@@ -202,8 +246,10 @@ void *lamb_push_loop(void *arg) {
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
 
     /* Start event processing */
+    int account;
     int len, rlen, dlen;
     lamb_report_t *report;
+    lamb_deliver_t *deliver;
     lamb_message_t *message;
 
     queue = NULL;
@@ -253,7 +299,24 @@ void *lamb_push_loop(void *arg) {
 
         /* Delivery */
         if (message->type == LAMB_DELIVER) {
-            lamb_queue_push(delivery, message);
+            deliver = (lamb_deliver_t *)message;
+            account = lamb_query_delivery(delivery, deliver->spcode, strlen(deliver->spcode));
+
+            if (account > 0) {
+                queue = lamb_pool_find(pools, account);
+                if (!queue) {
+                    queue = lamb_queue_new(report->account);
+                    if (queue) {
+                        lamb_pool_add(pools, queue);
+                    }
+                }
+
+                if (queue) {
+                    lamb_queue_push(queue, deliver);
+                }
+            } else {
+                lamb_queue_push(storage, deliver);
+            }
             continue;
         }
 
@@ -411,6 +474,27 @@ int lamb_child_server(int *sock, const char *listen, unsigned short *port, int p
     return 0;
 }
 
+void *lamb_store_loop(void *data) {
+    lamb_node_t *node;
+    lamb_deliver_t *deliver;
+
+    while (true) {
+        node = lamb_queue_pop(storage);
+
+        if (!node) {
+            lamb_sleep(10);
+            continue;
+        }
+
+        deliver = (lamb_deliver_t *)node->val;
+        lamb_write_deliver(&mdb, deliver);
+        nn_freemsg(deliver);
+        free(node);
+    }
+
+    pthread_exit(NULL);
+}
+
 void *lamb_stat_loop(void *arg) {
     lamb_queue_t *queue;
     long long length = 0;    
@@ -429,6 +513,40 @@ void *lamb_stat_loop(void *arg) {
     }
 
     pthread_exit(NULL);
+}
+
+int lamb_query_delivery(lamb_queue_t *ds, const char *spcode, size_t len) {
+    lamb_node_t *node;
+    lamb_delivery_t *d;
+    
+    node = ds->head;
+    
+    while (node != NULL) {
+        d = (lamb_delivery_t *)node->val;
+        if (strncasecmp(d->spcode, spcode, len) == 0) {
+            return d->account;
+        }
+    }
+
+    return -1;
+}
+
+int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *deliver) {
+    char *column;
+    char sql[512];
+    PGresult *res = NULL;
+
+    column = "id, spcode, phone, content";
+    sprintf(sql, "INSERT INTO delivery(%s) VALUES(%lld, %s, %s, %s)", column,
+            (long long int)(deliver->id), deliver->spcode, deliver->phone, deliver->content);
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
+    return 0;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
@@ -474,7 +592,67 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     if (lamb_get_int(&cfg, "AcPort", &conf->ac_port) != 0) {
         fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
     }
+
+    if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "DbPort", &conf->db_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->db_port < 1 || conf->db_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid DB port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DbUser", conf->db_user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbUser' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DbPassword", conf->db_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbPassword' parameter\n");
+        goto error;
+    }
     
+    if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MsgHost", conf->msg_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "MsgPort", &conf->msg_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->msg_port < 1 || conf->msg_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid MsgPort number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MsgUser", conf->msg_user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgUser' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "MsgPassword", conf->msg_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgPassword' parameter\n");
+        goto error;
+    }
+    
+    if (lamb_get_string(&cfg, "MsgName", conf->msg_name, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'MsgName' parameter\n");
+        goto error;
+    }
+
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;
