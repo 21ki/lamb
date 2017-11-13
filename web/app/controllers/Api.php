@@ -26,23 +26,23 @@ class ApiController extends Yaf\Controller_Abstract {
         return false;
     }
     
-    public function groupAction() {
+    public function routingAction() {
         $id = $this->request->getQuery('id', null);
-        $group = new GroupModel();
+        $routing = new RoutingModel();
         $response['status'] = 200;
         $response['message'] = 'success';
-        $response['data'] = $group->get($id);
+        $response['data'] = $routing->get($id);
         header('Content-type: application/json');
         echo json_encode($response);
 
         return false;
     }
 
-    public function groupsAction() {
-        $group = new GroupModel();
+    public function routingsAction() {
+        $routing = new RoutingModel();
         $response['status'] = 200;
         $response['message'] = 'success';
-        $response['data'] = $group->getAll();
+        $response['data'] = $routing->getAll();
 
         header('Content-type: application/json');
         echo json_encode($response);
@@ -54,7 +54,7 @@ class ApiController extends Yaf\Controller_Abstract {
         $channel = new ChannelModel();
         $response['status'] = 200;
         $response['message'] = 'success';
-        $response['data'] = $channel->get($this->request->getQuery('id', null), $this->request->getQuery('gid', null));
+        $response['data'] = $channel->get($this->request->getQuery('id', null), $this->request->getQuery('rid', null));
 
         header('Content-type: application/json');
         echo json_encode($response);

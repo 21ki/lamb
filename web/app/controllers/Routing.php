@@ -7,6 +7,11 @@
  */
 
 class RoutingController extends Yaf\Controller_Abstract {
+    public function init() {
+        $this->request = $this->getRequest();
+        $this->response = $this->getResponse();
+    }
+
     public function indexAction() {
         $request = $this->getRequest();
         $routing = new RoutingModel();
@@ -25,46 +30,38 @@ class RoutingController extends Yaf\Controller_Abstract {
     }
 
     public function createAction() {
-        $name = $this->getRequest()->getPost('name');
-        $data = $this->getRequest()->getPost('channels');
-
-        $channels = $this->duplicate_removal($data);
-
-        $routing = new RoutingModel();
-        $rid = $routing->create(['name' => $name, 'description' => 'no description']);
-
-        if ($rid > 0) {
-            $channel = new ChannelModel();
-            foreach ($channels as $chan) {
-                $chan['gid'] = $gid;
-                $chan['operator'] = 1 | (1 << 1) | (1 << 2);
-                $channel->create($chan);
-            }
+        if ($this->request->isPost()) {
+            $routing = new RoutingModel();
+            $routing->create($this->request->getPost());
+            $response = $this->getResponse();
+            $response->setRedirect('/routing');
+            $response->response();
         }
-
-        $response = $this->getResponse();
-        $response->setRedirect('/routing');
-        $response->response();
-
         return false;
     }
-
-    private function duplicate_removal(array $data = null) {
-        $result = [];
-        
-        foreach ($data as $v1) {
-            $have = true;
-            foreach ($result as $v2) {
-                if ($v1['id'] == $v2['id']) {
-                    $have = false;
-                }
-            }
-
-            if ($have) {
-                $result[] = $v1;
-            }
+    public function deleteAction() {
+        $success = false;
+        $id = $this->request->getQuery('id');
+        $routing = new RoutingModel();
+        if ($routing->delete($id)) {
+            $channel = new ChannelModel();
+            $success = $channel->deleteAll($id);
         }
-
-        return $result;
+        
+        $response['status'] = $success ? 200 : 400;
+        $response['message'] = $success ? 'success' : 'failed';
+        header('Content-type: application/json');
+        echo json_encode($response);
+        return false;
+    }
+    public function updateAction() {
+        if ($this->request->isPost()) {
+            $routing = new RoutingModel();
+            $id = $this->request->getPost('id', null);
+            $routing->change($id, $this->request->getPost());
+        }
+        $this->response->setRedirect('/routing');
+        $this->response->response();
+        return false;
     }
 }

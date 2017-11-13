@@ -154,7 +154,7 @@ class ChannelModel {
             case 'id':
                 $res['id'] = Filter::number($val, null);
                 break;
-            case 'gid':
+            case 'rid':
                 $res['gid'] = Filter::number($val, null);
                 break;
             case 'weight':

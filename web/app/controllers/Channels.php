@@ -30,45 +30,65 @@ class ChannelsController extends Yaf\Controller_Abstract {
     }
     
     public function createAction() {
-        if ($this->request->isPost()) {
+        $request = $this->getRequest();
+        if ($request->isPost()) {
+            $data['id'] = $request->getPost('id', null);
+            $data['gid'] = $request->getPost('gid', null);
+            $data['weight'] = $request->getPost('weight', 1);
+            $cmcc = $request->getPost('cmcc', null);
+            $ctcc = $request->getPost('ctcc', null);
+            $cucc = $request->getPost('cucc', null);
+            $other = $request->getPost('other', null);
+            $operator = 0;
+            if ($cmcc === 'on') {$operator |= 1;}
+            if ($ctcc === 'on') {$operator |= (1 << 1);}
+            if ($cucc === 'on') {$operator |= (1 << 2);}
+            if ($other === 'on') {$operator |= (1 << 3);}
+            $data['operator'] = $operator;
             $group = new GroupModel();
-            $group->create($this->request->getPost());
+            if ($group->isExist($data['gid'])) {
+                $channel = new ChannelModel();
+                $channel->create($data);
+            }
             $response = $this->getResponse();
-            $response->setRedirect('/routing');
+            $response->setRedirect('/channels?id=' . intval($data['gid']));
             $response->response();
         }
-
         return false;
     }
-
     public function deleteAction() {
         $success = false;
-        $id = $this->request->getQuery('id');
-
-        $group = new GroupModel();
-        if ($group->delete($id)) {
-            $channel = new ChannelModel();
-            $success = $channel->deleteAll($id);
+        $request = $this->getRequest();
+        $channel = new ChannelModel();
+        if ($channel->delete($request->getQuery('id', null), $request->getQuery('rid', null))) {
+            $success = true;
         }
-        
         $response['status'] = $success ? 200 : 400;
         $response['message'] = $success ? 'success' : 'failed';
         header('Content-type: application/json');
         echo json_encode($response);
-
         return false;
     }
-
     public function updateAction() {
-        if ($this->request->isPost()) {
-            $group = new GroupModel();
-            $id = $this->request->getPost('id', null);
-            $group->change($id, $this->request->getPost());
+        $request = $this->getRequest();
+        $gid = $request->getPost('gid', null);
+        
+        if ($request->isPost()) {
+            $data['id'] = $request->getPost('id', null);
+            $data['gid'] = $request->getPost('gid', null);
+            $data['weight'] = $request->getPost('weight', null);
+            $operator = 0;
+            $operator |= $request->getPost('cmcc', false) ? 1 : 0;
+            $operator |= $request->getPost('ctcc', false) ? (1 << 1) : 0;
+            $operator |= $request->getPost('cucc', false) ? (1 << 2) : 0;
+            $operator |= $request->getPost('other', false) ? (1 << 3) : 0;
+            $data['operator'] = $operator;
+            $channel = new ChannelModel();
+            $channel->change($data);
         }
-
-        $this->response->setRedirect('/routing');
-        $this->response->response();
-
+        $response = $this->getResponse();
+        $response->setRedirect('/channels?id=' . intval($gid));
+        $response->response();
         return false;
     }
 }

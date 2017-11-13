@@ -74,7 +74,7 @@
     <div class="container">
       <div class="row">
         <ol class="breadcrumb">
-          <li><a href="/cdr">Home</a></li>
+          <li><a href="#">Home</a></li>
           <li><a href="/routing">Routing</a></li>
           <li class="active">Data</li>
           <li class="pull-right add"><a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
@@ -89,7 +89,7 @@
             <?php
               foreach ($groups as $g) {
                 echo '<tr><td><span class="glyphicon glyphicon-tasks"></span></td><td><a href="channels?id=',$g['id'],'">',$g['name'],'</a></td><td>',$g['total'],'</td><td>',$g['description'],'</td>';
-                echo '<td>',$g['create_time'],'</td><td><button class="btn btn-default btn-xs" onclick="deleteGroup(',$g['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
+                echo '<td>',$g['create_time'],'</td><td><button class="btn btn-default btn-xs" onclick="deleteRoute(',$g['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
                 echo '<td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="edit(',$g['id'],')"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
               }
             ?>
@@ -109,7 +109,7 @@
   });
 
   function show() {
-    var templete = '<form class="form-horizontal" action="/group/create" method="post" style="width:420px">'+
+    var templete = '<form class="form-horizontal" action="/routing/create" method="post" style="width:420px">'+
         '<div class="form-group">'+
         '<label class="col-sm-3 control-label">路由名称</label>'+
         '<div class="col-sm-8">'+
@@ -147,16 +147,16 @@
   }
 
   function edit(id) {
-    var url = '/api/group?id=' + id;
+    var url = '/api/routing?id=' + id;
     $.get(url, function(resp, stat){
       if (stat == 'success') {
-        var group = resp.data;
-        var templete = '<form class="form-horizontal" action="/group/update" method="post" style="width:420px">'+
+        var routing = resp.data;
+        var templete = '<form class="form-horizontal" action="/routing/update" method="post" style="width:420px">'+
         '<div class="form-group">'+
         '<label class="col-sm-3 control-label">路由名称</label>'+
         '<div class="col-sm-8">'+
-        '<input type="hidden" name="id" value="' + group.id + '" />'+
-        '<input type="text" class="form-control" name="name" value="' + group.name + '" placeholder="Enter name" minlength="3" required="required">'+
+        '<input type="hidden" name="id" value="' + routing.id + '" />'+
+        '<input type="text" class="form-control" name="name" value="' + routing.name + '" placeholder="Enter name" minlength="3" required="required">'+
         '</div>'+
         '</div>'+
         '<div class="form-group">'+
@@ -171,7 +171,7 @@
         '<div class="form-group">'+
         '<label class="col-sm-3 control-label">备注信息</label>'+
         '<div class="col-sm-8">'+
-        '<input type="text" class="form-control" name="description" value="' + group.description + '" placeholder="Enter description">'+
+        '<input type="text" class="form-control" name="description" value="' + routing.description + '" placeholder="Enter description">'+
         '</div>'+
         '</div>'+
         '<div class="form-group">'+
@@ -191,11 +191,11 @@
     });
   }
 
-  function deleteGroup(gid) {
+  function deleteRoute(rid) {
   layer.confirm('亲，确定要删除？', {
       btn: ['是','否'], icon: 3
     }, function(){
-      var url = '/group/delete?id=' + gid;
+      var url = '/routing/delete?id=' + rid;
       $.get(url, function(){
         layer.msg('删除成功!', {icon: 1, time: 1000});
         setTimeout(function() {
