@@ -117,7 +117,7 @@ class RoutingModel {
     }
 
     public function isExist($gid = null) {
-        $sql = 'SELECT count(id) AS total FROM groups WHERE id = ' . intval($gid);
+        $sql = 'SELECT count(id) AS total FROM ' . $this->table . ' WHERE id = ' . intval($gid);
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetch();

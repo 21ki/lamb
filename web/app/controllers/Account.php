@@ -37,8 +37,8 @@ class AccountController extends Yaf\Controller_Abstract {
         $list = $company->getAll();
         $this->getView()->assign('companys', $list);
         
-        $group = new GroupModel();
-        $this->getView()->assign('groups', $group->getAll());
+        $routing = new RoutingModel();
+        $this->getView()->assign('groups', $routing->getAll());
 
         return true;
     }
@@ -55,10 +55,10 @@ class AccountController extends Yaf\Controller_Abstract {
             return false;
         }
 
-        $group = new GroupModel();
+        $routing = new RoutingModel();
         $company = new CompanyModel();
         $this->getView()->assign('companys', $company->getAll());
-        $this->getView()->assign('groups', $group->getAll());
+        $this->getView()->assign('groups', $routing->getAll());
         $this->getView()->assign('account', $account->get($request->getQuery('id')));
 
         return true;
