@@ -507,7 +507,7 @@ void *lamb_deliver_loop(void *data) {
         }
 
         /* Waiting for message confirmation */
-        err = lamb_wait_confirmation(&cond, &mutex, 3);
+        err = lamb_wait_confirmation(&cond, &mutex, config.acknowledge_timeout);
 
         if (err == ETIMEDOUT) {
             status.timeo++;
@@ -614,17 +614,17 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
+    if (lamb_get_int(&cfg, "Timeout", (int *)&conf->timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "RecvTimeout", &conf->recv_timeout) != 0) {
+    if (lamb_get_int(&cfg, "RecvTimeout", (int *)&conf->recv_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "SendTimeout", &conf->send_timeout) != 0) {
+    if (lamb_get_int(&cfg, "SendTimeout", (int *)&conf->send_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
         goto error;
     }

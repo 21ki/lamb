@@ -525,6 +525,7 @@ void *lamb_deliver_loop(void *data) {
     lamb_deliver_t *deliver;
     lamb_message_t *message;
 
+    char spcode[24];
     int rlen = sizeof(lamb_report_t);
     int dlen = sizeof(lamb_deliver_t);
 
@@ -592,10 +593,14 @@ void *lamb_deliver_loop(void *data) {
         }
 
         if (message->type == LAMB_DELIVER) {
-            deliver = (lamb_deliver_t *)buf;
-
             status.delv++;
-            //nn_send(mo, deliver, sizeof(lamb_deliver_t), 0);
+            deliver = (lamb_deliver_t *)buf;
+            memcpy(spcode, deliver->spcode, 20);
+            memcpy(deliver->spcode, account.spcode, 20);
+
+            nn_send(mo, deliver, sizeof(lamb_deliver_t), NN_DONTWAIT);
+
+            memcpy(deliver->spcode, spcode, 20);
 
             store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
 

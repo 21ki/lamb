@@ -431,15 +431,16 @@ int lamb_hp_parse(char *str, char *host, int *port) {
     return 0;
 }
 
-int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, int second) {
+int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, long milliseconds) {
     int err;
     struct timeval now;
     struct timespec timeout;
 
     gettimeofday(&now, NULL);
-    timeout.tv_sec = now.tv_sec;
-    timeout.tv_nsec = now.tv_usec * 1000;
-    timeout.tv_sec += second;
+    timeout.tv_sec = now.tv_sec + (milliseconds / 1000);
+    timeout.tv_nsec = (now.tv_usec * 1000) + (milliseconds % 1000) * 1000 * 1000;
+    timeout.tv_sec += timeout.tv_nsec / (1000 * 1000 * 1000);
+    timeout.tv_nsec %= 1000 * 1000 * 1000;
 
     pthread_mutex_lock(mutex);
     err = pthread_cond_timedwait(cond, mutex, &timeout);

@@ -238,7 +238,7 @@ void *lamb_sender_loop(void *data) {
             continue;
         }
 
-        err = lamb_wait_confirmation(&cond, &mutex, 7);
+        err = lamb_wait_confirmation(&cond, &mutex, config.acknowledge_timeout);
 
         if (err == ETIMEDOUT) {
             status.timeo++;
@@ -700,7 +700,7 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
+    if (lamb_get_int(&cfg, "Timeout", (int *)&conf->timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
         goto error;
     }
@@ -715,16 +715,21 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "SendTimeout", &conf->send_timeout) != 0) {
+    if (lamb_get_int(&cfg, "SendTimeout", (int *)&conf->send_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "RecvTimeout", &conf->recv_timeout) != 0) {
+    if (lamb_get_int(&cfg, "RecvTimeout", (int *)&conf->recv_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
         goto error;
     }
 
+    if (lamb_get_int(&cfg, "AcknowledgeTimeout", (int *)&conf->acknowledge_timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'AcknowledgeTimeout' parameter\n");
+        goto error;
+    }
+    
     if (lamb_get_string(&cfg, "Host", conf->host, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid host IP address\n");
         goto error;

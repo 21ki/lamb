@@ -103,6 +103,6 @@ void lamb_rlimit_processing(void);
 long lamb_get_cpu(void);
 int lamb_cpu_affinity(pthread_t thread);
 int lamb_hp_parse(char *str, char *host, int *port);
-int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, int second);
+int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, long millisecond);
 
 #endif

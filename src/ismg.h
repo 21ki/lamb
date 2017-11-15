@@ -21,9 +21,10 @@ typedef struct {
     char listen[16];
     int port;
     int connections;
-    long long timeout;
-    long long send_timeout;
-    long long recv_timeout;
+    long timeout;
+    long send_timeout;
+    long recv_timeout;
+    long acknowledge_timeout;
     char queue[64];
     char ac_host[16];
     int ac_port;

@@ -24,9 +24,10 @@ typedef struct {
     char encoding[32];
     int retry;
     int interval;
-    long long timeout;
-    long long send_timeout;
-    long long recv_timeout;
+    long timeout;
+    long send_timeout;
+    long recv_timeout;
+    long acknowledge_timeout;
     bool extended;
     int concurrent;
     char backfile[128];

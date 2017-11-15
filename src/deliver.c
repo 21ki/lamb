@@ -140,7 +140,7 @@ void lamb_event_loop(void) {
         lamb_errlog(config.logfile, "get delivery routing failed", 0);
         return;
     }
-    
+
     /* Server Initialization */
     fd = nn_socket(AF_SP, NN_REP);
     if (fd < 0) {
