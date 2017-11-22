@@ -59,7 +59,8 @@ CREATE TABLE gateway (
 
 CREATE TABLE routing (
     id serial PRIMARY KEY NOT NULL,
-    name varchar(64) NOT NULL,
+    name varchar(128) NOT NULL,
+    target varchar(64) NOT NULL,
     description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
