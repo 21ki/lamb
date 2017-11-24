@@ -42,7 +42,8 @@
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
               <ul class="dropdown-menu">
                 <li><a href="/gateway">落地通道</a></li>
-                <li><a href="/gateway/report">通道报表</a></li>
+                <li><a href="/group">通道网关组</a></li>
+                <li><a href="/gateway/report">通道统计报表</a></li>
               </ul>
             </li>
             <li class="dropdown">
@@ -83,13 +84,13 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>通道名称</th><th>通道类型</th><th>IP 地址</th><th>最大并发</th><th>备注信息</th><th>创建时间</th><th>通道测试</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>通道名称</th><th>通道类型</th><th>IP 地址</th><th>最大并发</th><th>备注信息</th><th>通道测试</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
             <?php
               foreach ($gateways as $g) {
                 echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',lamb_output($g['name']),'</td><td>cmpp/2.0</td><td>',$g['host'],'</td>';
-                echo '<td>',$g['concurrent'],'/s</td><td>',lamb_output($g['description']),'</td><td>',$g['create_time'],'</td>';
+                echo '<td>',$g['concurrent'],'/s</td><td>',lamb_output($g['description']),'</td>';
                 echo '<td><a href="javascript:void(0)" onclick="checkChannel(',$g['id'],')"><span class="glyphicon glyphicon-phone"></span> 测 试</a></td>';
                 echo '<td><button class="btn btn-default btn-xs" onclick="deleteChannel(',$g['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
                 echo '<td><a class="btn btn-default btn-xs" href="gateway/edit?id=',$g['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";

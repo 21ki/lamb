@@ -5,10 +5,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>routes - lamb</title>
+    <title>Gateway Group - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/routes.css">
+    <link type="text/css" rel="stylesheet" href="/css/routing.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -76,53 +76,24 @@
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="#">Home</a></li>
-          <li><a href="/delivery">Delivery</a></li>
+          <li><a href="/routing">Routing</a></li>
           <li class="active">Data</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="/delivery/create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
         </ol>
       </div>
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>路由规则</th><th>目标帐号</th><th>备注信息</th><th colspan="2">排 序</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>通道组名称</th><th>备注说明</th><th>删 除</th><th>编 辑</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td>1</td>
-              <td>1069048XXXX</td>
-              <td>901234</td>
-              <td>no description</td>
-              <td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-up"></span></a></td><td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-down"></span></a></td>
-              <td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
-              <td><a class="btn btn-default btn-xs" href="#"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td>
-            </tr>
-            <tr>
-              <td>2</td>
-              <td>1069049XXXX</td>
-              <td>901234</td>
-              <td>no description</td>
-              <td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-up"></span></a></td><td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-down"></span></a></td>
-              <td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
-              <td><a class="btn btn-default btn-xs" href="#"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td>
-            </tr>
-            <tr>
-              <td>3</td>
-              <td>1069050XXXX</td>
-              <td>901234</td>
-              <td>no description</td>
-              <td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-up"></span></a></td><td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-down"></span></a></td>
-              <td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
-              <td><a class="btn btn-default btn-xs" href="#"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td>
-            </tr>
-            <tr>
-              <td>4</td>
-              <td>1069051XXXX</td>
-              <td>901234</td>
-              <td>no description</td>
-              <td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-up"></span></a></td><td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-down"></span></a></td>
-              <td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
-              <td><a class="btn btn-default btn-xs" href="#"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td>
-            </tr>
+            <?php
+              foreach ($groups as $g) {
+                echo '<tr><td>',$g['id'],'</td><td><a href="/channels?id=',$g['id'],'">',$g['name'],'</a></td><td>',$g['description'],'</td>';
+                echo '<td><button class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
+                echo '<td><a class="btn btn-default btn-xs" href="#"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>';
+              }
+              ?>
           </tbody>
         </table>
       </div>
@@ -132,17 +103,97 @@
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {   
+  $('li.dropdown').mouseover(function() {
     $(this).addClass('open');
   }).mouseout(function() {
     $(this).removeClass('open');
   });
 
-  function deleteRoute(id) {
-    layer.confirm('亲，确定要删除？', {
+  function show() {
+    var templete = '<form class="form-horizontal" action="/routing/create" method="post" style="width:420px">'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">路由规则</label>'+
+        '<div class="col-sm-8">'+
+        '<input type="text" class="form-control" name="name" placeholder="Enter name" minlength="1" required="required">'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">落地通道</label>'+
+        '<div class="col-sm-8">'+
+        '<input type="text" class="form-control" name="target" placeholder="Enter target" minlength="1" required="required">'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">备注信息</label>'+
+        '<div class="col-sm-8">'+
+        '<input type="text" class="form-control" name="description" placeholder="Enter description">'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<div class="col-sm-offset-3 col-sm-8">'+
+        '<button type="submit" class="btn btn-success">创 建</button><a href="javascript:void(0);" onClick="layer.closeAll()" class="btn btn-default">取 消</a>'+
+        '</div>'+
+        '</div>'+
+        '</form>';
+
+    layer.open({
+      type: 1,
+      title: '创建路由表',
+      area: ['435px', '285px'],
+      content: templete
+    });
+  }
+
+  function edit(id) {
+    var url = '/api/routing?id=' + id;
+    $.get(url, function(resp, stat){
+      if (stat == 'success') {
+        var routing = resp.data;
+        var templete = '<form class="form-horizontal" action="/routing/update" method="post" style="width:420px">'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">路由名称</label>'+
+        '<div class="col-sm-8">'+
+        '<input type="hidden" name="id" value="' + routing.id + '" />'+
+        '<input type="text" class="form-control" name="name" value="' + routing.name + '" placeholder="Enter name" minlength="3" required="required">'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">路由类型</label>'+
+        '<div class="col-sm-8">'+
+        '<select class="form-control">'+
+        '<option value="1">普通路由</option>'+
+        '<option value="2">高级路由</option>'+
+        '</select>'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<label class="col-sm-3 control-label">备注信息</label>'+
+        '<div class="col-sm-8">'+
+        '<input type="text" class="form-control" name="description" value="' + routing.description + '" placeholder="Enter description">'+
+        '</div>'+
+        '</div>'+
+        '<div class="form-group">'+
+        '<div class="col-sm-offset-3 col-sm-8">'+
+        '<button type="submit" class="btn btn-success">保 存</button><a href="javascript:void(0);" onClick="layer.closeAll()" class="btn btn-default">取 消</a>'+
+        '</div>'+
+        '</div>'+
+        '</form>';
+
+        layer.open({
+          type: 1,
+          title: '编辑路由表',
+          area: ['435px', '285px'],
+          content: templete
+        });  
+      }
+    });
+  }
+
+  function deleteRoute(rid) {
+  layer.confirm('亲，确定要删除？', {
       btn: ['是','否'], icon: 3
     }, function(){
-      var url = '/delivery/delete?id=' + id;
+      var url = '/routing/delete?id=' + rid;
       $.get(url, function(){
         layer.msg('删除成功!', {icon: 1, time: 1000});
         setTimeout(function() {

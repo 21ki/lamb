@@ -42,7 +42,8 @@
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
               <ul class="dropdown-menu">
                 <li><a href="/gateway">落地通道</a></li>
-                <li><a href="/gateway/report">通道报表</a></li>
+                <li><a href="/group">通道网关组</a></li>
+                <li><a href="/gateway/report">通道统计报表</a></li>
               </ul>
             </li>
             <li class="dropdown">
@@ -83,13 +84,13 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>签 名</th><th>模板内容</th><th>所属帐号</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>接入号码</th><th>签 名</th><th>模板内容</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
             <?php
               foreach ($templates as $t) {
-              echo '<tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>',$t['name'],'</td>';
-              echo '<td>',lamb_output($t['contents'], 32),'</td><td>',$accounts[$t['account']],'</td><td>',$t['create_time'],'</td>';
+              echo '<tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td>1069000112XX</td><td>',$t['name'],'</td>';
+              echo '<td>',lamb_output($t['contents'], 32),'</td><td>',$t['create_time'],'</td>';
               echo '<td><button class="btn btn-default btn-xs" onclick="deleteTemplate(',$t['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
               echo '<td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="edit(',$t['id'],",'",$accounts[$t['account']],"'",')"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
               }

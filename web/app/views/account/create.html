@@ -44,7 +44,8 @@
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
               <ul class="dropdown-menu">
                 <li><a href="/gateway">落地通道</a></li>
-                <li><a href="/gateway/report">通道报表</a></li>
+                <li><a href="/group">通道网关组</a></li>
+                <li><a href="/gateway/report">通道统计报表</a></li>
               </ul>
             </li>
             <li class="dropdown">
@@ -109,9 +110,9 @@
                 <select class="form-control" name="company" required="required">
                   <?php
                     foreach ($companys as $c) {
-                      echo '<option value="',$c['id'],'">',$c['name'],'</option>',"\n";
+                    echo '<option value="',$c['id'],'">',$c['name'],'</option>',"\n";
                     }
-                  ?>
+                    ?>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
@@ -154,9 +155,9 @@
                 <select class="form-control" name="route" required="required">
                   <?php
                     foreach ($groups as $g) {
-                      echo '<option value="',$g['id'],'">',$g['name'],'</option>';
+                    echo '<option value="',$g['id'],'">',$g['name'],'</option>';
                     }
-                  ?>
+                    ?>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
@@ -253,25 +254,25 @@
 <script type="text/javascript" src="/js/icheck.min.js"></script>
 <script type="text/javascript">
   $('li.dropdown').mouseover(function() {
-    $(this).addClass('open');
+  $(this).addClass('open');
   }).mouseout(function() {
-    $(this).removeClass('open');
+  $(this).removeClass('open');
   });
 
   $(document).ready(function(){
-    $('input[type=checkbox]').iCheck({
-      checkboxClass: 'icheckbox_flat-blue',
-      radioClass: 'iradio_flat-blue',
-      increaseArea: '20%'
-    });
+  $('input[type=checkbox]').iCheck({
+  checkboxClass: 'icheckbox_flat-blue',
+  radioClass: 'iradio_flat-blue',
+  increaseArea: '20%'
+  });
   });
 
   $('#blacklist').on('ifChecked', function(event){
-    $('#whitelist').iCheck('uncheck');
+  $('#whitelist').iCheck('uncheck');
   });
 
   $('#whitelist').on('ifChecked', function(event){
-    $('#blacklist').iCheck('uncheck');
+  $('#blacklist').iCheck('uncheck');
   });
 </script>
 </body>

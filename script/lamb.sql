@@ -65,9 +65,15 @@ CREATE TABLE routing (
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
+CREATE TABLE groups (
+    id serial PRIMARY KEY NOT NULL,
+    name varchar(64) NOT NULL,
+    description text NOT NULL
+)
+
 CREATE TABLE channels (
     id int NOT NULL,
-    rid int NOT NULL,
+    gid int NOT NULL,
     weight int NOT NULL,
     operator int NOT NULL
 );
@@ -113,5 +119,4 @@ CREATE TABLE database (
     type int NOT NULL,
     total bigint NOT NULL,
     description text NOT NULL,
-    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
