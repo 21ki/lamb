@@ -14,7 +14,7 @@ class AccountModel {
     public $redis = null;
     private $config = null;
     private $table = 'account';
-    private $column = ['username', 'password', 'spcode', 'company', 'charge_type', 'ip_addr', 'concurrent', 'route', 'extended', 'policy', 'check_template', 'check_keyword', 'description'];
+    private $column = ['username', 'password', 'spcode', 'company', 'charge', 'address', 'concurrent', 'dbase', 'template', 'keyword', 'description'];
 
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -60,35 +60,22 @@ class AccountModel {
             return false;
         }
         
-        if (!isset($data['extended'])) {
-            $data['extended'] = 0;
+        if (!isset($data['dbase'])) {
+            $data['dbase'] = 0;
         }
 
-        if (!isset($data['policy'])) {
-            $data['policy'] = 0;
+        if (!isset($data['template'])) {
+            $data['template'] = 0;
         }
 
-        if (!isset($data['check_template'])) {
-            $data['check_template'] = 0;
+        if (!isset($data['keyword'])) {
+            $data['keyword'] = 0;
         }
 
-        if (!isset($data['check_keyword'])) {
-            $data['check_keyword'] = 0;
-        }
-
-        if (!isset($data['route'])) {
-            return false;
-        }
-
-        $group = new GroupModel();
-        if (!$group->isExist($data['route'])) {
-            return false;
-        }
-        
         if (count($data) == count($this->column)) {
             $sql = 'INSERT INTO ' . $this->table;
-            $sql .= '(username, password, spcode, company, charge_type, ip_addr, concurrent, route, extended, policy, check_template, check_keyword, description) ';
-            $sql .= 'VALUES(:username, :password, :spcode, :company, :charge_type, :ip_addr, :concurrent, :route, :extended, :policy, :check_template, :check_keyword, :description)';
+            $sql .= '(username, password, spcode, company, charge, address, concurrent, dbase, template, keyword, description) ';
+            $sql .= 'VALUES(:username, :password, :spcode, :company, :charge, :address, :concurrent, :dbase, :template, :keyword, :description)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -127,20 +114,12 @@ class AccountModel {
             }
         }
 
-        if (!isset($data['extended'])) {
-            $data['extended'] = 0;
+        if (!isset($data['template'])) {
+            $data['template'] = 0;
         }
 
-        if (!isset($data['policy'])) {
-            $data['policy'] = 0;
-        }
-
-        if (!isset($data['check_template'])) {
-            $data['check_template'] = 0;
-        }
-
-        if (!isset($data['check_keyword'])) {
-            $data['check_keyword'] = 0;
+        if (!isset($data['keyword'])) {
+            $data['keyword'] = 0;
         }
         
         $column = $this->keyAssembly($data);
@@ -206,29 +185,23 @@ class AccountModel {
             case 'company':
                 $res['company'] = Filter::number($val, null, 1);
                 break;
-            case 'charge_type':
-                $res['charge_type'] = Filter::number($val, 1, 1, 2);
+            case 'charge':
+                $res['charge'] = Filter::number($val, 1, 1, 2);
                 break;
-            case 'ip_addr':
-                $res['ip_addr'] = Filter::ip($val, null);
+            case 'address':
+                $res['address'] = Filter::ip($val, null);
                 break;
             case 'concurrent':
                 $res['concurrent'] = Filter::number($val, 30, 1);
                 break;
-            case 'route':
-                $res['route'] = Filter::number($val, null, 1);
+            case 'dbase':
+                $res['dbase'] = Filter::number($val, null, 0);
                 break;
-            case 'extended':
-                $res['extended'] = Filter::number($val, null, 0, 1);
+            case 'template':
+                $res['template'] = Filter::number($val, null, 0, 1);
                 break;
-            case 'policy':
-                $res['policy'] = Filter::number($val, null, 1, 2);
-                break;
-            case 'check_template':
-                $res['check_template'] = Filter::number($val, null, 0, 1);
-                break;
-            case 'check_keyword':
-                $res['check_keyword'] = Filter::number($val, null, 0, 1);
+            case 'keyword':
+                $res['keyword'] = Filter::number($val, null, 0, 1);
                 break;
             case 'description':
                 $res['description'] = Filter::string($val, 'no description', 1, 64);

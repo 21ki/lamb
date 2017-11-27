@@ -44,7 +44,7 @@
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
               <ul class="dropdown-menu">
                 <li><a href="/gateway">落地通道</a></li>
-                <li><a href="/group">通道网关组</a></li>
+                <li><a href="/groups">通道网关组</a></li>
                 <li><a href="/gateway/report">通道统计报表</a></li>
               </ul>
             </li>
@@ -124,9 +124,9 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">计费类型:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="charge_type">
-                  <option value="1"<?php if ($account['charge_type'] == 1) {echo 'selected="selected"';}?>>提交计费</option>
-                  <option value="2"<?php if ($account['charge_type'] == 2) {echo 'selected="selected"';}?>>成功计费</option>
+                <select class="form-control" name="charge">
+                  <option value="1"<?php if ($account['charge'] == 1) {echo 'selected="selected"';}?>>提交计费</option>
+                  <option value="2"<?php if ($account['charge'] == 2) {echo 'selected="selected"';}?>>成功计费</option>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
@@ -136,7 +136,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">客户端地址:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip_addr" value="<?php echo $account['ip_addr'];?>" placeholder="Enter Telephone" required="required">
+                <input type="text" class="form-control" name="address" value="<?php echo $account['address'];?>" placeholder="Enter Telephone" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">客户端 IP 地址</span>
@@ -161,13 +161,16 @@
               </div>
             </div>
             <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">号码过滤:</label>
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">黑名单过滤:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="charge" style="color:#555555">
-                  <option class="text-muted" value="1">不使用号码检测</option>
-                  <option value="2">魔拜单车 (黑名单)</option>
-                  <option value="3">小额贷款 (黑名单)</option>
-                  <option value="4">系统测试 (白名单)</option>
+                <select class="form-control" name="dbase" style="color:#555555">
+                  <option class="text-muted" value="0">不使用黑名单检测</option>
+                  <?php
+                    foreach ($database as $d) {
+                     $selected = $account['dbase'] == $d['id'] ? 'selected="selected"' : '';
+                     echo '<option value="',$d['id'],'"',$selected,'>',$d['name'],' (',$d['type'] == 1 ? '黑名单' : '白名单',')</option>';
+                    }
+                  ?>
                 </select>
               </div>
               <div class="col-xs-3 col-sm-3">
@@ -179,7 +182,7 @@
               <div class="col-xs-3 col-sm-3 col-md-3">
                 <div class="checkbox">
                   <label>
-                    <input id="check_template" type="checkbox" name="check_template" value="1" <?php if ($account['check_template'] == 1) {echo 'checked="checked" ';}?>/> 开启签名模板校验
+                    <input id="check_template" type="checkbox" name="template" value="1" <?php if ($account['template'] == 1) {echo 'checked="checked" ';}?>/> 开启签名模板校验
                   </label>
                 </div>
               </div>
@@ -192,7 +195,7 @@
               <div class="col-xs-3 col-sm-3 col-md-3">
                 <div class="checkbox">
                   <label>
-                    <input id="check_keyword" type="checkbox" name="check_keyword" value="1" <?php if ($account['check_keyword'] == 1) {echo 'checked="checked" ';}?> /> 开启关键词过滤
+                    <input id="check_keyword" type="checkbox" name="keyword" value="1" <?php if ($account['keyword'] == 1) {echo 'checked="checked" ';}?> /> 开启关键词过滤
                   </label>
                 </div>
               </div>

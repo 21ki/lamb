@@ -6,7 +6,7 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
-class GroupController extends Yaf\Controller_Abstract {
+class GroupsController extends Yaf\Controller_Abstract {
     public function init() {
         $this->request = $this->getRequest();
         $this->response = $this->getResponse();

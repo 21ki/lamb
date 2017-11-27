@@ -44,7 +44,7 @@
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
               <ul class="dropdown-menu">
                 <li><a href="/gateway">落地通道</a></li>
-                <li><a href="/group">通道网关组</a></li>
+                <li><a href="/groups">通道网关组</a></li>
                 <li><a href="/gateway/report">通道统计报表</a></li>
               </ul>
             </li>
@@ -98,7 +98,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">帐号密码:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="password" minlength="6" placeholder="Enter Contacts" required="required">
+                <input type="text" class="form-control" name="password" minlength="6" placeholder="Enter Password" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">接入端帐号密码</span>
@@ -122,7 +122,7 @@
             <div id="route" class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">计费类型:</label>
               <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="charge_type">
+                <select class="form-control" name="charge">
                   <option value="1">提交计费</option>
                   <option value="2">成功计费</option>
                 </select>
@@ -134,7 +134,7 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">客户端地址:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="text" class="form-control" name="ip_addr" placeholder="Enter Telephone" required="required">
+                <input type="text" class="form-control" name="address" placeholder="Enter Address" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">客户端 IP 地址</span>
@@ -143,64 +143,35 @@
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">最大并发:</label>
               <div class="col-xs-3 col-sm-3">
-                <input type="number" class="form-control" name="concurrent" placeholder="Enter Telephone" min="1" required="required">
+                <input type="number" class="form-control" name="concurrent" placeholder="Enter Concurrent" min="1" required="required">
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">通道最大并发数</span>
               </div>
             </div>
-            <div id="route" class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道路由:</label>
-              <div class="col-xs-3 col-sm-3">
-                <select class="form-control" name="route" required="required">
-                  <?php
-                    foreach ($groups as $g) {
-                    echo '<option value="',$g['id'],'">',$g['name'],'</option>';
-                    }
-                    ?>
-                </select>
-              </div>
-              <div class="col-xs-3 col-sm-3">
-                <span class="help-block">接入帐号通道路由</span>
-              </div>
-            </div>
             <div class="form-group">
               <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">通道接入码:</label>
               <div class="col-xs-3 col-sm-3 col-md-3">
-                <input type="number" class="form-control" name="spcode" min="1" placeholder="Enter Telephone" required="required" />
+                <input type="text" class="form-control" name="spcode" minlength="8" placeholder="Enter SpCode" required="required" />
               </div>
               <div class="col-xs-3 col-sm-3">
                 <span class="help-block">客户端通道接入码</span>
               </div>
             </div>
-            <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">扩展码选项:</label>
-              <div class="col-xs-3 col-sm-3 col-md-3">
-                <div class="checkbox">
-                  <label>
-                    <input id="extended" type="checkbox" name="extended" value="1" /> 允许扩展码 (可选参数)
-                  </label>
-                </div>
+            <div id="route" class="form-group">
+              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">黑名单检测:</label>
+              <div class="col-xs-3 col-sm-3">
+                <select class="form-control" name="dbase" style="color:#555555">
+                  <option class="text-muted" value="0">不使用黑名单检测</option>
+                  <?php
+                    foreach ($database as $d) {
+                     echo '<option value="',$d['id'],'">',$d['name'],' (',$d['type'] == 1 ? '黑名单' : '白名单',')</option>';
+                    }
+                  ?>
+                </select>
               </div>
               <div class="col-xs-3 col-sm-3">
-                <span class="help-block">允许自定义扩展子号码</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="col-sm-offset-2 col-xs-2 col-sm-2 control-label">黑白名单:</label>
-              <div class="col-xs-3 col-sm-3 col-md-3">
-                <div class="checkbox">
-                  <label>
-                    <input id="blacklist" type="checkbox" name="policy" value="1" /> 开启黑名单
-                  </label>
-                  &nbsp;&nbsp;
-                  <label>
-                    <input id="whitelist" type="checkbox" name="policy" value="2" /> 开启白名单
-                  </label>
-                </div>
-              </div>
-              <div class="col-xs-3 col-sm-3">
-                <span class="help-block">通道白名单，黑名单</span>
+                <span class="help-block">黑白名单号码检测</span>
               </div>
             </div>
             <div class="form-group">
@@ -208,7 +179,7 @@
               <div class="col-xs-3 col-sm-3 col-md-3">
                 <div class="checkbox">
                   <label>
-                    <input id="check_template" type="checkbox" name="check_template" value="1" /> 开启签名模板校验
+                    <input id="check_template" type="checkbox" name="template" value="1" /> 开启签名模板校验
                   </label>
                 </div>
               </div>
@@ -221,7 +192,7 @@
               <div class="col-xs-3 col-sm-3 col-md-3">
                 <div class="checkbox">
                   <label>
-                    <input id="check_keyword" type="checkbox" name="check_keyword" value="1" /> 开启关键词过滤
+                    <input id="check_keyword" type="checkbox" name="keyword" value="1" /> 开启关键词过滤
                   </label>
                 </div>
               </div>

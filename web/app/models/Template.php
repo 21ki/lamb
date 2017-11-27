@@ -11,7 +11,7 @@ use Tool\Filter;
 class TemplateModel {
     public $db = null;
     private $table = 'template';
-    private $column = ['name', 'contents', 'account', 'description'];
+    private $column = ['rexp', 'name', 'contents'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -43,17 +43,9 @@ class TemplateModel {
 
     public function create(array $data = null) {
         $data = $this->checkArgs($data);
-        
-        if (isset($data['account'])) {
-            $account = new AccountModel();
-            if (!$account->isExist($data['account'])) {
-                return false;
-            }
-        }
-        
+
         if (count($data) == count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(name, contents, account, description) ';
-            $sql .= 'VALUES(:name, :contents, :account, :description)';
+            $sql = 'INSERT INTO ' . $this->table . '(rexp, name, contents) VALUES(:rexp, :name, :contents)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -72,13 +64,6 @@ class TemplateModel {
         $id = intval($id);
         $data = $this->checkArgs($data);
         $column = $this->keyAssembly($data);
-
-        if (isset($data['account'])) {
-            $account = new AccountModel();
-            if (!$account->isExist($data['account'])) {
-                return false;
-            }
-        }
 
         if (count($data) > 0) {
             $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id';
@@ -127,17 +112,14 @@ class TemplateModel {
 
         foreach ($data as $key => $val) {
             switch ($key) {
+            case 'rexp':
+                $res['rexp'] = Filter::string($val, null, 1);
+                break;
             case 'name':
                 $res['name'] = Filter::string($val, null, 3, 24);
                 break;
             case 'contents':
                 $res['contents'] = Filter::string($val, null, 3, 480);
-                break;
-            case 'account':
-                $res['account'] = Filter::number($val, null);
-                break;
-            case 'description':
-                $res['description'] = Filter::string($val, 'no description', 1, 64);
                 break;
             }
         }

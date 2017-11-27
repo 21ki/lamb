@@ -14,6 +14,10 @@ body {
     content: "";
 }
 
+.table .text-left {
+    text-align: left;
+}
+
 .table thead th {
     color: #555555;
 }

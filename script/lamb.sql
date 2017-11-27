@@ -15,29 +15,25 @@ CREATE TABLE company (
 
 CREATE TABLE account (
     id serial PRIMARY KEY NOT NULL,
-    username varchar(64) UNIQUE NOT NULL,
-    password varchar(64) NOT NULL,
-    spcode varchar(64) NOT NULL,
+    username varchar(8) UNIQUE NOT NULL,
+    password varchar(32) NOT NULL,
+    spcode varchar(21) UNIQUE NOT NULL,
     company int NOT NULL,
-    charge_type int NOT NULL,
-    ip_addr varchar(32) NOT NULL,
+    charge int NOT NULL,
+    address varchar(32) NOT NULL,
     concurrent int NOT NULL,
-    route int NOT NULL,
-    extended int NOT NULL,
-    policy int NOT NULL,
-    check_template int NOT NULL,
-    check_keyword int NOT NULL,
+    dbase int NOT NULL,
+    template int NOT NULL,
+    keyword int NOT NULL,
     description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
 CREATE TABLE template (
     id serial PRIMARY KEY NOT NULL,
+    rexp varchar(128) NOT NULL,
     name varchar(64) NOT NULL,
-    contents varchar(512) NOT NULL,
-    account int NOT NULL,
-    description text NOT NULL,
-    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+    contents varchar(512) NOT NULL
 );
 
 CREATE TABLE gateway (
@@ -58,11 +54,10 @@ CREATE TABLE gateway (
 );
 
 CREATE TABLE routing (
-    id serial PRIMARY KEY NOT NULL,
-    name varchar(128) NOT NULL,
-    target varchar(64) NOT NULL,
-    description text NOT NULL,
-    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+    id int UNIQUE NOT NULL,
+    rexp varchar(128) NOT NULL,
+    target int NOT NULL,
+    description text NOT NULL
 );
 
 CREATE TABLE groups (
@@ -79,16 +74,15 @@ CREATE TABLE channels (
 );
 
 CREATE TABLE delivery (
-    id serial PRIMARY KEY NOT NULL,
-    spcode varchar(32) NOT NULL,
-    account int NOT NULL,
-    description text NOT NULL,
-    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+    id int UNIQUE NOT NULL,
+    rexp varchar(128) NOT NULL,
+    target int NOT NULL,
+    description text NOT NULL
 );
 
 CREATE TABLE keyword (
     id serial PRIMARY KEY NOT NULL,
-    val varchar(36) NOT NULL
+    val text NOT NULL
 );
 
 CREATE TABLE pay_logs (
@@ -115,7 +109,7 @@ CREATE TABLE statistical (
 
 CREATE TABLE database (
     id int UNIQUE NOT NULL,
-    name varchar(64) NOT NULL,
+    name varchar(128) NOT NULL,
     type int NOT NULL,
     total bigint NOT NULL,
     description text NOT NULL,
