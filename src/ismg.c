@@ -44,16 +44,20 @@ static lamb_confirmed_t confirmed;
 static unsigned long long total = 0;
 
 int main(int argc, char *argv[]) {
+    bool background = false;
     char *file = "ismg.conf";
-
+    
     int opt = 0;
-    char *optstring = "c:";
+    char *optstring = "c:d";
     opt = getopt(argc, argv, optstring);
 
     while (opt != -1) {
         switch (opt) {
         case 'c':
             file = optarg;
+            break;
+        case 'd':
+            background = true;
             break;
         }
         opt = getopt(argc, argv, optstring);
@@ -65,37 +69,42 @@ int main(int argc, char *argv[]) {
     }
 
     /* Daemon mode */
-    if (config.daemon) {
-        //lamb_daemon();
+    if (background) {
+        lamb_daemon();
     }
 
     /* Signal event processing */
     lamb_signal_processing();
+
+    /* log initialization */
+    lamb_log_init("ismgd");
 
     int err;
 
     /* Redis Cache */
     err = lamb_cache_connect(&rdb, "127.0.0.1", 6379, NULL, 0);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to redis server", 0);
+        lamb_log(LOG_ERR, "can't connect to redis server");
         return -1;
     }
 
     /* Cmpp ISMG Gateway Initialization */
     err = cmpp_init_ismg(&cmpp, config.listen, config.port);
     if (err) {
-        lamb_errlog(config.logfile, "Cmpp server initialization failed", 0);
+        lamb_log(LOG_ERR, "Cmpp server initialization failed");
         return -1;
     }
 
-    fprintf(stderr, "Cmpp server initialization successfull\n");
+    lamb_log(LOG_INFO, "ismgd listen on %s port %d", config.listen, config.port);
+    
+    fprintf(stdout, "Cmpp server initialization successfull\n");
 
     /* Setting Cmpp Socket Parameter */
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
 
     if (config.daemon) {
-        lamb_errlog(config.logfile, "lamb server listen %s port %d", config.listen, config.port);
+        lamb_log(LOG_ERR, "lamb server listen %s port %d", config.listen, config.port);
     } else {
         fprintf(stderr, "lamb server listen %s port %d\n", config.listen, config.port);
     }
@@ -129,7 +138,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 /* new client connection */
                 confd = accept(cmpp->sock.fd, (struct sockaddr *)&clientaddr, &clilen);
                 if (confd < 0) {
-                    lamb_errlog(config.logfile, "Lamb server accept client connect error", 0);
+                    lamb_log(LOG_ERR, "Lamb server accept client connect error");
                     continue;
                 }
 
@@ -143,7 +152,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 ev.events = EPOLLIN;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, confd, &ev);
                 getpeername(confd, (struct sockaddr *)&clientaddr, &clilen);
-                lamb_errlog(config.logfile, "New client connection form %s", inet_ntoa(clientaddr.sin_addr));
+                lamb_log(LOG_INFO, "New client connection form %s", inet_ntoa(clientaddr.sin_addr));
             } else if (events[i].events & EPOLLIN) {
                 /* receive from client data */
                 if ((sockfd = events[i].data.fd) < 0) {
@@ -160,13 +169,13 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     if (err == -1) {
-                        lamb_errlog(config.logfile, "Client closed the connection from %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_INFO, "Client closed the connection from %s", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                         close(sockfd);
                         continue;
                     }
 
-                    lamb_errlog(config.logfile, "Incorrect packet format from client %s", inet_ntoa(clientaddr.sin_addr));
+                    lamb_log(LOG_WARNING, "Incorrect packet format from client %s", inet_ntoa(clientaddr.sin_addr));
                     continue;
                 }
 
@@ -181,7 +190,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     /* Check Cmpp Version */
                     if (version != CMPP_VERSION) {
                         cmpp_connect_resp(&sock, sequenceId, 4);
-                        lamb_errlog(config.logfile, "Version not supported from client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_WARNING, "Version not supported from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
                     
@@ -196,7 +205,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     
                     if (!lamb_cache_has(&rdb, key)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
-                        lamb_errlog(config.logfile, "Incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_WARNING, "Incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
 
@@ -212,7 +221,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             cmpp_connect_resp(&sock, sequenceId, 9);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                             close(sockfd);
-                            lamb_errlog(config.logfile, "Can't fetch account information", 0);
+                            lamb_log(LOG_ERR, "Can't fetch account information");
                             continue;
                         }
 
@@ -221,19 +230,19 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             cmpp_connect_resp(&sock, sequenceId, 10);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                             close(sockfd);
-                            lamb_errlog(config.logfile, "Duplicate login from client %s", inet_ntoa(clientaddr.sin_addr));
+                            lamb_log(LOG_WARNING, "Duplicate login from client %s", inet_ntoa(clientaddr.sin_addr));
                             continue;
                         }
 
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
 
                         /* Login Successfull */
-                        lamb_errlog(config.logfile, "Login successfull from client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_INFO, "Login successfull from client %s", inet_ntoa(clientaddr.sin_addr));
 
                         /* Create Work Process */
                         pid_t pid = fork();
                         if (pid < 0) {
-                            lamb_errlog(config.logfile, "Unable to fork child process", 0);
+                            lamb_log(LOG_ERR, "Unable to fork child process");
                         } else if (pid == 0) {
                             close(epfd);
                             cmpp_ismg_close(cmpp);
@@ -252,10 +261,10 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         cmpp_sock_close(&sock);
                     } else {
                         cmpp_connect_resp(&sock, sequenceId, 3);
-                        lamb_errlog(config.logfile, "Login failed form client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_WARNING, "Login failed form client %s", inet_ntoa(clientaddr.sin_addr));
                     }
                 } else {
-                    lamb_errlog(config.logfile, "Unable to resolve packets from client %s", inet_ntoa(clientaddr.sin_addr));
+                    lamb_log(LOG_WARNING, "Unable to resolve packets from client %s", inet_ntoa(clientaddr.sin_addr));
                 }
             }
         }
@@ -282,7 +291,7 @@ void lamb_work_loop(lamb_client_t *client) {
     /* Redis Cache */
     err = lamb_cache_connect(&rdb, "127.0.0.1", 6379, NULL, 0);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to redis %s server", "127.0.0.1");
+        lamb_log(LOG_ERR, "can't connect to redis %s server", "127.0.0.1");
         return;
     }
 
@@ -296,7 +305,7 @@ void lamb_work_loop(lamb_client_t *client) {
     
     err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_PAIR, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to mt %s server", config.mt_host);
+        lamb_log(LOG_ERR, "can't connect to mt %s server", config.mt_host);
         return;
     }
 
@@ -323,7 +332,7 @@ void lamb_work_loop(lamb_client_t *client) {
             err = cmpp_recv(client->sock, &pack, sizeof(pack));
             if (err) {
                 if (err == -1) {
-                    lamb_errlog(config.logfile, "connection closed by client %s\n", client->addr);
+                    lamb_log(LOG_INFO, "connection closed by client %s\n", client->addr);
                     break;
                 }
                 continue;
@@ -443,7 +452,7 @@ void *lamb_deliver_loop(void *data) {
     
     err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_REQ, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
+        lamb_log(LOG_ERR, "can't connect to MO %s server", config.mo_host);
         pthread_exit(NULL);
     }
     
@@ -485,7 +494,7 @@ void *lamb_deliver_loop(void *data) {
             err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
             if (err) {
                 status.err++;
-                lamb_errlog(config.logfile, "sending 'cmpp_report' packet to client %s failed", client->addr);
+                lamb_log(LOG_WARNING, "sending 'cmpp_report' packet to client %s failed", client->addr);
                 lamb_sleep(3000);
                 goto report;
             }
@@ -499,7 +508,7 @@ void *lamb_deliver_loop(void *data) {
             err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
             if (err) {
                 status.err++;
-                lamb_errlog(config.logfile, "sending 'cmpp_deliver' packet to client %s failed", client->addr);
+                lamb_log(LOG_WARNING, "sending 'cmpp_deliver' packet to client %s failed", client->addr);
                 lamb_sleep(3000);
                 goto deliver;
             }
@@ -539,7 +548,7 @@ void *lamb_stat_loop(void *data) {
             freeReplyObject(reply);
             reply = NULL;
         } else {
-            lamb_errlog(config.logfile, "Lamb exec redis command error", 0);
+            lamb_log(LOG_ERR, "Lamb exec redis command error");
         }
 
         printf("-[ %s ]-> recv: %llu, store: %llu, rep: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n",

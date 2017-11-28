@@ -29,7 +29,6 @@
 #include "keyword.h"
 #include "security.h"
 
-
 static int aid = 0;
 static long long money;
 static lamb_db_t db;
@@ -92,6 +91,9 @@ int main(int argc, char *argv[]) {
 
     /* Resource limit processing */
     lamb_rlimit_processing();
+
+    /* log initialization */
+    lamb_log_init("server");
     
     /* Start main event thread */
     lamb_event_loop();
@@ -112,58 +114,68 @@ void lamb_event_loop(void) {
         printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
     }
 
+    lamb_debug("lamb signal initialization\n");
+
     /* Storage Queue Initialization */
     storage = lamb_queue_new(aid);
     if (!storage) {
-        lamb_errlog(config.logfile, "storage queue initialization failed ", 0);
+        lamb_log(LOG_ERR, "storage queue initialization failed ");
         return;
     }
 
+    lamb_debug("storage queue initialization\n");
+    
     /* Billing Queue Initialization */
     billing = lamb_queue_new(aid);
     if (!billing) {
-        lamb_errlog(config.logfile, "billing queue initialization failed", 0);
+        lamb_log(LOG_ERR, "billing queue initialization failed");
         return;
     }
 
+    lamb_debug("billing queue initialization\n");
+    
     /* Redis Initialization */
     err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
     if (err) {
-        lamb_errlog(config.logfile, "Can't connect to redis server", 0);
+        lamb_log(LOG_ERR, "Can't connect to redis server");
         return;
     }
 
+    lamb_debug("connect to cache server %s\n", config.redis_host);
+    
     /* Cache Cluster Initialization */
     memset(&cache, 0, sizeof(cache));
     lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 1);
     if (cache.len != 7) {
-        lamb_errlog(config.logfile, "connect to cache cluster server failed", 0);
+        lamb_log(LOG_ERR, "connect to cache cluster server failed");
         return;
     }
 
     /* Postgresql Database  */
     err = lamb_db_init(&db);
     if (err) {
-        lamb_errlog(config.logfile, "postgresql database initialization failed", 0);
+        lamb_log(LOG_ERR, "postgresql database initialization failed");
         return;
     }
 
     err = lamb_db_connect(&db, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name);
     if (err) {
-        lamb_errlog(config.logfile, "Can't connect to postgresql database", 0);
+        lamb_log(LOG_ERR, "Can't connect to postgresql database");
         return;
     }
 
+    lamb_debug("connect to postgresql %s\n", config.db_host);
+    
     /* Postgresql Database  */
     err = lamb_db_init(&mdb);
     if (err) {
-        lamb_errlog(config.logfile, "postgresql database initialization failed", 0);
+        lamb_log(LOG_ERR, "postgresql database initialization failed");
         return;
     }
 
     err = lamb_db_connect(&mdb, config.msg_host, config.msg_port, config.msg_user, config.msg_password, config.msg_name);
     if (err) {
-        lamb_errlog(config.logfile, "Can't connect to message database", 0);
+        lamb_log(LOG_ERR, "Can't connect to message database");
         return;
     }
 
@@ -171,10 +183,11 @@ void lamb_event_loop(void) {
     memset(&account, 0, sizeof(account));
     err = lamb_account_fetch(&db, aid, &account);
     if (err) {
-        lamb_errlog(config.logfile, "Can't fetch account '%d' information", aid);
+        lamb_log(LOG_ERR, "Can't fetch account '%d' information", aid);
         return;
     }
 
+    lamb_debug("fetch account %d information\n", aid);
 
     lamb_nn_option opt;
 
@@ -186,7 +199,7 @@ void lamb_event_loop(void) {
     /* Connect to MT server */
     err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_REQ, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to MT %s server", config.mt_host);
+        lamb_log(LOG_ERR, "can't connect to MT %s server", config.mt_host);
         return;
     }
 
@@ -194,7 +207,7 @@ void lamb_event_loop(void) {
     opt.type = LAMB_NN_PUSH;
     err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
+        lamb_log(LOG_ERR, "can't connect to MO %s server", config.mo_host);
         return;
     }
 
@@ -202,7 +215,7 @@ void lamb_event_loop(void) {
     opt.type = LAMB_NN_PUSH;
     err = lamb_nn_connect(&scheduler, &opt, config.scheduler_host, config.scheduler_port, NN_REQ, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to Scheduler %s server", config.scheduler_host);
+        lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config.scheduler_host);
         return;
     }
 
@@ -210,7 +223,7 @@ void lamb_event_loop(void) {
     opt.type = LAMB_NN_PULL;
     err = lamb_nn_connect(&deliverd, &opt, config.deliver_host, config.deliver_port, NN_REQ, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to deliver %s server", config.deliver_host);
+        lamb_log(LOG_ERR, "can't connect to deliver %s server", config.deliver_host);
         return;
     }
     
@@ -218,47 +231,47 @@ void lamb_event_loop(void) {
     memset(&company, 0, sizeof(company));
     err = lamb_company_get(&db, account.company, &company);
     if (err) {
-        lamb_errlog(config.logfile, "Can't fetch id %d company information", account.company);
+        lamb_log(LOG_ERR, "Can't fetch id %d company information", account.company);
         return;
     }
 
     /* Template information Initialization */
     templates = lamb_queue_new(aid);
     if (!templates) {
-        lamb_errlog(config.logfile, "template queue initialization failed ", 0);
+        lamb_log(LOG_ERR, "template queue initialization failed ");
         return;
     }
 
     err = lamb_template_get_all(&db, account.id, templates);
     if (err) {
-        lamb_errlog(config.logfile, "Can't fetch template information", 0);
+        lamb_log(LOG_ERR, "Can't fetch template information");
         return;
     }
 
     /* Fetch group information */
     routing = lamb_queue_new(aid);
     if (!routing) {
-        lamb_errlog(config.logfile, "routing queue initialization failed", 0);
+        lamb_log(LOG_ERR, "routing queue initialization failed");
         return;
     }
 
     err = lamb_get_routing(&db, account.route, routing);
     if (routing->len < 1) {
-        lamb_errlog(config.logfile, "No channel routing available", 0);
+        lamb_log(LOG_ERR, "No channel routing available");
         return;
     }
     
     /* Keyword information Initialization */
     keywords = lamb_queue_new(aid);
     if (!keywords) {
-        lamb_errlog(config.logfile, "keyword queue initialization failed ", 0);
+        lamb_log(LOG_ERR, "keyword queue initialization failed ");
         return;
     }
 
     if (account.check_keyword) {
         err = lamb_keyword_get_all(&db, keywords);
         if (err) {
-            lamb_errlog(config.logfile, "Can't fetch keyword information", 0);
+            lamb_log(LOG_ERR, "Can't fetch keyword information");
         }
     }
 
@@ -318,7 +331,7 @@ void *lamb_work_loop(void *data) {
     
     err = lamb_cpu_affinity(pthread_self());
     if (err) {
-        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
+        lamb_log(LOG_WARNING, "Can't set thread cpu affinity");
     }
     
     req.type = LAMB_REQ;
@@ -675,7 +688,7 @@ void *lamb_billing_loop(void *data) {
         err = lamb_company_billing(&rdb, bill->id, bill->money, &money);
         pthread_mutex_unlock(&(rdb.lock));
         if (err) {
-            lamb_errlog(config.logfile, "Account %d billing money %d failure", bill->id, bill->money);
+            lamb_log(LOG_ERR, "Account %d billing money %d failure", bill->id, bill->money);
         }
 
         free(bill);
@@ -691,7 +704,7 @@ void *lamb_stat_loop(void *data) {
 
     err = lamb_cpu_affinity(pthread_self());
     if (err) {
-        lamb_errlog(config.logfile, "Can't set thread cpu affinity", 0);
+        lamb_log(LOG_WARNING, "Can't set thread cpu affinity");
     }
 
     while (true) {

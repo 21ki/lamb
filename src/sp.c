@@ -75,6 +75,9 @@ int main(int argc, char *argv[]) {
     /* Resource limit processing */
     lamb_rlimit_processing();
 
+    /* log initialization */
+    lamb_log_init("sp");
+    
     /* Start main event processing */
     lamb_event_loop();
 

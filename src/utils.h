@@ -8,10 +8,18 @@
 #ifndef _LAMB_UTILS_H
 #define _LAMB_UTILS_H
 
+#include <stdio.h>
 #include <stdbool.h>
+#include <syslog.h>
 #include <pthread.h>
 
-#define lamb_errlog(f, fmt, ...) lamb_log_error(f, __FILE__, __LINE__, fmt, __VA_ARGS__)
+#ifdef _DEBUG
+#define lamb_debug(...) fprintf(stderr, "%s:%d ", __FILE__, __LINE__);fprintf(stderr, __VA_ARGS__)
+#else
+#define lamb_debug(...)
+#endif
+
+#define lamb_log(...) syslog(__VA_ARGS__)
 
 #define LAMB_SUBMIT  1
 #define LAMB_DELIVER 2
@@ -86,7 +94,6 @@ void lamb_sleep(unsigned long long milliseconds);
 void lamb_msleep(unsigned long long microsecond);
 unsigned long long lamb_now_microsecond(void);
 void lamb_flow_limit(unsigned long long *start, unsigned long long *now, unsigned long long *next, int *count, int limit);
-void lamb_log_error(const char *logfile, char *file, int line, const char *fmt, ...);
 unsigned short lamb_sequence(void);
 char *lamb_strdup(const char *str);
 void lamb_start_thread(void *(*func)(void *), void *arg, int count);
@@ -104,5 +111,6 @@ long lamb_get_cpu(void);
 int lamb_cpu_affinity(pthread_t thread);
 int lamb_hp_parse(char *str, char *host, int *port);
 int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, long millisecond);
+void lamb_log_init(const char *ident);
 
 #endif
