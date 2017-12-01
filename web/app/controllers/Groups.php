@@ -10,24 +10,33 @@ class GroupsController extends Yaf\Controller_Abstract {
     public function init() {
         $this->request = $this->getRequest();
         $this->response = $this->getResponse();
+        $this->group = new GroupModel();
     }
 
     public function indexAction() {
-        $group = new GroupModel();
-        $this->getView()->assign('groups', $group->getAll());
+        $this->getView()->assign('groups', $this->group->getAll());
 
         return true;
     }
 
     public function createAction() {
+        $this->group->create($this->request->getPost());
+        $this->response->setRedirect('/groups');
+        $this->response->response();
         return false;
     }
 
     public function deleteAction() {
+        $this->group->delete($this->request->getQuery('id', null));
         return false;
     }
 
-    public function updateAction() {
+    public function changeAction() {
+        $this->group->change($this->request->getPost('id', null),
+                             $this->request->getPost());
+        $this->response->setRedirect('/groups');
+        $this->response->response();
+
         return false;
     }
 }

@@ -9,12 +9,16 @@
 use Tool\Filter;
 
 class DeliveryController extends Yaf\Controller_Abstract {
+    public function init() {
+        $this->request = $this->getRequest();
+        $this->response = $this->getResponse();
+    }
+    
     public function indexAction() {
-        $request = $this->getRequest();
         $delivery = new DeliveryModel();
         $account = new AccountModel();
-        $accounts = [];
 
+        $accounts = [];
         foreach ($account->getAll() as $a) {
             $accounts[$a['id']] = $a;
         }

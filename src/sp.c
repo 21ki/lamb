@@ -69,15 +69,17 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
+    if (setenv("logfile", config.logfile, 1) == -1) {
+        fprintf(stderr, "setenv error: %s\n", strerror(errno));
+        return -1;
+    }
+    
     /* Signal event processing */
     lamb_signal_processing();
 
     /* Resource limit processing */
     lamb_rlimit_processing();
 
-    /* log initialization */
-    lamb_log_init("sp");
-    
     /* Start main event processing */
     lamb_event_loop();
 
@@ -94,7 +96,7 @@ void lamb_event_loop(void) {
     /* Storage Initialization */
     storage = lamb_queue_new(config.id);
     if (!storage) {
-        lamb_errlog(config.logfile, "storage queue initialization failed", 0);
+        lamb_log(LOG_ERR, "storage queue initialization failed");
         return;
     }
 
@@ -102,7 +104,7 @@ void lamb_event_loop(void) {
     memset(&cache, 0, sizeof(cache));
     lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 2);
     if (cache.len != 7) {
-        lamb_errlog(config.logfile, "connect to cache cluster server failed", 0);
+        lamb_log(LOG_ERR, "connect to cache cluster server failed");
         return;
     }
     
@@ -115,7 +117,7 @@ void lamb_event_loop(void) {
 
     err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_REQ, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to MT %s server", config.mt_host);
+        lamb_log(LOG_ERR, "can't connect to MT %s server", config.mt_host);
         return;
     }
     
@@ -123,7 +125,7 @@ void lamb_event_loop(void) {
     opt.type = LAMB_NN_PUSH;
     err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR, config.timeout);
     if (err) {
-        lamb_errlog(config.logfile, "can't connect to MO %s server", config.mo_host);
+        lamb_log(LOG_ERR, "can't connect to MO %s server", config.mo_host);
         return;
     }
     
@@ -301,11 +303,11 @@ void *lamb_deliver_loop(void *data) {
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, &msgId, 8);
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_result, &result, 1);
 
-            //printf("-> [received] message response id: %llu, msgId: %llu, result: %u\n", id, msgId, result);
+            //lamb_debug("message response id: %llu, msgId: %llu, result: %u\n", id, msgId, result);
             
             if ((confirmed.sequenceId != sequenceId) || (result != 0)) {
                 status.err++;
-                printf("-> [received] message response msgId: %llu, result: %u\n", msgId, result);
+                lamb_debug("message response msgId: %llu, result: %u\n", msgId, result);
                 break;
             }
 
@@ -360,7 +362,7 @@ void *lamb_deliver_loop(void *data) {
 
                 lamb_queue_push(storage, report);
                 
-                //printf("-> [received] msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n", report->id, report->phone, stat, report->submitTime, report->doneTime);
+                //lamb_debug("msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n", report->id, report->phone, stat, report->submitTime, report->doneTime);
                 
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
             } else {
@@ -390,7 +392,7 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->content, 160, deliver->length);
 
                 /* 
-                   printf("-> [deliver] msgId: %llu, phone: %s, spcode: %s, serviceId: %s, msgFmt: %d, length: %d\n",
+                   lamb_debug("msgId: %llu, phone: %s, spcode: %s, serviceId: %s, msgFmt: %d, length: %d\n",
                    deliver->id, deliver->phone, deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length);
                 */
 
@@ -402,7 +404,7 @@ void *lamb_deliver_loop(void *data) {
         case CMPP_ACTIVE_TEST_RESP:
             if (heartbeat.sequenceId == sequenceId) {
                 heartbeat.count = 0;
-                //printf("-> [active] Receive sequenceId: %u keepalive response\n", sequenceId);
+                //lamb_debug("Receive sequenceId: %u keepalive response\n", sequenceId);
             }
             break;
         }
@@ -417,11 +419,11 @@ void *lamb_cmpp_keepalive(void *data) {
 
     while (true) {
         sequenceId = heartbeat.sequenceId = cmpp_sequence();
-        //printf("-> [active] sending sequenceId: %u keepalive request\n", sequenceId);
+        //lamb_debug("sending sequenceId: %u keepalive request\n", sequenceId);
         
         err = cmpp_active_test(&cmpp.sock, sequenceId);
         if (err) {
-            lamb_errlog(config.logfile, "sending keepalive packet to %s gateway failed", config.host);
+            lamb_log(LOG_ERR, "sending keepalive packet to %s gateway failed", config.host);
         }
 
         heartbeat.count++;
@@ -489,11 +491,11 @@ void *lamb_work_loop(void *data) {
 }
 
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
-    lamb_errlog(config->logfile, "Reconnecting to gateway %s ...", config->host);
+    lamb_log(LOG_ERR, "Reconnecting to gateway %s ...", config->host);
     while (lamb_cmpp_init(cmpp, config) != 0) {
         lamb_sleep(config->interval * 1000);
     }
-    lamb_errlog(config->logfile, "Connect to gateway %s successfull", config->host);
+    lamb_log(LOG_ERR, "Connect to gateway %s successfull", config->host);
     return;
 }
 
@@ -512,7 +514,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     /* Initialization cmpp connection */
     err = cmpp_init_sp(cmpp, config->host, config->port);
     if (err) {
-        lamb_errlog(config->logfile, "Can't connect to gateway %s server", config->host);
+        lamb_log(LOG_ERR, "Can't connect to gateway %s server", config->host);
         return 1;
     }
 
@@ -520,13 +522,13 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     sequenceId = cmpp_sequence();
     err = cmpp_connect(&cmpp->sock, sequenceId, config->user, config->password);
     if (err) {
-        lamb_errlog(config->logfile, "Sending connection request to %s failed", config->host);
+        lamb_log(LOG_ERR, "Sending connection request to %s failed", config->host);
         return 2;
     }
 
     err = cmpp_recv_timeout(&cmpp->sock, &pack, sizeof(pack), config->recv_timeout);
     if (err) {
-        lamb_errlog(config->logfile, "Receive gateway response packet from %s failed", config->host);
+        lamb_log(LOG_ERR, "Receive gateway response packet from %s failed", config->host);
         return 3;
     }
 
@@ -541,25 +543,25 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
             cmpp->ok = true;
             goto success;
         case 1:
-            lamb_errlog(config->logfile, "Incorrect protocol packets", 0);
+            lamb_log(LOG_ERR, "Incorrect protocol packets");
             break;
         case 2:
-            lamb_errlog(config->logfile, "Illegal source address", 0);
+            lamb_log(LOG_ERR, "Illegal source address");
             break;
         case 3:
-            lamb_errlog(config->logfile, "Authenticator failed", 0);
+            lamb_log(LOG_ERR, "Authenticator failed");
             break;
         case 4:
-            lamb_errlog(config->logfile, "Protocol version is too high", 0);
+            lamb_log(LOG_ERR, "Protocol version is too high");
             break;
         default:
-            lamb_errlog(config->logfile, "Cmpp unknown error code: %d", status);
+            lamb_log(LOG_ERR, "Cmpp unknown error code: %d", status);
             break;
         }
 
         return 4;
     } else {
-        lamb_errlog(config->logfile, "Incorrect response packet from %s gateway", config->host);
+        lamb_log(LOG_ERR, "Incorrect response packet from %s gateway", config->host);
         return 5;
     }
     
@@ -611,10 +613,10 @@ void *lamb_stat_loop(void *data) {
            if (reply != NULL) {
            freeReplyObject(reply);
            } else {
-           lamb_errlog(config.logfile, "lamb exec redis command error", 0);
+           lamb_log(LOG_ERR, "lamb exec redis command error");
            }
         */
-        printf("-> [status] queue: %llu, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu, err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv, status.timeo, status.err);
+        lamb_debug("queue: %llu, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu, err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv, status.timeo, status.err);
 
         total = 0;
         sleep(5);

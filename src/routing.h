@@ -10,14 +10,13 @@
 
 #include "db.h"
 #include "queue.h"
-#include "channel.h"
-
-#define LAMB_MAX_ROUTING 1024
 
 typedef struct {
     int id;
+    char rexp[128];
+    int target;
 } lamb_routing_t;
 
-int lamb_get_routing(lamb_db_t *db, int id, lamb_queue_t *routing);
+int lamb_get_routing(lamb_db_t *db, lamb_queue_t *routings);
 
 #endif

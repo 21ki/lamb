@@ -73,11 +73,13 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
+    if (setenv("logfile", config.logfile, 1) == -1) {
+        fprintf(stderr, "setenv error: %s\n", strerror(errno));
+        return -1;
+    }
+    
     /* Signal event processing */
     lamb_signal_processing();
-
-    /* log initialization */
-    lamb_log_init("ismgd");
 
     int err;
 

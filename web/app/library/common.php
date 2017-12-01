@@ -17,3 +17,7 @@ function lamb_output($val = null, $len = -1) {
 function str2int(&$val) {
     $val = intval($val);
 }
+
+function isMethod($request = null, $method = null) {
+    return (strcasecmp($request, $method) == 0) ? true : false;
+}

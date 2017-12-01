@@ -52,41 +52,13 @@ body {
     background-color: #ce514e;
 }
 
-.list-group-item .add {
-    margin-left: 15px;
+form {
+    margin-top: 25px;
 }
 
 form .form-group button, form .form-group a {
-    margin-right: 0px;
-}
-
-form div .list-group a {
-    width: 15px;
-}
-
-.list-group .list-group-item .badge {
-    margin-right: 10px;
-}
-
-.weight {
     width: 80px;
+    margin-top: 10px;
+    margin-right: 20px;
 }
 
-#submit, #cancel, #add {
-    margin-right: 18px;
-}
-
-.statistics form {
-    padding-left: 18px;
-    padding-right: 18px;
-}
-
-.statistics #query {
-    margin-right: 15px;
-    margin-top: 8px;
-}
-
-.statistics .help {
-    margin-left: 15px;
-    padding-top: 13px;
-}

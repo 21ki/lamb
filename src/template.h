@@ -13,13 +13,12 @@
 
 typedef struct {
     int id;
-    int account;
+    char rexp[128];
     char name[64];
     char contents[512];
 } lamb_template_t;
 
-int lamb_template_get(lamb_db_t *db, int id, lamb_template_t *template);
-int lamb_template_get_all(lamb_db_t *db, int id, lamb_queue_t *templates);
+int lamb_get_template(lamb_db_t *db, lamb_queue_t *templates);
 bool lamb_template_check(lamb_template_t *template, char *content, int len);
     
 #endif

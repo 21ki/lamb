@@ -14,7 +14,7 @@ int lamb_get_delivery(lamb_db_t *db, lamb_queue_t *deliverys) {
     char sql[128];
     PGresult *res = NULL;
 
-    sprintf(sql, "SELECT id, account, spcode FROM delivery");
+    sprintf(sql, "SELECT id, rexp, target FROM delivery");
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -32,8 +32,8 @@ int lamb_get_delivery(lamb_db_t *db, lamb_queue_t *deliverys) {
         delivery = (lamb_delivery_t *)calloc(1, sizeof(lamb_delivery_t));
         if (delivery) {
             delivery->id = atoi(PQgetvalue(res, i, 0));
-            delivery->account = atoi(PQgetvalue(res, i, 1));
-            strncpy(delivery->spcode, PQgetvalue(res, i, 2), 20);
+            strncpy(delivery->rexp, PQgetvalue(res, i, 1), 127);
+            delivery->target = atoi(PQgetvalue(res, i, 2));
             lamb_queue_push(deliverys, delivery);
         }
     }

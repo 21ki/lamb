@@ -69,6 +69,11 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
+    if (setenv("logfile", config.logfile, 1) == -1) {
+        fprintf(stderr, "setenv error: %s", strerror(errno));
+        return -1;
+    }
+
     /* Signal event processing */
     lamb_signal_processing();
 
@@ -89,14 +94,14 @@ void lamb_event_loop(void) {
     /* Client Queue Pools Initialization */
     pools = lamb_pool_new();
     if (!pools) {
-        lamb_errlog(config.logfile, "node pool initialization failed", 0);
+        lamb_log(LOG_ERR, "node pool initialization failed");
         return;
     }
 
     /* Server Initialization */
     fd = nn_socket(AF_SP, NN_REP);
     if (fd < 0) {
-        lamb_errlog(config.logfile, "socket %s", nn_strerror(nn_errno()));
+        lamb_log(LOG_ERR, "socket %s", nn_strerror(nn_errno()));
         return;
     }
 
@@ -104,7 +109,7 @@ void lamb_event_loop(void) {
 
     if (nn_bind(fd, addr) < 0) {
         nn_close(fd);
-        lamb_errlog(config.logfile, "bind %s", nn_strerror(nn_errno()));
+        lamb_log(LOG_ERR, "bind %s", nn_strerror(nn_errno()));
         return;
     }
 
@@ -126,7 +131,7 @@ void lamb_event_loop(void) {
         
         if (rc != len) {
             nn_freemsg(buf);
-            lamb_errlog(config.logfile, "Invalid request from client", 0);
+            lamb_log(LOG_WARNING, "Invalid request from client");
             continue;
         }
 
@@ -134,7 +139,7 @@ void lamb_event_loop(void) {
 
         if (req->id < 1) {
             nn_freemsg(buf);
-            lamb_errlog(config.logfile, "Invalid request from client", 0);
+            lamb_log(LOG_WARNING, "Invalid request from client");
             continue;
         }
 
@@ -175,7 +180,7 @@ void *lamb_push_loop(void *arg) {
     
     client = (lamb_req_t *)arg;
 
-    printf("-> new client from %s connectd\n", client->addr);
+    lamb_debug("new client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
     queue = lamb_pool_find(pools, client->id);
@@ -188,7 +193,7 @@ void *lamb_push_loop(void *arg) {
 
     if (!queue) {
         nn_freemsg((char *)client);
-        lamb_errlog(config.logfile, "can't create queue for client %s", client->addr);
+        lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
         pthread_exit(NULL);
     }
     
@@ -197,7 +202,7 @@ void *lamb_push_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
     if (err) {
         pthread_cond_signal(&cond);
-        lamb_errlog(config.logfile, "lamb can't find available port", 0);
+        lamb_log(LOG_ERR, "lamb can't find available port", 0);
         pthread_exit(NULL);
     }
 
@@ -253,8 +258,8 @@ void *lamb_push_loop(void *arg) {
 
     nn_close(fd);
     nn_freemsg((char *)client);
-    printf("-> connection closed from %s\n", client->addr);
-    lamb_errlog(config.logfile, "connection closed from %s", client->addr);
+    lamb_debug("connection closed from %s\n", client->addr);
+    lamb_log(LOG_INFO, "connection closed from %s", client->addr);
 
     pthread_exit(NULL);
 }
@@ -270,7 +275,7 @@ void *lamb_pull_loop(void *arg) {
     
     client = (lamb_req_t *)arg;
 
-    printf("-> new client from %s connectd\n", client->addr);
+    lamb_debug("new client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
     queue = lamb_pool_find(pools, client->id);
@@ -283,7 +288,7 @@ void *lamb_pull_loop(void *arg) {
 
     if (!queue) {
         nn_freemsg((char *)client);
-        lamb_errlog(config.logfile, "can't create queue for client %s", client->addr);
+        lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
         pthread_exit(NULL);
     }
     
@@ -292,7 +297,7 @@ void *lamb_pull_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
-        lamb_errlog(config.logfile, "lamb can't find available port", 0);
+        lamb_log(LOG_ERR, "lamb can't find available port", 0);
         pthread_exit(NULL);
     }
 
@@ -358,8 +363,8 @@ void *lamb_pull_loop(void *arg) {
 
     nn_close(fd);
     nn_freemsg((char *)client);
-    printf("-> connection closed from %s\n", client->addr);
-    lamb_errlog(config.logfile, "connection closed from %s", client->addr);
+    lamb_debug("connection closed from %s\n", client->addr);
+    lamb_log(LOG_INFO, "connection closed from %s", client->addr);
 
     pthread_exit(NULL);
 }
@@ -382,7 +387,7 @@ void *lamb_stat_loop(void *arg) {
     while (true) {
         queue = pools->head;
         while (queue != NULL) {
-            printf("-> queue: %d, len: %lld\n", queue->id, queue->len);
+            lamb_debug("queue: %d, len: %lld\n", queue->id, queue->len);
             queue = queue->next;
         }
 

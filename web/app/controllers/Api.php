@@ -12,13 +12,15 @@ class ApiController extends Yaf\Controller_Abstract {
         if (!$this->request->isXmlHttpRequest()) {
             exit;
         }
+
+        $this->request = $this->getRequest();
     }
 
-    public function accountsAction() {
+    public function accountAction() {
         $account = new AccountModel();
         $response['status'] = 200;
         $response['message'] = 'success';
-        $response['data'] = $account->getAll();
+        $response['data'] = $account->get($this->request->getQuery('id', null));
 
         header('Content-type: application/json');
         echo json_encode($response);
@@ -26,12 +28,28 @@ class ApiController extends Yaf\Controller_Abstract {
         return false;
     }
     
+    public function accountsAction() {
+        $account = new AccountModel();
+        $response['status'] = 200;
+        $response['message'] = 'success';
+        $response['data'] = $account->getAll();
+
+        foreach ($response['data'] as &$val) {
+            unset($val['password']);
+        }
+        
+        header('Content-type: application/json');
+        echo json_encode($response);
+
+        return false;
+    }
+    
     public function routingAction() {
-        $id = $this->request->getQuery('id', null);
         $routing = new RoutingModel();
         $response['status'] = 200;
         $response['message'] = 'success';
-        $response['data'] = $routing->get($id);
+        $response['data'] = $routing->get($this->request->getQuery('id', null));
+
         header('Content-type: application/json');
         echo json_encode($response);
 
@@ -68,6 +86,10 @@ class ApiController extends Yaf\Controller_Abstract {
         $response['message'] = 'success';
         $response['data'] = $gateway->getAll();
 
+        foreach ($response['data'] as &$g) {
+            unset($g['password']);
+        }
+        
         header('Content-type: application/json');
         echo json_encode($response);
 
@@ -79,6 +101,44 @@ class ApiController extends Yaf\Controller_Abstract {
         $response['status'] = 200;
         $response['message'] = 'success';
         $response['data'] = $template->get($this->request->getQuery('id'));
+
+        header('Content-type: application/json');
+        echo json_encode($response);
+
+        return false;
+    }
+
+    public function templatesAction() {
+        if ($this->request->isGet()) {
+            $template = new TemplateModel();
+            $response['status'] = 200;
+            $response['message'] = 'success';
+            $response['data'] = $template->getAll();
+
+            header('Content-type: application/json');
+            echo json_encode($response);
+        }
+
+        return false;
+    }
+
+    public function groupAction() {
+        $group = new GroupModel();
+        $response['status'] = 200;
+        $response['message'] = 'success';
+        $response['data'] = $group->get($this->request->getQuery('id', null));
+
+        header('Content-type: application/json');
+        echo json_encode($response);
+
+        return false;
+    }
+
+    public function groupsAction() {
+        $group = new GroupModel();
+        $response['status'] = 200;
+        $response['message'] = 'success';
+        $response['data'] = $group->getAll();
 
         header('Content-type: application/json');
         echo json_encode($response);

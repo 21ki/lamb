@@ -10,58 +10,48 @@ class RoutingController extends Yaf\Controller_Abstract {
     public function init() {
         $this->request = $this->getRequest();
         $this->response = $this->getResponse();
+        $this->routing = new RoutingModel();
     }
 
     public function indexAction() {
-        $request = $this->getRequest();
-        $routing = new RoutingModel();
-        $routings = $routing->getAll();
+        $group = new GroupModel();
 
-        foreach ($routings as &$r) {
-            $r['total'] = $routing->total($r['id']);
+        $groups = [];
+        foreach ($group->getAll() as $g) {
+            $groups[$g['id']] = $g;
         }
-
-        $gateway = new GatewayModel();
         
-        $this->getView()->assign('groups', $routings);
-        $this->getView()->assign('gateways', $gateway->getAll());
+        $this->getView()->assign('routings', $this->routing->getAll());
+        $this->getView()->assign('groups', $groups);
 
         return true;
     }
 
     public function createAction() {
         if ($this->request->isPost()) {
-            $routing = new RoutingModel();
-            $routing->create($this->request->getPost());
-            $response = $this->getResponse();
-            $response->setRedirect('/routing');
-            $response->response();
+            $this->routing->create($this->request->getPost());
         }
-        return false;
-    }
-    public function deleteAction() {
-        $success = false;
-        $id = $this->request->getQuery('id');
-        $routing = new RoutingModel();
-        if ($routing->delete($id)) {
-            $channel = new ChannelModel();
-            $success = $channel->deleteAll($id);
-        }
-        
-        $response['status'] = $success ? 200 : 400;
-        $response['message'] = $success ? 'success' : 'failed';
-        header('Content-type: application/json');
-        echo json_encode($response);
-        return false;
-    }
-    public function updateAction() {
-        if ($this->request->isPost()) {
-            $routing = new RoutingModel();
-            $id = $this->request->getPost('id', null);
-            $routing->change($id, $this->request->getPost());
-        }
+
         $this->response->setRedirect('/routing');
         $this->response->response();
+
+        return false;
+    }
+
+    public function deleteAction() {
+        $this->routing->delete($this->request->getQuery('id', null));
+        return false;
+    }
+
+    public function updateAction() {
+        if ($this->request->isPost()) {
+            $id = $this->request->getPost('id', null);
+            $this->routing->change($id, $this->request->getPost());
+        }
+
+        $this->response->setRedirect('/routing');
+        $this->response->response();
+
         return false;
     }
 }

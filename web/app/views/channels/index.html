@@ -8,7 +8,7 @@
     <title>Gateway Group - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/routing.css">
+    <link type="text/css" rel="stylesheet" href="/css/channels.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -77,7 +77,7 @@
         <ol class="breadcrumb">
           <li><a href="#">Home</a></li>
           <li class="active">Channels</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 添 加</a></li>
+          <li class="pull-right add"><button class="btn btn-success btn-xs" onclick="show(<?php echo $gid;?>)"><span class="glyphicon glyphicon-plus"></span> 添 加</button></li>
         </ol>
       </div>
       <div class="row">
@@ -85,142 +85,103 @@
           <thead>
             <tr><th>#</th><th>通道名称</th><th>优先级</th><th>运营商类型</th><th>删 除</th><th>编 辑</th></tr>
           </thead>
-          <tbody>
+          <tbody id="data-list">
             <?php
               foreach ($channels as $c) {
-                $operator = (intval($c['operator']) & 1) ? '移动 ' : '';
-                $operator .= (intval($c['operator']) & (1 << 1)) ? '电信 ' : '';
-                $operator .= (intval($c['operator']) & (1 << 2)) ? '联通 ' : '';
-                echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',$gateways[$c['id']],'</td><td>',$c['weight'],'</td><td>',$operator,'</td>';
-                echo '<td><button class="btn btn-default btn-xs" onclick="deleteChannel(',$c['id'],',',$c['rid'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
-                echo '<td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="edit(',$c['id'],',',$c['rid'],',',"'",$gateways[$c['id']],"'",')"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>';
-              }
-            ?>
-          </tbody>
+              $operator = (intval($c['operator']) & 1) ? '移动 ' : '';
+              $operator .= (intval($c['operator']) & (1 << 1)) ? '电信 ' : '';
+                                                           $operator .= (intval($c['operator']) & (1 << 2)) ? '联通 ' : '';
+                                                                                                        echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',$gateways[$c['id']],'</td><td>',$c['weight'],'</td><td>',$operator,'</td>';
+                                                                                                        echo '<td><button class="btn btn-default btn-xs" onclick="deleteChannel(',$c['id'],',',$c['rid'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
+                                                                                                        echo '<td><a class="btn btn-default btn-xs" href="javascript:void(0)" onclick="edit(',$c['id'],',',$c['rid'],',',"'",$gateways[$c['id']],"'",')"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>';
+                                                                                                        }
+                                                                                                        ?>
+                                                                                                        </tbody>
         </table>
       </div>
     </div>
 </div>
+<script id="new-page" type="text/template">
+  <form class="form-horizontal" action="/channels/create" method="post" style="width:420px">
+    <div class="form-group">
+      <label class="col-sm-3 control-label">通&nbsp;&nbsp;&nbsp;&nbsp;道 </label>
+      <div class="col-sm-8">
+        <input type="hidden" name="gid" value="" />
+        <select id="gateways" class="form-control" name="id" required="required">
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-3 control-label">优先级 </label>
+      <div class="col-sm-8">
+        <input type="number" class="form-control" name="weight" value="1" placeholder="Enter priority" min="1" required="required">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-3 control-label">运营商 </label>
+      <div class="col-sm-8">
+        <div class="checkbox">
+          <label><input type="checkbox" name="cmcc">移动&nbsp;&nbsp;</label>
+          <label><input type="checkbox" name="ctcc">电信&nbsp;&nbsp;</label>
+          <label><input type="checkbox" name="cucc">联通&nbsp;&nbsp;</label>
+          <label><input type="checkbox" name="other">其他&nbsp;&nbsp;</label>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-sm-8">
+        <button type="submit" class="btn btn-success">添 加</button>
+        <button type="button" onclick="layer.closeAll()" class="btn btn-default">取 消</button>
+      </div>
+    </div>
+  </form>
+</script>
+<script id="edit-page" type="text/template">
+  <form class="form-horizontal" action="/channels/update" method="post" style="width:420px">
+    <div class="form-group">
+      <label class="col-sm-3 control-label">通&nbsp;&nbsp;&nbsp;&nbsp;道 </label>
+      <div class="col-sm-8">
+        <input type="hidden" name="id" value="' + channel.id + '">
+        <input type="hidden" name="rid" value="' + channel.rid + '">
+        <select class="form-control" disabled="disabled">
+          <option>' + name + '</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-3 control-label">优先级 </label>
+      <div class="col-sm-8">
+        <input type="number" class="form-control" name="weight" value="' + channel.weight + '" placeholder="Enter priority" min="1" required="required">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-3 control-label">运营商 </label>
+      <div class="col-sm-8">
+        <div class="checkbox">
+          <label><input type="checkbox" name="cmcc"' + ((parseInt(channel.operator) & 1) ? ' checked="checked"' : '') + '>移动&nbsp;&nbsp;</label>
+          <label><input type="checkbox" name="ctcc"' + ((parseInt(channel.operator) & (1 << 1))? ' checked="checked"' : '') + '>电信&nbsp;&nbsp;</label>
+                                                                                            '<label><input type="checkbox" name="cucc"' + ((parseInt(channel.operator) & (1 << 2)) ? ' checked="checked"' : '') + '>联通&nbsp;&nbsp;</label>
+                                                                                                                                                                               '<label><input type="checkbox" name="other"' + ((parseInt(channel.operator) & (1 << 3)) ? ' checked="checked"' : '') + '>其他&nbsp;&nbsp;</label>
+                                                                                                                                                                                                                                                                   </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-sm-8">
+        <button type="submit" class="btn btn-success">保 存</button><a href="javascript:void(0);" onClick="layer.closeAll()" class="btn btn-default">取 消</a>
+      </div>
+    </div>
+  </form>
+</script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
+<script type="text/javascript" src="/js/channels.js"></script>
 <script type="text/javascript">
   $('li.dropdown').mouseover(function() {
     $(this).addClass('open');
   }).mouseout(function() {
     $(this).removeClass('open');
   });
-
-  function show() {
-    var templete = '<form class="form-horizontal" action="/channels/create" method="post" style="width:420px">'+
-        '<div class="form-group">'+
-        '<label class="col-sm-3 control-label">通&nbsp;&nbsp;&nbsp;&nbsp;道 </label>'+
-        '<div class="col-sm-8">'+
-        '<input type="hidden" name="rid" value="<?php echo $rid;?>">'+
-        '<select class="form-control" name="id" required="required">'+
-        <?php
-          foreach ($gateways as $key => $val) {
-            echo "'<option value=" , '"' , $key , '"',  ">" , $val , "</option>'+\n";
-          }
-        ?>
-        '</select>'+
-        '</div>'+
-        '</div>'+
-        '<div class="form-group">'+
-        '<label class="col-sm-3 control-label">优先级 </label>'+
-        '<div class="col-sm-8">'+
-        '<input type="number" class="form-control" name="weight" value="1" placeholder="Enter priority" min="1" required="required">'+
-        '</div>'+
-        '</div>'+
-        '<div class="form-group">'+
-        '<label class="col-sm-3 control-label">运营商 </label>'+
-        '<div class="col-sm-8">'+
-        '<div class="checkbox">' +
-        '<label><input type="checkbox" name="cmcc">移动&nbsp;&nbsp;</label>'+
-        '<label><input type="checkbox" name="ctcc">电信&nbsp;&nbsp;</label>'+
-        '<label><input type="checkbox" name="cucc">联通&nbsp;&nbsp;</label>'+
-        '<label><input type="checkbox" name="other">其他&nbsp;&nbsp;</label>'+
-        '</div>' +
-        '</div>'+
-        '</div>'+
-        '<div class="form-group">'+
-        '<div class="col-sm-offset-3 col-sm-8">'+
-        '<button type="submit" class="btn btn-success">添 加</button><a href="javascript:void(0);" onClick="layer.closeAll()" class="btn btn-default">取 消</a>'+
-        '</div>'+
-        '</div>'+
-        '</form>';
-
-    layer.open({
-      type: 1,
-      title: '添加通道',
-      area: ['435px', '285px'],
-      content: templete
-    });
-  }
-
-  function edit(id, rid, name) {
-        var url = '/api/channel?id=' + id + '&rid=' + rid;
-        $.get(url, function(resp, stat) {
-          if (stat == 'success') {
-            var channel = resp.data;
-            var templete = '<form class="form-horizontal" action="/channels/update" method="post" style="width:420px">'+
-            '<div class="form-group">'+
-            '<label class="col-sm-3 control-label">通&nbsp;&nbsp;&nbsp;&nbsp;道 </label>'+
-            '<div class="col-sm-8">'+
-            '<input type="hidden" name="id" value="' + channel.id + '">'+
-            '<input type="hidden" name="rid" value="' + channel.rid + '">'+
-            '<select class="form-control" disabled="disabled">'+
-            '<option>' + name + '</option>'+
-            '</select>'+
-            '</div>'+
-            '</div>'+
-            '<div class="form-group">'+
-            '<label class="col-sm-3 control-label">优先级 </label>'+
-            '<div class="col-sm-8">'+
-            '<input type="number" class="form-control" name="weight" value="' + channel.weight + '" placeholder="Enter priority" min="1" required="required">'+
-            '</div>'+
-            '</div>'+
-            '<div class="form-group">'+
-            '<label class="col-sm-3 control-label">运营商 </label>'+
-            '<div class="col-sm-8">'+
-            '<div class="checkbox">' +
-            '<label><input type="checkbox" name="cmcc"' + ((parseInt(channel.operator) & 1) ? ' checked="checked"' : '') + '>移动&nbsp;&nbsp;</label>'+
-            '<label><input type="checkbox" name="ctcc"' + ((parseInt(channel.operator) & (1 << 1))? ' checked="checked"' : '') + '>电信&nbsp;&nbsp;</label>'+
-            '<label><input type="checkbox" name="cucc"' + ((parseInt(channel.operator) & (1 << 2)) ? ' checked="checked"' : '') + '>联通&nbsp;&nbsp;</label>'+
-            '<label><input type="checkbox" name="other"' + ((parseInt(channel.operator) & (1 << 3)) ? ' checked="checked"' : '') + '>其他&nbsp;&nbsp;</label>'+
-            '</div>' +
-            '</div>'+
-            '</div>'+
-            '<div class="form-group">'+
-            '<div class="col-sm-offset-3 col-sm-8">'+
-            '<button type="submit" class="btn btn-success">保 存</button><a href="javascript:void(0);" onClick="layer.closeAll()" class="btn btn-default">取 消</a>'+
-            '</div>'+
-            '</div>'+
-            '</form>';
-
-            layer.open({
-              type: 1,
-              title: '编辑通道',
-              area: ['435px', '285px'],
-              content: templete
-            });
-         }
-       });
-  }
-
-  function deleteChannel(id, rid) {
-  layer.confirm('亲，确定要删除？', {
-      btn: ['是','否'], icon: 3
-    }, function(){
-      var url = '/channels/delete?id=' + id + '&rid=' + rid;
-      $.get(url, function(){
-        layer.msg('删除成功!', {icon: 1, time: 1000});
-        setTimeout(function() {
-          window.location.reload();
-        }, 1000);
-      });
-    });
-  }
 </script>
 </body>
 </html>

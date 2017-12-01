@@ -36,7 +36,7 @@ class AccountModel {
 
         return null;
     }
-    
+
     public function getAll() {
         $result = [];
         $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY company, create_time';

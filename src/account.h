@@ -23,13 +23,11 @@ typedef struct {
     char spcode[24];
     int company;
     int charge;
-    char ip_addr[16];
-    int route;
-    bool extended;
+    char address[16];
     int concurrent;
-    int policy;
-    bool check_template;
-    bool check_keyword;
+    int dbase;
+    bool template;
+    bool keyword;
 } lamb_account_t;
 
 typedef struct {

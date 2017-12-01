@@ -1,0 +1,64 @@
+body {
+    color: #555555;
+    font-size: 16px;
+    background-color: #ffffff;
+    font-family: "lucida grande", "lucida sans unicode", lucida, helvetica, "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+}
+
+.breadcrumb {
+    padding-left: 18px;
+    padding-right: 18px;
+}
+
+.breadcrumb .pull-right:before {
+    content: "";
+}
+
+.table .text-left {
+    text-align: left;
+}
+
+.table thead th {
+    color: #555555;
+}
+
+.table>thead>tr>th, .table>tbody>tr>td {
+    text-align: center;
+    border-top: 1px solid #fafafa;
+    border-bottom: 1px solid #fafafa;
+}
+
+.channel-groups thead tr th {
+    border-top: 2px solid #ddd;
+}
+
+.channel-groups tbody tr td {
+    border-top: 2px solid #eeeeee;
+}
+
+.badge-default {
+    background-color: #999999;
+}
+
+.badge-success {
+    background-color: #5da55d;
+}
+
+.badge-warning {
+    background-color: #efa133;
+}
+
+.badge-danger {
+    background-color: #ce514e;
+}
+
+form {
+    margin-top: 25px;
+}
+
+form .form-group button, form .form-group a {
+    width: 80px;
+    margin-top: 10px;
+    margin-right: 20px;
+}
+

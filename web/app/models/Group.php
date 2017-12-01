@@ -17,9 +17,10 @@ class GroupModel {
         $this->db = Yaf\Registry::get('db');
     }
 
-    public function get(int $id = null) {
+    public function get($id = null) {
         $result = [];
-        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($id);
+        $id = intval($id);
+        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . $id;
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetch();
@@ -42,30 +43,30 @@ class GroupModel {
     public function create(array $data = null) {
         $data = $this->checkArgs($data);
 
-        $sql = 'INSERT INTO ' . $this->table . '(name, description) VALUES(:name, :description) returning id';
+        $sql = 'INSERT INTO ' . $this->table . '(name, description) VALUES(:name, :description)';
         $sth = $this->db->prepare($sql);
 
         if (isset($data['name'], $data['description'])) {
             $sth->bindParam(':name', $data['name'], PDO::PARAM_STR);
             $sth->bindValue(':description', $data['description'], PDO::PARAM_STR);
             if ($sth->execute()) {
-                $result = $sth->fetch();
-                return intval($result['id']);
+                return true;
             }
         }
 
-        return 0;
+        return false;
     }
 
     public function delete($id = null) {
         $id = intval($id);
 
         if (!$this->isUsed($id)) {
-            $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
+            $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . $id;
             if ($this->db->query($sql)) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -80,7 +81,9 @@ class GroupModel {
             $sth->bindValue(':id', $id, PDO::PARAM_INT);
 
             foreach ($data as $key => $val) {
-                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                if ($val !== null) {
+                    $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                }
             }
 
             if ($sth->execute()) {
@@ -92,7 +95,8 @@ class GroupModel {
     }
     
     public function isUsed($id = NULL) {
-        $sql = 'SELECT count(id) AS total FROM account WHERE route = ' . intval($id);
+        $id = intval($id);
+        $sql = 'SELECT count(id) AS total FROM routing WHERE target = ' . $id;
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetch();
@@ -130,13 +134,13 @@ class GroupModel {
     }
     
     public function checkArgs(array $data) {
-        $res = array();
+        $res = [];
         $data = array_intersect_key($data, array_flip($this->column));
 
         foreach ($data as $key => $val) {
             switch ($key) {
             case 'name':
-                $res['name'] = Filter::string($val, null, 3, 32);
+                $res['name'] = Filter::string($val, null, 1, 32);
                 break;
             case 'description':
                 $res['description'] = Filter::string($val, 'no description', 1, 64);

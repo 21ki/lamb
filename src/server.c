@@ -28,6 +28,7 @@
 #include "socket.h"
 #include "keyword.h"
 #include "security.h"
+#include "channel.h"
 
 static int aid = 0;
 static long long money;
@@ -86,15 +87,17 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
+    if (setenv("logfile", config.logfile, 1) == -1) {
+        lamb_vlog(LOG_ERR, "setenv error: %s", strerror(errno));
+        return -1;
+    }
+
     /* Signal event processing */
     lamb_signal_processing();
 
     /* Resource limit processing */
     lamb_rlimit_processing();
 
-    /* log initialization */
-    lamb_log_init("server");
-    
     /* Start main event thread */
     lamb_event_loop();
 
@@ -111,10 +114,10 @@ void lamb_event_loop(void) {
     
     err = lamb_signal(SIGHUP, lamb_reload);
     if (err) {
-        printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
+        lamb_debug("Can't setting SIGHUP signal to lamb_reload function\n");
     }
 
-    lamb_debug("lamb signal initialization\n");
+    lamb_debug("lamb signal initialization successfull\n");
 
     /* Storage Queue Initialization */
     storage = lamb_queue_new(aid);
@@ -123,7 +126,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    lamb_debug("storage queue initialization\n");
+    lamb_debug("storage queue initialization successfull\n");
     
     /* Billing Queue Initialization */
     billing = lamb_queue_new(aid);
@@ -132,7 +135,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    lamb_debug("billing queue initialization\n");
+    lamb_debug("billing queue initialization successfull\n");
     
     /* Redis Initialization */
     err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
@@ -141,7 +144,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    lamb_debug("connect to cache server %s\n", config.redis_host);
+    lamb_debug("connect to cache server %s successfull\n", config.redis_host);
     
     /* Cache Cluster Initialization */
     memset(&cache, 0, sizeof(cache));
@@ -151,6 +154,8 @@ void lamb_event_loop(void) {
         return;
     }
 
+    lamb_debug("connect to cache node successfull\n");
+    
     /* Postgresql Database  */
     err = lamb_db_init(&db);
     if (err) {
@@ -164,7 +169,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    lamb_debug("connect to postgresql %s\n", config.db_host);
+    lamb_debug("connect to postgresql %s successfull\n", config.db_host);
     
     /* Postgresql Database  */
     err = lamb_db_init(&mdb);
@@ -187,7 +192,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    lamb_debug("fetch account %d information\n", aid);
+    lamb_debug("fetch account information successfull\n");
 
     lamb_nn_option opt;
 
@@ -203,6 +208,8 @@ void lamb_event_loop(void) {
         return;
     }
 
+    lamb_debug("connect to mt %s successfull\n", config.mt_host);
+    
     /* Connect to MO server */
     opt.type = LAMB_NN_PUSH;
     err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR, config.timeout);
@@ -211,6 +218,8 @@ void lamb_event_loop(void) {
         return;
     }
 
+    lamb_debug("connect to mo %s successfull\n", config.mo_host);
+    
     /* Connect to Scheduler server */
     opt.type = LAMB_NN_PUSH;
     err = lamb_nn_connect(&scheduler, &opt, config.scheduler_host, config.scheduler_port, NN_REQ, config.timeout);
@@ -219,6 +228,8 @@ void lamb_event_loop(void) {
         return;
     }
 
+    lamb_debug("connect to scheduler %s successfull\n", config.scheduler_host);
+    
     /* Connect to Deliver server */
     opt.type = LAMB_NN_PULL;
     err = lamb_nn_connect(&deliverd, &opt, config.deliver_host, config.deliver_port, NN_REQ, config.timeout);
@@ -226,6 +237,8 @@ void lamb_event_loop(void) {
         lamb_log(LOG_ERR, "can't connect to deliver %s server", config.deliver_host);
         return;
     }
+
+    lamb_debug("connect to deliver %s successfull\n", config.deliver_host);
     
     /* Fetch company information */
     memset(&company, 0, sizeof(company));
@@ -235,6 +248,8 @@ void lamb_event_loop(void) {
         return;
     }
 
+    lamb_debug("fetch company information successfull\n");
+    
     /* Template information Initialization */
     templates = lamb_queue_new(aid);
     if (!templates) {
@@ -242,25 +257,39 @@ void lamb_event_loop(void) {
         return;
     }
 
-    err = lamb_template_get_all(&db, account.id, templates);
+    err = lamb_get_template(&db, templates);
     if (err) {
         lamb_log(LOG_ERR, "Can't fetch template information");
         return;
     }
 
+    lamb_debug("fetch template information successfull\n");
+    
     /* Fetch group information */
-    routing = lamb_queue_new(aid);
+    routing = lamb_queue_new(0);
     if (!routing) {
         lamb_log(LOG_ERR, "routing queue initialization failed");
         return;
     }
 
-    err = lamb_get_routing(&db, account.route, routing);
-    if (routing->len < 1) {
-        lamb_log(LOG_ERR, "No channel routing available");
+    err = lamb_get_routing(&db, routing);
+    if (err) {
+        lamb_log(LOG_ERR, "can't fetch routing information");
         return;
     }
+
+    lamb_debug("fetch routing information successfull\n");
     
+    lamb_routing_t *r;
+    lamb_node_t *node = NULL;
+    node = routing->head;
+
+    while (node != NULL) {
+        r = (lamb_routing_t *)node->val;
+        node = node->next;
+        lamb_debug("id: %d, rexp: %s, target: %d\n", r->id, r->rexp, r->target);
+    }
+
     /* Keyword information Initialization */
     keywords = lamb_queue_new(aid);
     if (!keywords) {
@@ -268,7 +297,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    if (account.check_keyword) {
+    if (account.keyword) {
         err = lamb_keyword_get_all(&db, keywords);
         if (err) {
             lamb_log(LOG_ERR, "Can't fetch keyword information");
@@ -325,7 +354,6 @@ void *lamb_work_loop(void *data) {
     lamb_template_t *template;
     lamb_keyword_t *keyword;
     lamb_message_t req;
-    lamb_channel_t *channel;
     
     len = sizeof(lamb_submit_t);
     
@@ -375,7 +403,7 @@ void *lamb_work_loop(void *data) {
             fromcode = "GBK";
         } else {
             status.fmt++;
-            printf("-> [encoded] message encoded %d not support\n", submit->msgFmt);
+            lamb_debug("message encoded %d not support\n", submit->msgFmt);
             nn_freemsg(buf);
             continue;
         }
@@ -386,21 +414,21 @@ void *lamb_work_loop(void *data) {
             if (err || (submit->length == 0)) {
                 status.fmt++;
                 nn_freemsg(buf);
-                printf("-> [encoded] Message encoding conversion failed\n");
+                lamb_debug("Message encoding conversion failed\n");
                 continue;
             }
 
             submit->msgFmt = 11;
             memset(submit->content, 0, 160);
             memcpy(submit->content, content, submit->length);
-            printf("-> [encoded] Message encoding conversion successfull\n");
+            lamb_debug("Message encoding conversion successfull\n");
         }
 
         //printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
 
         /* Blacklist and Whitelist */
         /* 
-           if (account.policy != LAMB_POL_EMPTY) {
+           if (account.dbase > 0) {
            if (lamb_security_check(&black, account.policy, submit->phone)) {
            if (account.policy == LAMB_BLACKLIST) {
            status.blk++;
@@ -416,20 +444,13 @@ void *lamb_work_loop(void *data) {
            continue;
            }
            }
-           //printf("-> [policy] The Security check OK\n");
+           //printf("-> [policy] The Security check SUCCESSFULL\n");
            }
         */
             
-        /* SpCode Processing  */
-        if (account.extended) {
-            printf("-> [spcode] check message spcode extended\n");
-            lamb_spcode_process(account.spcode, submit->spcode, 20);
-        } else {
-            strcpy(submit->spcode, account.spcode);
-        }
 
         /* Template Processing */
-        if (account.check_template) {
+        if (account.template) {
             success = false;
             node = templates->head;
 
@@ -444,16 +465,16 @@ void *lamb_work_loop(void *data) {
 
             if (!success) {
                 status.tmp++;
-                printf("-> [template] The template check will not pass\n");
+                lamb_debug("The template check will not pass\n");
                 nn_freemsg(buf);
                 continue;
                     
             }
-            printf("-> [template] The template check OK\n");
+            lamb_debug("The template check SUCCESSFULL\n");
         }
 
         /* Keywords Filtration */
-        if (account.check_keyword) {
+        if (account.keyword) {
             success = false;
             node = keywords->head;
 
@@ -469,13 +490,14 @@ void *lamb_work_loop(void *data) {
             if (success) {
                 status.key++;
                 nn_freemsg(buf);
-                printf("-> [keyword] The keyword check not pass\n");
+                lamb_debug("The keyword check not pass\n");
                 continue;
             }
-            printf("-> [keyword] The keyword check OK\n");
+            lamb_debug("The keyword check SUCCESSFULL\n");
         }
 
         /* Scheduling */
+        /* 
     routing:
         success = false;
         node = routing->head;
@@ -497,13 +519,13 @@ void *lamb_work_loop(void *data) {
 
         if (!success) {
             if (routing->len < 1) {
-                printf("-> [channel] No gateway channel available\n");
+                lamb_debug("No gateway channel available\n");
             }
             //printf("-> [channel] busy all channels\n");
             lamb_sleep(10);
             goto routing;
         }
-
+ */
         //printf("-> [channel] Message sent to %d channel\n", channel->id);
             
         /* Save message to billing queue */

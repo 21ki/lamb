@@ -13,10 +13,10 @@
 
 typedef struct {
     int id;
-    int account;
-    char spcode[32];
+    char rexp[128];
+    int target;
 } lamb_delivery_t;
 
-int lamb_get_delivery(lamb_db_t *db, lamb_queue_t *delivery);
+int lamb_get_delivery(lamb_db_t *db, lamb_queue_t *deliverys);
 
 #endif

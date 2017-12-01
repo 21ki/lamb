@@ -10,16 +10,25 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-#include <syslog.h>
 #include <pthread.h>
 
+#define	LOG_EMERG	0	/* system is unusable */
+#define	LOG_ALERT	1	/* action must be taken immediately */
+#define	LOG_CRIT	2	/* critical conditions */
+#define	LOG_ERR		3	/* error conditions */
+#define	LOG_WARNING	4	/* warning conditions */
+#define	LOG_NOTICE	5	/* normal but significant condition */
+#define	LOG_INFO	6	/* informational */
+#define	LOG_DEBUG	7	/* debug-level messages */
+
+#define lamb_log(...) lamb_vlog(__VA_ARGS__)
+
 #ifdef _DEBUG
+
 #define lamb_debug(...) fprintf(stderr, "%s:%d ", __FILE__, __LINE__);fprintf(stderr, __VA_ARGS__)
 #else
 #define lamb_debug(...)
 #endif
-
-#define lamb_log(...) syslog(__VA_ARGS__)
 
 #define LAMB_SUBMIT  1
 #define LAMB_DELIVER 2
@@ -93,7 +102,6 @@ void lamb_daemon(void);
 void lamb_sleep(unsigned long long milliseconds);
 void lamb_msleep(unsigned long long microsecond);
 unsigned long long lamb_now_microsecond(void);
-void lamb_flow_limit(unsigned long long *start, unsigned long long *now, unsigned long long *next, int *count, int limit);
 unsigned short lamb_sequence(void);
 char *lamb_strdup(const char *str);
 void lamb_start_thread(void *(*func)(void *), void *arg, int count);
@@ -111,6 +119,6 @@ long lamb_get_cpu(void);
 int lamb_cpu_affinity(pthread_t thread);
 int lamb_hp_parse(char *str, char *host, int *port);
 int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, long millisecond);
-void lamb_log_init(const char *ident);
+void lamb_vlog(int level, const char *fmt, ...);
 
 #endif
