@@ -20,7 +20,7 @@ function show() {
     layer.open({
         type: 1,
         title: '新建签名模板',
-        area: ['520px', '390px'],
+        area: ['550px', '360px'],
         content: template
     });
 }
@@ -50,7 +50,7 @@ function edit(id, username) {
     layer.open({
         type: 1,
         title: '签名模板',
-        area: ['520px', '390px'],
+        area: ['550px', '360px'],
         content: template
     });
 
