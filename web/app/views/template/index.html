@@ -93,10 +93,14 @@
 </div>
 <script id="contents" type="text/template">
   {{#each data}}
-  <tr><td><span class="glyphicon glyphicon-credit-card"></span></td><td class="text-left">{{rexp}}</td><td>{{name}}</td>
+  <tr>
+    <td><span class="glyphicon glyphicon-credit-card"></span></td>
+    <td class="text-left">{{rexp}}</td>
+    <td>{{name}}</td>
     <td>{{contents}}</td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteTemplate({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
-    <td><button type="button" class="btn btn-default btn-xs" onclick="edit({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>
+    <td><button type="button" class="btn btn-default btn-xs" onclick="edit({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td>
+  </tr>
   {{/each}}
 </script>
 <script id="new-page" type="text/template">
@@ -122,7 +126,7 @@
     <div class="form-group">
       <div class="col-sm-offset-3 col-sm-9" style="margin-top:15px">
         <button type="button" onclick="formSubmit()" class="btn btn-success">创 建</button>
-        <button type="button" onclick="layer.closeAll()" class="btn btn-default">取 消</a>
+        <button type="button" onclick="layer.closeAll()" class="btn btn-default">取 消</button>
       </div>
     </div>
   </form>
