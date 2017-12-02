@@ -26,17 +26,21 @@ function show() {
 }
 
 function formSubmit() {
+    var method = "POST";
     var url = '/template/create';
-    var form = new Object();
-
-    form.rexp = $("input[name=rexp]").val();
-    form.name = $("input[name=name]").val();
-    form.contents = $("input[name=contents]").val();
-
-    var request = new XMLHttpRequest();
-
-    request.open("POST", "test.php");
-    request.send(form);
+    var form = document.getElementById("form");
+    var data = new FormData(form);
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            layer.closeAll();
+            $("#datalist").empty();
+            startup();
+        }
+    }
+    xhr.open(method, url, true);
+    xhr.send(data);
 }
 
 function formChange() {

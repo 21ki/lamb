@@ -23,11 +23,13 @@ class TemplateController extends Yaf\Controller_Abstract {
     public function createAction() {
         if ($this->request->isPost()) {
             $template = new TemplateModel();
-            $template->create($this->request->getPost());
+            $success = $template->create($this->request->getPost());
+            $response['status'] = $success ? 201 : 400;
+            $response['message'] = $success ? 'success' : 'failed';
+            header('Content-type: application/json');
+            echo json_encode($response);
         }
 
-        $this->response->setRedirect('/template');
-        $this->response->response();
         return false;
     }
 
