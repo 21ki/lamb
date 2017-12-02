@@ -23,32 +23,40 @@ class TemplateController extends Yaf\Controller_Abstract {
     public function createAction() {
         if ($this->request->isPost()) {
             $template = new TemplateModel();
-            $success = $template->create($this->request->getPost());
-            $response['status'] = $success ? 201 : 400;
-            $response['message'] = $success ? 'success' : 'failed';
-            header('Content-type: application/json');
-            echo json_encode($response);
+            if ($template->create($this->request->getPost())) {
+                lambResponse(200, 'success');
+            } else {
+                lambResponse(400, 'failed');
+            }
         }
 
         return false;
     }
 
-    public function changeAction() {
+    public function updateAction() {
         if ($this->request->isPost()) {
             $template = new TemplateModel();
-            $template->change($this->request->getPost('id', null), $this->request->getPost());
+            if ($template->change($this->request->getQuery('id', null), $this->request->getPost())) {
+                lambResponse(200, 'success');
+            } else {
+                lambResponse(400, 'failed');
+            }
+            
         }
 
-        $this->response->setRedirect('/template');
-        $this->response->response();
         return false;
     }
 
     public function deleteAction() {
-        $template = new TemplateModel();
-        $template->delete($this->request->getQuery('id', 0));
-        $this->response->setRedirect('/template');
-        $this->response->response();
+        if ($this->request->method == 'DELETE') {
+            $template = new TemplateModel();
+            if ($template->delete($this->request->getQuery('id', null))) {
+                lambResponse(200, 'success');
+            } else {
+                lambResponse(400, 'failed');
+            }
+        }
+
         return false;
     }
 }

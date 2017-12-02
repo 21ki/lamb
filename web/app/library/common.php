@@ -18,6 +18,8 @@ function str2int(&$val) {
     $val = intval($val);
 }
 
-function isMethod($request = null, $method = null) {
-    return (strcasecmp($request, $method) == 0) ? true : false;
+function lambResponse(int $code = 200, string $message = "success") {
+    header('Content-type: application/json');
+    echo json_encode(['status' => $code, 'message' => $message]);
 }
+
