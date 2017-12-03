@@ -10,6 +10,10 @@ use Db\Redis;
 use Tool\Filter;
 
 class CompanyController extends Yaf\Controller_Abstract {
+    public function init() {
+        $this->request = $this->getRequest();
+    }
+
     public function indexAction() {
         $company = new CompanyModel();
 
@@ -37,20 +41,16 @@ class CompanyController extends Yaf\Controller_Abstract {
         return true;
     }
 
-    public function editAction() {
-        $request = $this->getRequest();
-        $company = new CompanyModel();
-
-        if ($request->isPost()) {
-            $company->change($request->getPost('id'), $request->getPost());
-            $response = $this->getResponse();
-            $response->setRedirect('/company');
-            $response->response();
-            return false;
+    public function updateAction() {
+        if ($this->request->isPost()) {
+            $company = new CompanyModel();
+            $success = $company->change($this->request->getQuery('id', null), $this->request->getPost());
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
         }
 
-        $this->getView()->assign('company', $company->get($request->getQuery('id')));
-        return true;
+        return false;
     }
 
     public function deleteAction() {
@@ -66,11 +66,9 @@ class CompanyController extends Yaf\Controller_Abstract {
     }
 
     public function rechargeAction() {
-        $request = $this->getRequest();
-
-        if ($request->isPost()) {
+        if ($this->request->isPost()) {
             $company = new CompanyModel();
-            $success = $company->recharge($request->getPost('id'), $request->getPost('money'));
+            $success = $company->recharge($this->request->getQuery('id', null), $this->request->getPost('money'));
             $response['status'] = $success ? 200 : 400;
             $response['message'] = $success ? 'success' : 'failed';
             header('Content-type: application/json');

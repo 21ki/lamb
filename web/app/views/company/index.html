@@ -83,32 +83,25 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>公司名称</th><th>账户余额</th><th>付费类型</th><th>账户数量</th><th>备注信息</th><th>创建时间</th><th>账户充值</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>公司名称</th><th>账户余额</th><th>付费类型</th><th>备注信息</th><th>创建时间</th><th>账户充值</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
-            <?php
-              foreach ($companys as $c) {
-              echo '<tr><td><span class="glyphicon glyphicon-copyright-mark"></span></td><td>',lamb_output($c['name'], 12),'</td><td>',$c['money'],'</td>';
-              echo '<td>',($c['paytype'] == 1) ? '预付费' : '后付费','</td><td>',$c['count'],'</td><td>',lamb_output($c['description']),'</td><td>',$c['create_time'],'</td>';
-              echo '<td><a href="javascript:void(0)" class="text-muted" onclick="recharge(',$c['id'],')"><span class="glyphicon glyphicon-plus-sign"></span> 充 值</a></td>';
-              echo '<td><button class="btn btn-default btn-xs" onclick="deleteCompany(',$c['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
-              echo '<td><a class="btn btn-default btn-xs" href="company/edit?id=',$c['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>';
-              }
-              ?>
           </tbody>
         </table>
       </div>
     </div>
 </div>
-<script id="lists" type="text/template">
+<script id="contents" type="text/template">
+  {{#each data}}
   <tr><td><span class="glyphicon glyphicon-copyright-mark"></span></td><td>{{name}}</td><td>{{money}}</td>
-    <td>{{paytype}}</td><td>{{count}}</td><td>{{description}}</td><td>{{create_time}}</td>
-    <td><a class="text-muted" href="javascript:void(0)" onclick="recharge({{id}})"><span class="glyphicon glyphicon-plus-sign"></span> 充 值</a></td>
+    <td>{{checkpayment paytype}}</td><td>{{description}}</td><td>{{create_time}}</td>
+    <td><a class="text-muted" href="javascript:void(0)" onclick="companyRecharge({{id}})"><span class="glyphicon glyphicon-plus-sign"></span> 充 值</a></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteCompany({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="editCompany({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td></tr>
+  {{/each}}
 </script>
 <script id="new-page" type="text/template">
-  <form class="form-horizontal" action="create" method="post" style="margin:25px">
+  <form id="form" class="form-horizontal" style="margin:25px">
     <div class="form-group">
       <label class="col-sm-offset-1 col-xs-2 col-sm-2 control-label">公司名称:</label>
       <div class="col-xs-4 col-sm-4">
@@ -136,7 +129,7 @@
         <span class="help-block">联系人电话或手机</span>
       </div>
     </div>
-    <div id="route" class="form-group">
+    <div class="form-group">
       <label class="col-sm-offset-1 col-xs-2 col-sm-2 control-label">付费类型:</label>
       <div class="col-xs-4 col-sm-4">
         <select class="form-control" name="paytype">
@@ -159,7 +152,65 @@
     </div>
     <div class="form-group">
       <div class="col-sm-offset-3 col-xs-9 col-sm-9">
-        <button type="submit" id="submit" class="btn btn-success">创 建</button>
+        <button type="button" id="submit" onclick="formSubmit()" class="btn btn-success">创 建</button>
+        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</a>
+      </div>
+    </div>
+  </form>
+</script>
+<script id="edit-page" type="text/template">
+  <form id="form" class="form-horizontal" style="margin:25px">
+    <div class="form-group">
+      <label class="col-sm-offset-1 col-xs-2 col-sm-2 control-label">公司名称:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="name" value="{{name}}" placeholder="Enter Name" required="required">
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">公司名称</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-offset-1 col-xs-2 col-sm-2 control-label">联系人:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="contacts" value="{{contacts}}" placeholder="Enter Contacts" required="required">
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">公司业务联系人</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-offset-1 col-xs-2 col-sm-2 control-label">联系电话:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="telephone" value="{{telephone}}" placeholder="Enter Telephone" required="required">
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">联系人电话或手机</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-offset-1 col-xs-2 col-sm-2 control-label">付费类型:</label>
+      <div class="col-xs-4 col-sm-4">
+        <select class="form-control" name="paytype">
+          <option value="1"{{checkpayment paytype 1}}>预付费</option>
+          <option value="2"{{checkpayment paytype 2}}>后付费</option>
+        </select>
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">账户付费结算方式</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-offset-1 col-xs-2 col-sm-2 control-label">备注信息:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="description" value="{{description}}" placeholder="Enter Description" />
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">客户相关备注说明</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-xs-9 col-sm-9">
+        <button type="button" id="submit" onclick="formChange({{id}})" class="btn btn-success">创 建</button>
         <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</a>
       </div>
     </div>
@@ -167,13 +218,17 @@
 </script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/handlebars.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript" src="/js/company.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {   
-    $(this).addClass('open');
-  }).mouseout(function() {
-    $(this).removeClass('open');
+  $(document).ready(function(){
+    $('li.dropdown').mouseover(function() {   
+      $(this).addClass('open');
+    }).mouseout(function() {
+      $(this).removeClass('open');
+    });
+    startup();
   });
 </script>
 </body>

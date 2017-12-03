@@ -9,101 +9,128 @@
 class ApiController extends Yaf\Controller_Abstract {
     public function init() {
         $this->request = $this->getRequest();
-        if (!$this->request->isXmlHttpRequest()) {
-            exit;
+    }
+
+    public function companyAction() {
+        if ($this->request->isGet()) {
+            $company = new CompanyModel();
+            lambResponse(200, 'success', $company->get($this->request->getQuery('id'), null));
         }
 
-        $this->request = $this->getRequest();
+        return false;
+    }
+
+    public function companysAction() {
+        if ($this->request->isGet()) {
+            $company = new CompanyModel();
+            lambResponse(200, 'success', $company->getAll());
+        }
+
+        return false;
     }
 
     public function accountAction() {
-        $account = new AccountModel();
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['data'] = $account->get($this->request->getQuery('id', null));
+        if ($this->request->isGet()) {
+            $account = new AccountModel();
+            $response['status'] = 200;
+            $response['message'] = 'success';
+            $response['data'] = $account->get($this->request->getQuery('id', null));
 
-        header('Content-type: application/json');
-        echo json_encode($response);
+            header('Content-type: application/json');
+            echo json_encode($response);
+        }
+        
 
         return false;
     }
     
     public function accountsAction() {
-        $account = new AccountModel();
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['data'] = $account->getAll();
+        if ($this->request->isGet()) {
+            $account = new AccountModel();
+            $response['status'] = 200;
+            $response['message'] = 'success';
+            $response['data'] = $account->getAll();
 
-        foreach ($response['data'] as &$val) {
-            unset($val['password']);
-        }
+            foreach ($response['data'] as &$val) {
+                unset($val['password']);
+            }
         
-        header('Content-type: application/json');
-        echo json_encode($response);
+            header('Content-type: application/json');
+            echo json_encode($response);
+        }
 
         return false;
     }
     
     public function routingAction() {
-        $routing = new RoutingModel();
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['data'] = $routing->get($this->request->getQuery('id', null));
+        if ($this->request->isGet()) {
+            $routing = new RoutingModel();
+            $response['status'] = 200;
+            $response['message'] = 'success';
+            $response['data'] = $routing->get($this->request->getQuery('id', null));
 
-        header('Content-type: application/json');
-        echo json_encode($response);
+            header('Content-type: application/json');
+            echo json_encode($response);
+        }
+        
 
         return false;
     }
 
     public function routingsAction() {
-        $routing = new RoutingModel();
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['data'] = $routing->getAll();
+        if ($this->request->isGet()) {
+            $routing = new RoutingModel();
+            $response['status'] = 200;
+            $response['message'] = 'success';
+            $response['data'] = $routing->getAll();
 
-        header('Content-type: application/json');
-        echo json_encode($response);
-
+            header('Content-type: application/json');
+            echo json_encode($response);
+        }
         return false;
     }
 
     public function channelAction() {
-        $channel = new ChannelModel();
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['data'] = $channel->get($this->request->getQuery('id', null), $this->request->getQuery('rid', null));
+        if ($this->request->isGet()) {
+            $channel = new ChannelModel();
+            $response['status'] = 200;
+            $response['message'] = 'success';
+            $response['data'] = $channel->get($this->request->getQuery('id', null), $this->request->getQuery('rid', null));
 
-        header('Content-type: application/json');
-        echo json_encode($response);
+            header('Content-type: application/json');
+            echo json_encode($response);
+        }
 
         return false;
     }
 
     public function gatewaysAction() {
-        $gateway = new GatewayModel();
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['data'] = $gateway->getAll();
+        if ($this->request->isGet()) {
+            $gateway = new GatewayModel();
+            $response['status'] = 200;
+            $response['message'] = 'success';
+            $response['data'] = $gateway->getAll();
 
-        foreach ($response['data'] as &$g) {
-            unset($g['password']);
+            foreach ($response['data'] as &$g) {
+                unset($g['password']);
+            }
+            
+            header('Content-type: application/json');
+            echo json_encode($response);
         }
-        
-        header('Content-type: application/json');
-        echo json_encode($response);
-
         return false;
     }
 
     public function templateAction() {
-        $template = new TemplateModel();
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['data'] = $template->get($this->request->getQuery('id'));
+        if ($this->request->isGet()) {
+            $template = new TemplateModel();
+            $response['status'] = 200;
+            $response['message'] = 'success';
+            $response['data'] = $template->get($this->request->getQuery('id'));
 
-        header('Content-type: application/json');
-        echo json_encode($response);
+            header('Content-type: application/json');
+            echo json_encode($response);
+        }
 
         return false;
     }
@@ -135,13 +162,15 @@ class ApiController extends Yaf\Controller_Abstract {
     }
 
     public function groupsAction() {
-        $group = new GroupModel();
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['data'] = $group->getAll();
+        if ($this->request->isGet()) {
+            $group = new GroupModel();
+            $response['status'] = 200;
+            $response['message'] = 'success';
+            $response['data'] = $group->getAll();
 
-        header('Content-type: application/json');
-        echo json_encode($response);
+            header('Content-type: application/json');
+            echo json_encode($response);
+        }
 
         return false;
     }

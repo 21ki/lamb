@@ -18,8 +18,13 @@ function str2int(&$val) {
     $val = intval($val);
 }
 
-function lambResponse(int $code = 200, string $message = "success") {
+function lambResponse(int $code = 200, string $message = "success", $data = null) {
     header('Content-type: application/json');
-    echo json_encode(['status' => $code, 'message' => $message]);
+    $response['status'] = $code;
+    $response['message'] = $message;
+    if ($data !== null) {
+        $response['data'] = $data;
+    }
+    echo json_encode($response);
 }
 
