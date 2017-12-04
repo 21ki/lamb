@@ -32,31 +32,29 @@ class ApiController extends Yaf\Controller_Abstract {
     public function accountAction() {
         if ($this->request->isGet()) {
             $account = new AccountModel();
-            $response['status'] = 200;
-            $response['message'] = 'success';
-            $response['data'] = $account->get($this->request->getQuery('id', null));
-
-            header('Content-type: application/json');
-            echo json_encode($response);
+            lambResponse(200, 'success', $account->get($this->request->getQuery('id', null)));
         }
-        
 
         return false;
     }
     
     public function accountsAction() {
         if ($this->request->isGet()) {
-            $account = new AccountModel();
-            $response['status'] = 200;
-            $response['message'] = 'success';
-            $response['data'] = $account->getAll();
-
-            foreach ($response['data'] as &$val) {
-                unset($val['password']);
+            $companys = [];
+            $company = new CompanyModel();
+            foreach ($company->getAll() as $c) {
+                $companys[$c['id']] = $c;
             }
-        
-            header('Content-type: application/json');
-            echo json_encode($response);
+
+            $account = new AccountModel();
+            $accounts = $account->getAll();
+
+            foreach ($accounts as &$a) {
+                unset($a['password']);
+                $a['company'] = $companys[$a['company']]['name'];
+            }
+
+            lambResponse(200, 'success', $accounts);
         }
 
         return false;

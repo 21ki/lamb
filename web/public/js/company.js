@@ -15,7 +15,7 @@ function startup() {
             $("tbody").append(contents);
             $("tbody tr").hide();
             $("tbody tr").each(function(i){
-                $(this).delay(i * 30).fadeIn(500);
+                $(this).delay(i * 25).fadeIn(300);
             });
         }
     }

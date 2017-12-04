@@ -25,16 +25,15 @@ class AccountModel {
     }
 
     public function get($id = null) {
-        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($id);
+        $id = intval($id);
+        $result = [];
+        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . $id;
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetch();
-            if ($result !== false) {
-                return $result;
-            }
         }
 
-        return null;
+        return $result;
     }
 
     public function getAll() {
@@ -59,11 +58,15 @@ class AccountModel {
         } else {
             return false;
         }
-        
+
         if (!isset($data['dbase'])) {
             $data['dbase'] = 0;
         }
 
+        if (!isset($data['concurrent'])) {
+            $data['concurrent'] = 0;
+        }
+        
         if (!isset($data['template'])) {
             $data['template'] = 0;
         }
@@ -112,6 +115,10 @@ class AccountModel {
             if (!$company->isExist($data['company'])) {
                 return false;
             }
+        }
+
+        if (isset($data['username'])) {
+            unset($data['username']);
         }
 
         if (!isset($data['template'])) {

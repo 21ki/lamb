@@ -9,74 +9,46 @@
 use Tool\Filter;
 
 class AccountController extends Yaf\Controller_Abstract {
+    public function init() {
+        $this->request = $this->getRequest();
+    }
+    
     public function indexAction() {
-        $company = new CompanyModel();
-        $list = array();
-        foreach ($company->getAll() as $key => $val) {
-            $list[$val['id']] = $val;
-        }
-        $account = new AccountModel();
-        $this->getView()->assign('companys', $list);
-        $this->getView()->assign('accounts', $account->getAll());
         return true;
     }
 
     public function createAction() {
-        $request = $this->getRequest();
-
-        if ($request->isPost()) {
+        if ($this->request->isPost()) {
             $account = new AccountModel();
-            $account->create($request->getPost());
-            $response = $this->getResponse();
-            $response->setRedirect('/account');
-            $response->response();
-            return false;
+            $success = $account->create($this->request->getPost());
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
         }
 
-        $company = new CompanyModel();
-        $list = $company->getAll();
-        $this->getView()->assign('companys', $list);
-
-        $database = new DatabaseModel();
-        $this->getView()->assign('database', $database->getAll());
-            
-        $routing = new RoutingModel();
-        $this->getView()->assign('groups', $routing->getAll());
-
-        return true;
+        return false;
     }
 
-    public function editAction() {
-        $request = $this->getRequest();
-        $account = new AccountModel();
-
-        if ($request->isPost()) {
-            $account->change($request->getPost('id'), $request->getPost());
-            $response = $this->getResponse();
-            $response->setRedirect('/account');
-            $response->response();
-            return false;
+    public function updateAction() {
+        if ($this->request->isPost()) {
+            $account = new AccountModel();
+            $account->change($this->request->getQuery('id', null), $this->request->getPost());
+            lambResponse(200, 'success');
         }
 
-        $company = new CompanyModel();
-        $database = new DatabaseModel();
-
-        $this->getView()->assign('database', $database->getAll());
-        $this->getView()->assign('companys', $company->getAll());
-        $this->getView()->assign('account', $account->get($request->getQuery('id')));
-
-        return true;
+        return false;
     }
 
 
     public function deleteAction() {
-        $request = $this->getRequest();
-        $account = new AccountModel();
-        $success = $account->delete($request->getQuery('id'));
-        $response['status'] = $success ? 200 : 400;
-        $response['message'] = $success ? 'success' : 'failed';
-        header('Content-type: application/json');
-        echo json_encode($response);
+        if ($this->request->method == 'DELETE') {
+            $account = new AccountModel();
+            $success = $account->delete($this->request->getQuery('id', null));
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
+        }
+
         return false;
     }
 }

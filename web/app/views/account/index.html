@@ -8,6 +8,8 @@
     <title>account - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
+    <link type="text/css" rel="stylesheet" href="/css/all.css">
+    <link type="text/css" rel="stylesheet" href="/css/flat/blue.css">
     <link type="text/css" rel="stylesheet" href="/css/account.css">
   </head>
   <body>
@@ -77,7 +79,7 @@
         <ol class="breadcrumb">
           <li><a href="#">Home</a></li>
           <li class="active">Account</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="account/create"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><button class="btn btn-success btn-xs" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 创 建</button></li>
         </ol>
       </div>
       <div class="row">
@@ -86,43 +88,233 @@
             <tr><th>#</th><th>帐号名称</th><th>接入号码</th><th>所属公司</th><th>计费类型</th><th>备注信息</th><th>创建时间</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
-            <?php
-              foreach ($accounts as $a) {
-                echo '<tr><td><span class="glyphicon glyphicon-user"></span></td><td>',$a['username'],'</td>';
-                echo '<td>',$a['spcode'],'</td><td>',$companys[$a['company']]['name'],'</td><td>',$a['charge'] == 1 ? '提交计费' : '成功计费','</td>';
-                echo '<td>',$a['description'],'</td><td>',$a['create_time'],'</td>';
-                echo '<td><button class="btn btn-default btn-xs" onclick="deleteAccount(',$a['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
-                echo '<td><a class="btn btn-default btn-xs" href="account/edit?id=',$a['id'],'"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td></tr>',"\n";
-              }
-            ?>
           </tbody>
         </table>
       </div>
     </div>
 </div>
+<script id="contents" type="text/template">
+  {{#each data}}
+  <tr>
+    <td><span class="glyphicon glyphicon-user"></span></td>
+    <td>{{username}}</td>
+    <td>{{spcode}}</td>
+    <td>{{company}}</td>
+    <td>{{checkcharge charge}}</td>
+    <td>{{description}}</td>
+    <td>{{create_time}}</td>
+    <td><button type="button" class="btn btn-default btn-xs" onclick="deleteAccount({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
+    <td><button type="button" class="btn btn-default btn-xs" onclick="editAccount({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td>
+  </tr>
+  {{/each}}
+</script>
+<script id="new-page" type="text/template">
+  <form id="form" class="form-horizontal" style="margin:20px">
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">帐号名称:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="username" placeholder="Enter Name" minlength="6" maxlength="6" required="required">
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">客户端接入帐号</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">帐号密码:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="password" minlength="6" placeholder="Enter Password" required="required">
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">接入端帐号密码</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">所属公司:</label>
+      <div class="col-xs-4 col-sm-4">
+        <select class="form-control" name="company" required="required">
+          {{#each data}}
+          <option value="{{id}}">{{name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">帐号所属公司</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">计费类型:</label>
+      <div class="col-xs-4 col-sm-4">
+        <select class="form-control" name="charge">
+          <option value="1">提交计费</option>
+          <option value="2">成功计费</option>
+        </select>
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">帐号计费方式</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">客户端地址:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="address" placeholder="Enter Address" required="required">
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">客户端 IP 地址</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">通道接入码:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="spcode" minlength="8" placeholder="Enter SpCode" required="required" />
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">客户端通道接入码</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">安全选项:</label>
+      <div class="col-xs-4 col-sm-4">
+        <div class="checkbox">
+          <label>
+            <input id="check_template" type="checkbox" name="template" value="1" /> 签名校验
+          </label>
+          <label>
+            <input id="check_keyword" type="checkbox" name="keyword" value="1" /> 关键词过滤
+          </label>
+        </div>
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">签名与关键词检测</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">备注信息:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="description" placeholder="Enter Description" />
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">帐号相关备注说明</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-xs-7 col-sm-7">
+        <button type="button" class="btn btn-success" onclick="formSubmit()">创 建</button>
+        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
+      </div>
+    </div>
+  </form>
+</script>
+<script id="edit-page" type="text/template">
+  <form id="form" class="form-horizontal" style="margin:20px">
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">帐号名称:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" value="{{account.username}}" placeholder="Enter Name" minlength="6" maxlength="6" required="required">
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">客户端接入帐号</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">帐号密码:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="password" value="{{account.password}}" minlength="6" placeholder="Enter Password" required="required">
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">接入端帐号密码</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">所属公司:</label>
+      <div class="col-xs-4 col-sm-4">
+        <select class="form-control" name="company" required="required">
+          {{#each company}}
+          <option value="{{id}}"{{checkcompany id}}>{{name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">帐号所属公司</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">计费类型:</label>
+      <div class="col-xs-4 col-sm-4">
+        <select class="form-control" name="charge">
+          <option value="1"{{checkcharge account.charge 1}}>提交计费</option>
+          <option value="2"{{checkcharge account.charge 2}}>成功计费</option>
+        </select>
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">帐号计费方式</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">客户端地址:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="address" value="{{account.address}}" placeholder="Enter Address" required="required">
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">客户端 IP 地址</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">通道接入码:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="spcode" value="{{account.spcode}}" minlength="8" placeholder="Enter SpCode" required="required" />
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">客户端通道接入码</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">安全选项:</label>
+      <div class="col-xs-4 col-sm-4">
+        <div class="checkbox">
+          <label>
+            <input id="check_template" type="checkbox" name="template" value="1" {{checkchecked account.template}}/> 签名校验
+          </label>
+          <label>
+            <input id="check_keyword" type="checkbox" name="keyword" value="1" {{checkchecked account.keyword}}/> 关键词过滤
+          </label>
+        </div>
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">签名与关键词检测</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">备注信息:</label>
+      <div class="col-xs-4 col-sm-4">
+        <input type="text" class="form-control" name="description" value="{{account.description}}" placeholder="Enter Description" />
+      </div>
+      <div class="col-xs-5 col-sm-5">
+        <span class="help-block">帐号相关备注说明</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-xs-7 col-sm-7">
+        <button type="button" class="btn btn-success" onclick="formChange({{account.id}})">保 存</button>
+        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
+      </div>
+    </div>
+  </form>
+</script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/handlebars.min.js"></script>
+<script type="text/javascript" src="/js/icheck.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
+<script type="text/javascript" src="/js/account.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {   
-    $(this).addClass('open');
-  }).mouseout(function() {
-    $(this).removeClass('open');
-  });
-
-  function deleteAccount(id) {
-    layer.confirm('亲，确定要删除？', {
-      btn: ['是','否'], icon: 3
-    }, function(){
-      var url = '/account/delete?id=' + id;
-      $.get(url, function(){
-        layer.msg('删除成功!', {icon: 1, time: 1000});
-        setTimeout(function() {
-          window.location.reload();
-        }, 1000);
-      });
+  $(document).ready(function(){
+    $('li.dropdown').mouseover(function() {   
+      $(this).addClass('open');
+    }).mouseout(function() {
+      $(this).removeClass('open');
     });
-  }
+    startup();
+  });
 </script>
 </body>
 </html>
