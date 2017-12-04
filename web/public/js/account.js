@@ -36,7 +36,7 @@ function show() {
             layer.open({
                 type: 1,
                 title: '创建新帐号',
-                area: ['700px', '550px'],
+                area: ['880px', '550px'],
                 content: contents
             });
 
@@ -118,7 +118,7 @@ function editAccount(id) {
                     layer.open({
                         type: 1,
                         title: '编辑帐号信息',
-                        area: ['700px', '550px'],
+                        area: ['880px', '550px'],
                         content: contents
                     });
 
