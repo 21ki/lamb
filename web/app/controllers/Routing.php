@@ -9,48 +9,44 @@
 class RoutingController extends Yaf\Controller_Abstract {
     public function init() {
         $this->request = $this->getRequest();
-        $this->response = $this->getResponse();
-        $this->routing = new RoutingModel();
     }
 
     public function indexAction() {
-        $group = new GroupModel();
-
-        $groups = [];
-        foreach ($group->getAll() as $g) {
-            $groups[$g['id']] = $g;
-        }
-        
-        $this->getView()->assign('routings', $this->routing->getAll());
-        $this->getView()->assign('groups', $groups);
-
         return true;
     }
 
     public function createAction() {
         if ($this->request->isPost()) {
-            $this->routing->create($this->request->getPost());
+            $routing = new RoutingModel();
+            $success = $routing->create($this->request->getPost());
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
         }
-
-        $this->response->setRedirect('/routing');
-        $this->response->response();
 
         return false;
     }
 
     public function deleteAction() {
-        $this->routing->delete($this->request->getQuery('id', null));
+        if ($this->request->method == 'DELETE') {
+            $routing = new RoutingModel();
+            $success = $routing->delete($this->request->getQuery('id', null));
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
+        }
+
         return false;
     }
 
     public function updateAction() {
         if ($this->request->isPost()) {
-            $id = $this->request->getPost('id', null);
-            $this->routing->change($id, $this->request->getPost());
+            $routing = new RoutingModel();
+            $success = $routing->change($this->request->getQuery('id', null), $this->request->getPost());
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
         }
-
-        $this->response->setRedirect('/routing');
-        $this->response->response();
 
         return false;
     }

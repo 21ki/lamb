@@ -77,14 +77,20 @@ class ApiController extends Yaf\Controller_Abstract {
 
     public function routingsAction() {
         if ($this->request->isGet()) {
+            $group = new GroupModel();
+            $groups = [];
+            foreach ($group->getAll() as $g) {
+                $groups[$g['id']] = $g;
+            }
+            
             $routing = new RoutingModel();
-            $response['status'] = 200;
-            $response['message'] = 'success';
-            $response['data'] = $routing->getAll();
-
-            header('Content-type: application/json');
-            echo json_encode($response);
+            $routings = $routing->getAll();
+            foreach ($routings as &$r) {
+                $r['target'] = $groups[$r['target']]['name'];
+            }
+            lambResponse(200, 'success', $routings);
         }
+
         return false;
     }
 

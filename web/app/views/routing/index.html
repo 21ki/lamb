@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>Gateway Group - lamb</title>
+    <title>routing - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link type="text/css" rel="stylesheet" href="/css/routing.css">
@@ -86,22 +86,27 @@
             <tr><th>#</th><th>路由规则</th><th>落地通道</th><th>备注信息</th><th colspan="2">排 序</th><th>删 除</th><th>编 辑</th></tr>
           </thead>
           <tbody>
-            <?php
-              foreach ($routings as $r) {
-              echo '<tr>';
-              echo '<td>',$r['id'],'</td><td>',$r['rexp'],'</td><td>',$groups[$r['target']]['name'],'</td><td>',$r['description'],'</td>';
-              echo '<td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-up"></span></a></td><td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-down"></span></a></td><td><button class="btn btn-default btn-xs" onclick="deleteRouting(',$r['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
-              echo '<td><button class="btn btn-default btn-xs" onclick="changeRouting(',$r['id'],')"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>';
-              echo '</tr>';
-              }
-              ?>
           </tbody>
         </table>
       </div>
     </div>
 </div>
-<script id="create-page" type="text/template">
-  <form class="form-horizontal" action="/routing/create" method="post" style="width:420px">
+<script id="contents" type="text/template">
+  {{#each data}}
+ <tr>
+   <td>{{id}}</td>
+   <td>{{rexp}}</td>
+   <td>{{target}}</td>
+   <td>{{description}}</td>
+   <td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-up"></span></a></td>
+   <td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-down"></span></a></td>
+   <td><button class="btn btn-default btn-xs" onclick="deleteRouting({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
+   <td><button class="btn btn-default btn-xs" onclick="changeRouting({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
+ </tr>
+ {{/each}}
+</script>
+<script id="new-page" type="text/template">
+  <form id="form" class="form-horizontal" style="width:420px">
     <div class="form-group">
       <label class="col-sm-3 control-label">路由规则</label>
       <div class="col-sm-8">
@@ -112,6 +117,9 @@
       <label class="col-sm-3 control-label">落地通道</label>
       <div class="col-sm-8">
         <select id="groups" class="form-control" name="target">
+          {{#each data}}
+          <option value="{{id}}">{{name}}</option>
+          {{/each}}
         </select>
       </div>
     </div>
@@ -123,37 +131,40 @@
     </div>
     <div class="form-group">
       <div class="col-sm-offset-3 col-sm-8">
-        <button type="submit" class="btn btn-success">创 建</button>
+        <button type="button" class="btn btn-success" onclick="formSubmit()">创 建</button>
         <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
       </div>
     </div>
   </form>
 </script>
 <script id="edit-page" type="text/template">
-  <form class="form-horizontal" action="/routing/update" method="post" style="width:420px">
+  <form id="form" class="form-horizontal" style="width:420px">
     <div class="form-group">
       <label class="col-sm-3 control-label">路由规则</label>
       <div class="col-sm-8">
         <input type="hidden" name="id" value="" />
-        <input type="text" class="form-control" name="rexp" value="" placeholder="Enter name" minlength="3" required="required">
+        <input type="text" class="form-control" name="rexp" value="{{routing.rexp}}" placeholder="Enter name" minlength="3" required="required">
       </div>
     </div>
     <div class="form-group">
       <label class="col-sm-3 control-label">落地通道</label>
       <div class="col-sm-8">
         <select id="groups" class="form-control" name="target" >
+          {{#each group}}
+          <option value="{{id}}"{{checkselectd id}}>{{name}}</option>
+          {{/each}}
         </select>
       </div>
     </div>
     <div class="form-group">
       <label class="col-sm-3 control-label">备注信息</label>
       <div class="col-sm-8">
-        <input type="text" class="form-control" name="description" value="" placeholder="Enter description">
+        <input type="text" class="form-control" name="description" value="{{routing.description}}" placeholder="Enter description">
       </div>
     </div>
     <div class="form-group">
       <div class="col-sm-offset-3 col-sm-8">
-        <button type="submit" class="btn btn-success">保 存</button>
+        <button type="button" class="btn btn-success" onclick="formChange({{routing.id}})">保 存</button>
         <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
       </div>
     </div>
@@ -161,13 +172,17 @@
 </script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/handlebars.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript" src="/js/routing.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {
-    $(this).addClass('open');
+  $(document).ready(function(){
+  $('li.dropdown').mouseover(function() {   
+  $(this).addClass('open');
   }).mouseout(function() {
-    $(this).removeClass('open');
+  $(this).removeClass('open');
+  });
+  startup();
   });
 </script>
 </body>
