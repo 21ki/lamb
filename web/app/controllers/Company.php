@@ -15,30 +15,19 @@ class CompanyController extends Yaf\Controller_Abstract {
     }
 
     public function indexAction() {
-        $company = new CompanyModel();
-
-        $list = $company->getAll();
-        foreach ($list as &$val) {
-            $val['money'] = $company->getMoney($val['id']);
-            $val['count'] = $company->accountTotal($val['id']);
-        }
-
-        $this->getView()->assign('companys', $list);
         return true;
     }
 
     public function createAction() {
-        $request = $this->getRequest();
-        if ($request->isPost()) {
+        if ($this->request->isPost()) {
             $company = new CompanyModel();
-            $company->create($request->getPost());
-            $response = $this->getResponse();
-            $response->setRedirect('/company');
-            $response->response();
-            return false;
+            $success = $company->create($this->request->getPost());
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
         }
 
-        return true;
+        return false;
     }
 
     public function updateAction() {
@@ -54,35 +43,36 @@ class CompanyController extends Yaf\Controller_Abstract {
     }
 
     public function deleteAction() {
-        $request = $this->getRequest();
+        if ($this->request->method == 'DELETE') {
+            $company = new CompanyModel();
+            $success = $company->delete($this->request->getQuery('id'));
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
+        }
 
-        $company = new CompanyModel();
-        $success = $company->delete($request->getQuery('id'));
-        $response['status'] = $success ? 200 : 400;
-        $response['message'] = $success ? 'success' : 'failed';
-        header('Content-type: application/json');
-        echo json_encode($response);
         return false;
     }
 
     public function rechargeAction() {
         if ($this->request->isPost()) {
             $company = new CompanyModel();
-            $success = $company->recharge($this->request->getQuery('id', null), $this->request->getPost('money'));
-            $response['status'] = $success ? 200 : 400;
-            $response['message'] = $success ? 'success' : 'failed';
-            header('Content-type: application/json');
-            echo json_encode($response);
+            $success = $company->recharge($this->request->getQuery('id', null), $this->request->getPost('money', null));
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
         }
 
         return false;
     }
 
     public function isExist($id = null) {
+        $id = intval($id);
         $result = false;
-        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . $id . ' LIMIT 1';
         $sth = $this->db->query($sql);
-        if ($sth && ($result = $sth->fetch()) !== false) {
+        if ($sth) {
+            $result = $sth->fetch();
             if ($result['count'] > 0) {
                 return true;
             }
@@ -91,5 +81,4 @@ class CompanyController extends Yaf\Controller_Abstract {
         return false;
     }
 }
-
 

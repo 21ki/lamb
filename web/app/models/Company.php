@@ -49,6 +49,9 @@ class CompanyModel {
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetchAll();
+            foreach ($result as &$val) {
+                $val['money'] = $this->getMoney($val['id']);
+            }
         }
 
         return $result;
@@ -71,6 +74,7 @@ class CompanyModel {
             }
 
             if ($sth->execute()) {
+                $this->upCache();
                 return true;
             }
         }
@@ -143,12 +147,12 @@ class CompanyModel {
     public function recharge($id = null, $money = 0) {
         $id = intval($id);
         $money = intval($money);
-        if ($money !== 0 && $this->isExist($id)) {
+        if ($money > 0 && $this->isExist($id)) {
             $this->redis->multi()->hIncrBy('company.' . $id, 'money', $money)->exec();
             $payment = new PaymentModel();
             $company = $this->get($id);
             $event['company'] = $company['name'];
-            $event['money'] = intval($money);
+            $event['money'] = $money;
             $event['operator'] = 'admin';
             $event['description'] = 'no description';
             $event['ip_addr'] = ip2long($_SERVER['REMOTE_ADDR']);
@@ -187,10 +191,11 @@ class CompanyModel {
     }
 
     public function isExist($id = null) {
-        $result = false;
-        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
+        $id = intval($id);
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . $id . ' LIMIT 1';
         $sth = $this->db->query($sql);
-        if ($sth && ($result = $sth->fetch()) !== false) {
+        if ($sth) {
+            $result = $sth->fetch();
             if ($result['count'] > 0) {
                 return true;
             }
@@ -223,5 +228,19 @@ class CompanyModel {
         }
 
         return $money;
+    }
+
+    public function upCache() {
+        $sql = 'SELECT * FROM company';
+        $sth = $this->db->query($sql);
+        if ($sth) {
+            $companys = $sth->fetchAll();
+            foreach ($companys as $company) {
+                unset($company['money']);
+                $this->redis->hMSet('company.' . $company['id'], $company);
+            }
+        }
+
+        return true;
     }
 }

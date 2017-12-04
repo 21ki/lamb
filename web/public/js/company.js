@@ -84,7 +84,7 @@ function editCompany(id) {
             var contents = template(xhr.response.data);
             layer.open({
                 type: 1,
-                title: '签名模板',
+                title: '编辑企业信息',
                 area: ['650px', '420px'],
                 content: contents
             });
