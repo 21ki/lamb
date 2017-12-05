@@ -11,7 +11,7 @@ use Tool\Filter;
 class DeliveryModel {
     public $db = null;
     private $table = 'delivery';
-    private $column = ['spcode', 'account', 'description'];
+    private $column = ['rexp', 'target', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -45,11 +45,13 @@ class DeliveryModel {
         $data = $this->checkArgs($data);
 
         if (count($data) === count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(spcode, account, description) VALUES(:spcode, :account, :description)';
+            $sql = 'INSERT INTO ' . $this->table . '(rexp, target, description) VALUES(:rexp, :target, :description)';
             $sth = $this->db->prepare($sql);
             
             foreach ($data as $key => $val) {
-                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                if ($val !== null) {
+                    $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                }
             }
             
             return $sth->execute();
@@ -69,7 +71,9 @@ class DeliveryModel {
             $sth->bindValue(':id', $id, PDO::PARAM_INT);
 
             foreach ($data as $key => $val) {
-                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                if ($val !== null) {
+                    $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                }
             }
 
             return $sth->execute();
@@ -106,11 +110,11 @@ class DeliveryModel {
 
         foreach ($data as $key => $val) {
             switch ($key) {
-            case 'spcode':
-                $res['spcode'] = Filter::alpha($val, null, 1, 32);
+            case 'rexp':
+                $res['rexp'] = Filter::string($val, null, 1, 127);
                 break;
-            case 'account':
-                $res['account'] = Filter::number($val, null);
+            case 'target':
+                $res['target'] = Filter::number($val, null);
                 break;
             case 'description':
                 $res['description'] = Filter::string($val, 'no description', 1, 64);

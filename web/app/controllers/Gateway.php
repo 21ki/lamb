@@ -9,93 +9,58 @@
 use Tool\Filter;
 
 class GatewayController extends Yaf\Controller_Abstract {
+    public function init(){
+        $this->request = $this->getRequest();
+    }
+    
     public function indexAction() {
-        $gateway = new GatewayModel();
-        $this->getView()->assign('gateways', $gateway->getAll());
         return true;
     }
 
     public function createAction() {
-        $request =  $this->getRequest();
-
-        if ($request->isPost()) {
+        if ($this->request->isPost()) {
             $gateway = new GatewayModel();
-            $form = $request->getPost();
-
-            if (isset($form['service']) && is_array($form['service'])) {
-                array_walk($form['service'], 'str2int');
-                $form['service'] = array_unique($form['service']);
-            } else {
-                $form['service'] = [];
-            }
-
-            $gateway->create($form);
-            $response = $this->getResponse();
-            $response->setRedirect('/gateway');
-            $response->response();
-            return false;
-            
+            $success = $gateway->create($this->request->getPost());
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
         }
-        
-        return true;
+
+        return false;        
     }
 
-    public function editAction() {
-        $request = $this->getRequest();
-        $gateway = new GatewayModel();
-
-        if ($request->isPost()) {
-            $form = $request->getPost();
-
-            if (isset($form['service']) && is_array($form['service'])) {
-                array_walk($form['service'], 'str2int');
-                $form['service'] = array_unique($form['service']);
-            } else {
-                $form['service'] = [];
-            }
-            
-            $gateway->change($request->getPost('id'), $form);
-            $response = $this->getResponse();
-            $response->setRedirect('/gateway');
-            $response->response();
-            return false;
+    public function updateAction() {
+        if ($this->request->isPost()) {
+            $gateway = new GatewayModel();
+            $success = $gateway->change($this->request->getQuery('id', null), $this->request->getPost());
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
         }
-
-        $data = $gateway->get($request->getQuery('id'));
-        $data['service'] = explode(',', trim($data['service'], '{}'));
-        $this->getView()->assign('gateway', $data);
-        return true;
-    }
-
-    public function deleteAction() {
-        $success = false;
-        $request = $this->getRequest();
-
-        $id = $request->getQuery('id', null);
-        $gateway = new GatewayModel();
-        if ($gateway->delete($id)) {
-            $success = true;
-        }
-
-        $response['status'] = $success ? 200 : 400;
-        $response['message'] = $success ? 'success' : 'failed';
-        header('Content-type: application/json');
-        echo json_encode($response);
 
         return false;
     }
 
-    public function testAction() {
-        $request = $this->getRequest();
-
-        if ($request->isPost()) {
-            $channel = new GatewayModel();
-            $channel->test($request->getPost('id'), $request->getPost('phone'), $request->getPost('message'));
+    public function deleteAction() {
+        if ($this->request->method == 'DELETE') {
+            $gateway = new GatewayModel();
+            $success = $gateway->delete($this->request->getQuery('id', null));
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
         }
 
-        $response = $this->getResponse();
-        $response->setRedirect('/gateway');
-        $response->response();
+        return false;
+    }
+
+    public function checkAction() {
+        if ($this->request->isPost()) {
+            $gateway = new GatewayModel();
+            $id = $this->request->getQuery('id', null);
+            $phone = $this->request->getPost('phone', null);
+            $message = $this->request->getPost('message', null);
+            $gateway->test($id, $phone, $message);
+        }
 
         return false;
     }

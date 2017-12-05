@@ -108,20 +108,27 @@ class ApiController extends Yaf\Controller_Abstract {
         return false;
     }
 
+    public function gatewayAction() {
+        if ($this->request->isGet()) {
+            $gateway = new GatewayModel();
+            lambResponse(200, 'success', $gateway->get($this->request->getQuery('id', null)));
+        }
+
+        return false;
+    }
+
     public function gatewaysAction() {
         if ($this->request->isGet()) {
             $gateway = new GatewayModel();
-            $response['status'] = 200;
-            $response['message'] = 'success';
-            $response['data'] = $gateway->getAll();
+            $gateways = $gateway->getAll();
 
-            foreach ($response['data'] as &$g) {
+            foreach ($gateways as &$g) {
                 unset($g['password']);
             }
-            
-            header('Content-type: application/json');
-            echo json_encode($response);
+
+            lambResponse(200, 'success', $gateways);
         }
+
         return false;
     }
 
@@ -174,6 +181,35 @@ class ApiController extends Yaf\Controller_Abstract {
 
             header('Content-type: application/json');
             echo json_encode($response);
+        }
+
+        return false;
+    }
+
+    public function deliveryAction() {
+        if ($this->request->isGet()) {
+            $delivery = new DeliveryModel();
+            lambResponse(200, 'success', $delivery->get($this->request->getQuery('id', null)));
+        }
+
+        return false;
+    }
+    
+    public function deliverysAction() {
+        if ($this->request->isGet()) {
+            $account = new AccountModel();
+            $accounts = [];
+            foreach ($account->getAll() as $a) {
+                $accounts[$a['id']] = $a;
+            }
+
+            $delivery = new DeliveryModel();
+            $deliverys = $delivery->getAll();
+            foreach ($deliverys as &$d) {
+                $d['target'] = $accounts[$d['target']]['username'];
+            }
+
+            lambResponse(200, 'success', $deliverys);
         }
 
         return false;
