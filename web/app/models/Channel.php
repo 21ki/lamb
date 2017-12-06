@@ -44,6 +44,10 @@ class ChannelModel {
     public function create(array $data = null) {
         $data = $this->checkArgs($data);
 
+        if (!isset($data['operator'])) {
+            $data['operator'] = 7;
+        }
+        
         if ($this->isExist($data['id']) && $this->check($data['id'], $data['gid'])) {
             $sql = 'INSERT INTO channels VALUES(:id, :gid, :weight, :operator)';
             $sth = $this->db->prepare($sql);
@@ -66,10 +70,13 @@ class ChannelModel {
     }
 
     public function delete($id = null, $gid = null) {
-        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' and gid = ' . intval($gid);
+        $id = intval($id);
+        $gid = intval($gid);
+        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . $id . ' and gid = ' . $gid;
         if ($this->db->query($sql)) {
             return true;
         }
+
         return false;
     }
 
@@ -82,22 +89,20 @@ class ChannelModel {
         return false;
     }
 
-    public function change(array $data = null) {
+    public function change($id = null, $gid = null, array $data = null) {
+        $id = intval($id);
+        $gid = intval($gid);
         $data = $this->checkArgs($data);
         $column = $this->keyAssembly($data);
 
-        if (count($data) < 3) {
+        if (count($data) < 1) {
             return false;
         }
         
-        if (!isset($data['id'], $data['gid'])) {
-            return false;
-        }
-
         $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id and gid = :gid';
         $sth = $this->db->prepare($sql);
-        $sth->bindValue(':id', $data['id'], PDO::PARAM_INT);
-        $sth->bindValue(':gid', $data['gid'], PDO::PARAM_INT);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+        $sth->bindValue(':gid', $gid, PDO::PARAM_INT);
 
         foreach ($data as $key => $val) {
             if ($val != null) {

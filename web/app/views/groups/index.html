@@ -57,11 +57,9 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/security/database">黑白名单库</a></li>
                 <li><a href="/security/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
-                <li><a href="/system/status">系统状态</a></li>
               </ul>
             </li>
           </ul>
@@ -77,7 +75,7 @@
         <ol class="breadcrumb">
           <li><a href="#">Home</a></li>
           <li class="active">Groups</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 创 建</a></li>
+          <li class="pull-right add"><button type="button" class="btn btn-success btn-xs" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 创 建</button></li>
         </ol>
       </div>
       <div class="row">
@@ -86,71 +84,91 @@
             <tr><th>#</th><th>分组名称</th><th>备注说明</th><th>删 除</th><th>编 辑</th></tr>
           </thead>
           <tbody>
-            <?php
-              foreach ($groups as $g) {
-              echo '<tr><td>',$g['id'],'</td><td><a href="/channels?id=',$g['id'],'">',$g['name'],'</a></td><td>',$g['description'],'</td>';
-              echo '<td><button class="btn btn-default btn-xs" onclick="deleteGroup(',$g['id'],')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>';
-              echo '<td><button class="btn btn-default btn-xs" onclick="editGroup(',$g['id'],')"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td></tr>';
-              }
-              ?>
           </tbody>
         </table>
       </div>
     </div>
 </div>
+<script id="contents" type="text/template">
+  {{#each data}}
+  <tr>
+    <td>{{id}}</td>
+    <td><a href="/channels?gid={{id}}">{{name}}</a></td>
+    <td>{{description}}</td>
+    <td><button class="btn btn-default btn-xs" onclick="deleteGroup({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
+    <td><button class="btn btn-default btn-xs" onclick="changeGroup({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
+  </tr>
+  {{/each}}
+</script>
 <script id="new-page" type="text/template">
-  <form class="form-horizontal" action="/groups/create" method="post" style="width:420px">
+  <form id="form"class="form-horizontal">
     <div class="form-group">
-      <label class="col-sm-3 control-label">分组名称</label>
-      <div class="col-sm-8">
+      <label class="col-sm-3 control-label">分组名称 :</label>
+      <div class="col-sm-5">
         <input type="text" class="form-control" name="name" placeholder="Enter name" minlength="1" required="required">
+      </div>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">网关通道组名称</span>
       </div>
     </div>
     <div class="form-group">
-      <label class="col-sm-3 control-label">备注信息</label>
-      <div class="col-sm-8">
+      <label class="col-sm-3 control-label">备注信息 :</label>
+      <div class="col-sm-5">
         <input type="text" class="form-control" name="description" placeholder="Enter description">
+      </div>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">相关备注信息</span>
       </div>
     </div>
     <div class="form-group">
       <div class="col-sm-offset-3 col-sm-8">
-        <button type="submit" class="btn btn-success">创 建</button><a href="javascript:void(0);" onClick="layer.closeAll()" class="btn btn-default">取 消</a>
+        <button type="button" class="btn btn-success" onclick="formSubmit()">创 建</button>
+        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
       </div>
     </div>
   </form>
 </script>
 <script id="edit-page" type="text/template">
-  <form class="form-horizontal" action="/groups/change" method="post" style="width:420px">
+  <form id="form"class="form-horizontal">
     <div class="form-group">
-      <label class="col-sm-3 control-label">分组名称</label>
-      <div class="col-sm-8">
-        <input type="hidden" name="id" value="" />
-        <input type="text" class="form-control" name="name" value="" placeholder="Enter name" minlength="1" required="required">
+      <label class="col-sm-3 control-label">分组名称 :</label>
+      <div class="col-sm-5">
+        <input type="text" class="form-control" name="name" value="{{name}}" placeholder="Enter name" minlength="1" required="required">
+      </div>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">网关通道组名称</span>
       </div>
     </div>
     <div class="form-group">
-      <label class="col-sm-3 control-label">备注信息</label>
-      <div class="col-sm-8">
-        <input type="text" class="form-control" name="description" value="" placeholder="Enter description">
+      <label class="col-sm-3 control-label">备注信息 :</label>
+      <div class="col-sm-5">
+        <input type="text" class="form-control" name="description" value="{{description}}" placeholder="Enter description">
+      </div>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">相关备注信息</span>
       </div>
     </div>
     <div class="form-group">
       <div class="col-sm-offset-3 col-sm-8">
-        <button type="submit" class="btn btn-success">保 存</button>
-        <button type="button" onClick="layer.closeAll()" class="btn btn-default">取 消</button>
+        <button type="button" class="btn btn-success" onclick="formChange({{id}})">保 存</button>
+        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
       </div>
     </div>
   </form>
 </script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/handlebars.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript" src="/js/group.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {
-    $(this).addClass('open');
-  }).mouseout(function() {
-    $(this).removeClass('open');
+  $(document).ready(function(){
+    $('li.dropdown').mouseover(function() {   
+      $(this).addClass('open');
+    }).mouseout(function() {
+      $(this).removeClass('open');
+    });
+    startup();
   });
 </script>
 </body>

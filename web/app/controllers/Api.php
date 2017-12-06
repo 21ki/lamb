@@ -96,13 +96,36 @@ class ApiController extends Yaf\Controller_Abstract {
 
     public function channelAction() {
         if ($this->request->isGet()) {
-            $channel = new ChannelModel();
-            $response['status'] = 200;
-            $response['message'] = 'success';
-            $response['data'] = $channel->get($this->request->getQuery('id', null), $this->request->getQuery('rid', null));
+            $c = new ChannelModel();
+            $id = $this->request->getQuery('id', null);
+            $gid = $this->request->getQuery('gid', null);
+            $channel = $c->get($id, $gid);
 
-            header('Content-type: application/json');
-            echo json_encode($response);
+            $g = new GatewayModel();
+            $gateway = $g->get($channel['id']);
+            $channel['name'] = $gateway['name'];
+            lambResponse(200, 'success', $channel);
+        }
+
+        return false;
+    }
+    
+    public function channelsAction() {
+        if ($this->request->isGet()) {
+            $gateway = new GatewayModel();
+            $gateways = [];
+
+            foreach ($gateway->getAll() as $g) {
+                $gateways[$g['id']] = $g;
+            }
+
+            $channel = new ChannelModel();
+            $channels = $channel->getAll($this->request->getQuery('gid', null));
+            foreach ($channels as &$chan) {
+                $chan['name'] = $gateways[$chan['id']]['name'];
+            }
+            
+            lambResponse(200, 'success', $channels);
         }
 
         return false;
@@ -161,26 +184,18 @@ class ApiController extends Yaf\Controller_Abstract {
     }
 
     public function groupAction() {
-        $group = new GroupModel();
-        $response['status'] = 200;
-        $response['message'] = 'success';
-        $response['data'] = $group->get($this->request->getQuery('id', null));
-
-        header('Content-type: application/json');
-        echo json_encode($response);
-
+        if ($this->request->isGet()) {
+            $group = new GroupModel();
+            lambResponse(200, 'success', $group->get($this->request->getQuery('id', null)));
+        }
+        
         return false;
     }
 
     public function groupsAction() {
         if ($this->request->isGet()) {
             $group = new GroupModel();
-            $response['status'] = 200;
-            $response['message'] = 'success';
-            $response['data'] = $group->getAll();
-
-            header('Content-type: application/json');
-            echo json_encode($response);
+            lambResponse(200, 'success' ,$group->getAll());
         }
 
         return false;

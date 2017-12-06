@@ -7,7 +7,7 @@ body {
 
 .breadcrumb {
     padding-left: 18px;
-    padding-right: 18px;
+    padding-right: 28px;
 }
 
 .breadcrumb .pull-right:before {
@@ -22,6 +22,11 @@ body {
     text-align: center;
     border-top: 1px solid #fafafa;
     border-bottom: 1px solid #fafafa;
+}
+
+th:last-child, td:last-child {
+    width: 110px;
+    text-align: center;
 }
 
 .pay-icon img {

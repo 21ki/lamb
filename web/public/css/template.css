@@ -7,7 +7,7 @@ body {
 
 .breadcrumb {
     padding-left: 18px;
-    padding-right: 18px;
+    padding-right: 28px;
 }
 
 .breadcrumb .pull-right:before {
@@ -28,6 +28,10 @@ body {
     border-bottom: 1px solid #fafafa;
 }
 
+th:last-child, td:last-child {
+    width: 110px;
+    text-align: center;
+}
 
 .badge-default {
     background-color: #999999;

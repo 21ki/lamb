@@ -38,7 +38,7 @@ function show() {
 
 function formSubmit() {
     var method = "POST";
-    var url = '/company/create';
+    var url = '/gateway/create';
     var form = document.getElementById("new-form");
     var data = new FormData(form);
     var xhr = new XMLHttpRequest();
@@ -56,8 +56,8 @@ function formSubmit() {
 
 function formChange(id) {
     var method = "POST";
-    var url = '/company/update?id=' + id;
-    var form = document.getElementById("form");
+    var url = '/gateway/update?id=' + id;
+    var form = document.getElementById("edit-form");
     var data = new FormData(form);
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";

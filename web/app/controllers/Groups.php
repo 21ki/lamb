@@ -9,33 +9,44 @@
 class GroupsController extends Yaf\Controller_Abstract {
     public function init() {
         $this->request = $this->getRequest();
-        $this->response = $this->getResponse();
-        $this->group = new GroupModel();
     }
 
     public function indexAction() {
-        $this->getView()->assign('groups', $this->group->getAll());
-
         return true;
     }
 
     public function createAction() {
-        $this->group->create($this->request->getPost());
-        $this->response->setRedirect('/groups');
-        $this->response->response();
+        if ($this->request->isPost()) {
+            $group = new GroupModel();
+            $success = $group->create($this->request->getPost());
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
+        }
+
         return false;
     }
 
     public function deleteAction() {
-        $this->group->delete($this->request->getQuery('id', null));
+        if ($this->request->method == 'DELETE') {
+            $group = new GroupModel();
+            $success = $group->delete($this->request->getQuery('id', null));
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
+        }
+
         return false;
     }
 
-    public function changeAction() {
-        $this->group->change($this->request->getPost('id', null),
-                             $this->request->getPost());
-        $this->response->setRedirect('/groups');
-        $this->response->response();
+    public function updateAction() {
+        if ($this->request->isPost()) {
+            $group = new GroupModel();
+            $success = $group->change($this->request->getQuery('id', null), $this->request->getPost());
+            $status = $success ? 200 : 400;
+            $message = $success ? 'success' : 'failed';
+            lambResponse($status, $message);
+        }
 
         return false;
     }
