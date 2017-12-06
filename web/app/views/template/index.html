@@ -97,32 +97,41 @@
     <td>{{name}}</td>
     <td>{{contents}}</td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteTemplate({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
-    <td><button type="button" class="btn btn-default btn-xs" onclick="editTemplate({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td>
+    <td><button type="button" class="btn btn-default btn-xs" onclick="changeTemplate({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
   </tr>
   {{/each}}
 </script>
 <script id="new-page" type="text/template">
-  <form id="form" class="form-horizontal" style="width:500px">
+  <form id="form" class="form-horizontal">
     <div class="form-group">
-      <label class="col-sm-3 control-label">接入号码</label>
-      <div class="col-sm-9">
+      <label class="col-sm-3 control-label">接入号码:</label>
+      <div class="col-sm-6">
         <input type="text" class="form-control" name="rexp" placeholder="Enter spcode" minlength="1" required="required">
       </div>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">接入号码</span>
+      </div>
     </div>
     <div class="form-group">
-      <label class="col-sm-3 control-label">签名标题</label>
-      <div class="col-sm-9">
+      <label class="col-sm-3 control-label">签名标题:</label>
+      <div class="col-sm-6">
         <input type="text" class="form-control" name="name" placeholder="Enter name" minlength="3" required="required">
       </div>
-    </div>
-    <div class="form-group">
-      <label class="col-xs-3 col-sm-3 control-label" style="line-height:60px">模板内容</label>
-      <div class="col-xs-9 col-sm-9">
-        <textarea class="form-control" rows="3" cols="24" name="contents" placeholder="Enter Template Content" required="required"></textarea>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">短信签名</span>
       </div>
     </div>
     <div class="form-group">
-      <div class="col-sm-offset-3 col-sm-9" style="margin-top:15px">
+      <label class="col-xs-3 col-sm-3 control-label" style="line-height:60px">模板内容:</label>
+      <div class="col-xs-6 col-sm-6">
+        <textarea class="form-control" rows="4" cols="24" name="contents" placeholder="Enter Template Content" required="required"></textarea>
+      </div>
+      <div class="col-xs-3 col-sm-3" style="line-height:60px">
+        <span class="help-block">短信内容</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-4 col-sm-6" style="margin-top:15px">
         <button type="button" onclick="formSubmit()" class="btn btn-success">创 建</button>
         <button type="button" onclick="layer.closeAll()" class="btn btn-default">取 消</button>
       </div>
@@ -130,29 +139,37 @@
   </form>
 </script>
 <script id="edit-page" type="text/template">
-  <form id="form" class="form-horizontal" style="width:500px">
+  <form id="form" class="form-horizontal">
     <div class="form-group">
-      <label class="col-sm-3 control-label">接入号码</label>
-      <div class="col-sm-9">
-        <input type="hidden" name="id" value="" />
-        <input type="text" class="form-control" name="rexp" value="" placeholder="Enter spcode" minlength="1" required="required">
+      <label class="col-sm-3 control-label">接入号码:</label>
+      <div class="col-sm-6">
+        <input type="text" class="form-control" name="rexp" value="{{rexp}}" placeholder="Enter spcode" minlength="1" required="required">
+      </div>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">接入号码</span>
       </div>
     </div>
     <div class="form-group">
-      <label class="col-sm-3 control-label">签名标题</label>
-      <div class="col-sm-9">
-        <input type="text" class="form-control" name="name" value="" placeholder="Enter name" minlength="3" required="required">
+      <label class="col-sm-3 control-label">签名标题:</label>
+      <div class="col-sm-6">
+        <input type="text" class="form-control" name="name" value="{{name}}" placeholder="Enter name" minlength="3" required="required">
+      </div>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">短信签名</span>
       </div>
     </div>
     <div class="form-group">
-      <label class="col-xs-3 col-sm-3 control-label" style="line-height:60px">模板内容</label>
-      <div class="col-xs-9 col-sm-9">
-        <textarea class="form-control" rows="3" cols="24" name="contents" placeholder="Enter Template Content" required="required"></textarea>
+      <label class="col-xs-3 col-sm-3 control-label" style="line-height:60px">模板内容:</label>
+      <div class="col-xs-6 col-sm-6">
+        <textarea class="form-control" rows="4" cols="24" name="contents" placeholder="Enter Template Content" required="required">{{contents}}</textarea>
+      </div>
+      <div class="col-xs-3 col-sm-3" style="line-height:60px">
+        <span class="help-block">短信内容</span>
       </div>
     </div>
     <div class="form-group">
-      <div class="col-sm-offset-3 col-sm-9" style="margin-top:15px">
-        <button type="button" onclick="formChange()" class="btn btn-success">保 存</button>
+      <div class="col-sm-offset-4 col-sm-6" style="margin-top:15px">
+        <button type="button" onclick="formChange({{id}})" class="btn btn-success">保 存</button>
         <button type="button" onclick="layer.closeAll()" class="btn btn-default">取 消</button>
       </div>
     </div>
@@ -165,13 +182,13 @@
 <script type="text/javascript" src="/js/template.js"></script>
 <script type="text/javascript">
   $(document).ready(function(){
-    $('li.dropdown').mouseover(function() {   
-      $(this).addClass('open');
-    }).mouseout(function() {
-      $(this).removeClass('open');
-    });
+  $('li.dropdown').mouseover(function() {   
+  $(this).addClass('open');
+  }).mouseout(function() {
+  $(this).removeClass('open');
+  });
 
-    startup();
+  startup();
   });  
 </script>
 </body>
