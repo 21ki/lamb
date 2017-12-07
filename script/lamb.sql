@@ -82,7 +82,8 @@ CREATE TABLE delivery (
 
 CREATE TABLE keyword (
     id serial PRIMARY KEY NOT NULL,
-    val text NOT NULL
+    val text NOT NULL,
+    tag text NOT NULL
 );
 
 CREATE TABLE pay_logs (

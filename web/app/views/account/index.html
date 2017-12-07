@@ -45,7 +45,7 @@
               <ul class="dropdown-menu">
                 <li><a href="/gateway">落地通道</a></li>
                 <li><a href="/groups">通道网关组</a></li>
-                <li><a href="/gateway/report">通道统计报表</a></li>
+                <li><a href="/gateway/report">通道数据统计</a></li>
               </ul>
             </li>
             <li class="dropdown">
@@ -54,6 +54,7 @@
                 <li><a href="/message">上行短信</a></li>
                 <li><a href="/message/deliver">下行短信</a></li>
                 <li><a href="/message/report">状态报告</a></li>
+                <li><a href="/message/statistic">数据统计</a></li>
               </ul>
             </li>
             <li class="dropdown">
@@ -102,7 +103,7 @@
     <td>{{description}}</td>
     <td>{{create_time}}</td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteAccount({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
-    <td><button type="button" class="btn btn-default btn-xs" onclick="editAccount({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td>
+    <td><button type="button" class="btn btn-default btn-xs" onclick="editAccount({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
   </tr>
   {{/each}}
 </script>

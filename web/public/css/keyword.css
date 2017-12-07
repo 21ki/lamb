@@ -14,45 +14,50 @@ body {
     content: "";
 }
 
-.label-default {
-    background-color: #b7b4b4;
+td .label {
+    color: #888888;
+    padding: 7px;
+    background-color: #f1f1f1;
 }
 
-.label-primary {
-    background-color: #91bade;
-}
-
-.label-success {
-    background-color: #96d896;
-}
-
-.label-warning {
-    background-color: #f5ca8d;
-}
-
-.label-danger {
-    background-color: #ec918f;
-}
-
-.label-info {
-    background-color: #a3dcec;
-}
-
-
-.box {
-    padding: 15px;
-}
-
-.box .label {
-    float: left;
-    padding: 10px;
-    margin: 10px;
+.table thead th {
     color: #555555;
-    font-weight: 100;
-    border-radius: 15px;
 }
 
-.box .label a {
-    color: #ffffff;
-    margin-left: 3px;
+.table td:first-child {
+    width: 50px;
+}
+
+.table>thead>tr>th, .table>tbody>tr>td {
+    text-align: center;
+    padding: 10px;
+    border-top: 1px solid #fafafa;
+    border-bottom: 1px solid #fafafa;
+}
+
+.table>thead tr .text-left, .table>tbody tr .text-left {
+    text-align: left;
+}
+
+th:last-child, td:last-child {
+    width: 110px;
+    text-align: center;
+}
+
+form {
+    margin: 28px;
+}
+
+#form .form-group {
+    margin-right: 0px;
+    margin-left: 0px;
+}
+
+.form-group .btn {
+    width: 70px;
+    margin-top: 10px;
+}
+
+.form-group .btn-cancel {
+    margin-left: 20px;
 }
