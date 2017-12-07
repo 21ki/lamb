@@ -50,4 +50,25 @@ class RoutingController extends Yaf\Controller_Abstract {
 
         return false;
     }
+
+    public function upAction() {
+        if ($this->request->isGet()) {
+            $routing = new RoutingModel();
+            $routing->move('up', $this->request->getQuery('id', null));
+            lambResponse(200, 'success');
+        }
+
+        return false;
+    }
+
+    public function downAction() {
+        if ($this->request->isGet()) {
+            $routing = new RoutingModel();
+            $routing->move('down', $this->request->getQuery('id', null));
+            lambResponse(200, 'success');
+        }
+
+        return false;
+    }
+
 }

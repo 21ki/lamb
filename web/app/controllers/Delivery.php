@@ -51,4 +51,24 @@ class DeliveryController extends Yaf\Controller_Abstract {
 
         return false;
     }
+
+    public function upAction() {
+        if ($this->request->isGet()) {
+            $delivery = new DeliveryModel();
+            $delivery->move('up', $this->request->getQuery('id', null));
+            lambResponse(200, 'success');
+        }
+
+        return false;
+    }
+
+    public function downAction() {
+        if ($this->request->isGet()) {
+            $delivery = new DeliveryModel();
+            $delivery->move('down', $this->request->getQuery('id', null));
+            lambResponse(200, 'success');
+        }
+
+        return false;
+    }
 }

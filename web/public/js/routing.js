@@ -7,6 +7,9 @@ function startup() {
     xhr.onreadystatechange = function(){
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             var source = document.getElementById("contents").innerHTML;
+            Handlebars.registerHelper('seq', function(id) {
+                return id + 1;
+            });
             var template = Handlebars.compile(source);
             var contents = template(xhr.response);
             $("tbody").append(contents);
@@ -136,3 +139,26 @@ function deleteRouting(id) {
     });
 }
 
+function move(type, id) {
+    var method = "GET";
+    var url = '';
+
+    if (type == 'up') {
+        url = '/routing/up?id=' + id;
+    } else if (type == 'down') {
+        url = '/routing/down?id=' + id;
+    } else {
+        return;
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function(){
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            $("tbody").empty();
+            startup();
+        }
+    }
+    xhr.open(method, url, true);
+    xhr.send();
+}

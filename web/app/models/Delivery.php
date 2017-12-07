@@ -141,4 +141,54 @@ class DeliveryModel {
         }
         return $text;
     }
+
+    public function move($action = null, $id = null) {
+        $sid = 0;
+
+        if ($action == 'up') {
+            $sql = 'SELECT id FROM ' . $this->table . ' WHERE id < :id and id > 0 ORDER BY id DESC LIMIT 1';
+        } else if ($action == 'down') {
+            $sql = 'SELECT id FROM ' . $this->table . ' WHERE id > :id and id > 0 ORDER BY id ASC LIMIT 1';
+        } else {
+            return false;
+        }
+
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $reply = $sth->fetch();
+            $sid = intval($reply['id']);
+        } else {
+            return false;
+        }
+
+        if ($sid < 1) {
+            return false;
+        }
+
+        $this->db->beginTransaction();
+
+        /* update previous to temp */
+        $sql = 'UPDATE ' . $this->table . ' SET id = 0 WHERE id = :sid';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':sid', $sid, PDO::PARAM_INT);
+        $sth->execute();
+
+        /* update current to previous */
+        $sql = 'UPDATE ' . $this->table . ' SET id = :sid WHERE id = :id';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':sid', $sid, PDO::PARAM_INT);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+        $sth->execute();
+
+        /* update temp to current */
+        $sql = 'UPDATE ' . $this->table . ' SET id = :id WHERE id = 0';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+        $sth->execute();
+
+        $this->db->commit();
+
+    }
 }

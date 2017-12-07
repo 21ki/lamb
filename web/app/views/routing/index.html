@@ -92,12 +92,12 @@
 <script id="contents" type="text/template">
   {{#each data}}
  <tr>
-   <td>{{id}}</td>
+   <td>{{seq @index}}</td>
    <td>{{rexp}}</td>
    <td>{{target}}</td>
    <td>{{description}}</td>
-   <td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-up"></span></a></td>
-   <td><a class="text-muted" href="#"><span class="glyphicon glyphicon-arrow-down"></span></a></td>
+   <td class="arrow"><a class="text-muted" href="javascript:void(0)" onclick="move('up', {{id}})"><span class="glyphicon glyphicon-arrow-up"></span></a></td>
+   <td class="arrow"><a class="text-muted" href="javascript:void(0)" onclick="move('down', {{id}})"><span class="glyphicon glyphicon-arrow-down"></span></a></td>
    <td><button class="btn btn-default btn-xs" onclick="deleteRouting({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
    <td><button class="btn btn-default btn-xs" onclick="changeRouting({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
  </tr>
@@ -175,12 +175,12 @@
 <script type="text/javascript" src="/js/routing.js"></script>
 <script type="text/javascript">
   $(document).ready(function(){
-  $('li.dropdown').mouseover(function() {   
-  $(this).addClass('open');
-  }).mouseout(function() {
-  $(this).removeClass('open');
-  });
-  startup();
+    $('li.dropdown').mouseover(function() {   
+      $(this).addClass('open');
+    }).mouseout(function() {
+      $(this).removeClass('open');
+    });
+    startup();
   });
 </script>
 </body>
