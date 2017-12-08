@@ -67,6 +67,10 @@ td .label, #elements .label {
     text-align: left;
 }
 
+.table>thead tr .text-right, .table>tbody tr .text-right {
+    text-align: right;
+}
+
 th:last-child, td:last-child {
     width: 110px;
     text-align: center;
