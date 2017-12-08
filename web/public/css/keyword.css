@@ -14,7 +14,24 @@ body {
     content: "";
 }
 
-td .label {
+#elements {
+    padding: 15px;
+}
+
+#elements span {
+    margin-right: 10px;
+}
+
+#elements span a {
+    margin-left: 3px;
+    color: #555555;
+}
+
+#elements span a:hover {
+    color: red;
+}
+
+td .label, #elements .label {
     color: #888888;
     padding: 7px;
     background-color: #f1f1f1;

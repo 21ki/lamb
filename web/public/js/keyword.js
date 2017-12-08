@@ -1,30 +1,38 @@
 
 function startup() {
+    var method = "GET";
     var url = '/api/keywords';
-    $.get(url, function(resp, stat){
-        if (stat == 'success') {
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function(){
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             var source = document.getElementById("contents").innerHTML;
             var template = Handlebars.compile(source);
-            var contents = template(resp);
-            $("#datalist").append(contents);
+            var contents = template(xhr.response);
+            $("tbody").append(contents);
             $("tbody tr").hide();
             $("tbody tr").each(function(i){
                 $(this).delay(i * 25).fadeIn(300);
             });
         }
-    });
+    }
+    xhr.open(method, url, true);
+    xhr.send();
 }
 
-function show() {
+function show(tag) {
     var method = "GET";
     var url = "/keyword/tags";
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function(){
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            var data = new Object();
+            data.tags = xhr.response;
+            data.def = (typeof(tag) !== "undefined") ? tag : '';
             var source = document.getElementById("new-page").innerHTML;
             var template = Handlebars.compile(source);
-            var contents = template(xhr.response);
+            var contents = template(data);
 
             layer.open({
                 type: 1,
@@ -38,9 +46,31 @@ function show() {
     xhr.send();
 }
 
-function formSubmit() {
+function fetchKeywords(tag) {
+    var method = "GET";
+    var url = "/keyword/getkeywords?tag=" + tag;
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function(){
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            var source = source = document.getElementById("contents").innerHTML;
+            var template = Handlebars.compile(source);
+            var contents = template(xhr.response);
+
+            $("#elements").append(contents);
+            $(".label").hide();
+            $(".label").each(function(i){
+                $(this).delay(i * 15).fadeIn(300);
+            });
+        }
+    }
+    xhr.open(method, url, true);
+    xhr.send();
+}
+
+function formElement() {
     var method = "POST";
-    var url = '/template/create';
+    var url = '/keyword/create';
     var form = document.getElementById("form");
     var data = new FormData(form);
     var xhr = new XMLHttpRequest();
@@ -48,7 +78,24 @@ function formSubmit() {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             layer.closeAll();
-            $("#datalist").empty();
+            window.location.reload();
+        }
+    }
+    xhr.open(method, url, true);
+    xhr.send(data);
+}
+
+function formSubmit() {
+    var method = "POST";
+    var url = '/keyword/create';
+    var form = document.getElementById("form");
+    var data = new FormData(form);
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            layer.closeAll();
+            $("tbody").empty();
             startup();
         }
     }
@@ -74,9 +121,9 @@ function formChange(id) {
     xhr.send(data);
 }
 
-function changeTemplate(id) {
+function changeKeywords(tag) {
     var method = "GET";
-    var url = '/api/template?id=' + id;
+    var url = '/api/keyword?tag=' + tag;
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function(){
@@ -86,7 +133,7 @@ function changeTemplate(id) {
             var contents = template(xhr.response.data);
             layer.open({
                 type: 1,
-                title: '编辑签名模板',
+                title: '编辑关键字',
                 area: ['650px', '350px'],
                 content: contents
             });
@@ -96,19 +143,38 @@ function changeTemplate(id) {
     xhr.send();
 }
 
-function deleteTemplate(id) {
+function deleteKeyword(id, val) {
+    layer.confirm('确定要将 "' + val + '" 关键词删除？', {
+        btn: ['是','否'], icon: 3
+    }, function(){
+        var method = 'DELETE';
+        var url = '/keyword/delete?id=' + id;
+        var xhr = new XMLHttpRequest();
+        xhr.responseType = "json";
+        xhr.onreadystatechange = function(){
+            if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+                layer.msg('删除成功!', {icon: 1, time: 1000});
+                window.location.reload();
+            }
+        }
+        xhr.open(method, url);
+        xhr.send();
+    });
+}
+
+function deleteKeywords(tag) {
     layer.confirm('亲，确定要删除？', {
         btn: ['是','否'], icon: 3
     }, function(){
         var method = 'DELETE';
-        var url = '/template/delete?id=' + id;
+        var url = '/keyword/delete?tag=' + tag;
         var xhr = new XMLHttpRequest();
         xhr.responseType = "json";
         xhr.onreadystatechange = function(){
             if (xhr.readyState === xhr.DONE && xhr.status === 200) {
                 layer.msg('删除成功!', {icon: 1, time: 1000});
                 setTimeout(function() {
-                    $("#datalist").empty();
+                    $("tbody").empty();
                     startup();
                 }, 1000);
             }

@@ -15,6 +15,22 @@ class KeywordController extends Yaf\Controller_Abstract {
         return true;
     }
 
+    public function elementsAction() {
+        $tag = $this->request->getQuery('tag', '');
+        $this->getView()->assign('tag', $tag);
+        return true;
+    }
+
+    public function getkeywordsAction() {
+        if ($this->request->isGet()) {
+            $keyword = new KeywordModel();
+            $tag = $this->request->getQuery('tag', null);
+            lambResponse(200, 'success', $keyword->getClassification(urldecode($tag)));
+        }
+
+        return false;
+    }
+
     public function createAction() {
         if ($this->request->isPost()) {
             $keyword = new KeywordModel();
@@ -37,6 +53,19 @@ class KeywordController extends Yaf\Controller_Abstract {
     }
     
     public function deleteAction() {
+        if ($this->request->method == 'DELETE') {
+            $id = $this->request->getQuery('id', null);
+            $tag = $this->request->getQuery('tag', null);
+            $keyword = new KeywordModel();
+            if ($id !== null) {
+                $keyword->delete($id);
+            } else if ($tag !== null) {
+                $keyword->deleteClassification($tag);
+            }
+
+            lambResponse(200, 'success');
+        }
+
         return false;
     }
 }

@@ -58,7 +58,7 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
               <ul class="dropdown-menu">
-                <li><a href="/security/keyword">关键词库</a></li>
+                <li><a href="/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
                 <li><a href="/payment">支付管理</a></li>
               </ul>
@@ -85,34 +85,28 @@
             <tr><th>#</th><th>分类名称</th><th class="text-left">关键字</th><th>删 除</th><th>编 辑</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td>
-                <span class="glyphicon glyphicon-text-background"></span>
-              </td>
-              <td>default</td>
-              <td class="text-left">
-                <span class="label label-default">请使用</span>
-                <span class="label label-primary">关闭按钮</span>
-                <span class="label label-success">警告框</span>
-                <span class="label label-info">工具类</span>
-                <span class="label label-warning">进度条</span>
-                <span class="label label-danger">兼容性</span>
-                <span class="label label-default">吃喝嫖赌</span>
-                <span class="label label-primary">基本实例</span>
-                <span class="label label-success">变化效果</span>
-                <span class="label label-info">条纹效果</span>
-                <span class="label label-default">吃喝嫖赌</span>
-                <span class="label label-primary">基本实例</span>
-                <span class="label label-success">变化效果</span>
-              </td>
-              <td><button type="button" class="btn btn-default btn-xs" onclick="deleteAccount()"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
-              <td><button type="button" class="btn btn-default btn-xs" onclick="editAccount()"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
-            </tr>
           </tbody>
         </table>
       </div>
     </div>
 </div>
+<script id="contents" type="text/template">
+  {{#each data}}
+  <tr>
+    <td>
+      <span class="glyphicon glyphicon-text-background"></span>
+    </td>
+    <td>{{tag}}</td>
+    <td class="text-left">
+      {{#each vals}}
+      <span class="label">{{val}}</span>
+      {{/each}}
+    </td>
+    <td><button type="button" class="btn btn-default btn-xs" onclick="deleteKeywords('{{tag}}')"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
+    <td><a class="btn btn-default btn-xs" href="/keyword/elements?tag={{tag}}"><span class="glyphicon glyphicon-edit"></span> 编 辑</a></td>
+  </tr>
+  {{/each}}
+</script>
 <script id="new-page" type="text/template">
   <form id="form" class="form-horizontal">
     <div class="form-group">
@@ -120,7 +114,7 @@
       <div class="col-xs-5 col-sm-5">
         <input type="text" class="form-control" name="tag" list="tag" placeholder="Enter Tag" required="required">
         <datalist id="tag">
-          {{#each data}}
+          {{#each tags.data}}
           <option value="{{tag}}">{{tag}}</option>
           {{/each}}
         </datalist>
@@ -153,12 +147,12 @@
 <script type="text/javascript" src="/js/keyword.js"></script>
 <script type="text/javascript">
   $(document).ready(function(){
-  $('li.dropdown').mouseover(function() {   
-  $(this).addClass('open');
-  }).mouseout(function() {
-  $(this).removeClass('open');
-  });
-  //startup();
+    $('li.dropdown').mouseover(function() {
+      $(this).addClass('open');
+    }).mouseout(function() {
+      $(this).removeClass('open');
+    });
+    startup();
   });
 </script>
 </body>
