@@ -233,7 +233,8 @@ class ApiController extends Yaf\Controller_Abstract {
     public function keywordsAction() {
         if ($this->request->isGet()) {
             $keyword = new KeywordModel();
-            lambResponse(200, 'success', $keyword->getAllClassification());
+            $limit = $this->request->getQuery('limit', null);
+            lambResponse(200, 'success', $keyword->getAllClassification($limit));
         }
 
         return false;

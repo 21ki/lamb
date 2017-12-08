@@ -1,7 +1,8 @@
 
 function startup() {
     var method = "GET";
-    var url = '/api/keywords';
+    var limit = $('table').width() > 1000 ? 12 : 8;
+    var url = '/api/keywords?limit=' + limit;
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function(){

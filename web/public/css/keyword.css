@@ -50,6 +50,10 @@ td .label, #elements .label {
     padding: 10px;
     border-top: 1px solid #fafafa;
     border-bottom: 1px solid #fafafa;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break:keep-all;
+    white-space:nowrap;
 }
 
 .table>thead tr .text-left, .table>tbody tr .text-left {

@@ -28,9 +28,16 @@ class KeywordModel {
         return $reply;
     }
 
-    public function getClassification(string $tag = null) {
+    public function getClassification(string $tag = null, $limit = null) {
         $reply = [];
-        $sql = 'SELECT * FROM keyword WHERE tag = :tag';
+        $limit = intval($limit);
+        
+        if ($limit > 0) {
+            $sql = 'SELECT * FROM keyword WHERE tag = :tag' . ' LIMIT ' . $limit;
+        } else {
+            $sql = 'SELECT * FROM keyword WHERE tag = :tag';
+        }
+        
         $sth = $this->db->prepare($sql);
         $sth->bindValue(':tag', $tag, PDO::PARAM_STR);
         if ($sth->execute()) {
@@ -40,13 +47,13 @@ class KeywordModel {
         return $reply;
     }
 
-    public function getAllClassification() {
+    public function getAllClassification($limit = null) {
         $index = 0;
         $reply = [];
 
         foreach ($this->getTags() as $tag) {
             $reply[$index]['tag'] = $tag['tag'];
-            $reply[$index]['vals'] = $this->getClassification($tag['tag']);
+            $reply[$index]['vals'] = $this->getClassification($tag['tag'], $limit);
             $index++;
         }
 
