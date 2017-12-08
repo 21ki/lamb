@@ -126,15 +126,15 @@ function deleteCompany(id) {
     });
 }
 
-function companyRecharge(id) {
+function companyRecharge(id, name) {
     var source = document.getElementById("recharge-module").innerHTML;
     var template = Handlebars.compile(source);
-    var contents = template({id: id});
+    var contents = template({id: id, name: name});
 
     layer.open({
         type: 1,
         title: '账户充值',
-        area: ['540px', '260px'],
+        area: ['540px', '300px'],
         content: contents
     });
 }
@@ -144,6 +144,13 @@ function formRecharge(id) {
     var url = "/company/recharge?id=" + id;
     var form = document.getElementById("form");
     var data = new FormData(form);
+
+    var money = data.get("money");
+    if (money.replace(/ /g,'') == '') {
+        layer.closeAll();
+        return;
+    }
+
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function(){

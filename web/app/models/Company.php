@@ -144,7 +144,7 @@ class CompanyModel {
         return false;
     }
     
-    public function recharge(int $id = null, int $money = 0, string $description = null): bool {
+    public function recharge($id = 0, $money = 0, $description = null): bool {
         $id = intval($id);
 
         if ($money == 0) {
@@ -155,7 +155,7 @@ class CompanyModel {
             return false;
         }
         
-        if (!$description) {
+        if (!is_string($description) || strlen($description) < 1) {
             $description = 'no description';
         }
 
