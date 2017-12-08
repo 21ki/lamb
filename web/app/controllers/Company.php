@@ -57,7 +57,10 @@ class CompanyController extends Yaf\Controller_Abstract {
     public function rechargeAction() {
         if ($this->request->isPost()) {
             $company = new CompanyModel();
-            $success = $company->recharge($this->request->getQuery('id', null), $this->request->getPost('money', null));
+            $id = $this->request->getQuery('id', null);
+            $money = $this->request->getPost('money', 0);
+            $description = $this->request->getPost('description', 'no description');
+            $success = $company->recharge($id, $money, $description);
             $status = $success ? 200 : 400;
             $message = $success ? 'success' : 'failed';
             lambResponse($status, $message);

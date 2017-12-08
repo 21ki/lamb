@@ -13,7 +13,7 @@ function startup() {
             $("tbody").append(contents);
             $("tbody tr").hide();
             $("tbody tr").each(function(i){
-                $(this).delay(i * 25).fadeIn(300);
+                $(this).delay(i * 25).fadeIn(200);
             });
         }
     }
@@ -61,7 +61,7 @@ function fetchKeywords(tag) {
             $("#elements").append(contents);
             $(".label").hide();
             $(".label").each(function(i){
-                $(this).delay(i * 15).fadeIn(300);
+                $(this).delay(i * 15).fadeIn(200);
             });
         }
     }

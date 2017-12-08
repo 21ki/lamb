@@ -99,6 +99,34 @@
     <td><button type="button" class="btn btn-default btn-xs" onclick="editCompany({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td></tr>
   {{/each}}
 </script>
+<script id="recharge-module" type="text/template">
+  <form id="form" class="form-horizontal" style="margin:22px">
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">充值金额:</label>
+      <div class="col-xs-5 col-sm-5">
+        <input type="number" class="form-control" name="money" placeholder="Enter money" required="required">
+      </div>
+      <div class="col-xs-4 col-sm-4">
+        <span class="help-block">账户充值金额</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">备注信息:</label>
+      <div class="col-xs-5 col-sm-5">
+        <input type="text" class="form-control" name="description" placeholder="Enter description">
+      </div>
+      <div class="col-xs-4 col-sm-4">
+        <span class="help-block">充值备注信息</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-xs-9 col-sm-9">
+        <button type="button" id="submit" onclick="formRecharge({{id}})" class="btn btn-success" style="width:75px;margin-top:15px">充 值</button>
+        <button type="button" class="btn btn-default" onclick="layer.closeAll()" style="width:75px;margin-top:15px">取 消</button>
+      </div>
+    </div>
+  </form>
+</script>
 <script id="new-page" type="text/template">
   <form id="form" class="form-horizontal" style="margin:25px">
     <div class="form-group">
@@ -152,7 +180,7 @@
     <div class="form-group">
       <div class="col-sm-offset-4 col-xs-7 col-sm-7">
         <button type="button" id="submit" onclick="formSubmit()" class="btn btn-success">创 建</button>
-        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</a>
+        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
       </div>
     </div>
   </form>
@@ -211,24 +239,14 @@
       <div class="col-sm-offset-4 col-xs-8 col-sm-8">
         <button type="button" id="submit" onclick="formChange({{id}})" class="btn btn-success">保 存</button>
         <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</a>
-      </div>
-    </div>
-  </form>
+</div>
+</div>
+</form>
 </script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/handlebars.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript" src="/js/company.js"></script>
-<script type="text/javascript">
-  $(document).ready(function(){
-    $('li.dropdown').mouseover(function() {   
-      $(this).addClass('open');
-    }).mouseout(function() {
-      $(this).removeClass('open');
-    });
-    startup();
-  });
-</script>
 </body>
 </html>

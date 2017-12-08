@@ -19,7 +19,9 @@ body {
 }
 
 #elements span {
+    float: left;
     margin-right: 10px;
+    margin-bottom: 15px;
 }
 
 #elements span a {
@@ -29,6 +31,11 @@ body {
 
 #elements span a:hover {
     color: red;
+}
+
+td .label {
+    float: left;
+    margin-right: 8px;
 }
 
 td .label, #elements .label {

@@ -1,4 +1,14 @@
 
+/* Startup initialization */
+$(document).ready(function(){
+    $('li.dropdown').mouseover(function() {   
+        $(this).addClass('open');
+    }).mouseout(function() {
+        $(this).removeClass('open');
+    });
+    startup();
+});
+
 function startup() {
     var method = "GET";
     var url = '/api/companys';
@@ -15,7 +25,7 @@ function startup() {
             $("tbody").append(contents);
             $("tbody tr").hide();
             $("tbody tr").each(function(i){
-                $(this).delay(i * 25).fadeIn(300);
+                $(this).delay(i * 25).fadeIn(200);
             });
         }
     }
@@ -117,28 +127,40 @@ function deleteCompany(id) {
 }
 
 function companyRecharge(id) {
-    layer.prompt({title: '请输入充值金额', formType: 0}, function(money, index){
-        var method = "POST";
-        var url = '/company/recharge?id=' + id;
-        var xhr = new XMLHttpRequest();
-        var data = new FormData();
-        data.append("money", money);
-        xhr.responseType = "json";
-        xhr.onreadystatechange = function(){
-            if (xhr.readyState === xhr.DONE && xhr.status === 200) {
-                if (xhr.response.status == 200) {
-                    layer.msg('充值成功!', {icon: 1, time: 1000});
-                    setTimeout(function() {
-                        $("tbody").empty();
-                        startup();
-                    }, 1000);
-                } else {
-                    layer.msg('充值失败: ' + xhr.response.message, {icon: 2, time: 5000});
-                }
+    var source = document.getElementById("recharge-module").innerHTML;
+    var template = Handlebars.compile(source);
+    var contents = template({id: id});
+
+    layer.open({
+        type: 1,
+        title: '账户充值',
+        area: ['540px', '260px'],
+        content: contents
+    });
+}
+
+function formRecharge(id) {
+    var method = "POST";
+    var url = "/company/recharge?id=" + id;
+    var form = document.getElementById("form");
+    var data = new FormData(form);
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function(){
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            if (xhr.response.status == 200) {
+                layer.closeAll();
+                layer.msg('充值成功!', {icon: 1, time: 1000});
+                setTimeout(function() {
+                    $("tbody").empty();
+                    startup();
+                }, 1000);
+            } else {
+                layer.msg('充值失败: ' + xhr.response.message, {icon: 2, time: 5000});
             }
         }
-        layer.close(index);
-        xhr.open(method, url, true);
-        xhr.send(data);
-    });
+        
+    }
+    xhr.open(method, url, true);
+    xhr.send(data);
 }

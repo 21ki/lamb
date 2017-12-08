@@ -144,23 +144,32 @@ class CompanyModel {
         return false;
     }
     
-    public function recharge($id = null, $money = 0) {
+    public function recharge(int $id = null, int $money = 0, string $description = null): bool {
         $id = intval($id);
-        $money = intval($money);
-        if ($money > 0 && $this->isExist($id)) {
-            $this->redis->multi()->hIncrBy('company.' . $id, 'money', $money)->exec();
-            $payment = new PaymentModel();
-            $company = $this->get($id);
-            $event['company'] = $company['name'];
-            $event['money'] = $money;
-            $event['operator'] = 'admin';
-            $event['description'] = 'no description';
-            $event['ip_addr'] = ip2long($_SERVER['REMOTE_ADDR']);
-            $payment->writeLogs($event);
+
+        if ($money == 0) {
             return true;
         }
 
-        return false;
+        if (!$this->isExist($id)) {
+            return false;
+        }
+        
+        if (!$description) {
+            $description = 'no description';
+        }
+
+        $this->redis->multi()->hIncrBy('company.' . $id, 'money', $money)->exec();
+        $payment = new PaymentModel();
+        $company = $this->get($id);
+        $event['company'] = $company['name'];
+        $event['money'] = $money;
+        $event['operator'] = 'admin';
+        $event['description'] = $description;
+        $event['ip_addr'] = ip2long($_SERVER['REMOTE_ADDR']);
+        $payment->writeLogs($event);
+
+        return true;
     }
 
     public function checkArgs(array $data) {

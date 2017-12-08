@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.ico">
+    <title>keyword - lamb</title>
+    <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
+    <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
+    <link type="text/css" rel="stylesheet" href="/css/keyword.css">
+  </head>
+  <body>
+    <div class="navbar navbar-default">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">
+            <img alt="Brand" src="/img/logo.png" width="32" height="32" style="margin-top:-6px" />
+          </a>
+          <a class="navbar-brand">lamb</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="/status/inbound">状态监控</a></li>
+            <li><a href="/company">企业管理</a></li>
+            <li><a href="/account">帐号管理</a></li>
+            <li><a href="/template">签名模板</a></li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">路由管理</a>
+              <ul class="dropdown-menu">
+                <li><a href="/routing">上行路由</a></li>
+                <li><a href="/delivery">下发路由</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
+              <ul class="dropdown-menu">
+                <li><a href="/gateway">落地通道</a></li>
+                <li><a href="/groups">通道网关组</a></li>
+                <li><a href="/gateway/report">通道数据统计</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">数据记录</a>
+              <ul class="dropdown-menu">
+                <li><a href="/message">上行短信</a></li>
+                <li><a href="/message/deliver">下行短信</a></li>
+                <li><a href="/message/report">状态报告</a></li>
+                <li><a href="/message/statistic">数据统计</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
+              <ul class="dropdown-menu">
+                <li><a href="/keyword">关键词库</a></li>
+                <li><a href="/payment/logs">充值记录</a></li>
+                <li><a href="/payment">支付管理</a></li>
+              </ul>
+            </li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="/settings"><span class="glyphicon glyphicon-cog"></span> 系统设置</a></li>
+            <li><a href="/logout"><span class="glyphicon glyphicon-log-out"></span> 退 出</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="row">
+        <ol class="breadcrumb">
+          <li><a href="#">Home</a></li>
+          <li><a href="/keyword">Keyword</a></li>
+          <li class="active"><?php echo lamb_output($tag); ?></li>
+          <li class="pull-right add"><button class="btn btn-success btn-xs" onclick="show('<?php echo lamb_output($tag); ?>')"><span class="glyphicon glyphicon-plus"></span> 添 加</button></li>
+        </ol>
+      </div>
+      <div id="elements" class="row">
+      </div>
+    </div>
+</div>
+<script id="contents" type="text/template">
+  {{#each data}}
+  <span class="label">{{val}} <a href="javascript:void(0)" onclick="deleteKeyword({{id}}, '{{val}}')">&times;</a></span>
+  {{/each}}
+</script>
+<script id="new-page" type="text/template">
+  <form id="form" class="form-horizontal">
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">分&nbsp;&nbsp;&nbsp;&nbsp;类:</label>
+      <div class="col-xs-5 col-sm-5">
+        <input type="text" class="form-control" name="tag" value="{{def}}" list="tag" placeholder="Enter Tag" required="required">
+        <datalist id="tag">
+          {{#each tags.data}}
+          <option value="{{tag}}">{{tag}}</option>
+          {{/each}}
+        </datalist>
+      </div>
+      <div class="col-xs-4 col-sm-4">
+        <span class="help-block">标签分类</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label">关键词:</label>
+      <div class="col-xs-5 col-sm-5">
+        <input type="text" class="form-control" name="val" placeholder="Enter Name" minlength="1"required="required">
+      </div>
+      <div class="col-xs-4 col-sm-4">
+        <span class="help-block">关键词内容</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-xs-9 col-sm-9">
+        <button type="button" class="btn btn-success" onclick="formElement()">添 加</button>
+        <button type="button" class="btn btn-default btn-cancel" onclick="layer.closeAll()">取 消</button>
+      </div>
+    </div>
+  </form>
+</script>
+<script type="text/javascript" src="/js/jquery.min.js"></script>
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/handlebars.min.js"></script>
+<script type="text/javascript" src="/js/layer.js"></script>
+<script type="text/javascript" src="/js/keyword.js"></script>
+<script type="text/javascript">
+  $(document).ready(function(){
+    $('li.dropdown').mouseover(function() {
+      $(this).addClass('open');
+    }).mouseout(function() {
+      $(this).removeClass('open');
+    });
+
+    fetchKeywords('<?php echo lamb_output($tag); ?>');
+  });
+</script>
+</body>
+</html>
