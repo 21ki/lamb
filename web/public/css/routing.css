@@ -71,3 +71,7 @@ form .form-group button, form .form-group a {
     margin-right: 20px;
 }
 
+#form .form-group {
+    margin-right: 0px;
+    margin-left: 0px;
+}

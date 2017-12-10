@@ -36,7 +36,7 @@ function show() {
             layer.open({
                 type: 1,
                 title: '添加下行路由',
-                area: ['435px', '285px'],
+                area: ['500px', '280px'],
                 content: contents
             });
         }
@@ -68,7 +68,7 @@ function changeDelivery(id) {
                     layer.open({
                         type: 1,
                         title: '下行路由编辑',
-                        area: ['435px', '285px'],
+                        area: ['500px', '280px'],
                         content: contents
                     });
                 }

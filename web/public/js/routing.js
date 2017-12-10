@@ -36,7 +36,7 @@ function show() {
             layer.open({
                 type: 1,
                 title: '创建路由表',
-                area: ['435px', '285px'],
+                area: ['500px', '280px'],
                 content: contents
             });
         }
@@ -68,7 +68,7 @@ function changeRouting(id) {
                     layer.open({
                         type: 1,
                         title: '编辑路由表',
-                        area: ['435px', '285px'],
+                        area: ['500px', '280px'],
                         content: contents
                     });
                 }
