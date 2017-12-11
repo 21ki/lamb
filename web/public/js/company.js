@@ -1,14 +1,4 @@
 
-/* Startup initialization */
-$(document).ready(function(){
-    $('li.dropdown').mouseover(function() {   
-        $(this).addClass('open');
-    }).mouseout(function() {
-        $(this).removeClass('open');
-    });
-    startup();
-});
-
 function startup() {
     var method = "GET";
     var url = '/api/companys';

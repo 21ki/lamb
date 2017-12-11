@@ -14,21 +14,21 @@ body {
     content: "";
 }
 
-.table .text-left {
+.contents .table .text-left {
     text-align: left;
 }
 
-.table thead th {
+.contents .table thead th {
     color: #555555;
 }
 
-.table>thead>tr>th, .table>tbody>tr>td {
+.contents .table>thead>tr>th, .contents .table>tbody>tr>td {
     text-align: center;
     border-top: 1px solid #fafafa;
     border-bottom: 1px solid #fafafa;
 }
 
-th:last-child, td:last-child {
+.contents table th:last-child, .contents table td:last-child {
     width: 110px;
     text-align: center;
 }
@@ -77,3 +77,15 @@ form .form-group button, form .form-group a {
     margin-right: 20px;
 }
 
+.statistics {
+    padding-left: 15px;
+    padding-right: 32px;
+}
+
+.statistics .form-group .help {
+    margin-left: 20px;
+}
+
+.statistics #where {
+    margin-top: 0px;
+}

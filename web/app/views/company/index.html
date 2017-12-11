@@ -247,15 +247,27 @@
     <div class="form-group">
       <div class="col-sm-offset-4 col-xs-8 col-sm-8">
         <button type="button" id="submit" onclick="formChange({{id}})" class="btn btn-success">保 存</button>
-        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</a>
-</div>
-</div>
-</form>
+        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
+      </div>
+    </div>
+  </form>
 </script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/handlebars.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript" src="/js/company.js"></script>
+<script type="text/javascript">
+  /* Startup initialization */
+  $(document).ready(function(){
+    $('li.dropdown').mouseover(function() {   
+        $(this).addClass('open');
+    }).mouseout(function() {
+        $(this).removeClass('open');
+    });
+
+    startup();
+  });
+</script>
 </body>
 </html>

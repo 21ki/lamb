@@ -98,6 +98,7 @@ CREATE TABLE pay_logs (
 
 CREATE TABLE statistical (
     gid int NOT NULL,
+    submit bigint NOT NULL,
     delivrd bigint NOT NULL,
     expired bigint NOT NULL,
     deleted bigint NOT NULL,

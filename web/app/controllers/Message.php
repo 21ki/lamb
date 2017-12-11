@@ -9,18 +9,23 @@
 use Tool\Filter;
 
 class MessageController extends Yaf\Controller_Abstract {
+    public function init() {
+        $this->request = $this->getRequest();
+    }
+    
     public function indexAction() {
-        $this->getView()->assign('messages', []);
         return true;
     }
 
     public function deliverAction() {
-        $this->getView()->assign('delivers', []);
         return true;
     }
 
     public function reportAction() {
-        $this->getView()->assign('reports', []);
+        return true;
+    }
+
+    public function statisticAction(){
         return true;
     }
 }

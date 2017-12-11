@@ -167,3 +167,44 @@ function checkGateway(id, name) {
         content: contents
     });
 }
+
+function formQuery() {
+    var method = "GET";
+    var where = $("#where").serialize();
+    var url = "/gateway/getreport?" + where;
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function(){
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            var source = document.getElementById("contents").innerHTML;
+            var template = Handlebars.compile(source);
+            var contents = template(xhr.response);
+
+            $(".contents tbody").empty();
+            $(".contents tbody").append(contents);
+            $(".contents tbody tr").hide();
+            $(".contents tbody tr").each(function(i){
+                $(this).delay(i * 25).fadeIn(200);
+            });
+        }
+    }
+
+    xhr.open(method, url, true);
+    xhr.send();
+}
+
+function getdateofday(time) {
+    var now = new Date();
+    var month = now.getMonth() + 1;
+    var day = now.getDate(); 
+
+    if (month >= 1 && month <= 9) {
+        month += "0";
+    }
+
+    if (day >= 1 && day <= 9) {
+        day += "0";
+    }
+    
+    return now.getFullYear() + '-' + month + '-' + day + " " + time;
+}

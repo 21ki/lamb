@@ -80,25 +80,22 @@
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
-      <div class="row query">
-        <form class="form-inline" action="/message" method="get">
+      <div id="message" class="row query">
+        <form id="form" class="form-inline">
           <div class="form-group">
             <label>发送时间: </label>
-	        <input type="text" id="message-begin" class="form-control" name="begin" value="2017-08-11 08:00:00" />
+	        <input type="text" class="form-control" name="begin" value="2017-08-11 08:00:00" />
             -
-            <input type="text" id="message-end" class="form-control" name="end" value="2017-08-11 20:00:00" />
+            <input type="text" class="form-control" name="end" value="2017-08-11 20:00:00" />
           </div>
           <div class="form-group">
             <label>帐 号: </label>
-	        <input type="text" id="message-account" class="form-control" placeholder="请输入帐号" name="account" />
-          </div>
-          <div class="form-group">
-            <label>服务号码: </label>
-	        <input type="text" id="message-spcode" class="form-control" name="spcode" placeholder="请输入号码" />
+	        <input type="text" class="form-control" name="account" placeholder="请输入帐号" />
           </div>
           <div class="form-group">
             <label>状 态: </label>
-	        <select class="form-control" name="status" style="width:100px">
+	        <select class="form-control" name="status">
+              <option value="*">全部状态</option>
               <option value="1">DELIVRD</option>
               <option value="2">EXPIRED</option>
               <option value="3">DELETED</option>
@@ -109,26 +106,24 @@
             </select>
           </div>
           <div class="form-group">
-            <label>手机号码: </label>
-	        <input type="text" id="message-phone" class="form-control" name="phone" placeholder="请输入号码" />
+            <label>
+	          <select name="type">
+                <option value="1">接入号码</option>
+                <option value="2">手机号码</option>
+              </select>
+            </label>
+	        <input type="text" class="form-control" name="object" placeholder="请输入号码" />
           </div>
-          <button type="submit" id="query" class="btn btn-success btn-sm pull-right" name="sub" value="ok">查 询</button>
+          <button type="button" class="btn btn-success btn-sm pull-right">查 询</button>
         </form>
       </div>
       <div class="row"><hr /></div>
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>帐 号</th><th>服务号码</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th>发送时间</th></tr>
+            <tr><th>#</th><th>帐 号</th><th>接入码</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th>发送时间</th></tr>
           </thead>
           <tbody>
-            <?php
-              foreach ($messages as $m) {
-                $status = [1 => 'DELIVRD', 2 => 'EXPIRED', 3 => 'DELETED', 4 => 'UNDELIV', 5 => 'ACCEPTD', 6 => 'UNKNOWN', 7 => 'REJECTD'];
-                echo '<tr><td><span class="glyphicon glyphicon-envelope"></span></td><td>',$m['spid'],'</td><td>',$m['spcode'],'</td>';
-                echo '<td>',$m['phone'],'</td><td>',lamb_output($m['content'], 24),'</td><td>',$status[$m['status']],'</td><td>',$m['create_time'],'</td></tr>';
-              }
-            ?>
           </tbody>
         </table>
       </div>
@@ -146,16 +141,16 @@
   });
 
   // datetimepicker
-  $('#message-begin').datetimepicker({
-    format: 'yyyy-mm-dd hh:ii:ss',
-    language: 'zh-CN',
-    autoclose: true
+  $('input[name=begin]').datetimepicker({
+  format: 'yyyy-mm-dd hh:ii:ss',
+  language: 'zh-CN',
+  autoclose: true
   });
 
-  $('#message-end').datetimepicker({
-    format: 'yyyy-mm-dd hh:ii:ss',
-    language: 'zh-CN',
-    autoclose: true
+  $('input[name=end]').datetimepicker({
+  format: 'yyyy-mm-dd hh:ii:ss',
+  language: 'zh-CN',
+  autoclose: true
   });
 </script>
 </body>

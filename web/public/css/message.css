@@ -52,45 +52,42 @@ body {
     margin-right: 5px;
 }
 
-/* Message */
-#message-begin, #message-end {
-    width: 135px;
+.form-inline .form-group select[name=type] {
+    width:90px;
+    border:0px #ffffff;
+    background-color:#ffffff;
 }
 
-#message-phone {
+.form-inline .form-group input[name=begin] {
+
+    width: 155px;
+}
+
+.form-inline .form-group input[name=end] {
+
+    width: 155px;
+}
+
+.form-inline .form-group input[name=account] {
     width: 120px;
 }
 
-#message-account {
-    width: 100px;
-}
-
-#message-spcode {
-    width: 100px;
-}
-
-/* Message */
-#deliver-begin, #deliver-end {
-    width: 135px;
-}
-
-#deliver-phone {
+.form-inline .form-group input[name=object] {
     width: 120px;
 }
 
-#deliver-spcode {
-    width: 100px;
-}
-
-/* Message Report */
-#report-begin, #report-end {
-    width: 135px;
-}
-
-#report-phone {
+.form-inline .form-group input[name=spcode] {
     width: 120px;
 }
 
-#report-spcode {
-    width: 200px;
+.form-inline .form-group input[name=phone] {
+    width: 120px;
+}
+
+.form-inline .form-group select[name=status] {
+    width: 120px;
+}
+
+.form-inline button {
+    margin-right: 18px;
 }

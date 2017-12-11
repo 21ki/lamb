@@ -66,22 +66,29 @@ class GatewayController extends Yaf\Controller_Abstract {
     }
 
     public function reportAction() {
-        $request = $this->getRequest();
+        return true;
+    }
 
-        $begin = $request->getQuery('begin', date('Y-m-d 00:00:00'));
-        $end = $request->getQuery('end', date('Y-m-d 23:59:59'));
+    public function getreportAction() {
+        if ($this->request->isGet()) {
+            $gateway = new GatewayModel();
+            $begin = urldecode($this->request->getQuery('begin'));
+            $end = urldecode($this->request->getQuery('end'));
+            $report = $gateway->report($begin, $end);
 
-        $gateway = new GatewayModel();
-        $gateways = [];
-        foreach ($gateway->getAll() as $val) {
-            $gateways[$val['id']] = $val['name'];
+            $gateways = [];
+            foreach ($gateway->getAll() as $g) {
+                $gateways[$g['id']] = $g;
+            }
+
+            foreach ($report as &$r) {
+                $r['gid'] = $gateways[$r['gid']]['name'];
+            }
+
+            lambResponse(200, 'success', $report);
         }
 
-        $this->getView()->assign('where', ['begin' => $begin, 'end' => $end]);
-        $this->getView()->assign('gateways', $gateways);
-        $this->getView()->assign('report', $gateway->report($begin, $end));
-
-        return true;
+        return false;
     }
 }
 

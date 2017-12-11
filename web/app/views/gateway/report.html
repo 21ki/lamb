@@ -9,7 +9,7 @@
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-datetimepicker.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/channel.css">
+    <link type="text/css" rel="stylesheet" href="/css/gateway.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -82,63 +82,81 @@
         </ol>
       </div>
       <div class="row statistics">
-        <form class="form-inline" action="report" method="get">
+        <form id="where" class="form-inline">
           <div class="form-group">
             <label>时间范围 : </label>
-            <input type="text" id="begin" class="form-control" style="width:165px" name="begin" value="<?php echo lamb_output($where['begin']);?>" />
+            <input type="text" id="begin" class="form-control" style="width:165px" name="begin" />
           </div>
           -
           <div class="form-group">
-            <input type="text" id="end" class="form-control" style="width:165px" name="end" value="<?php echo lamb_output($where['end']);?>" />
+            <input type="text" id="end" class="form-control" style="width:165px" name="end" />
           </div>
           <div class="form-group">
             <p class="text-muted help"><span class="glyphicon glyphicon-info-sign"></span> 网关数据统计最小查询时间为一天，无数据通道将不被显示</p>
           </div>
-          <button type="submit" id="query" class="btn btn-success btn-sm pull-right" name="sub" value="ok">查 询</button>
+          <button type="button" class="btn btn-success btn-sm pull-right" onclick="formQuery()">查 询</button>
         </form>
       </div>
       <hr />
-      <div class="row">
+      <div class="row contents">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>通道名称</th><th>DELIVRD</th><th>EXPIRED</th><th>DELETED</th><th>UNDELIV</th><th>ACCEPTD</th><th>UNKNOWN</th><th>REJECTD</th></tr>
+            <tr><th>#</th><th>通道名称</th><th>发送数量</th><th>DELIVRD</th><th>EXPIRED</th><th>DELETED</th><th>UNDELIV</th><th>ACCEPTD</th><th>UNKNOWN</th><th>REJECTD</th></tr>
           </thead>
           <tbody>
-            <?php
-              foreach ($report as $r) {
-                echo '<tr><td><span class="glyphicon glyphicon-globe"></span></td><td>',$gateways[$r['gid']],'</td><td>',$r['delivrd'],'</td><td>',$r['expired'],'</td><td>',$r['deleted'],'</td><td>',$r['undeliv'],'</td><td>',$r['acceptd'],'</td><td>',$r['unknown'],'</td><td>',$r['rejectd'],'</td></tr>';
-              }
-            ?>
           </tbody>
         </table>
       </div>
     </div>
 </div>
+<script id="contents" type="text/template">
+  {{#each data}}
+  <tr>
+    <td><span class="glyphicon glyphicon-globe"></span></td>
+    <td>{{gid}}</td>
+    <td>{{submit}}</td>
+    <td>{{delivrd}}</td>
+    <td>{{expired}}</td>
+    <td>{{deleted}}</td>
+    <td>{{undeliv}}</td>
+    <td>{{acceptd}}</td>
+    <td>{{unknown}}</td>
+    <td>{{rejectd}}</td>
+  </tr>
+  {{/each}}
+</script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap-datetimepicker.min.js"></script>
 <script type="text/javascript" src="/js/locales/bootstrap-datetimepicker.zh-CN.js" charset="UTF-8"></script>
+<script type="text/javascript" src="/js/handlebars.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
+<script type="text/javascript" src="/js/gateway.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {
-    $(this).addClass('open');
-  }).mouseout(function() {
-    $(this).removeClass('open');
+  /* Startup initialization */
+  $(document).ready(function(){
+    $('li.dropdown').mouseover(function() {   
+        $(this).addClass('open');
+    }).mouseout(function() {
+        $(this).removeClass('open');
+    });
+
+    $("#begin").val(getdateofday("08:00:00"));
+    $("#end").val(getdateofday("23:00:00"));
+  
+    // datetimepicker
+    $('#begin').datetimepicker({
+        format: 'yyyy-mm-dd hh:ii:ss',
+        language: 'zh-CN',
+        autoclose: true
+    });
+
+    $('#end').datetimepicker({
+        format: 'yyyy-mm-dd hh:ii:ss',
+        language: 'zh-CN',
+        autoclose: true
+    });
   });
-
-      // datetimepicker
-  $('#begin').datetimepicker({
-     format: 'yyyy-mm-dd hh:ii:ss',
-     language: 'zh-CN',
-     autoclose: true
-   });
-
-   $('#end').datetimepicker({
-     format: 'yyyy-mm-dd hh:ii:ss',
-     language: 'zh-CN',
-     autoclose: true
-   });
-
 </script>
 </body>
 </html>

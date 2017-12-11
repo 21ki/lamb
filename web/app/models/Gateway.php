@@ -130,22 +130,22 @@ class GatewayModel {
     }
 
     public function report($begin = null, $end = null) {
-        $result = [];
+        $reply = [];
         if ($begin !== null && $end !== null) {
-            $sql = 'SELECT gid, sum(delivrd) as delivrd, sum(expired) as expired, sum(deleted) as deleted, sum(undeliv) as undeliv,';
+            $sql = 'SELECT gid, sum(submit) as submit, sum(delivrd) as delivrd, sum(expired) as expired, sum(deleted) as deleted, sum(undeliv) as undeliv,';
             $sql .= 'sum(acceptd) as acceptd, sum(unknown) as unknown, sum(rejectd) as rejectd FROM statistical where datetime BETWEEN :begin AND :end ';
-            $sql .= 'GROUP BY gid ORDER BY gid;';
+            $sql .= 'GROUP BY gid ORDER BY gid';
 
             $sth = $this->db->prepare($sql);
             $sth->bindValue(':begin', $begin, PDO::PARAM_STR);
             $sth->bindValue(':end', $end, PDO::PARAM_STR);
 
             if ($sth->execute()) {
-                $result = $sth->fetchAll();
+                $reply = $sth->fetchAll();
             }
         }
 
-        return $result;
+        return $reply;
     }
     
     public function isExist($id = null) {
