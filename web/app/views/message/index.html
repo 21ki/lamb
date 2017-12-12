@@ -84,9 +84,9 @@
         <form id="form" class="form-inline">
           <div class="form-group">
             <label>发送时间: </label>
-	        <input type="text" class="form-control" name="begin" value="2017-08-11 08:00:00" />
+	        <input type="text" class="form-control" name="begin" />
             -
-            <input type="text" class="form-control" name="end" value="2017-08-11 20:00:00" />
+            <input type="text" class="form-control" name="end" />
           </div>
           <div class="form-group">
             <label>帐 号: </label>
@@ -114,11 +114,11 @@
             </label>
 	        <input type="text" class="form-control" name="object" placeholder="请输入号码" />
           </div>
-          <button type="button" class="btn btn-success btn-sm pull-right">查 询</button>
+          <button type="button" class="btn btn-success btn-sm pull-right" onclick="formQuery(1)">查 询</button>
         </form>
       </div>
       <div class="row"><hr /></div>
-      <div class="row">
+      <div class="row contents">
         <table class="table table-hover">
           <thead>
             <tr><th>#</th><th>帐 号</th><th>接入码</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th>发送时间</th></tr>
@@ -129,28 +129,48 @@
       </div>
     </div>
 </div>
-<script src="/js/jquery.min.js"></script>
-<script src="/js/bootstrap.min.js"></script>
+<script id="contents" type="text/template">
+  {{#each data}}
+  <tr>
+    <td><span class="glyphicon glyphicon-envelope"></span></td>
+    <td>{{account}}</td>
+    <td>{{spcode}}</td>
+    <td>{{phone}}</td>
+    <td>{{content}}</td>
+    <td>{{checkstatus status}}</td>
+    <td>{{create_time}}</td></tr>
+  {{/each}}
+</script>
+<script type="text/javascript" src="/js/jquery.min.js"></script>
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap-datetimepicker.min.js"></script>
 <script type="text/javascript" src="/js/locales/bootstrap-datetimepicker.zh-CN.js" charset="UTF-8"></script>
+<script type="text/javascript" src="/js/handlebars.min.js"></script>
+<script type="text/javascript" src="/js/message.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {   
-  $(this).addClass('open');
-  }).mouseout(function() {
-  $(this).removeClass('open');
-  });
+  /* Startup initialization */
+  $(document).ready(function(){
+    $('li.dropdown').mouseover(function() {   
+        $(this).addClass('open');
+    }).mouseout(function() {
+        $(this).removeClass('open');
+    });
 
-  // datetimepicker
-  $('input[name=begin]').datetimepicker({
-  format: 'yyyy-mm-dd hh:ii:ss',
-  language: 'zh-CN',
-  autoclose: true
-  });
+    $("input[name=begin]").val(getdateofday("08:00:00"));
+    $("input[name=end]").val(getdateofday("23:00:00"));
+  
+    // datetimepicker
+    $('input[name=begin]').datetimepicker({
+      format: 'yyyy-mm-dd hh:ii:ss',
+      language: 'zh-CN',
+      autoclose: true
+    });
 
-  $('input[name=end]').datetimepicker({
-  format: 'yyyy-mm-dd hh:ii:ss',
-  language: 'zh-CN',
-  autoclose: true
+    $('input[name=end]').datetimepicker({
+      format: 'yyyy-mm-dd hh:ii:ss',
+      language: 'zh-CN',
+      autoclose: true
+    });
   });
 </script>
 </body>

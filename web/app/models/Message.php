@@ -1,3 +1,4 @@
+
 <?php
 
 /*
@@ -18,58 +19,93 @@ class MessageModel {
             $this->config = Yaf\Registry::get('config');
             $config = $this->config->msg;
             $options = [PDO::ATTR_PERSISTENT => true];
-            $this->db = new PDO('pgsql:host=' . $config->host . ';port=' . $config->port . ';dbname=' . $config->name, $config->user, $config->pass, $options);
+            $url = "pgsql:host={$config->host};port={$config->port};dbname={$config->name}";
+            $this->db = new PDO($url, $config->user, $config->pass, $options);
             $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log($e->getMessage(), 0);
         }
     }
 
-    public function getAll() {
-        $result = [];
-        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY create_time DESC LIMIT 32';
-        $sth = $this->db->query($sql);
-        if ($sth) {
-            $result = $sth->fetchAll();
+    public function submitQuery(array $data) {
+        $reply = [];
+        $data = $this->checkArgs($data);
+
+        $where = $this->whereAssembly($data);
+
+        $sql = "SELECT * FROM {$this->table} WHERE {$where}";
+        $sth = $this->db->prepare($sql);
+
+        foreach ($data as $key => $val) {
+            if ($val !== null) {
+                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
         }
 
-        return $result;
-    }
-
-    public function query(array $where) {
-        $where = $this->checkArgs($where);
-
-        if (isset($where)) {
-
+        if ($sth->execute()) {
+            $reply = $sth->fetchAll();
         }
+
+        return $reply;
+
     }
 
     public function checkArgs(array $data) {
-        $res = array();
-        $data = array_intersect_key($data, array_flip($this->column));
+        $reply = ['begin' => null,'end' => null, 'account' => null, 'spcode' => null, 'phone' => null, 'status' => null];
 
         foreach ($data as $key => $val) {
             switch ($key) {
             case 'begin':
-                $res['begin'] = Filter::date($val, date('Y-m-d H:i:s'));
-            case 'spid':
-                $res['spid'] = Filter::alpha($val, null, 1, 20);
+                $reply['begin'] = Filter::dateTime($val, null);
+                break;
+            case 'end':
+                $reply['end'] = Filter::dateTime($val, null);
+                break;
+            case 'account':
+                $reply['account'] = Filter::string($val, null, 1);
                 break;
             case 'spcode':
-                $res['spcode'] = Filter::alpha($val, null, 1, 20);
+                $reply['spcode'] = Filter::string($val, null, 1);
                 break;
             case 'phone':
-                $res['phone'] = Filter::alpha($val, null, 1, 16);
-                break;
-            case 'content':
-                $res['content'] = Filter::string($val, null, 1, 140);
+                $reply['phone'] = Filter::string($val, null, 1);
                 break;
             case 'status':
-                $res['status'] = Filter::number($val, 1, 1, 7);
+                $reply['status'] = Filter::number($val, null, 1, 7);
+                break;
+            default:
                 break;
             }
         }
 
-        return $res;
+        return $reply;
+    }
+
+    public function whereAssembly(array $data) {
+        $where = '';
+
+        if ($data['begin'] !== null && $data['end'] !== null) {
+            $where .= 'create_time BETWEEN :begin AND :end';
+        } else {
+            return $where;
+        }
+
+        if ($data['account'] !== null) {
+            $where .= ' AND account = :account';
+        }
+
+        if ($data['spcode'] !== null) {
+            $where .= ' AND spcode = :spcode';
+        }
+
+        if ($data['phone'] !== null) {
+            $where .= ' AND phone = :phone';
+        }
+
+        if ($data['status'] !== null) {
+            $where .= ' AND status = :status';
+        }
+
+        return $where;
     }
 }
