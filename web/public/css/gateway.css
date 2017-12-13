@@ -71,15 +71,13 @@ form {
     margin-left: 0px;
 }
 
-form .form-group button, form .form-group a {
-    width: 80px;
-    margin-top: 10px;
-    margin-right: 20px;
+.form-inline button {
+    width: 55px;
+    margin-right: 18px;
 }
 
 .statistics {
-    padding-left: 15px;
-    padding-right: 32px;
+    padding: 8px 15px;
 }
 
 .statistics .form-group .help {

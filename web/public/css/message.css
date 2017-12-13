@@ -7,7 +7,7 @@ body {
 
 .breadcrumb {
     padding-left: 18px;
-    padding-right: 18px;
+    padding-right: 28px;
 }
 
 .breadcrumb .pull-right:before {
@@ -68,6 +68,10 @@ body {
     width: 155px;
 }
 
+.form-inline .form-group select[name=company] {
+    width: 120px;
+}
+
 .form-inline .form-group input[name=account] {
     width: 120px;
 }
@@ -89,5 +93,10 @@ body {
 }
 
 .form-inline button {
+    width: 55px;
     margin-right: 18px;
+}
+
+.query {
+    padding: 8px 15px;
 }

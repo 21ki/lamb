@@ -45,7 +45,71 @@ class MessageController extends Yaf\Controller_Abstract {
                 unset($where['type'], $where['object']);
             }
 
-            lambResponse(200, 'success', $message->submitQuery($where));
+            $limit = $this->request->getQuery('limit', 50);
+            lambResponse(200, 'success', $message->queryMessage($where, $limit));
+        }
+
+        return false;
+    }
+
+    public function getdeliverAction() {
+        if ($this->request->isGet()) {
+            $message = new MessageModel();
+            $where = $this->request->getQuery();
+            $where['begin'] = urldecode($this->request->getQuery('begin', null));
+            $where['end'] = urldecode($this->request->getQuery('end', null));
+            $limit = $this->request->getQuery('limit', 50);
+
+            lambResponse(200, 'success', $message->queryDeliver($where, $limit));
+        }
+
+        return false;
+    }
+
+    public function getreportAction() {
+        if ($this->request->isGet()) {
+            $message = new MessageModel();
+            $where = $this->request->getQuery();
+            $where['begin'] = urldecode($this->request->getQuery('begin', null));
+            $where['end'] = urldecode($this->request->getQuery('end', null));
+            $limit = $this->request->getQuery('limit', 50);
+
+            lambResponse(200, 'success', $message->queryReport($where, $limit));
+        }
+
+        return false;
+    }
+
+    public function getstatisticAction() {
+        if ($this->request->isGet()) {
+            $message = new MessageModel();
+            $where = $this->request->getQuery();
+            $where['begin'] = urldecode($this->request->getQuery('begin', null));
+            $where['end'] = urldecode($this->request->getQuery('end', null));
+
+            if (isset($where['type']) && isset($where['object'])) {
+                if ($where['type'] == 1) {
+                    $where['company'] = $where['object'];
+                } else if ($where['type'] == 2) {
+                    $where['account'] = $where['object'];
+                } else if ($where['type'] == 3) {
+                    $where['spcode'] = $where['object'];
+                } else {
+                    lambResponse(400, 'success');
+                    return false;
+                }
+
+                unset($where['type'], $where['object']);
+            } else {
+                lambResponse(400, 'success');
+                return false;
+            }
+
+            if ($this->request->getQuery('grouping', null) !== null) {
+                lambResponse(200, 'success', $message->queryStatistic($where, true));
+            } else {
+                lambResponse(200, 'success', $message->queryStatistic($where, false));
+            }
         }
 
         return false;

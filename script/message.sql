@@ -40,10 +40,20 @@ create index msg_idx_201810 ON message_201810(id, status);
 create index msg_idx_201811 ON message_201811(id, status);
 create index msg_idx_201812 ON message_201812(id, status);
 
-CREATE TABLE delivery (
+CREATE TABLE IF NOT EXISTS delivery (
    id bigint NOT NULL,
    spcode varchar(21) NOT NULL,
    phone varchar(21) NOT NULL,
    content text NOT NULL,
+   create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
+);
+
+CREATE TABLE IF NOT EXISTS report (
+   id bigint NOT NULL,
+   spcode varchar(21) NOT NULL,
+   phone varchar(21) NOT NULL,
+   status int NOT NULL,
+   submit_time varchar(16),
+   done_time varchar(16),
    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );

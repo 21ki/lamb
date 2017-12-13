@@ -128,33 +128,6 @@ function deleteGateway(id) {
     });
 }
 
-function companyRecharge(id) {
-    layer.prompt({title: '请输入充值金额', formType: 0}, function(money, index){
-        var method = "POST";
-        var url = '/company/recharge?id=' + id;
-        var xhr = new XMLHttpRequest();
-        var data = new FormData();
-        data.append("money", money);
-        xhr.responseType = "json";
-        xhr.onreadystatechange = function(){
-            if (xhr.readyState === xhr.DONE && xhr.status === 200) {
-                if (xhr.response.status == 200) {
-                    layer.msg('充值成功!', {icon: 1, time: 1000});
-                    setTimeout(function() {
-                        $("tbody").empty();
-                        startup();
-                    }, 1000);
-                } else {
-                    layer.msg('充值失败: ' + xhr.response.message, {icon: 2, time: 5000});
-                }
-            }
-        }
-        layer.close(index);
-        xhr.open(method, url, true);
-        xhr.send(data);
-    });
-}
-
 function checkGateway(id, name) {
     var source = document.getElementById("check-page").innerHTML;
     var template = Handlebars.compile(source);
@@ -169,6 +142,9 @@ function checkGateway(id, name) {
 }
 
 function formQuery() {
+    layer.load(2, {
+        shade: [0.1,'#cccccc']
+    });
     var method = "GET";
     var where = $("#where").serialize();
     var url = "/gateway/getreport?" + where;
@@ -176,6 +152,7 @@ function formQuery() {
     xhr.responseType = "json";
     xhr.onreadystatechange = function(){
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            layer.closeAll();
             var source = document.getElementById("contents").innerHTML;
             var template = Handlebars.compile(source);
             var contents = template(xhr.response);
