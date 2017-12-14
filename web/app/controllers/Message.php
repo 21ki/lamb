@@ -72,9 +72,8 @@ class MessageController extends Yaf\Controller_Abstract {
             $where = $this->request->getQuery();
             $where['begin'] = urldecode($this->request->getQuery('begin', null));
             $where['end'] = urldecode($this->request->getQuery('end', null));
-            $limit = $this->request->getQuery('limit', 50);
 
-            lambResponse(200, 'success', $message->queryReport($where, $limit));
+            lambResponse(200, 'success', $message->queryReport($where));
         }
 
         return false;
@@ -89,9 +88,9 @@ class MessageController extends Yaf\Controller_Abstract {
 
             if (isset($where['type']) && isset($where['object'])) {
                 if ($where['type'] == 1) {
-                    $where['company'] = $where['object'];
+                    $where['company'] = $this->getCompanyId($where['object']);
                 } else if ($where['type'] == 2) {
-                    $where['account'] = $where['object'];
+                    $where['account'] = $this->getAccountId($where['object']);
                 } else if ($where['type'] == 3) {
                     $where['spcode'] = $where['object'];
                 } else {
@@ -113,6 +112,43 @@ class MessageController extends Yaf\Controller_Abstract {
         }
 
         return false;
+    }
+
+    public function getCompanyId(string $name) {
+        $id = 0;
+        $db = Yaf\Registry::get('db');
+        $name = str_replace([" ", "\n", "\r", "\t"], '', $name);
+        $sql = 'SELECT id FROM company WHERE name = :name';
+        $sth = $db->prepare($sql);
+        $sth->bindValue(':name', $name, PDO::PARAM_STR);
+
+        if ($sth->execute()) {
+            $reply = $sth->fetch();
+            if (count($reply) > 0) {
+                $id = intval($reply['id']);
+            }
+        }
+
+        return $id;
+    }
+
+    public function getAccountId(string $username) {
+        $id = 0;
+        $db = Yaf\Registry::get('db');
+        $username = str_replace([" ", "\n", "\r", "\t"], '', $username);
+        $sql = 'SELECT id FROM account WHERE username = :username';
+        $sth = $db->prepare($sql);
+        $sth->bindValue(':username', $username, PDO::PARAM_STR);
+
+        if ($sth->execute()) {
+            $reply = $sth->fetch();
+            if (count($reply) > 0) {
+                $id = intval($reply['id']);
+            }
+            
+        }
+
+        return $id;
     }
 }
 

@@ -99,8 +99,10 @@ function queryStatistic() {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             layer.closeAll();
+            Handlebars.registerHelper('gettype', getType);
             Handlebars.registerHelper('checkstatus', checkStatus);
             Handlebars.registerHelper('getobject', getObject);
+            Handlebars.registerHelper('getdatetime', getdatetime);
             var source = document.getElementById("contents").innerHTML;
             var template = Handlebars.compile(source);
             var contents = template(xhr.response);
@@ -140,7 +142,9 @@ function loading() {
 
 function checkOverflow(val, len) {
     if (typeof val === "string") {
-        return val.substring(0, len);
+        if (val.length > len) {
+            return val.substring(0, len) + '...';
+        }
     }
 
     return val;
@@ -171,4 +175,19 @@ function checkStatus(val) {
 
 function getObject() {
     return $("input[name=object]").val();
+}
+
+function getdatetime(type) {
+    switch (type) {
+    case 'begin':
+        return $("input[name=begin]").val();
+    case 'end':
+        return $("input[name=end]").val();
+    default:
+        return '';
+    }
+}
+
+function getType() {
+    return $("select[name=type]").find("option:selected").text();
 }

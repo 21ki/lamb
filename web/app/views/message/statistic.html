@@ -95,12 +95,12 @@
           </div>
           <div class="form-group">
             <label>查询时间: </label>
-	        <input type="text" class="form-control" name="begin" value="2017-08-11 08:00:00" />
+	        <input type="text" class="form-control" name="begin" />
             -
-            <input type="text" class="form-control" name="end" value="2017-08-11 20:00:00" />
+            <input type="text" class="form-control" name="end" />
           </div>
           <div class="form-group">
-            <label>状态报告: </label>
+            <label>状 态: </label>
 	        <select class="form-control" name="status">
               <option value="*">全部状态</option>
               <option value="1">DELIVRD</option>
@@ -136,12 +136,12 @@
   {{#each data}}
   <tr>
     <td><span class="glyphicon glyphicon-stats"></span></td>
-    <td>{{type}}</td>
+    <td>{{gettype}}</td>
     <td>{{getobject}}</td>
     <td>{{checkstatus status}}</td>
     <td>{{total}}</td>
-    <td>2017-12-25 08:00:00</td>
-    <td>2017-12-25 24:00:00</td>
+    <td>{{getdatetime 'begin'}}</td>
+    <td>{{getdatetime 'end'}}</td>
   </tr>
   {{/each}}
 </script>

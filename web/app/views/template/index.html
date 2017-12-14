@@ -96,7 +96,7 @@
     <td><span class="glyphicon glyphicon-credit-card"></span></td>
     <td class="text-left">{{rexp}}</td>
     <td>{{name}}</td>
-    <td>{{contents}}</td>
+    <td><a class="text-muted" href="javascript:void(0)" onclick="detailed(this)" content="{{contents}}">{{checkoverflow contents 20}}</a></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteTemplate({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="changeTemplate({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
   </tr>

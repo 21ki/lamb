@@ -84,18 +84,25 @@
       <div class="row query">
         <form class="form-inline">
           <div class="form-group">
+            <label>
+	          <select name="type">
+                <option value="1">帐号名称</option>
+                <option value="2">接入号码</option>
+                <option value="3">手机号码</option>
+              </select>
+            </label>
+	        <input type="text" class="form-control" name="object" placeholder="输入查询条件" />
+          </div>
+          <div class="form-group">
             <label>发送时间: </label>
 	        <input type="text"  class="form-control" name="begin" />
             -
             <input type="text"  class="form-control" name="end" />
           </div>
-          <div class="form-group">
-            <label>接入号码: </label>
-            <input type="text"  class="form-control" name="spcode" placeholder="请输入接入码" />
-          </div>
-          <div class="form-group">
-            <label>手机号码: </label>
-	        <input type="text" class="form-control" name="phone" placeholder="请输入手机号码" />
+          <div class="checkbox">
+            <label>
+              <input type="checkbox" name="export"> 导出到Excel文件
+            </label>
           </div>
           <button type="button" class="btn btn-success btn-sm pull-right" onclick="queryDeliver()">查 询</button>
         </form>

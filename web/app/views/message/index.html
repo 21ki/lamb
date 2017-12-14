@@ -83,14 +83,21 @@
       <div id="message" class="row query">
         <form id="form" class="form-inline">
           <div class="form-group">
+            <label>
+	          <select name="type">
+                <option value="1">公司名称</option>
+                <option value="2">帐号名称</option>
+                <option value="3">接入号码</option>
+                <option value="4">手机号码</option>
+              </select>
+            </label>
+	        <input type="text" class="form-control" name="object" placeholder="输入查询条件" />
+          </div>
+          <div class="form-group">
             <label>发送时间: </label>
 	        <input type="text" class="form-control" name="begin" />
             -
             <input type="text" class="form-control" name="end" />
-          </div>
-          <div class="form-group">
-            <label>帐 号: </label>
-	        <input type="text" class="form-control" name="account" placeholder="请输入帐号" />
           </div>
           <div class="form-group">
             <label>状 态: </label>
@@ -105,14 +112,10 @@
               <option value="7">REJECTD</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="checkbox">
             <label>
-	          <select name="type">
-                <option value="1">接入号码</option>
-                <option value="2">手机号码</option>
-              </select>
+              <input type="checkbox" name="export"> 导出到Excel文件
             </label>
-	        <input type="text" class="form-control" name="object" placeholder="请输入号码" />
           </div>
           <button type="button" class="btn btn-success btn-sm pull-right" onclick="queryMessage()">查 询</button>
         </form>
@@ -121,7 +124,7 @@
       <div class="row contents">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>帐 号</th><th>接入码</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th>发送时间</th></tr>
+            <tr><th>#</th><th>帐 号</th><th>接入码</th><th>公司名称</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th>发送时间</th></tr>
           </thead>
           <tbody>
           </tbody>
@@ -135,6 +138,7 @@
     <td><span class="glyphicon glyphicon-envelope"></span></td>
     <td>{{account}}</td>
     <td>{{spcode}}</td>
+    <td>company</td>
     <td>{{phone}}</td>
     <td>{{checkoverflow content 20}}</td>
     <td>{{checkstatus status}}</td>
@@ -152,9 +156,9 @@
   /* Startup initialization */
   $(document).ready(function(){
     $('li.dropdown').mouseover(function() {   
-        $(this).addClass('open');
+      $(this).addClass('open');
     }).mouseout(function() {
-        $(this).removeClass('open');
+      $(this).removeClass('open');
     });
 
     $("input[name=begin]").val(getdateofday("08:00:00"));

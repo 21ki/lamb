@@ -75,12 +75,12 @@ class MessageModel {
         return $reply;
     }
 
-    public function queryReport(array $where, int $limit = 50) {
+    public function queryReport(array $where) {
         $reply = [];
         $data = $this->checkReportArgs($where);
         $where = $this->whereReportAssembly($data);
 
-        $sql = "SELECT * FROM report WHERE {$where} LIMIT :limit";
+        $sql = "SELECT spcode, count(id) as total FROM report WHERE {$where} GROUP BY spcode";
         $sth = $this->db->prepare($sql);
 
         foreach ($data as $key => $val) {
@@ -88,8 +88,6 @@ class MessageModel {
                 $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
             }
         }
-
-        $sth->bindValue(':limit', $limit, PDO::PARAM_INT);
 
         if ($sth->execute()) {
             $reply = $sth->fetchAll();
@@ -102,21 +100,12 @@ class MessageModel {
         $data = $this->checkStatisticArgs($where);
         $where = $this->whereStatisicAssembly($data);
 
-        $reply = ['type' => null, 'object' => null, 'status' => -1, 'total' => 0, 'begin' => null, 'end' => null];
+        $reply = ['status' => -1, 'total' => 0];
 
-        if ($data['company'] !== null) {
-            $reply['type'] = '公司名称';
-            $reply['object'] = $data['company'];
-        } else if ($data['account'] !== null) {
-            $reply['type'] = '帐号名称';
-            $reply['object'] = $data['account'];
-        } else if ($data['spcode'] !== null) {
-            $reply['type'] = '接入号码';
-            $reply['object'] = $data['spcode'];
-        } else {
+        if (!$data['company'] && !$data['account'] && !$data['spcode']) {
             return [];
         }
-
+        
         if ($grouping) {
             $sql = "SELECT status, count(id) AS total FROM message WHERE {$where} GROUP BY status ORDER BY status ASC";
         } else {

@@ -3,6 +3,7 @@ function startup() {
     var url = '/api/templates';
     $.get(url, function(resp, stat){
         if (stat == 'success') {
+            Handlebars.registerHelper('checkoverflow', checkOverflow);
             var source = document.getElementById("contents").innerHTML;
             var template = Handlebars.compile(source);
             var contents = template(resp);
@@ -102,5 +103,32 @@ function deleteTemplate(id) {
         }
         xhr.open(method, url);
         xhr.send();
+    });
+}
+
+function checkOverflow(val, len) {
+    if (typeof val === "string") {
+        if (val.length > len) {
+            return val.substring(0, len) + '...';
+        }
+    }
+
+    return val;
+}
+
+function detailed(obj) {
+    var val = obj.getAttribute("content");
+    var html = '<div style="padding:25px">' + val + '</div>'
+
+    layer.open({
+        type: 1,
+        title: '模板内容',
+        skin: 'layui-layer-demo',
+        closeBtn: 1,
+        shadeClose: false,
+        shift: 0,
+        shade: 0,
+        area: ['350px', '180px'],
+        content: html
     });
 }

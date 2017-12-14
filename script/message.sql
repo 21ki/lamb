@@ -55,5 +55,6 @@ CREATE TABLE IF NOT EXISTS report (
    status int NOT NULL,
    submit_time varchar(16),
    done_time varchar(16),
+   account int NOT NULL,
    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
