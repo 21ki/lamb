@@ -11,19 +11,9 @@
 
 #include <pthread.h>
 
-typedef struct lamb_node_t {
-    void *val;
-    struct lamb_node_t *next;
-} lamb_node_t;
+typedef lamb_node_t lamb_queue_node;
 
-typedef struct lamb_queue_t {
-    int id;
-    long long len;
-    pthread_mutex_t lock;
-    struct lamb_node_t *head;
-    struct lamb_node_t *tail;
-    struct lamb_queue_t *next;
-} lamb_queue_t;
+typedef lamb_list_t lamb_queue_t;
 
 lamb_queue_t *lamb_queue_new(int id);
 lamb_node_t *lamb_queue_push(lamb_queue_t *self, void *val);
