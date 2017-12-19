@@ -45,16 +45,7 @@ CREATE TABLE IF NOT EXISTS delivery (
    spcode varchar(21) NOT NULL,
    phone varchar(21) NOT NULL,
    content text NOT NULL,
-   create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
-);
-
-CREATE TABLE IF NOT EXISTS report (
-   id bigint NOT NULL,
-   spcode varchar(21) NOT NULL,
-   phone varchar(21) NOT NULL,
-   status int NOT NULL,
-   submit_time varchar(16),
-   done_time varchar(16),
    account int NOT NULL,
+   company int NOT NULL,
    create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );

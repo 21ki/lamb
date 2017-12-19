@@ -36,17 +36,46 @@ class MessageController extends Yaf\Controller_Abstract {
             $where['begin'] = urldecode($this->request->getQuery('begin', null));
             $where['end'] = urldecode($this->request->getQuery('end', null));
 
-            if (isset($where['type']) && isset($where['object'])) {
-                if ($where['type'] == 1) {
+            if (isset($where['type'], $where['object'])) {
+                switch ($where['type']) {
+                case 1:
+                    $where['company'] = $this->getCompanyId($where['object']);
+                    break;
+                case 2:
+                    $where['account'] = $this->getAccountId($where['object']);
+                    break;
+                case 3:
                     $where['spcode'] = $where['object'];
-                } else {
+                    break;
+                case 4:
                     $where['phone'] = $where['object'];
+                    break;
+                default:
+                    break;
                 }
-                unset($where['type'], $where['object']);
             }
 
             $limit = $this->request->getQuery('limit', 50);
-            lambResponse(200, 'success', $message->queryMessage($where, $limit));
+
+            $company = new CompanyModel();
+            $companys = [];
+            foreach ($company->getAll() as $c) {
+                $companys[$c['id']] = $c;
+            }
+
+            $account = new AccountModel();
+            $accounts = [];
+            foreach ($account->getAll() as $a) {
+                $accounts[$a['id']] = $a;
+            }
+
+            $reply = $message->queryMessage($where, $limit);
+            foreach ($reply as &$m) {
+                $m['company'] = $companys[$m['company']]['name'];
+                $m['account'] = $accounts[$m['account']]['username'];
+            }
+
+            lambResponse(200, 'success', $reply);
         }
 
         return false;
@@ -58,9 +87,56 @@ class MessageController extends Yaf\Controller_Abstract {
             $where = $this->request->getQuery();
             $where['begin'] = urldecode($this->request->getQuery('begin', null));
             $where['end'] = urldecode($this->request->getQuery('end', null));
+
+            if (isset($where['type'], $where['object'])) {
+                switch ($where['type']) {
+                case 1:
+                    $where['company'] = $this->getCompanyId($where['object']);
+                    break;
+                case 2:
+                    $where['account'] = $this->getAccountId($where['object']);
+                    break;
+                case 3:
+                    $where['spcode'] = $where['object'];
+                    break;
+                case 4:
+                    $where['phone'] = $where['object'];
+                    break;
+                default:
+                    break;
+                }
+            }
+            
             $limit = $this->request->getQuery('limit', 50);
 
-            lambResponse(200, 'success', $message->queryDeliver($where, $limit));
+            $company = new CompanyModel();
+            $companys = [];
+            foreach ($company->getAll() as $c) {
+                $companys[$c['id']] = $c;
+            }
+
+            $account = new AccountModel();
+            $accounts = [];
+            foreach ($account->getAll() as $a) {
+                $accounts[$a['id']] = $a;
+            }
+
+            $reply = $message->queryDeliver($where, $limit);
+            foreach ($reply as &$m) {
+                if (isset($companys[$m['company']])) {
+                    $m['company'] = $companys[$m['company']]['name'];
+                } else {
+                    $m['company'] = 'unknown';
+                }
+
+                if (isset($accounts[$m['account']])) {
+                    $m['account'] = $accounts[$m['account']]['username'];
+                } else {
+                    $m['account'] = 'unknown';
+                }
+            }
+
+            lambResponse(200, 'success', $reply);
         }
 
         return false;

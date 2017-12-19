@@ -133,7 +133,8 @@ class MessageModel {
     }
 
     public function checkArgs(array $data) {
-        $reply = ['begin' => null,'end' => null, 'account' => null, 'spcode' => null, 'phone' => null, 'status' => null];
+        $reply = ['begin' => null,'end' => null, 'company' => null, 'account' => null,
+                  'spcode' => null, 'phone' => null, 'status' => null];
 
         foreach ($data as $key => $val) {
             switch ($key) {
@@ -143,8 +144,11 @@ class MessageModel {
             case 'end':
                 $reply['end'] = Filter::dateTime($val, null);
                 break;
+            case 'company':
+                $reply['company'] = Filter::number($val, null, 1);
+                break;
             case 'account':
-                $reply['account'] = Filter::string($val, null, 1);
+                $reply['account'] = Filter::number($val, null, 1);
                 break;
             case 'spcode':
                 $reply['spcode'] = Filter::string($val, null, 1);
@@ -172,6 +176,10 @@ class MessageModel {
             return $where;
         }
 
+        if ($data['company'] !== null) {
+            $where .= ' AND company = :company';
+        }
+        
         if ($data['account'] !== null) {
             $where .= ' AND account = :account';
         }
@@ -192,7 +200,8 @@ class MessageModel {
     }
 
     public function checkDeliverArgs(array $data) {
-        $reply = ['begin' => null,'end' => null, 'spcode' => null, 'phone' => null];
+        $reply = ['begin' => null,'end' => null, 'company' => null, 'account' => null,
+                  'spcode' => null, 'phone' => null];
 
         foreach ($data as $key => $val) {
             switch ($key) {
@@ -201,6 +210,12 @@ class MessageModel {
                 break;
             case 'end':
                 $reply['end'] = Filter::dateTime($val, null);
+                break;
+            case 'company':
+                $reply['company'] = Filter::number($val, null, 1);
+                break;
+            case 'account':
+                $reply['account'] = Filter::number($val, null, 1);
                 break;
             case 'spcode':
                 $reply['spcode'] = Filter::string($val, null, 1);
@@ -225,6 +240,14 @@ class MessageModel {
             return $where;
         }
 
+        if ($data['company'] !== null) {
+            $where .= ' AND company = :company';
+        }
+        
+        if ($data['account'] !== null) {
+            $where .= ' AND account = :account';
+        }
+        
         if ($data['spcode'] !== null) {
             $where .= ' AND spcode = :spcode';
         }

@@ -52,7 +52,6 @@
               <ul class="dropdown-menu">
                 <li><a href="/message">上行短信</a></li>
                 <li><a href="/message/deliver">下行短信</a></li>
-                <li><a href="/message/report">状态报告</a></li>
                 <li><a href="/message/statistic">数据统计</a></li>
               </ul>
             </li>
@@ -86,9 +85,10 @@
           <div class="form-group">
             <label>
 	          <select name="type">
-                <option value="1">帐号名称</option>
-                <option value="2">接入号码</option>
-                <option value="3">手机号码</option>
+                <option value="1">公司名称</option>
+                <option value="2">帐号名称</option>
+                <option value="3">接入号码</option>
+                <option value="4">手机号码</option>
               </select>
             </label>
 	        <input type="text" class="form-control" name="object" placeholder="输入查询条件" />
@@ -111,7 +111,7 @@
       <div class="row contents">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>服务号码</th><th>手机号码</th><th>短信内容</th><th>发送时间</th></tr>
+            <tr><th>#</th><th>服务号码</th><th>手机号码</th><th>帐号名称</th><th>公司名称</th><th>短信内容</th><th>发送时间</th></tr>
           </thead>
           <tbody>
           </tbody>
@@ -125,6 +125,8 @@
     <td><span class="glyphicon glyphicon-envelope"></span></td>
     <td>{{spcode}}</td>
     <td>{{phone}}</td>
+    <td>{{account}}</td>
+    <td>{{company}}</td>
     <td>{{checkoverflow content 20}}</td>
     <td>{{create_time}}</td>
   </tr>
