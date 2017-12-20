@@ -450,7 +450,7 @@ void *lamb_work_loop(void *data) {
         if (global->account.template) {
             success = false;
             lamb_list_iterator_t *ts;
-            lamb_list_iterator_new(global->templates, LIST_HEAD);
+            ts = lamb_list_iterator_new(global->templates, LIST_HEAD);
             
             while ((node = lamb_list_iterator_new(ts))) {
                 template = (lamb_template_t *)node->val;
@@ -474,7 +474,7 @@ void *lamb_work_loop(void *data) {
         if (global->account.keyword) {
             success = true;
             lamb_list_iterator_t *ks;
-            lamb_list_iterator_new(global->keywords, LIST_HEAD);
+            ks = lamb_list_iterator_new(global->keywords, LIST_HEAD);
             
             while ((node = lamb_list_iterator_next(ks))) {
                 keyword = (lamb_keyword_t *)node->val;
