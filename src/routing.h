@@ -9,7 +9,7 @@
 #define _LAMB_ROUTING_H
 
 #include "db.h"
-#include "queue.h"
+#include "list.h"
 
 typedef struct {
     int id;
@@ -17,6 +17,6 @@ typedef struct {
     int target;
 } lamb_routing_t;
 
-int lamb_get_routing(lamb_db_t *db, lamb_queue_t *routings);
+int lamb_get_routing(lamb_db_t *db, lamb_list_t *routings);
 
 #endif

@@ -9,15 +9,15 @@
 #include <string.h>
 #include "channel.h"
 
-int lamb_get_channels(lamb_db_t *db, int rid, lamb_channels_t *channels, int size) {
+int lamb_get_channels(lamb_db_t *db, int gid, lamb_list_t *channels) {
     int rows;
     char *column;
     char sql[256];
     PGresult *res = NULL;
 
     channels->len = 0;
-    column = "id, rid, weight";
-    sprintf(sql, "SELECT %s FROM channels WHERE rid = %d ORDER BY weight ASC", column, rid);
+    column = "id, gid, weight";
+    sprintf(sql, "SELECT %s FROM channels WHERE gid = %d ORDER BY weight ASC", column, gid);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -26,19 +26,14 @@ int lamb_get_channels(lamb_db_t *db, int rid, lamb_channels_t *channels, int siz
 
     rows = PQntuples(res);
 
-    for (int i = 0, j = 0; (i < rows) && (i < size); i++, j++) {
+    for (int i = 0; (i < rows); i++) {
         lamb_channel_t *c = NULL;
         c = (lamb_channel_t *)calloc(1, sizeof(lamb_channel_t));
         if (c != NULL) {
             c->id = atoi(PQgetvalue(res, i, 0));
-            c->rid = atoi(PQgetvalue(res, i, 1));
+            c->gid = atoi(PQgetvalue(res, i, 1));
             c->weight = atoi(PQgetvalue(res, i, 2));
-            channels->list[j] = c;
-            channels->len++;
-        } else {
-            if (j > 0) {
-                j--;
-            }
+            lamb_list_rpush(channels, lamb_node_new(c));
         }
     }
 

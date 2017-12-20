@@ -10,7 +10,7 @@
 #include "utils.h"
 #include "keyword.h"
 
-int lamb_keyword_get_all(lamb_db_t *db, lamb_queue_t *keys) {
+int lamb_keyword_get_all(lamb_db_t *db, lamb_list_t *keys) {
     int rows;
     char *column;
     char sql[256];
@@ -31,7 +31,7 @@ int lamb_keyword_get_all(lamb_db_t *db, lamb_queue_t *keys) {
         if (key) {
             key->id = atoi(PQgetvalue(res, i, 0));
             key->val = lamb_strdup(PQgetvalue(res, i, 1));
-            lamb_queue_push(keys, key);
+            lamb_list_rpush(keys, lamb_node_new(key));
         }
     }
 

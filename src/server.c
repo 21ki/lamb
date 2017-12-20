@@ -30,29 +30,18 @@
 #include "security.h"
 #include "channel.h"
 
-static int aid = 0;
-static long long money;
-static lamb_db_t db;
-static lamb_db_t mdb;
+static int aid;
 static int mt, mo;
-static int scheduler, deliverd;
-static lamb_cache_t rdb;
-static lamb_caches_t cache;
-static lamb_queue_t *storage;
-static lamb_queue_t *billing;
-static lamb_queue_t *routing;
-static lamb_account_t account;
-static lamb_company_t company;
-static lamb_queue_t *templates;
-static lamb_queue_t *keywords;
-static lamb_config_t config;
-static lamb_status_t status;
-static pthread_mutex_t lock;
+static int scheduler;
+static int deliverd;
+static lamb_status_t *status;
+static lamb_config_t *config;
+static lamb_global_t *global;
 
 int main(int argc, char *argv[]) {
     bool background = false;
     char *file = "server.conf";
-
+    
     int opt = 0;
     char *optstring = "a:c:d";
     opt = getopt(argc, argv, optstring);
@@ -78,7 +67,8 @@ int main(int argc, char *argv[]) {
     }
     
     /* Read lamb configuration file */
-    if (lamb_read_config(&config, file) != 0) {
+    config = (lamb_config_t *)calloc(1, sizeof(lamb_config_t));
+    if (lamb_read_config(config, file) != 0) {
         return -1;
     }
 
@@ -87,7 +77,7 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
-    if (setenv("logfile", config.logfile, 1) == -1) {
+    if (setenv("logfile", config->logfile, 1) == -1) {
         lamb_vlog(LOG_ERR, "setenv error: %s", strerror(errno));
         return -1;
     }
@@ -109,19 +99,19 @@ void lamb_event_loop(void) {
 
     lamb_set_process("lamb-server");
 
-    money = 0;
-    memset(&status, 0, sizeof(status));
-    
+    status = (lamb_status_t *)calloc(1, sizeof(lamb_status_t));
+    global = (lamb_global_t *)calloc(1, sizeof(lamb_global_t));
+
     err = lamb_signal(SIGHUP, lamb_reload);
     if (err) {
-        lamb_debug("Can't setting SIGHUP signal to lamb_reload function\n");
+        lamb_debug("lamb signal initialization  failed\n");
+    } else {
+        lamb_debug("lamb signal initialization successfull\n");
     }
 
-    lamb_debug("lamb signal initialization successfull\n");
-
     /* Storage Queue Initialization */
-    storage = lamb_queue_new(aid);
-    if (!storage) {
+    global->storage = lamb_list_new();
+    if (!global->storage) {
         lamb_log(LOG_ERR, "storage queue initialization failed ");
         return;
     }
@@ -129,8 +119,8 @@ void lamb_event_loop(void) {
     lamb_debug("storage queue initialization successfull\n");
     
     /* Billing Queue Initialization */
-    billing = lamb_queue_new(aid);
-    if (!billing) {
+    global->billing = lamb_list_new();
+    if (!global->billing) {
         lamb_log(LOG_ERR, "billing queue initialization failed");
         return;
     }
@@ -138,18 +128,17 @@ void lamb_event_loop(void) {
     lamb_debug("billing queue initialization successfull\n");
     
     /* Redis Initialization */
-    err = lamb_cache_connect(&rdb, config.redis_host, config.redis_port, NULL, config.redis_db);
+    err = lamb_cache_connect(&global->rdb, config->redis_host, config->redis_port, NULL, config->redis_db);
     if (err) {
         lamb_log(LOG_ERR, "Can't connect to redis server");
         return;
     }
 
-    lamb_debug("connect to cache server %s successfull\n", config.redis_host);
+    lamb_debug("connect to cache server %s successfull\n", config->redis_host);
     
     /* Cache Cluster Initialization */
-    memset(&cache, 0, sizeof(cache));
-    lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 1);
-    if (cache.len != 7) {
+    lamb_nodes_connect(&global->cache, LAMB_MAX_CACHE, config->nodes, 7, 1);
+    if (global->cache.len != 7) {
         lamb_log(LOG_ERR, "connect to cache cluster server failed");
         return;
     }
@@ -157,36 +146,35 @@ void lamb_event_loop(void) {
     lamb_debug("connect to cache node successfull\n");
     
     /* Postgresql Database  */
-    err = lamb_db_init(&db);
+    err = lamb_db_init(&global->db);
     if (err) {
         lamb_log(LOG_ERR, "postgresql database initialization failed");
         return;
     }
 
-    err = lamb_db_connect(&db, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name);
+    err = lamb_db_connect(&global->db, config->db_host, config->db_port, config->db_user, config->db_password, config->db_name);
     if (err) {
         lamb_log(LOG_ERR, "Can't connect to postgresql database");
         return;
     }
 
-    lamb_debug("connect to postgresql %s successfull\n", config.db_host);
+    lamb_debug("connect to postgresql %s successfull\n", config->db_host);
     
     /* Postgresql Database  */
-    err = lamb_db_init(&mdb);
+    err = lamb_db_init(&global->mdb);
     if (err) {
         lamb_log(LOG_ERR, "postgresql database initialization failed");
         return;
     }
 
-    err = lamb_db_connect(&mdb, config.msg_host, config.msg_port, config.msg_user, config.msg_password, config.msg_name);
+    err = lamb_db_connect(&global->mdb, config->msg_host, config->msg_port, config->msg_user, config->msg_password, config->msg_name);
     if (err) {
         lamb_log(LOG_ERR, "Can't connect to message database");
         return;
     }
 
     /* fetch  account */
-    memset(&account, 0, sizeof(account));
-    err = lamb_account_fetch(&db, aid, &account);
+    err = lamb_account_fetch(&global->db, aid, &global->account);
     if (err) {
         lamb_log(LOG_ERR, "Can't fetch account '%d' information", aid);
         return;
@@ -202,117 +190,146 @@ void lamb_event_loop(void) {
     memcpy(opt.addr, "127.0.0.1", 10);
     
     /* Connect to MT server */
-    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_REQ, config.timeout);
+    err = lamb_nn_connect(&mt, &opt, config->mt_host, config->mt_port, NN_REQ, config->timeout);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to MT %s server", config.mt_host);
+        lamb_log(LOG_ERR, "can't connect to MT %s server", config->mt_host);
         return;
     }
 
-    lamb_debug("connect to mt %s successfull\n", config.mt_host);
+    lamb_debug("connect to mt %s successfull\n", config->mt_host);
     
     /* Connect to MO server */
     opt.type = LAMB_NN_PUSH;
-    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR, config.timeout);
+    err = lamb_nn_connect(&mo, &opt, config->mo_host, config->mo_port, NN_PAIR, config->timeout);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to MO %s server", config.mo_host);
+        lamb_log(LOG_ERR, "can't connect to MO %s server", config->mo_host);
         return;
     }
 
-    lamb_debug("connect to mo %s successfull\n", config.mo_host);
+    lamb_debug("connect to mo %s successfull\n", config->mo_host);
     
     /* Connect to Scheduler server */
     opt.type = LAMB_NN_PUSH;
-    err = lamb_nn_connect(&scheduler, &opt, config.scheduler_host, config.scheduler_port, NN_REQ, config.timeout);
+    err = lamb_nn_connect(&scheduler, &opt, config->scheduler_host, config->scheduler_port, NN_REQ, config->timeout);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config.scheduler_host);
+        lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config->scheduler_host);
         return;
     }
 
-    lamb_debug("connect to scheduler %s successfull\n", config.scheduler_host);
+    lamb_debug("connect to scheduler %s successfull\n", config->scheduler_host);
     
     /* Connect to Deliver server */
     opt.type = LAMB_NN_PULL;
-    err = lamb_nn_connect(&deliverd, &opt, config.deliver_host, config.deliver_port, NN_REQ, config.timeout);
+    err = lamb_nn_connect(&deliverd, &opt, config->deliver_host, config->deliver_port, NN_REQ, config->timeout);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to deliver %s server", config.deliver_host);
+        lamb_log(LOG_ERR, "can't connect to deliver %s server", config->deliver_host);
         return;
     }
 
-    lamb_debug("connect to deliver %s successfull\n", config.deliver_host);
+    lamb_debug("connect to deliver %s successfull\n", config->deliver_host);
     
     /* Fetch company information */
-    memset(&company, 0, sizeof(company));
-    err = lamb_company_get(&db, account.company, &company);
+    err = lamb_company_get(&global->db, global->account.company, &global->company);
     if (err) {
-        lamb_log(LOG_ERR, "Can't fetch id %d company information", account.company);
+        lamb_log(LOG_ERR, "Can't fetch id %d company information", global->account.company);
         return;
     }
 
     lamb_debug("fetch company information successfull\n");
     
     /* Template information Initialization */
-    templates = lamb_queue_new(aid);
-    if (!templates) {
+    global->templates = lamb_list_new();
+    if (!global->templates) {
         lamb_log(LOG_ERR, "template queue initialization failed ");
         return;
     }
 
-    err = lamb_get_template(&db, templates);
+    err = lamb_get_template(&global->db, global->templates);
     if (err) {
         lamb_log(LOG_ERR, "Can't fetch template information");
         return;
     }
 
     lamb_debug("fetch template information successfull\n");
-    
+
+    /* debug templage */
+    lamb_template_t *t;
+    lamb_node_t *node = NULL;
+    lamb_list_iterator_t *it = lamb_list_iterator_new(global->templates, LIST_HEAD);
+
+    while ((node = lamb_list_iterator_next(it))) {
+        t = (lamb_template_t *)node->val;
+        lamb_debug("template -> id: %d, rexp: %s, name: %s, contents: %s\n", t->id, t->rexp, t->name, t->contents);
+    }
+
+    lamb_list_iterator_destroy(it);
+
     /* Fetch group information */
-    routing = lamb_queue_new(0);
-    if (!routing) {
+    global->channels = lamb_list_new();
+    if (!global->channels) {
         lamb_log(LOG_ERR, "routing queue initialization failed");
         return;
     }
 
-    err = lamb_get_routing(&db, routing);
+    err = lamb_fetch_channels(&global->db, global->account.username, global->channels);
     if (err) {
-        lamb_log(LOG_ERR, "can't fetch routing information");
+        lamb_log(LOG_ERR, "can't fetch channels information");
         return;
     }
 
-    lamb_debug("fetch routing information successfull\n");
+    if (global->channels->len < 1) {
+        lamb_log(LOG_WARNING, "there is no available channel");
+        return;
+    }
     
-    lamb_routing_t *r;
-    lamb_node_t *node = NULL;
-    node = routing->head;
+    lamb_debug("fetch channels information successfull\n");
+    
+    /* debug routing */
+    lamb_channel_t *c;
+    it = lamb_list_iterator_new(global->channels, LIST_HEAD);
 
-    while (node != NULL) {
-        r = (lamb_routing_t *)node->val;
-        node = node->next;
-        lamb_debug("id: %d, rexp: %s, target: %d\n", r->id, r->rexp, r->target);
+    while ((node = lamb_list_iterator_next(it))) {
+        c = (lamb_channel_t *)node->val;
+        lamb_debug("channel -> id: %d, gid: %d, weight: %d\n", c->id, c->gid, c->weight);
     }
 
+    lamb_list_iterator_destroy(it);
+
     /* Keyword information Initialization */
-    keywords = lamb_queue_new(aid);
-    if (!keywords) {
+    global->keywords = lamb_list_new();
+    if (!global->keywords) {
         lamb_log(LOG_ERR, "keyword queue initialization failed ");
         return;
     }
 
-    if (account.keyword) {
-        err = lamb_keyword_get_all(&db, keywords);
+    if (global->account.keyword) {
+        err = lamb_keyword_get_all(&global->db, global->keywords);
         if (err) {
             lamb_log(LOG_ERR, "Can't fetch keyword information");
         }
     }
 
+    lamb_debug("fetch keywords information successfull\n");
+    
+    lamb_keyword_t *k;
+    it = lamb_list_iterator_new(global->keywords, LIST_HEAD);
+
+    while ((node = lamb_list_iterator_next(it))) {
+        k = (lamb_keyword_t *)node->val;
+        lamb_debug("keyword -> id: %d, val: %s\n", k->id, k->val);
+    }
+
+    lamb_list_iterator_destroy(it);
+
     /* Thread lock initialization */
-    pthread_mutex_init(&lock, NULL);
+    pthread_mutex_init(&global->lock, NULL);
 
     /* Message Table initialization */
-    lamb_new_table(&mdb);
+    //lamb_new_table(&global->mdb);
     
     /* Start sender thread */
     long cpus = lamb_get_cpu();
-    lamb_start_thread(lamb_work_loop, NULL, config.work_threads > cpus ? cpus : config.work_threads);
+    lamb_start_thread(lamb_work_loop, NULL, config->work_threads > cpus ? cpus : config->work_threads);
 
     /* Start deliver thread */
     lamb_start_thread(lamb_deliver_loop, NULL, 1);
@@ -386,8 +403,9 @@ void *lamb_work_loop(void *data) {
 
         submit = (lamb_submit_t *)buf;
             
-        ++status.toal;
-        //printf("-> id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->content, submit->length);
+        ++status->toal;
+        lamb_debug("id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n",
+               submit->id, submit->phone, submit->spcode, submit->content, submit->length);
 
         /* Message Encoded Convert */
         char *fromcode;
@@ -402,7 +420,7 @@ void *lamb_work_loop(void *data) {
         } else if (submit->msgFmt == 15) {
             fromcode = "GBK";
         } else {
-            status.fmt++;
+            status->fmt++;
             lamb_debug("message encoded %d not support\n", submit->msgFmt);
             nn_freemsg(buf);
             continue;
@@ -410,9 +428,10 @@ void *lamb_work_loop(void *data) {
 
         if (fromcode != NULL) {
             memset(content, 0, sizeof(content));
-            err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), fromcode, "UTF-8", &submit->length);
+            err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content),
+                                       fromcode, "UTF-8", &submit->length);
             if (err || (submit->length == 0)) {
-                status.fmt++;
+                status->fmt++;
                 nn_freemsg(buf);
                 lamb_debug("Message encoding conversion failed\n");
                 continue;
@@ -424,47 +443,25 @@ void *lamb_work_loop(void *data) {
             lamb_debug("Message encoding conversion successfull\n");
         }
 
-        //printf("-> id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n", submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
-
-        /* Blacklist and Whitelist */
-        /* 
-           if (account.dbase > 0) {
-           if (lamb_security_check(&black, account.policy, submit->phone)) {
-           if (account.policy == LAMB_BLACKLIST) {
-           status.blk++;
-           nn_freemsg(buf);
-           //printf("-> [policy] The security check not pass\n");
-           continue;
-           }
-           } else {
-           if (account.policy == LAMB_WHITELIST) {
-           status.blk++;
-           nn_freemsg(buf);
-           //printf("-> [policy] The security check not pass\n");
-           continue;
-           }
-           }
-           //printf("-> [policy] The Security check SUCCESSFULL\n");
-           }
-        */
-            
+        lamb_debug("id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n",
+               submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
 
         /* Template Processing */
-        if (account.template) {
+        if (global->account.template) {
             success = false;
-            node = templates->head;
-
-            while (node != NULL) {
+            lamb_list_iterator_t *ts;
+            lamb_list_iterator_new(global->templates, LIST_HEAD);
+            
+            while ((node = lamb_list_iterator_new(ts))) {
                 template = (lamb_template_t *)node->val;
                 if (lamb_template_check(template, submit->content, submit->length)) {
                     success = true;
                     break;
                 }
-                node = node->next;
             } 
 
             if (!success) {
-                status.tmp++;
+                status->tmp++;
                 lamb_debug("The template check will not pass\n");
                 nn_freemsg(buf);
                 continue;
@@ -474,21 +471,21 @@ void *lamb_work_loop(void *data) {
         }
 
         /* Keywords Filtration */
-        if (account.keyword) {
-            success = false;
-            node = keywords->head;
-
-            while (node != NULL) {
+        if (global->account.keyword) {
+            success = true;
+            lamb_list_iterator_t *ks;
+            lamb_list_iterator_new(global->keywords, LIST_HEAD);
+            
+            while ((node = lamb_list_iterator_next(ks))) {
                 keyword = (lamb_keyword_t *)node->val;
                 if (lamb_keyword_check(keyword, submit->content)) {
-                    success = true;
+                    success = false;
                     break;
                 }
-                node = node->next;
             }
                
-            if (success) {
-                status.key++;
+            if (!success) {
+                status->key++;
                 nn_freemsg(buf);
                 lamb_debug("The keyword check not pass\n");
                 continue;
@@ -497,44 +494,23 @@ void *lamb_work_loop(void *data) {
         }
 
         /* Scheduling */
-        /* 
     routing:
-        success = false;
-        node = routing->head;
-
-        while (node != NULL) {
-            channel = (lamb_channel_t *)node->val;
-            submit->channel = channel->id;
-            if (nn_send(scheduler, (char *)submit, sizeof(lamb_submit_t), 0) > 0) {
-                rc = nn_recv(scheduler, &buf, NN_MSG, 0);
-                if (rc > 1 && (strncmp(buf, "ok", 2) == 0)) {
-                    success = true;
-                    status.sub++;
-                    break;
-                }
-            }
-
-            node = node->next;
-        }
-
+        success = lamb_push_message(scheduler, submit, global->channels);
+        
         if (!success) {
-            if (routing->len < 1) {
-                lamb_debug("No gateway channel available\n");
-            }
-            //printf("-> [channel] busy all channels\n");
-            lamb_sleep(10);
+            lamb_sleep(100);
             goto routing;
         }
- */
-        //printf("-> [channel] Message sent to %d channel\n", channel->id);
+
+        lamb_debug("message sending to scheduler successfull\n");
             
         /* Save message to billing queue */
-        if (account.charge == LAMB_CHARGE_SUBMIT) {
+        if (global->account.charge == LAMB_CHARGE_SUBMIT) {
             bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
             if (bill) {
-                bill->id = company.id;
+                bill->id = global->company.id;
                 bill->money = -1;
-                lamb_queue_push(billing, bill);
+                lamb_list_rpush(global->billing, lamb_node_new(bill));
             }
         }
 
@@ -543,7 +519,7 @@ void *lamb_work_loop(void *data) {
         if (store) {
             store->type = LAMB_SUBMIT;
             store->val = submit;
-            lamb_queue_push(storage, store);
+            lamb_list_rpush(global->storage, lamb_node_new(store));
         }
     }
 
@@ -587,27 +563,26 @@ void *lamb_deliver_loop(void *data) {
         message = (lamb_message_t *)buf;
 
         if (message->type == LAMB_REPORT) {
-            status.rep++;
+            status->rep++;
             report = (lamb_report_t *)buf;
 
-            report->account = account.id;
-            memcpy(report->spcode, account.spcode, 20);
+            report->account = aid;
+            memcpy(report->spcode, global->account.spcode, 20);
             
-            //printf("-> msgId: %llu, acc: %llu, comp: %d, charge: %d\n", report->id, acc, comp, charge);
             int coin = 0;
 
-            if ((report->status == 1) && (account.charge == LAMB_CHARGE_SUCCESS)) {
+            if ((report->status == 1) && (global->account.charge == LAMB_CHARGE_SUCCESS)) {
                 coin = 1;
-            } else if ((report->status != 1) && (account.charge == LAMB_CHARGE_SUBMIT)) {
+            } else if ((report->status != 1) && (global->account.charge == LAMB_CHARGE_SUBMIT)) {
                 coin = -1;
             }
 
             if (coin != 0) {
                 bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
                 if (bill) {
-                    bill->id = company.id;
+                    bill->id = global->company.id;
                     bill->money = (report->status == 1) ? -1 : 1;
-                    lamb_queue_push(billing, bill);
+                    lamb_list_rpush(global->billing, lamb_node_new(bill));
                 }
             }
 
@@ -619,7 +594,7 @@ void *lamb_deliver_loop(void *data) {
             if (store) {
                 store->type = LAMB_REPORT;
                 store->val = report;
-                lamb_queue_push(storage, store);
+                lamb_list_rpush(global->storage, lamb_node_new(store));
             } else {
                 nn_freemsg(buf);
             }
@@ -628,10 +603,10 @@ void *lamb_deliver_loop(void *data) {
         }
 
         if (message->type == LAMB_DELIVER) {
-            status.delv++;
+            status->delv++;
             deliver = (lamb_deliver_t *)buf;
             memcpy(spcode, deliver->spcode, 20);
-            memcpy(deliver->spcode, account.spcode, 20);
+            memcpy(deliver->spcode, global->account.spcode, 20);
 
             nn_send(mo, deliver, sizeof(lamb_deliver_t), NN_DONTWAIT);
 
@@ -642,7 +617,7 @@ void *lamb_deliver_loop(void *data) {
             if (store) {
                 store->type = LAMB_DELIVER;
                 store->val = deliver;
-                lamb_queue_push(storage, store);
+                lamb_list_rpush(global->storage, lamb_node_new(store));
             } else {
                 nn_freemsg(buf);
             }
@@ -664,7 +639,7 @@ void *lamb_store_loop(void *data) {
     lamb_deliver_t *deliver;
     
     while (true) {
-        node = lamb_queue_pop(storage);
+        node = lamb_list_lpop(global->storage);
 
         if (!node) {
             lamb_sleep(10);
@@ -675,13 +650,13 @@ void *lamb_store_loop(void *data) {
 
         if (store->type == LAMB_SUBMIT) {
             submit = (lamb_submit_t *)store->val;
-            lamb_write_message(&mdb, &account, &company, submit);
+            lamb_write_message(&global->mdb, &global->account, &global->company, submit);
         } else if (store->type == LAMB_REPORT) {
             report = (lamb_report_t *)store->val;
-            lamb_write_report(&mdb, report);
+            lamb_write_report(&global->mdb, report);
         } else if (store->type == LAMB_DELIVER) {
             deliver = (lamb_deliver_t *)store->val;
-            lamb_write_deliver(&mdb, &account, &company, deliver);
+            lamb_write_deliver(&global->mdb, &global->account, &global->company, deliver);
         }
 
         nn_freemsg(store->val);
@@ -698,7 +673,7 @@ void *lamb_billing_loop(void *data) {
     lamb_node_t *node;
     
     while (true) {
-        node = lamb_queue_pop(billing);
+        node = lamb_list_lpop(global->billing);
 
         if (!node) {
             lamb_sleep(10);
@@ -706,9 +681,9 @@ void *lamb_billing_loop(void *data) {
         }
 
         bill = (lamb_bill_t *)node->val;
-        pthread_mutex_lock(&(rdb.lock));
-        err = lamb_company_billing(&rdb, bill->id, bill->money, &money);
-        pthread_mutex_unlock(&(rdb.lock));
+        pthread_mutex_lock(&(global->rdb.lock));
+        err = lamb_company_billing(&global->rdb, bill->id, bill->money, &global->money);
+        pthread_mutex_unlock(&(global->rdb.lock));
         if (err) {
             lamb_log(LOG_ERR, "Account %d billing money %d failure", bill->id, bill->money);
         }
@@ -724,21 +699,16 @@ void *lamb_stat_loop(void *data) {
     int err;
     redisReply *reply = NULL;
 
-    err = lamb_cpu_affinity(pthread_self());
-    if (err) {
-        lamb_log(LOG_WARNING, "Can't set thread cpu affinity");
-    }
-
     while (true) {
-        pthread_mutex_lock(&(rdb.lock));
-        reply = redisCommand(rdb.handle, "HMSET server.%d pid %u", account.id, getpid());
-        pthread_mutex_unlock(&(rdb.lock));
+        pthread_mutex_lock(&(global->rdb.lock));
+        reply = redisCommand(global->rdb.handle, "HMSET server.%d pid %u", aid, getpid());
+        pthread_mutex_unlock(&(global->rdb.lock));
         if (reply != NULL) {
             freeReplyObject(reply);
         }
 
-        printf("-[ %s ]-> store: %lld, bill: %lld, toal: %llu, sub: %llu, rep: %llu, delv: %llu, fmt: %llu, blk: %llu, tmp: %llu, key: %llu\n",
-               account.username, storage->len, billing->len, status.toal, status.sub, status.rep, status.delv, status.fmt, status.blk, status.tmp, status.key);
+        lamb_debug("store: %lld, bill: %lld, toal: %llu, sub: %llu, rep: %llu, delv: %llu, fmt: %llu, blk: %llu, tmp: %llu, key: %llu\n",
+                   global->storage->len, global->billing->len, status->toal, status->sub, status->rep, status->delv, status->fmt, status->blk, status->tmp, status->key);
 
         sleep(3);
     }
@@ -749,13 +719,11 @@ void *lamb_stat_loop(void *data) {
 
 int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {
     char sql[512];
-    char table[128];
     PGresult *res = NULL;
 
-    lamb_get_today("message_", table);
-
     if (message != NULL) {
-        sprintf(sql, "UPDATE %s SET status = %d WHERE id = %lld", table, message->status, (long long)message->id);
+        sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld",
+                message->status, (long long)message->id);
 
         res = PQexec(db->conn, sql);
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -772,16 +740,13 @@ int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {
 int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {
     char *column;
     char sql[512];
-    char table[128];
     PGresult *res = NULL;
 
-    lamb_get_today("message_", table);
-    
     if (message != NULL) {
         column = "id, spid, spcode, phone, content, status, account, company";
-        sprintf(sql, "INSERT INTO %s(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)", table, column,
-                (long long int)message->id, message->spid, message->spcode, message->phone, message->content,
-                0, account->id, company->id);
+        sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)",
+                column, (long long int)message->id, message->spid, message->spcode, message->phone,
+                message->content, 0, account->id, company->id);
 
         res = PQexec(db->conn, sql);
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -802,8 +767,8 @@ int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *c
 
     if (message != NULL) {
         column = "id, spcode, phone, content";
-        sprintf(sql, "INSERT INTO deliver(%s) VALUES(%lld, '%s', '%s', '%s')", column, (long long int)message->id,
-                message->spcode, message->phone, message->content);
+        sprintf(sql, "INSERT INTO deliver(%s) VALUES(%lld, '%s', '%s', '%s')",
+                column, (long long int)message->id, message->spcode, message->phone, message->content);
         res = PQexec(db->conn, sql);
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
             PQclear(res);
@@ -833,39 +798,35 @@ int lamb_spcode_process(char *code, char *spcode, size_t size) {
     return 0;
 }
 
-void lamb_get_today(const char *pfx, char *val) {
-    time_t rawtime;
-    struct tm *t;
-
-    time(&rawtime);
-    t = localtime(&rawtime);
-    sprintf(val, "%s%4d%02d%02d", pfx, t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
-
-    return;
-}
-
-void lamb_new_table(lamb_db_t *db) {
+int lamb_fetch_channels(lamb_db_t *db, const char *rexp, lamb_list_t *channels) {
+    int rows;
     char sql[512];
-    char table[128];
-    PGresult *res = NULL;
-    const char *prefix = "message_";
+    PGresult *res;
     
-    lamb_get_today(prefix, table);
+    sprintf(sql, "SELECT * FROM channels WHERE gid = (SELECT target FROM routing WHERE rexp = '%s') ORDER BY weight ASC ", rexp);
 
-    sprintf(sql, "CREATE TABLE IF NOT EXISTS %s(id bigint NOT NULL,spid varchar(6) NOT NULL,"
-            "spcode varchar(21) NOT NULL,phone varchar(21) NOT NULL,content text NOT NULL,status int NOT NULL,"
-            "account int NOT NULL, company int NOT NULL, create_time timestamp without time zone NOT NULL "
-            "default now()::timestamp(0) without time zone);", table);
-    
     res = PQexec(db->conn, sql);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-        printf("-> lamb_new_table() sql exec error\n");
-        return;
+        return -1;
+    }
+
+    rows = PQntuples(res);
+
+    for (int i = 0; i < rows; i++) {
+        lamb_channel_t *c = NULL;
+        c = (lamb_channel_t *)calloc(1, sizeof(lamb_channel_t));
+        if (c != NULL) {
+            c->id = atoi(PQgetvalue(res, i, 0));
+            c->gid = atoi(PQgetvalue(res, i, 1));
+            c->weight = atoi(PQgetvalue(res, i, 2));
+            lamb_list_rpush(channels, lamb_node_new(c));
+        }
     }
 
     PQclear(res);
-    return;
+
+    return 0;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

@@ -9,7 +9,7 @@
 #define _LAMB_TEMPLATE_H
 
 #include "db.h"
-#include "queue.h"
+#include "list.h"
 
 typedef struct {
     int id;
@@ -18,7 +18,7 @@ typedef struct {
     char contents[512];
 } lamb_template_t;
 
-int lamb_get_template(lamb_db_t *db, lamb_queue_t *templates);
+int lamb_get_template(lamb_db_t *db, lamb_list_t *templates);
 bool lamb_template_check(lamb_template_t *template, char *content, int len);
     
 #endif

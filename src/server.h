@@ -8,11 +8,10 @@
 #ifndef _LAMB_SERVER_H
 #define _LAMB_SERVER_H
 
-#include "utils.h"
-#include "cache.h"
-#include "mqueue.h"
-#include "queue.h"
 #include "db.h"
+#include "utils.h"
+#include "list.h"
+#include "cache.h"
 #include "routing.h"
 #include "account.h"
 #include "company.h"
@@ -68,6 +67,22 @@ typedef struct {
 } lamb_status_t;
 
 typedef struct {
+    lamb_db_t db;
+    lamb_db_t mdb;
+    long long money;
+    lamb_cache_t rdb;
+    lamb_caches_t cache;
+    lamb_list_t *storage;
+    lamb_list_t *billing;
+    lamb_list_t *channels;
+    lamb_account_t account;
+    lamb_company_t company;
+    lamb_list_t *templates;
+    lamb_list_t *keywords;
+    pthread_mutex_t lock;
+} lamb_global_t;
+    
+typedef struct {
     int id;
     int money;
 } lamb_bill_t;
@@ -90,6 +105,7 @@ int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *c
 int lamb_spcode_process(char *code, char *spcode, size_t size);
 void lamb_get_today(const char *pfx, char *val);
 void lamb_new_table(lamb_db_t *db);
+int lamb_fetch_channels(lamb_db_t *db, const char *rexp, lamb_list_t *channels);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

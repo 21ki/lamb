@@ -8,11 +8,7 @@
 #ifndef _LAMB_GATEWAY_H
 #define _LAMB_GATEWAY_H
 
-#include <sys/epoll.h>
 #include "db.h"
-#include "mqueue.h"
-
-#define LAMB_MAX_GATEWAY 1024
 
 typedef struct {
     int id;
@@ -26,25 +22,5 @@ typedef struct {
     int encoded;
     int concurrent;
 } lamb_gateway_t;
-
-typedef struct {
-    int len;
-    lamb_gateway_t *list[LAMB_MAX_GATEWAY];
-} lamb_gateways_t;
-
-typedef struct {
-    int id;
-    lamb_mq_t queue;
-} lamb_gateway_queue_t;
-
-typedef struct {
-    int len;
-    lamb_gateway_queue_t *list[LAMB_MAX_GATEWAY];
-} lamb_gateway_queues_t;
-
-int lamb_gateway_get(lamb_db_t *db, int id, lamb_gateway_t *gateway);
-int lamb_gateway_get_all(lamb_db_t *db, lamb_gateways_t *gateways, int size);
-int lamb_gateway_queue_open(lamb_gateway_queues_t *queues, int qlen, lamb_gateways_t *gateways, int glen, lamb_mq_opt *opt, int type);
-int lamb_gateway_epoll_add(int epfd, struct epoll_event *event, lamb_gateway_queues_t *queues, int len, int type);
 
 #endif

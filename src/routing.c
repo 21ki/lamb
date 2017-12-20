@@ -10,7 +10,7 @@
 #include "routing.h"
 #include "channel.h"
 
-int lamb_get_routing(lamb_db_t *db, lamb_queue_t *routings) {
+int lamb_get_routing(lamb_db_t *db, lamb_list_t *routings) {
     int rows;
     char *column;
     char sql[256];
@@ -33,7 +33,7 @@ int lamb_get_routing(lamb_db_t *db, lamb_queue_t *routings) {
             routing->id = atoi(PQgetvalue(res, i, 0));
             strncpy(routing->rexp, PQgetvalue(res, i, 1), 127);
             routing->target = atoi(PQgetvalue(res, i, 2));
-            lamb_queue_push(routings, routing);
+            lamb_list_rpush(routings, lamb_node_new(routing));
         }
     }
 

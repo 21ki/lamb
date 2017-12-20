@@ -1,7 +1,7 @@
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -pedantic
-MACRO = -D_GNU_SOURCE
+CFLAGS = -std=c99 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -pedantic
+MACRO = -D_GNU_SOURCE -D_DEBUG
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/routing.o src/mqueue.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/delivery.o src/socket.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre
 

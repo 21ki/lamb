@@ -11,7 +11,7 @@
 #include "utils.h"
 #include "template.h"
 
-int lamb_get_template(lamb_db_t *db, lamb_queue_t *templates) {
+int lamb_get_template(lamb_db_t *db, lamb_list_t *templates) {
     int rows;
     char *column;
     char sql[256];
@@ -35,7 +35,7 @@ int lamb_get_template(lamb_db_t *db, lamb_queue_t *templates) {
             strncpy(t->rexp, PQgetvalue(res, i, 1), 127);
             strncpy(t->name, PQgetvalue(res, i, 2), 63);
             strncpy(t->contents, PQgetvalue(res, i, 3), 511);
-            lamb_queue_push(templates, t);
+            lamb_list_rpush(templates, lamb_node_new(t));
         }
     }
 
