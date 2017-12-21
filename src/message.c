@@ -8,43 +8,43 @@
 
 #include "message.h"
 void   lamb_submit_init
-                     (LambSubmit         *message)
+                     (Submit         *message)
 {
-  static const LambSubmit init_value = LAMB_SUBMIT_INIT;
+  static const Submit init_value = LAMB_SUBMIT_INIT;
   *message = init_value;
 }
 size_t lamb_submit_get_packed_size
-                     (const LambSubmit *message)
+                     (const Submit *message)
 {
   assert(message->base.descriptor == &lamb_submit_descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t lamb_submit_pack
-                     (const LambSubmit *message,
+                     (const Submit *message,
                       uint8_t       *out)
 {
   assert(message->base.descriptor == &lamb_submit_descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t lamb_submit_pack_to_buffer
-                     (const LambSubmit *message,
+                     (const Submit *message,
                       ProtobufCBuffer *buffer)
 {
   assert(message->base.descriptor == &lamb_submit_descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-LambSubmit *
+Submit *
        lamb_submit_unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (LambSubmit *)
+  return (Submit *)
      protobuf_c_message_unpack (&lamb_submit_descriptor,
                                 allocator, len, data);
 }
 void   lamb_submit_free_unpacked
-                     (LambSubmit *message,
+                     (Submit *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
@@ -53,43 +53,43 @@ void   lamb_submit_free_unpacked
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   lamb_report_init
-                     (LambReport         *message)
+                     (Report         *message)
 {
-  static const LambReport init_value = LAMB_REPORT_INIT;
+  static const Report init_value = LAMB_REPORT_INIT;
   *message = init_value;
 }
 size_t lamb_report_get_packed_size
-                     (const LambReport *message)
+                     (const Report *message)
 {
   assert(message->base.descriptor == &lamb_report_descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t lamb_report_pack
-                     (const LambReport *message,
+                     (const Report *message,
                       uint8_t       *out)
 {
   assert(message->base.descriptor == &lamb_report_descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t lamb_report_pack_to_buffer
-                     (const LambReport *message,
+                     (const Report *message,
                       ProtobufCBuffer *buffer)
 {
   assert(message->base.descriptor == &lamb_report_descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-LambReport *
+Report *
        lamb_report_unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (LambReport *)
+  return (Report *)
      protobuf_c_message_unpack (&lamb_report_descriptor,
                                 allocator, len, data);
 }
 void   lamb_report_free_unpacked
-                     (LambReport *message,
+                     (Report *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
@@ -98,48 +98,93 @@ void   lamb_report_free_unpacked
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   lamb_deliver_init
-                     (LambDeliver         *message)
+                     (Deliver         *message)
 {
-  static const LambDeliver init_value = LAMB_DELIVER_INIT;
+  static const Deliver init_value = LAMB_DELIVER_INIT;
   *message = init_value;
 }
 size_t lamb_deliver_get_packed_size
-                     (const LambDeliver *message)
+                     (const Deliver *message)
 {
   assert(message->base.descriptor == &lamb_deliver_descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t lamb_deliver_pack
-                     (const LambDeliver *message,
+                     (const Deliver *message,
                       uint8_t       *out)
 {
   assert(message->base.descriptor == &lamb_deliver_descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t lamb_deliver_pack_to_buffer
-                     (const LambDeliver *message,
+                     (const Deliver *message,
                       ProtobufCBuffer *buffer)
 {
   assert(message->base.descriptor == &lamb_deliver_descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-LambDeliver *
+Deliver *
        lamb_deliver_unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (LambDeliver *)
+  return (Deliver *)
      protobuf_c_message_unpack (&lamb_deliver_descriptor,
                                 allocator, len, data);
 }
 void   lamb_deliver_free_unpacked
-                     (LambDeliver *message,
+                     (Deliver *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
   assert(message->base.descriptor == &lamb_deliver_descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   lamb_schedule_init
+                     (Schedule         *message)
+{
+  static const Schedule init_value = LAMB_SCHEDULE_INIT;
+  *message = init_value;
+}
+size_t lamb_schedule_get_packed_size
+                     (const Schedule *message)
+{
+  assert(message->base.descriptor == &lamb_schedule_descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t lamb_schedule_pack
+                     (const Schedule *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &lamb_schedule_descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t lamb_schedule_pack_to_buffer
+                     (const Schedule *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &lamb_schedule_descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+Schedule *
+       lamb_schedule_unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (Schedule *)
+     protobuf_c_message_unpack (&lamb_schedule_descriptor,
+                                allocator, len, data);
+}
+void   lamb_schedule_free_unpacked
+                     (Schedule *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &lamb_schedule_descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
@@ -150,7 +195,7 @@ static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
-    offsetof(LambSubmit, id),
+    offsetof(Submit, id),
     NULL,
     NULL,
     0,             /* flags */
@@ -162,7 +207,7 @@ static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambSubmit, account),
+    offsetof(Submit, account),
     NULL,
     NULL,
     0,             /* flags */
@@ -174,7 +219,7 @@ static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambSubmit, company),
+    offsetof(Submit, company),
     NULL,
     NULL,
     0,             /* flags */
@@ -186,7 +231,7 @@ static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambSubmit, spid),
+    offsetof(Submit, spid),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
@@ -198,7 +243,7 @@ static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambSubmit, spcode),
+    offsetof(Submit, spcode),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
@@ -210,19 +255,19 @@ static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambSubmit, phone),
+    offsetof(Submit, phone),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "msgFmt",
+    "msgfmt",
     7,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambSubmit, msgfmt),
+    offsetof(Submit, msgfmt),
     NULL,
     NULL,
     0,             /* flags */
@@ -234,7 +279,7 @@ static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambSubmit, length),
+    offsetof(Submit, length),
     NULL,
     NULL,
     0,             /* flags */
@@ -246,7 +291,7 @@ static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BYTES,
     0,   /* quantifier_offset */
-    offsetof(LambSubmit, content),
+    offsetof(Submit, content),
     NULL,
     NULL,
     0,             /* flags */
@@ -259,7 +304,7 @@ static const unsigned lamb_submit_field_indices_by_name[] = {
   8,   /* field[8] = content */
   0,   /* field[0] = id */
   7,   /* field[7] = length */
-  6,   /* field[6] = msgFmt */
+  6,   /* field[6] = msgfmt */
   5,   /* field[5] = phone */
   4,   /* field[4] = spcode */
   3,   /* field[3] = spid */
@@ -272,11 +317,11 @@ static const ProtobufCIntRange lamb_submit_number_ranges[1 + 1] =
 const ProtobufCMessageDescriptor lamb_submit_descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "LambSubmit",
-  "LambSubmit",
-  "LambSubmit",
+  "Submit",
+  "Submit",
+  "Submit",
   "",
-  sizeof(LambSubmit),
+  sizeof(Submit),
   9,
   lamb_submit_field_descriptors,
   lamb_submit_field_indices_by_name,
@@ -292,7 +337,7 @@ static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
-    offsetof(LambReport, id),
+    offsetof(Report, id),
     NULL,
     NULL,
     0,             /* flags */
@@ -304,7 +349,7 @@ static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambReport, account),
+    offsetof(Report, account),
     NULL,
     NULL,
     0,             /* flags */
@@ -316,7 +361,7 @@ static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambReport, company),
+    offsetof(Report, company),
     NULL,
     NULL,
     0,             /* flags */
@@ -328,7 +373,7 @@ static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambReport, spcode),
+    offsetof(Report, spcode),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
@@ -340,7 +385,7 @@ static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambReport, phone),
+    offsetof(Report, phone),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
@@ -352,7 +397,7 @@ static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambReport, status),
+    offsetof(Report, status),
     NULL,
     NULL,
     0,             /* flags */
@@ -364,7 +409,7 @@ static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambReport, submittime),
+    offsetof(Report, submittime),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
@@ -376,7 +421,7 @@ static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambReport, donetime),
+    offsetof(Report, donetime),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
@@ -401,11 +446,11 @@ static const ProtobufCIntRange lamb_report_number_ranges[1 + 1] =
 const ProtobufCMessageDescriptor lamb_report_descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "LambReport",
-  "LambReport",
-  "LambReport",
+  "Report",
+  "Report",
+  "Report",
   "",
-  sizeof(LambReport),
+  sizeof(Report),
   8,
   lamb_report_field_descriptors,
   lamb_report_field_indices_by_name,
@@ -421,7 +466,7 @@ static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
-    offsetof(LambDeliver, id),
+    offsetof(Deliver, id),
     NULL,
     NULL,
     0,             /* flags */
@@ -433,7 +478,7 @@ static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambDeliver, account),
+    offsetof(Deliver, account),
     NULL,
     NULL,
     0,             /* flags */
@@ -445,7 +490,7 @@ static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambDeliver, company),
+    offsetof(Deliver, company),
     NULL,
     NULL,
     0,             /* flags */
@@ -457,7 +502,7 @@ static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambDeliver, phone),
+    offsetof(Deliver, phone),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
@@ -469,7 +514,7 @@ static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambDeliver, spcode),
+    offsetof(Deliver, spcode),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
@@ -481,19 +526,19 @@ static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LambDeliver, serviceid),
+    offsetof(Deliver, serviceid),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "msgFmt",
+    "msgfmt",
     7,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambDeliver, msgfmt),
+    offsetof(Deliver, msgfmt),
     NULL,
     NULL,
     0,             /* flags */
@@ -505,7 +550,7 @@ static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(LambDeliver, length),
+    offsetof(Deliver, length),
     NULL,
     NULL,
     0,             /* flags */
@@ -517,7 +562,7 @@ static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BYTES,
     0,   /* quantifier_offset */
-    offsetof(LambDeliver, content),
+    offsetof(Deliver, content),
     NULL,
     NULL,
     0,             /* flags */
@@ -530,7 +575,7 @@ static const unsigned lamb_deliver_field_indices_by_name[] = {
   8,   /* field[8] = content */
   0,   /* field[0] = id */
   7,   /* field[7] = length */
-  6,   /* field[6] = msgFmt */
+  6,   /* field[6] = msgfmt */
   3,   /* field[3] = phone */
   5,   /* field[5] = serviceId */
   4,   /* field[4] = spcode */
@@ -543,15 +588,66 @@ static const ProtobufCIntRange lamb_deliver_number_ranges[1 + 1] =
 const ProtobufCMessageDescriptor lamb_deliver_descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "LambDeliver",
-  "LambDeliver",
-  "LambDeliver",
+  "Deliver",
+  "Deliver",
+  "Deliver",
   "",
-  sizeof(LambDeliver),
+  sizeof(Deliver),
   9,
   lamb_deliver_field_descriptors,
   lamb_deliver_field_indices_by_name,
   1,  lamb_deliver_number_ranges,
   (ProtobufCMessageInit) lamb_deliver_init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor lamb_schedule_field_descriptors[2] =
+{
+  {
+    "message",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(Schedule, message),
+    &lamb_submit_descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "channels",
+    2,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(Schedule, n_channels),
+    offsetof(Schedule, channels),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned lamb_schedule_field_indices_by_name[] = {
+  1,   /* field[1] = channels */
+  0,   /* field[0] = message */
+};
+static const ProtobufCIntRange lamb_schedule_number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor lamb_schedule_descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "Schedule",
+  "Schedule",
+  "Schedule",
+  "",
+  sizeof(Schedule),
+  2,
+  lamb_schedule_field_descriptors,
+  lamb_schedule_field_indices_by_name,
+  1,  lamb_schedule_number_ranges,
+  (ProtobufCMessageInit) lamb_schedule_init,
   NULL,NULL,NULL    /* reserved[123] */
 };

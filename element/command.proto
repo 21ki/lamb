@@ -1,5 +1,19 @@
 syntax = "proto3";
 
-message LambConnect {
-    int32 type;
+message Request {
+    int32 id = 1;
+    int32 type = 2;
+    string addr = 3;
+}
+
+message Response {
+    int32 id = 1;
+    string addr = 2;
+    int32 port = 3;
+}
+
+message Connect {
+    int32 id = 1;
+    int32 type = 2;
+    string addr = 3;
 }

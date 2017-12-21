@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-message LambSubmit {
+message Submit {
     uint64 id = 1;
     int32 account = 2;
     int32 company = 3;
@@ -12,7 +12,7 @@ message LambSubmit {
     bytes content = 9;
 }
 
-message LambReport {
+message Report {
     uint64 id = 1;
     int32 account = 2;
     int32 company = 3;
@@ -23,7 +23,7 @@ message LambReport {
     string doneTime = 8;
 }
 
-message LambDeliver {
+message Deliver {
     uint64 id = 1;
     int32 account = 2;
     int32 company = 3;
@@ -33,4 +33,9 @@ message LambDeliver {
     int32 msgfmt = 7;
     int32 length = 8;
     bytes content = 9;
+}
+
+message Schedule {
+    Submit message = 1;
+    repeated int32 channels = 2;
 }

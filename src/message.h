@@ -15,17 +15,14 @@ PROTOBUF_C__BEGIN_DECLS
 #endif
 
 
-typedef struct _LambSubmit LambSubmit;
-typedef struct _LambReport LambReport;
-typedef struct _LambDeliver LambDeliver;
-
-
-/* --- enums --- */
-
+typedef struct _Submit Submit;
+typedef struct _Report Report;
+typedef struct _Deliver Deliver;
+typedef struct _Schedule Schedule;
 
 /* --- messages --- */
 
-struct  _LambSubmit
+struct  _Submit
 {
   ProtobufCMessage base;
   uint64_t id;
@@ -43,7 +40,7 @@ struct  _LambSubmit
     , 0, 0, 0, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, 0, 0, {0,NULL} }
 
 
-struct  _LambReport
+struct  _Report
 {
   ProtobufCMessage base;
   uint64_t id;
@@ -60,7 +57,7 @@ struct  _LambReport
     , 0, 0, 0, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, 0, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string }
 
 
-struct  _LambDeliver
+struct  _Deliver
 {
   ProtobufCMessage base;
   uint64_t id;
@@ -78,83 +75,115 @@ struct  _LambDeliver
     , 0, 0, 0, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, 0, 0, {0,NULL} }
 
 
-/* LambSubmit methods */
+struct  _Schedule
+{
+  ProtobufCMessage base;
+  Submit *message;
+  size_t n_channels;
+  int32_t *channels;
+};
+#define LAMB_SCHEDULE_INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&lamb_schedule_descriptor) \
+    , NULL, 0,NULL }
+
+
+/* Submit methods */
 void   lamb_submit_init
-                     (LambSubmit         *message);
+                     (Submit         *message);
 size_t lamb_submit_get_packed_size
-                     (const LambSubmit   *message);
+                     (const Submit   *message);
 size_t lamb_submit_pack
-                     (const LambSubmit   *message,
+                     (const Submit   *message,
                       uint8_t             *out);
 size_t lamb_submit_pack_to_buffer
-                     (const LambSubmit   *message,
+                     (const Submit   *message,
                       ProtobufCBuffer     *buffer);
-LambSubmit *
+Submit *
        lamb_submit_unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data);
 void   lamb_submit_free_unpacked
-                     (LambSubmit *message,
+                     (Submit *message,
                       ProtobufCAllocator *allocator);
-/* LambReport methods */
+/* Report methods */
 void   lamb_report_init
-                     (LambReport         *message);
+                     (Report         *message);
 size_t lamb_report_get_packed_size
-                     (const LambReport   *message);
+                     (const Report   *message);
 size_t lamb_report_pack
-                     (const LambReport   *message,
+                     (const Report   *message,
                       uint8_t             *out);
 size_t lamb_report_pack_to_buffer
-                     (const LambReport   *message,
+                     (const Report   *message,
                       ProtobufCBuffer     *buffer);
-LambReport *
+Report *
        lamb_report_unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data);
 void   lamb_report_free_unpacked
-                     (LambReport *message,
+                     (Report *message,
                       ProtobufCAllocator *allocator);
-/* LambDeliver methods */
+/* Deliver methods */
 void   lamb_deliver_init
-                     (LambDeliver         *message);
+                     (Deliver         *message);
 size_t lamb_deliver_get_packed_size
-                     (const LambDeliver   *message);
+                     (const Deliver   *message);
 size_t lamb_deliver_pack
-                     (const LambDeliver   *message,
+                     (const Deliver   *message,
                       uint8_t             *out);
 size_t lamb_deliver_pack_to_buffer
-                     (const LambDeliver   *message,
+                     (const Deliver   *message,
                       ProtobufCBuffer     *buffer);
-LambDeliver *
+Deliver *
        lamb_deliver_unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data);
 void   lamb_deliver_free_unpacked
-                     (LambDeliver *message,
+                     (Deliver *message,
+                      ProtobufCAllocator *allocator);
+/* Schedule methods */
+void   lamb_schedule_init
+                     (Schedule         *message);
+size_t lamb_schedule_get_packed_size
+                     (const Schedule   *message);
+size_t lamb_schedule_pack
+                     (const Schedule   *message,
+                      uint8_t             *out);
+size_t lamb_schedule_pack_to_buffer
+                     (const Schedule   *message,
+                      ProtobufCBuffer     *buffer);
+Schedule *
+       lamb_schedule_unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   lamb_schedule_free_unpacked
+                     (Schedule *message,
                       ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
-typedef void (*LambSubmit_Closure)
-                 (const LambSubmit *message,
+typedef void (*Submit_Closure)
+                 (const Submit *message,
                   void *closure_data);
-typedef void (*LambReport_Closure)
-                 (const LambReport *message,
+typedef void (*Report_Closure)
+                 (const Report *message,
                   void *closure_data);
-typedef void (*LambDeliver_Closure)
-                 (const LambDeliver *message,
+typedef void (*Deliver_Closure)
+                 (const Deliver *message,
                   void *closure_data);
-
-/* --- services --- */
-
+typedef void (*Schedule_Closure)
+                 (const Schedule *message,
+                  void *closure_data);
 
 /* --- descriptors --- */
 
 extern const ProtobufCMessageDescriptor lamb_submit_descriptor;
 extern const ProtobufCMessageDescriptor lamb_report_descriptor;
 extern const ProtobufCMessageDescriptor lamb_deliver_descriptor;
+extern const ProtobufCMessageDescriptor lamb_schedule_descriptor;
 
 PROTOBUF_C__END_DECLS
 
