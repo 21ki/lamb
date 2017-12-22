@@ -182,52 +182,52 @@ void lamb_event_loop(void) {
 
     lamb_debug("fetch account information successfull\n");
 
-    lamb_nn_option opt;
-
-    memset(&opt, 0, sizeof(opt));
-    opt.id = aid;
-    opt.type = LAMB_NN_PULL;
-    memcpy(opt.addr, "127.0.0.1", 10);
-    
     /* Connect to MT server */
-    err = lamb_nn_connect(&mt, &opt, config->mt_host, config->mt_port, NN_REQ, config->timeout);
-    if (err) {
+    mt = lamb_nn_reqrep(config->mt_host, config->mt_port, aid, config->timeout);
+
+    if (mt == -1) {
         lamb_log(LOG_ERR, "can't connect to MT %s server", config->mt_host);
         return;
     }
 
-    lamb_debug("connect to mt %s successfull\n", config->mt_host);
+    
+    // lamb_debug("connect to mt %s successfull\n", config->mt_host);
     
     /* Connect to MO server */
-    opt.type = LAMB_NN_PUSH;
-    err = lamb_nn_connect(&mo, &opt, config->mo_host, config->mo_port, NN_PAIR, config->timeout);
-    if (err) {
+    /* 
+    mo = lamb_nn_pair(config->mo_host, config->mo_port, aid, config->timeout);
+
+    if (mo == -1) {
         lamb_log(LOG_ERR, "can't connect to MO %s server", config->mo_host);
         return;
     }
 
     lamb_debug("connect to mo %s successfull\n", config->mo_host);
-    
+     */
     /* Connect to Scheduler server */
-    opt.type = LAMB_NN_PUSH;
-    err = lamb_nn_connect(&scheduler, &opt, config->scheduler_host, config->scheduler_port, NN_REQ, config->timeout);
-    if (err) {
+    /* 
+    scheduler = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
+
+    if (scheduler == -1) {
         lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config->scheduler_host);
         return;
     }
 
     lamb_debug("connect to scheduler %s successfull\n", config->scheduler_host);
+     */
     
     /* Connect to Deliver server */
-    opt.type = LAMB_NN_PULL;
-    err = lamb_nn_connect(&deliverd, &opt, config->deliver_host, config->deliver_port, NN_REQ, config->timeout);
-    if (err) {
+    /* 
+    deliverd = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
+
+    if (deliverd == -1) {
         lamb_log(LOG_ERR, "can't connect to deliver %s server", config->deliver_host);
         return;
     }
 
     lamb_debug("connect to deliver %s successfull\n", config->deliver_host);
-    
+     */
+
     /* Fetch company information */
     err = lamb_company_get(&global->db, global->account.company, &global->company);
     if (err) {

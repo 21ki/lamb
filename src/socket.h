@@ -8,6 +8,8 @@
 #ifndef _LAMB_SOCKET_H
 #define _LAMB_SOCKET_H
 
+#include "command.h"
+
 #pragma pack(1)
 
 #define LAMB_REQ     0
@@ -15,6 +17,14 @@
 #define LAMB_NN_PULL 2
 #define LAMB_NN_PING 3
 #define LAMB_BYE     4
+
+#define LAMB_PUSH    1
+#define LAMB_PULL    2
+
+#define LAMB_REQUEST  0x1
+#define LAMB_RESPONSE 0x2
+
+#define LAMB_MAX_BUFF_LENGTH 8192
 
 typedef struct {
     int id;
@@ -38,8 +48,10 @@ typedef struct {
 
 #pragma pack()
 
-int lamb_nn_request(int *sock, const char *host, int port, int timeout);
-int lamb_nn_connect(int *sock, lamb_nn_option *opt, const char *host, int port, int protocol, int timeout);
-int lamb_nn_server(int *sock, const char *listen, unsigned short port, int protocol);
+
+int lamb_nn_connect(int *sock, const char *host, int port, int protocol, int timeout);
+int lamb_nn_reqrep(const char *host, int port, int id, int timeout);
+int lamb_nn_pair(const char *host, int port, int id, int timeout);
+Response *lamb_nn_request(const char *host, int port, Request *req, int timeout);
 
 #endif

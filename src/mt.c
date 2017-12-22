@@ -32,7 +32,7 @@
 #include "mt.h"
 
 //static int ac;
-static lamb_rep_t resp;
+static Response *resp;
 static lamb_config_t config;
 static lamb_pool_t *pools;
 static pthread_cond_t cond;
@@ -88,9 +88,10 @@ void lamb_event_loop(void) {
     int fd;
     char addr[128];
 
+    lamb_response_init(resp);
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
-
+    
     /* Client Queue Pools Initialization */
     pools = lamb_pool_new();
     if (!pools) {
@@ -119,31 +120,41 @@ void lamb_event_loop(void) {
     int rc, len;
     lamb_req_t *req;
 
-    len = sizeof(lamb_req_t);
-    
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
-        if (rc < 0) {
+        if (rc < 4) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
             continue;
         }
-        
-        if (rc != len) {
+
+        unsigned int *method = (unsigned int *)buf;
+
+        if (ntohl(*method) != LAMB_REQUEST) {
             nn_freemsg(buf);
             lamb_log(LOG_WARNING, "Invalid request from client");
             continue;
         }
 
-        req = (lamb_req_t *)buf;
+        Request *req;
+
+        req = lamb_request_unpack(NULL, rc - sizeof(unsigned int), (uint8_t *)buf);
+
+        if (!req) {
+            nn_freemsg(buf);
+            continue;
+        }
 
         if (req->id < 1) {
             nn_freemsg(buf);
-            lamb_log(LOG_WARNING, "Invalid request from client");
+            lamb_request_free_unpacked(req, NULL);
+            lamb_log(LOG_WARNING, "Invalid request packet from client");
             continue;
         }
-
-
+                
         struct timeval now;
         struct timespec timeout;
         
@@ -153,20 +164,33 @@ void lamb_event_loop(void) {
         timeout.tv_sec += 3;
 
         pthread_mutex_lock(&mutex);
-        memset(&resp, 0, sizeof(resp));
-
-        if (req->type == LAMB_NN_PULL) {
-            lamb_start_thread(lamb_pull_loop,  (void *)buf, 1);
-        } else if (req->type == LAMB_NN_PUSH) {
-            lamb_start_thread(lamb_push_loop,  (void *)buf, 1);
+        
+        if (req->type == LAMB_PULL) {
+            lamb_start_thread(lamb_pull_loop,  (void *)req, 1);
+        } else if (req->type == LAMB_PUSH) {
+            lamb_start_thread(lamb_push_loop,  (void *)req, 1);
         } else {
             nn_freemsg(buf);
+            lamb_request_free_unpacked(req, NULL);
             pthread_mutex_unlock(&mutex);
             continue;
         }
-        
+
+        nn_freemsg(buf);
         pthread_cond_timedwait(&cond, &mutex, &timeout);
-        nn_send(fd, (char *)&resp, sizeof(resp), 0);
+
+        buf = (char *)malloc(LAMB_MAX_BUFF_LENGTH);
+
+        if (buf) {
+            *method = htonl(LAMB_RESPONSE);
+            len = lamb_response_get_packed_size(resp) + sizeof(unsigned int);
+
+            if (len < (LAMB_MAX_BUFF_LENGTH - sizeof(unsigned int))) {
+                lamb_response_pack(resp, (uint8_t *)(buf + sizeof(unsigned int)));
+                nn_send(fd, buf, len + sizeof(unsigned int), 0);
+            }
+        }
+
         pthread_mutex_unlock(&mutex);
     }
 }
@@ -175,10 +199,10 @@ void *lamb_push_loop(void *arg) {
     int err;
     int fd, rc;
     int timeout;
-    lamb_req_t *client;
+    Request *client;
     lamb_queue_t *queue;
     
-    client = (lamb_req_t *)arg;
+    client = (Request *)arg;
 
     lamb_debug("new client from %s connectd\n", client->addr);
 

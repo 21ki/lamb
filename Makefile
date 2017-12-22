@@ -3,7 +3,7 @@ CC = gcc
 CFLAGS = -std=c99 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -pedantic
 MACRO = -D_GNU_SOURCE -D_DEBUG
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/routing.o src/mqueue.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/delivery.o src/socket.o
-LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre
+LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre -lprotobuf-c
 
 all: sp ismg server mt mo scheduler deliver test
 
@@ -87,6 +87,12 @@ src/delivery.o: src/delivery.c src/delivery.h
 
 src/socket.o: src/socket.c src/socket.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/socket.c -o src/socket.o
+
+src/command.o: src/command.c src/command.h
+	$(CC) $(CFLAGS) $(MACRO) -c src/command.c -o src/command.o
+
+src/message.o: src/message.c src/message.h
+	$(CC) $(CFLAGS) $(MACRO) -c src/message.c -o src/message.o
 
 .PHONY: install clean
 
