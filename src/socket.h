@@ -12,19 +12,19 @@
 
 #pragma pack(1)
 
-#define LAMB_REQ     0
-#define LAMB_NN_PUSH 1
-#define LAMB_NN_PULL 2
-#define LAMB_NN_PING 3
-#define LAMB_BYE     4
 
-#define LAMB_PUSH    1
-#define LAMB_PULL    2
+#define LAMB_REQ      1 << 1
+#define LAMB_BYE      1 << 2
+#define LAMB_EMPTY    1 << 3
 
-#define LAMB_REQUEST  0x1
-#define LAMB_RESPONSE 0x2
+#define LAMB_PUSH     1 << 1
+#define LAMB_PULL     1 << 2
 
-#define LAMB_MAX_BUFF_LENGTH 8192
+#define LAMB_REQUEST  1 << 1
+#define LAMB_RESPONSE 1 << 2
+
+#define HEAD sizeof(int)
+#define CHECK_COMMAND(val) ntohl(*((int *)(val)))
 
 typedef struct {
     int id;
@@ -53,5 +53,7 @@ int lamb_nn_connect(int *sock, const char *host, int port, int protocol, int tim
 int lamb_nn_reqrep(const char *host, int port, int id, int timeout);
 int lamb_nn_pair(const char *host, int port, int id, int timeout);
 Response *lamb_nn_request(const char *host, int port, Request *req, int timeout);
+int lamb_nn_server(int *sock, const char *listen, unsigned short port, int protocol);
+size_t lamb_pack_assembly(char **buf, int method, void *pk, size_t len);
 
 #endif

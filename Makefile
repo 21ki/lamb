@@ -13,11 +13,11 @@ sp: src/sp.c src/sp.h $(OBJS)
 ismg: src/ismg.c src/ismg.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/ismg.c $(OBJS) $(LIBS) -lnanomsg -o ismg
 
-server: src/server.c src/server.h $(OBJS)
-	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -lnanomsg -o server
+server: src/server.c src/server.h $(OBJS) src/command.o src/message.o
+	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) src/command.o src/message.o -lnanomsg -o server
 
-mt: src/mt.c src/mt.h $(OBJS) src/pool.o
-	$(CC) $(CFLAGS) $(MACRO) src/mt.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mt
+mt: src/mt.c src/mt.h $(OBJS) src/pool.o src/command.o src/message.o
+	$(CC) $(CFLAGS) $(MACRO) src/mt.c $(OBJS) src/pool.o src/command.o src/message.o $(LIBS) -lnanomsg -o mt
 
 mo: src/mo.c src/mo.h $(OBJS) src/pool.o
 	$(CC) $(CFLAGS) $(MACRO) src/mo.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mo

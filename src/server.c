@@ -11,6 +11,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <sys/types.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
@@ -29,6 +30,8 @@
 #include "keyword.h"
 #include "security.h"
 #include "channel.h"
+#include "command.h"
+#include "message.h"
 
 static int aid;
 static int mt, mo;
@@ -195,38 +198,38 @@ void lamb_event_loop(void) {
     
     /* Connect to MO server */
     /* 
-    mo = lamb_nn_pair(config->mo_host, config->mo_port, aid, config->timeout);
+       mo = lamb_nn_pair(config->mo_host, config->mo_port, aid, config->timeout);
 
-    if (mo == -1) {
-        lamb_log(LOG_ERR, "can't connect to MO %s server", config->mo_host);
-        return;
-    }
+       if (mo == -1) {
+       lamb_log(LOG_ERR, "can't connect to MO %s server", config->mo_host);
+       return;
+       }
 
-    lamb_debug("connect to mo %s successfull\n", config->mo_host);
-     */
+       lamb_debug("connect to mo %s successfull\n", config->mo_host);
+    */
     /* Connect to Scheduler server */
     /* 
-    scheduler = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
+       scheduler = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
 
-    if (scheduler == -1) {
-        lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config->scheduler_host);
-        return;
-    }
+       if (scheduler == -1) {
+       lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config->scheduler_host);
+       return;
+       }
 
-    lamb_debug("connect to scheduler %s successfull\n", config->scheduler_host);
-     */
+       lamb_debug("connect to scheduler %s successfull\n", config->scheduler_host);
+    */
     
     /* Connect to Deliver server */
     /* 
-    deliverd = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
+       deliverd = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
 
-    if (deliverd == -1) {
-        lamb_log(LOG_ERR, "can't connect to deliver %s server", config->deliver_host);
-        return;
-    }
+       if (deliverd == -1) {
+       lamb_log(LOG_ERR, "can't connect to deliver %s server", config->deliver_host);
+       return;
+       }
 
-    lamb_debug("connect to deliver %s successfull\n", config->deliver_host);
-     */
+       lamb_debug("connect to deliver %s successfull\n", config->deliver_host);
+    */
 
     /* Fetch company information */
     err = lamb_company_get(&global->db, global->account.company, &global->company);
@@ -328,20 +331,22 @@ void lamb_event_loop(void) {
     //lamb_new_table(&global->mdb);
     
     /* Start sender thread */
-    long cpus = lamb_get_cpu();
-    lamb_start_thread(lamb_work_loop, NULL, config->work_threads > cpus ? cpus : config->work_threads);
+    //long cpus = lamb_get_cpu();
+    //lamb_start_thread(lamb_work_loop, NULL, config->work_threads > cpus ? cpus : config->work_threads);
+
+    lamb_start_thread(lamb_work_loop, NULL, 1);
 
     /* Start deliver thread */
-    lamb_start_thread(lamb_deliver_loop, NULL, 1);
+    //lamb_start_thread(lamb_deliver_loop, NULL, 1);
     
     /* Start billing thread */
-    lamb_start_thread(lamb_billing_loop, NULL, 1);
+    //lamb_start_thread(lamb_billing_loop, NULL, 1);
 
     /* Start storage thread */
-    lamb_start_thread(lamb_store_loop, NULL, 1);
+    //lamb_start_thread(lamb_store_loop, NULL, 1);
 
     /* Start status thread */
-    lamb_start_thread(lamb_stat_loop, NULL, 1);
+    //lamb_start_thread(lamb_stat_loop, NULL, 1);
 
     /* Master control loop*/
     while (true) {
@@ -364,87 +369,112 @@ void *lamb_work_loop(void *data) {
     char *buf;
     int rc, len;
     bool success;
+    Submit *message;
     lamb_bill_t *bill;
     lamb_store_t *store;
-    lamb_submit_t *submit;
     lamb_node_t *node;
     lamb_template_t *template;
     lamb_keyword_t *keyword;
-    lamb_message_t req;
-    
-    len = sizeof(lamb_submit_t);
-    
-    err = lamb_cpu_affinity(pthread_self());
-    if (err) {
-        lamb_log(LOG_WARNING, "Can't set thread cpu affinity");
-    }
-    
-    req.type = LAMB_REQ;
+
+    lamb_cpu_affinity(pthread_self());
+
+    int rlen;
+    char *req;
+
+    rlen = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
 
     while (true) {
 
         /* Request */
-        rc = nn_send(mt, &req, sizeof(req), 0);
+        rc = nn_send(mt, req, rlen, 0);
+
+        printf("-> 1\n");
         
-        if (rc < 0) {
+        if (rc != rlen) {
+            lamb_sleep(1000);
             continue;
         }
 
+        printf("-> 2\n");
         /* Response */
         rc = nn_recv(mt, &buf, NN_MSG, 0);
 
-        if (rc < len) {
+        printf("-> 3\n");
+        if (rc < sizeof(int)) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(100);
             }
             continue;
         }
 
-        submit = (lamb_submit_t *)buf;
-            
-        ++status->toal;
-        lamb_debug("id: %llu, phone: %s, spcode: %s, content: %s, length: %d\n",
-               submit->id, submit->phone, submit->spcode, submit->content, submit->length);
+        printf("-> 4, method -> %d\n", CHECK_COMMAND(buf));
 
+        if (CHECK_COMMAND(buf) == LAMB_EMPTY) {
+            nn_freemsg(buf);
+            lamb_sleep(1000);
+            continue;
+        }
+        printf("-> 5\n");
+        if (CHECK_COMMAND(buf) != LAMB_SUBMIT) {
+            nn_freemsg(buf);
+            continue;
+        }
+
+        printf("-> 6\n");
+        message = lamb_submit_unpack(NULL, rc - sizeof(int), (uint8_t *)(buf + sizeof(int)));
+
+        printf("-> 7\n");
+        if (!message) {
+            nn_freemsg(buf);
+            lamb_log(LOG_ERR, "can't unpack for submit message");
+            continue;
+        }
+        printf("-> 8\n");
+        nn_freemsg(buf);
+
+        ++status->toal;
+        lamb_debug("id: %"PRIu64", phone: %s, spcode: %s, content: %s, length: %d\n",
+                   message->id, message->phone, message->spcode, message->content.data, message->length);
+
+        printf("-> 9\n");
         /* Message Encoded Convert */
         char *fromcode;
         char content[512];
 
-        if (submit->msgFmt == 0) {
+        if (message->msgfmt == 0) {
             fromcode = "ASCII";
-        } else if (submit->msgFmt == 8) {
+        } else if (message->msgfmt == 8) {
             fromcode = "UCS-2BE";
-        } else if (submit->msgFmt == 11) {
+        } else if (message->msgfmt == 11) {
             fromcode = NULL;
-        } else if (submit->msgFmt == 15) {
+        } else if (message->msgfmt == 15) {
             fromcode = "GBK";
         } else {
             status->fmt++;
-            lamb_debug("message encoded %d not support\n", submit->msgFmt);
-            nn_freemsg(buf);
+            lamb_debug("message encoded %d not support\n", message->msgfmt);
+            lamb_submit_free_unpacked(message, NULL);
             continue;
         }
 
         if (fromcode != NULL) {
             memset(content, 0, sizeof(content));
-            err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content),
-                                       fromcode, "UTF-8", &submit->length);
-            if (err || (submit->length == 0)) {
+            err = lamb_encoded_convert((char *)message->content.data, message->length, content, sizeof(content),
+                                       fromcode, "UTF-8", &message->length);
+            if (err || (message->length == 0)) {
                 status->fmt++;
-                nn_freemsg(buf);
-                lamb_debug("Message encoding conversion failed\n");
+                lamb_submit_free_unpacked(message, NULL);
+                lamb_debug("message encoding conversion failed\n");
                 continue;
             }
 
-            submit->msgFmt = 11;
-            memset(submit->content, 0, 160);
-            memcpy(submit->content, content, submit->length);
-            lamb_debug("Message encoding conversion successfull\n");
+            message->msgfmt = 11;
+            memset(message->content.data, 0, 160);
+            memcpy(message->content.data, content, message->length);
+            lamb_debug("message encoding conversion successfull\n");
         }
 
-        lamb_debug("id: %llu, phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n",
-               submit->id, submit->phone, submit->spcode, submit->msgFmt, submit->content, submit->length);
+        lamb_debug("id: %"PRIu64", phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n",
+                   message->id, message->phone, message->spcode, message->msgfmt, message->content.data, message->length);
 
         /* Template Processing */
         if (global->account.template) {
@@ -452,9 +482,9 @@ void *lamb_work_loop(void *data) {
             lamb_list_iterator_t *ts;
             ts = lamb_list_iterator_new(global->templates, LIST_HEAD);
             
-            while ((node = lamb_list_iterator_new(ts))) {
+            while ((node = lamb_list_iterator_next(ts))) {
                 template = (lamb_template_t *)node->val;
-                if (lamb_template_check(template, submit->content, submit->length)) {
+                if (lamb_template_check(template, (char *)message->content.data, message->length)) {
                     success = true;
                     break;
                 }
@@ -462,12 +492,12 @@ void *lamb_work_loop(void *data) {
 
             if (!success) {
                 status->tmp++;
-                lamb_debug("The template check will not pass\n");
-                nn_freemsg(buf);
+                lamb_debug("the template check will not pass\n");
+                lamb_submit_free_unpacked(message, NULL);
                 continue;
                     
             }
-            lamb_debug("The template check SUCCESSFULL\n");
+            lamb_debug("the template check successfull\n");
         }
 
         /* Keywords Filtration */
@@ -478,7 +508,7 @@ void *lamb_work_loop(void *data) {
             
             while ((node = lamb_list_iterator_next(ks))) {
                 keyword = (lamb_keyword_t *)node->val;
-                if (lamb_keyword_check(keyword, submit->content)) {
+                if (lamb_keyword_check(keyword, (char *)message->content.data)) {
                     success = false;
                     break;
                 }
@@ -486,16 +516,21 @@ void *lamb_work_loop(void *data) {
                
             if (!success) {
                 status->key++;
-                nn_freemsg(buf);
-                lamb_debug("The keyword check not pass\n");
+                lamb_submit_free_unpacked(message, NULL);
+                lamb_debug("the keyword check not pass\n");
                 continue;
             }
-            lamb_debug("The keyword check SUCCESSFULL\n");
+            lamb_debug("the keyword check SUCCESSFULL\n");
         }
 
+        lamb_submit_free_unpacked(message, NULL);
+        lamb_debug("-> message sending to schedule successfull\n");
+        
         /* Scheduling */
+
+        /*
     routing:
-        success = lamb_push_message(scheduler, submit, global->channels);
+        success = lamb_push_message(scheduler, message, global->channels);
         
         if (!success) {
             lamb_sleep(100);
@@ -503,8 +538,11 @@ void *lamb_work_loop(void *data) {
         }
 
         lamb_debug("message sending to scheduler successfull\n");
+        */
             
         /* Save message to billing queue */
+
+        /* 
         if (global->account.charge == LAMB_CHARGE_SUBMIT) {
             bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
             if (bill) {
@@ -513,16 +551,22 @@ void *lamb_work_loop(void *data) {
                 lamb_list_rpush(global->billing, lamb_node_new(bill));
             }
         }
+        */
 
         /* Save message to storage queue */
+
+        /* 
         store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
         if (store) {
             store->type = LAMB_SUBMIT;
             store->val = submit;
             lamb_list_rpush(global->storage, lamb_node_new(store));
         }
+
+         */
     }
 
+    free(req);
     pthread_exit(NULL);
 }
 
@@ -707,7 +751,7 @@ void *lamb_stat_loop(void *data) {
             freeReplyObject(reply);
         }
 
-        lamb_debug("store: %lld, bill: %lld, toal: %llu, sub: %llu, rep: %llu, delv: %llu, fmt: %llu, blk: %llu, tmp: %llu, key: %llu\n",
+        lamb_debug("store: %u, bill: %u, toal: %lld, sub: %llu, rep: %llu, delv: %llu, fmt: %llu, blk: %llu, tmp: %llu, key: %llu\n",
                    global->storage->len, global->billing->len, status->toal, status->sub, status->rep, status->delv, status->fmt, status->blk, status->tmp, status->key);
 
         sleep(3);

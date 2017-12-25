@@ -42,15 +42,15 @@ int lamb_nn_connect(int *sock, const char *host, int port, int protocol, int tim
 int lamb_nn_reqrep(const char *host, int port, int id, int timeout) {
     int fd;
     int err;
-    Request req;
     Response *resp;
+    Request req = LAMB_REQUEST_INIT;
 
     req.id = id;
     req.type = LAMB_PULL;
     req.addr = "0.0.0.0";
 
     resp = lamb_nn_request(host, port, &req, timeout);
-
+    
     if (!resp) {
         return -1;
     }
@@ -69,8 +69,8 @@ int lamb_nn_reqrep(const char *host, int port, int id, int timeout) {
 int lamb_nn_pair(const char *host, int port, int id, int timeout) {
     int fd;
     int err;
-    Request req;
     Response *resp;
+    Request req = LAMB_REQUEST_INIT;
 
     req.id = id;
     req.type = LAMB_PUSH;
@@ -97,32 +97,33 @@ Response *lamb_nn_request(const char *host, int port, Request *req, int timeout)
     int rc;
     int err;
     int sock;
+    void *pk;
     char *buf;
     Response *resp;
     unsigned int len;
     unsigned int *method;
 
-    buf = (char *)malloc(LAMB_MAX_BUFF_LENGTH);
+    len = lamb_request_get_packed_size(req);
+    pk = malloc(len);
 
-    method = (unsigned int *)buf;
-    *method = htonl(LAMB_REQUEST);
-    
-    len = lamb_request_get_packed_size(req) + sizeof(unsigned int);
-
-    if (len > (LAMB_MAX_BUFF_LENGTH - sizeof(unsigned int))) {
-        free(buf);
+    if (!pk) {
         return NULL;
     }
 
-    len += sizeof(unsigned int);
-    lamb_request_pack(req, (uint8_t *)(buf + sizeof(unsigned int)));
+    lamb_request_pack(req, pk);
+    len = lamb_pack_assembly(&buf, LAMB_REQUEST, pk, len);
+    free(pk);
+
+    if (len < 1) {
+        return NULL;
+    }
 
     err = lamb_nn_connect(&sock, host, port, NN_REQ, timeout);
     if (err) {
         free(buf);
         return NULL;
     }
-
+    
     rc = nn_send(sock, buf, len, 0);
 
     if (rc != len) {
@@ -142,15 +143,13 @@ Response *lamb_nn_request(const char *host, int port, Request *req, int timeout)
     }
 
     nn_close(sock);
-    
-    method = (unsigned int *)buf;
 
-    if (ntohl(*method) != LAMB_RESPONSE) {
+    if (CHECK_COMMAND(buf) != LAMB_RESPONSE) {
         free(buf);
         return NULL;
     }
     
-    resp = lamb_response_unpack(NULL, rc - sizeof(unsigned int), (uint8_t *)buf);
+    resp = lamb_response_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
     nn_freemsg(buf);
 
@@ -174,6 +173,26 @@ int lamb_nn_server(int *sock, const char *listen, unsigned short port, int proto
     }
 
     *sock = fd;
+
+    return 0;
+}
+
+size_t lamb_pack_assembly(char **buf, int method, void *pk, size_t len) {
+    if (pk && len > 0) {
+        *buf = (char *)malloc(sizeof(int) + len);
+    } else {
+        *buf = (char *)malloc(sizeof(int));
+    }
+
+    if (*buf) {
+        *((int *)(*buf)) = htonl(method);
+        if (pk && len > 0) {
+            memcpy(*buf + sizeof(int), pk, len);
+            return sizeof(int) + len;
+        }
+
+        return sizeof(int);
+    }
 
     return 0;
 }
