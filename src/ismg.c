@@ -32,6 +32,7 @@
 #include "cache.h"
 #include "socket.h"
 #include "config.h"
+#include "message.h"
 
 static int mt, mo;
 static cmpp_ismg_t cmpp;
@@ -97,7 +98,8 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    lamb_log(LOG_INFO, "ismgd listen on %s port %d", config.listen, config.port);
+    lamb_log(LOG_INFO, "ismgd listen on %s port %d",
+             config.listen, config.port);
     
     fprintf(stdout, "Cmpp server initialization successfull\n");
 
@@ -106,9 +108,11 @@ int main(int argc, char *argv[]) {
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
 
     if (config.daemon) {
-        lamb_log(LOG_ERR, "lamb server listen %s port %d", config.listen, config.port);
+        lamb_log(LOG_ERR, "lamb server listen %s port %d",
+                 config.listen, config.port);
     } else {
-        fprintf(stderr, "lamb server listen %s port %d\n", config.listen, config.port);
+        fprintf(stderr, "lamb server listen %s port %d\n",
+                config.listen, config.port);
     }
 
     /* Start Main Event Thread */
@@ -154,7 +158,8 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 ev.events = EPOLLIN;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, confd, &ev);
                 getpeername(confd, (struct sockaddr *)&clientaddr, &clilen);
-                lamb_log(LOG_INFO, "New client connection form %s", inet_ntoa(clientaddr.sin_addr));
+                lamb_log(LOG_INFO, "New client connection form %s",
+                         inet_ntoa(clientaddr.sin_addr));
             } else if (events[i].events & EPOLLIN) {
                 /* receive from client data */
                 if ((sockfd = events[i].data.fd) < 0) {
@@ -171,13 +176,15 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     if (err == -1) {
-                        lamb_log(LOG_INFO, "Client closed the connection from %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_INFO, "Client closed the connection from %s",
+                                 inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                         close(sockfd);
                         continue;
                     }
 
-                    lamb_log(LOG_WARNING, "Incorrect packet format from client %s", inet_ntoa(clientaddr.sin_addr));
+                    lamb_log(LOG_WARNING, "Incorrect packet format from client %s",
+                             inet_ntoa(clientaddr.sin_addr));
                     continue;
                 }
 
@@ -192,7 +199,8 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     /* Check Cmpp Version */
                     if (version != CMPP_VERSION) {
                         cmpp_connect_resp(&sock, sequenceId, 4);
-                        lamb_log(LOG_WARNING, "Version not supported from client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_WARNING, "Version not supported from client %s",
+                                 inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
                     
@@ -202,12 +210,14 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     char password[64];
 
                     memset(username, 0, sizeof(username));
-                    cmpp_pack_get_string(&pack, cmpp_connect_source_addr, username, sizeof(username), 6);
+                    cmpp_pack_get_string(&pack, cmpp_connect_source_addr, username,
+                                         sizeof(username), 6);
                     sprintf(key, "account.%s", username);
                     
                     if (!lamb_cache_has(&rdb, key)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
-                        lamb_log(LOG_WARNING, "Incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_WARNING, "Incorrect source address from client %s",
+                                 inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
 
@@ -232,14 +242,16 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             cmpp_connect_resp(&sock, sequenceId, 10);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                             close(sockfd);
-                            lamb_log(LOG_WARNING, "Duplicate login from client %s", inet_ntoa(clientaddr.sin_addr));
+                            lamb_log(LOG_WARNING, "Duplicate login from client %s",
+                                     inet_ntoa(clientaddr.sin_addr));
                             continue;
                         }
 
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
 
                         /* Login Successfull */
-                        lamb_log(LOG_INFO, "Login successfull from client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_INFO, "Login successfull from client %s",
+                                 inet_ntoa(clientaddr.sin_addr));
 
                         /* Create Work Process */
                         pid_t pid = fork();
@@ -263,10 +275,12 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         cmpp_sock_close(&sock);
                     } else {
                         cmpp_connect_resp(&sock, sequenceId, 3);
-                        lamb_log(LOG_WARNING, "Login failed form client %s", inet_ntoa(clientaddr.sin_addr));
+                        lamb_log(LOG_WARNING, "Login failed form client %s",
+                                 inet_ntoa(clientaddr.sin_addr));
                     }
                 } else {
-                    lamb_log(LOG_WARNING, "Unable to resolve packets from client %s", inet_ntoa(clientaddr.sin_addr));
+                    lamb_log(LOG_WARNING, "Unable to resolve packets from client %s",
+                             inet_ntoa(clientaddr.sin_addr));
                 }
             }
         }
@@ -279,7 +293,7 @@ void lamb_work_loop(lamb_client_t *client) {
     int rc;
     int err, gid;
     cmpp_pack_t pack;
-    lamb_submit_t submit;
+    //lamb_submit_t submit;
     unsigned long long msgId;
     lamb_message_t bye;
 
@@ -298,15 +312,9 @@ void lamb_work_loop(lamb_client_t *client) {
     }
 
     /* Connect to MT server */
-    lamb_nn_option opt;
-
-    memset(&opt, 0, sizeof(opt));
-    opt.id = client->account->id;
-    opt.type = LAMB_NN_PUSH;
-    memcpy(opt.addr, config.listen, 16);
-    
-    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_PAIR, config.timeout);
-    if (err) {
+    mt = lamb_nn_pair(config.mt_host, config.mt_port, client->account->id,
+                      config.timeout);
+    if (mt < 0) {
         lamb_log(LOG_ERR, "can't connect to mt %s server", config.mt_host);
         return;
     }
@@ -324,7 +332,16 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_start_thread(lamb_stat_loop, client, 1);
 
     /* Client Message Deliver */
-    lamb_start_thread(lamb_deliver_loop, client, 1);
+    //lamb_start_thread(lamb_deliver_loop, client, 1);
+
+    int len;
+    char *pk, *buf;
+    char phone[24] = {0};
+    char spcode[24] = {0};
+    int msgFmt = 0;
+    int length = 0;
+    char content[160] = {0};
+    Submit message = LAMB_SUBMIT_INIT;
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -361,42 +378,64 @@ void lamb_work_loop(lamb_client_t *client) {
                 cmpp_pack_set_integer(&pack, cmpp_submit_msg_id, msgId, 8);
 
                 /* Message Resolution */
-                memset(&submit, 0, sizeof(lamb_submit_t));
-                submit.type = LAMB_SUBMIT;
-                submit.id = msgId;
-                submit.account = client->account->id;
-                strcpy(submit.spid, client->account->username);
-                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, submit.phone, 24, 21);
-                cmpp_pack_get_string(&pack, cmpp_submit_src_id, submit.spcode, 24, 21);
-                cmpp_pack_get_integer(&pack, cmpp_submit_msg_fmt, &submit.msgFmt, 1);
+                message.id = msgId;
+                message.account = client->account->id;
+                message.spid = client->account->username;
+                cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, phone, 24, 21);
+                message.phone = phone;
+                cmpp_pack_get_string(&pack, cmpp_submit_src_id, spcode, 24, 21);
+                message.spcode = spcode;
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_fmt, &msgFmt, 1);
 
                 /* Check Message Encoded */
                 int codeds[] = {0, 8, 11, 15};
-                if (!lamb_check_msgfmt(submit.msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
+                if (!lamb_check_msgfmt(msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
                     result = 11;
                     status.fmt++;
                     goto response;
                 }
-                
-                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &submit.length, 1);
 
+                message.msgfmt = msgFmt;
+
+                cmpp_pack_get_integer(&pack, cmpp_submit_msg_length, &length, 1);
+                
                 /* Check Message Length */
-                if (submit.length > 159 || submit.length < 1) {
+                if (length > 159 || length < 1) {
                     result = 4;
                     status.len++;
                     goto response;
                 }
-                
-                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, submit.content, 160, submit.length);
+
+                message.length = length;
+
+                cmpp_pack_get_string(&pack, cmpp_submit_msg_content, content, 160, length);
+                message.content.len = length;
+                message.content.data = (uint8_t *)content;
+
+                len = lamb_submit_get_packed_size(&message);
+                pk = (char *)malloc(len);
+
+                if (!pk) {
+                    result = 12;
+                    goto response;
+                }
+
+                lamb_submit_pack(&message, (uint8_t *)pk);
+
+                len = lamb_pack_assembly(&buf, LAMB_SUBMIT, pk, len);
 
                 /* Write Message to MT Server */
-                rc = nn_send(mt, (char *)&submit, sizeof(submit), 0);
-                if (rc != sizeof(submit)) {
-                    result = 12;
+                rc = nn_send(mt, buf, len, NN_DONTWAIT);
+
+                if (rc != len) {
+                    result = 13;
                     status.err++;
                 } else {
                     status.store++;
-                 }
+                }
+
+                free(pk);
+                free(buf);
 
                 /* Submit Response */
             response:
@@ -434,87 +473,84 @@ exit:
 
 void *lamb_deliver_loop(void *data) {
     char *buf;
-    int rc, err;
-    lamb_message_t req;
+    int rc, len, err;
     lamb_client_t *client;
-    lamb_report_t *report;
-    lamb_deliver_t *deliver;
-    lamb_message_t *message;
     unsigned int sequenceId;
+    Report *report;
+    Deliver *deliver;
 
     client = (lamb_client_t *)data;
 
     /* Connect to MO server */
-    lamb_nn_option opt;
-
-    memset(&opt, 0, sizeof(opt));
-    opt.id = client->account->id;
-    opt.type = LAMB_NN_PULL;
-    memcpy(opt.addr, config.listen, 16);
-    
-    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_REQ, config.timeout);
-    if (err) {
-        lamb_log(LOG_ERR, "can't connect to MO %s server", config.mo_host);
+    mo = lamb_nn_reqrep(config.mo_host, config.mo_port, client->account->id, config.timeout);
+    if (mo < 0) {
+        lamb_log(LOG_ERR, "can't connect to mo %s server", config.mo_host);
         pthread_exit(NULL);
     }
-    
-    int rlen, dlen;
 
-    rlen = sizeof(lamb_report_t);
-    dlen = sizeof(lamb_deliver_t);
-
-    req.type = LAMB_REQ;
+    char *req;
+    len = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
 
     while (true) {
-        rc = nn_send(mo, &req, sizeof(req), NN_DONTWAIT);
+        rc = nn_send(mo, req, len, NN_DONTWAIT);
 
-        if (rc < 0) {
+        if (rc != len) {
             lamb_sleep(1000);
             continue;
         }
 
         rc = nn_recv(mo, &buf, NN_MSG, 0);
-        if (rc < 0) {
-            lamb_sleep(1000);
-            continue;
-        }
 
-        if (rc != rlen && rc != dlen) {
-            nn_freemsg(buf);
+        if (rc < HEAD) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
             lamb_sleep(100);
             continue;
         }
 
-        message = (lamb_message_t *)buf;
+        if (CHECK_COMMAND(buf) == LAMB_EMPTY) {
+            nn_freemsg(buf);
+            lamb_sleep(200);
+            continue;
+        }
 
-        if (message->type == LAMB_REPORT) {
-            report = (lamb_report_t *)message;
+        if (CHECK_COMMAND(buf) == LAMB_REPORT) {
+            report = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+
+            if (!report) {
+                nn_freemsg(buf);
+                continue;
+            }
+
             sequenceId = confirmed.sequenceId = cmpp_sequence();
             confirmed.msgId = report->id;
             
         report:
-            err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status, report->submitTime, report->doneTime, report->phone, 0);
+            err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status,
+                              report->submittime, report->donetime, report->phone, 0);
             if (err) {
                 status.err++;
                 lamb_log(LOG_WARNING, "sending 'cmpp_report' packet to client %s failed", client->addr);
-                lamb_sleep(3000);
-                goto report;
             }
-            status.rep++;
-        } else if (message->type == LAMB_DELIVER) {
-            deliver = (lamb_deliver_t *)message;
+        } else if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
+            deliver = lamb_deliver_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+
+            if (!deliver) {
+                nn_freemsg(buf);
+                continue;
+            }
+
             sequenceId = confirmed.sequenceId = cmpp_sequence();
             confirmed.msgId = deliver->id;
 
         deliver:
-            err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone, deliver->content, deliver->msgFmt, 8);
+            err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone,
+                               (char *)deliver->content.data, deliver->msgfmt, 8);
             if (err) {
                 status.err++;
                 lamb_log(LOG_WARNING, "sending 'cmpp_deliver' packet to client %s failed", client->addr);
-                lamb_sleep(3000);
-                goto deliver;
             }
-            status.rep++;
         }
 
         /* Waiting for message confirmation */
@@ -522,13 +558,20 @@ void *lamb_deliver_loop(void *data) {
 
         if (err == ETIMEDOUT) {
             status.timeo++;
-            if (message->type == LAMB_REPORT) {
+            if (CHECK_COMMAND(buf) == LAMB_REPORT) {
                 goto report;
-            } else if (message->type == LAMB_DELIVER) {
+            } else if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
                 goto deliver;
             }
         }
 
+        if (CHECK_COMMAND(buf) == LAMB_REPORT) {
+            lamb_report_free_unpacked(report, NULL);
+        } else if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
+            lamb_deliver_free_unpacked(deliver, NULL);
+        }
+
+        status.rep++;        
         nn_freemsg(buf);
     }
 

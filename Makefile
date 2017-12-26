@@ -1,8 +1,11 @@
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -pedantic
 MACRO = -D_GNU_SOURCE -D_DEBUG
-OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o src/gateway.o src/routing.o src/mqueue.o src/queue.o src/utils.o src/security.o src/list.o src/template.o src/keyword.o src/delivery.o src/socket.o
+CFLAGS = -std=c99 -Wall -pedantic
+OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o
+OBJS += src/db.o src/gateway.o src/routing.o src/mqueue.o src/queue.o
+OBJS += src/utils.o src/security.o src/list.o src/template.o src/keyword.o
+OBJS += src/delivery.o src/socket.o src/command.o src/message.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre -lprotobuf-c
 
 all: sp ismg server mt mo scheduler deliver test
@@ -13,11 +16,11 @@ sp: src/sp.c src/sp.h $(OBJS)
 ismg: src/ismg.c src/ismg.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/ismg.c $(OBJS) $(LIBS) -lnanomsg -o ismg
 
-server: src/server.c src/server.h $(OBJS) src/command.o src/message.o
-	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) src/command.o src/message.o -lnanomsg -o server
+server: src/server.c src/server.h $(OBJS)
+	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -lnanomsg -o server
 
-mt: src/mt.c src/mt.h $(OBJS) src/pool.o src/command.o src/message.o
-	$(CC) $(CFLAGS) $(MACRO) src/mt.c $(OBJS) src/pool.o src/command.o src/message.o $(LIBS) -lnanomsg -o mt
+mt: src/mt.c src/mt.h $(OBJS) src/pool.o
+	$(CC) $(CFLAGS) $(MACRO) src/mt.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mt
 
 mo: src/mo.c src/mo.h $(OBJS) src/pool.o
 	$(CC) $(CFLAGS) $(MACRO) src/mo.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mo

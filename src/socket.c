@@ -101,7 +101,6 @@ Response *lamb_nn_request(const char *host, int port, Request *req, int timeout)
     char *buf;
     Response *resp;
     unsigned int len;
-    unsigned int *method;
 
     len = lamb_request_get_packed_size(req);
     pk = malloc(len);

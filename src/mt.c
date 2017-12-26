@@ -123,7 +123,7 @@ void lamb_event_loop(void) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
-        if (rc < sizeof(int)) {
+        if (rc < HEAD) {
             if (rc > 0) {
                 nn_freemsg(buf);
             }
@@ -137,7 +137,7 @@ void lamb_event_loop(void) {
         }
 
         Request *req;
-        req = lamb_request_unpack(NULL, rc - sizeof(int), (uint8_t *)(buf + sizeof(int)));
+        req = lamb_request_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
         
         if (!req) {
             nn_freemsg(buf);
@@ -180,12 +180,15 @@ void lamb_event_loop(void) {
         pk = malloc(len);
 
         if (pk) {
+            lamb_debug("1111111111111111\n");
             lamb_response_pack(&resp, pk);
             len = lamb_pack_assembly(&buf, LAMB_RESPONSE, pk, len);
             if (len > 0) {
+                lamb_debug("2222222222222222\n");
                 nn_send(fd, buf, len, 0);
                 free(buf);
             }
+            lamb_debug("2222222222222222\n");
             free(pk);
         }
 
@@ -232,7 +235,7 @@ void *lamb_push_loop(void *arg) {
     pthread_mutex_lock(&mutex);
 
     resp.id = client->id;
-    memcpy(resp.addr, config.listen, 16);
+    resp.addr = config.listen;
     resp.port = port;
 
     pthread_mutex_unlock(&mutex);
@@ -242,17 +245,12 @@ void *lamb_push_loop(void *arg) {
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
     
     /* Start event processing */
-    int len, slen;
-    lamb_message_t *message;
 
-    len = sizeof(lamb_message_t);
-    slen = sizeof(lamb_submit_t);
-    
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
-        if (rc < sizeof(int)) {
+        if (rc < HEAD) {
             if (rc > 0) {
                 nn_freemsg(buf);
             }
@@ -268,10 +266,10 @@ void *lamb_push_loop(void *arg) {
 
         if (CHECK_COMMAND(buf) == LAMB_SUBMIT) {
             Submit *message;
-            message = lamb_submit_unpack(NULL, rc - sizeof(int), (uint8_t *)(buf + sizeof(int)));
+            message = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
             if (message) {
-                lamb_queue_push(queue, buf);
+                lamb_queue_push(queue, message);
             }
 
             nn_freemsg(buf);
@@ -282,6 +280,8 @@ void *lamb_push_loop(void *arg) {
             nn_freemsg(buf);
             break;
         }
+
+        nn_freemsg(buf);
     }
 
     nn_close(fd);
@@ -331,7 +331,7 @@ void *lamb_pull_loop(void *arg) {
 
     pthread_mutex_lock(&mutex);
     resp.id = client->id;
-    memcpy(resp.addr, config.listen, 16);
+    resp.addr = config.listen;
     resp.port = port;
 
     pthread_mutex_unlock(&mutex);
@@ -347,9 +347,7 @@ void *lamb_pull_loop(void *arg) {
     while (true) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
-        printf("-> 1\n");
-
-        if (rc < 4) {
+        if (rc < HEAD) {
             if (rc > 0) {
                 nn_freemsg(buf);
             }
@@ -363,18 +361,13 @@ void *lamb_pull_loop(void *arg) {
             continue;
         }
 
-        printf("-> rc: %d, method->: %d\n", rc, CHECK_COMMAND(buf));
-
         if (CHECK_COMMAND(buf) == LAMB_REQ) {
             nn_freemsg(buf);
             node = lamb_queue_pop(queue);
 
-            printf("-> 3\n");
             if (!node) {
-                printf("-> 4\n");
                 len = lamb_pack_assembly(&buf, LAMB_EMPTY, NULL, 0);
                 if (len > 0) {
-                    printf("-> 5\n");
                     nn_send(fd, buf, len, NN_DONTWAIT);
                     free(buf);
                 }
@@ -382,12 +375,11 @@ void *lamb_pull_loop(void *arg) {
                 continue;
             }
 
-            printf("-> 6\n");
             void *pk;
             message = (Submit *)node->val;
             len = lamb_submit_get_packed_size(message);
             pk = malloc(len);
-            printf("-> 7\n");
+
             if (pk) {
                 lamb_submit_pack(message, pk);
                 len = lamb_pack_assembly(&buf, LAMB_SUBMIT, pk, len);

@@ -23,7 +23,7 @@
 #define LAMB_REQUEST  1 << 1
 #define LAMB_RESPONSE 1 << 2
 
-#define HEAD sizeof(int)
+#define HEAD (signed int)sizeof(int)
 #define CHECK_COMMAND(val) ntohl(*((int *)(val)))
 
 typedef struct {

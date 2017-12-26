@@ -188,7 +188,7 @@ void lamb_event_loop(void) {
     /* Connect to MT server */
     mt = lamb_nn_reqrep(config->mt_host, config->mt_port, aid, config->timeout);
 
-    if (mt == -1) {
+    if (mt < 0) {
         lamb_log(LOG_ERR, "can't connect to MT %s server", config->mt_host);
         return;
     }
@@ -388,55 +388,46 @@ void *lamb_work_loop(void *data) {
         /* Request */
         rc = nn_send(mt, req, rlen, 0);
 
-        printf("-> 1\n");
-        
         if (rc != rlen) {
             lamb_sleep(1000);
             continue;
         }
 
-        printf("-> 2\n");
         /* Response */
         rc = nn_recv(mt, &buf, NN_MSG, 0);
 
-        printf("-> 3\n");
-        if (rc < sizeof(int)) {
+        if (rc < HEAD) {
             if (rc > 0) {
                 nn_freemsg(buf);
             }
             continue;
         }
 
-        printf("-> 4, method -> %d\n", CHECK_COMMAND(buf));
-
         if (CHECK_COMMAND(buf) == LAMB_EMPTY) {
             nn_freemsg(buf);
             lamb_sleep(1000);
             continue;
         }
-        printf("-> 5\n");
+
         if (CHECK_COMMAND(buf) != LAMB_SUBMIT) {
             nn_freemsg(buf);
             continue;
         }
 
-        printf("-> 6\n");
-        message = lamb_submit_unpack(NULL, rc - sizeof(int), (uint8_t *)(buf + sizeof(int)));
+        message = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
-        printf("-> 7\n");
         if (!message) {
             nn_freemsg(buf);
             lamb_log(LOG_ERR, "can't unpack for submit message");
             continue;
         }
-        printf("-> 8\n");
+
         nn_freemsg(buf);
 
         ++status->toal;
         lamb_debug("id: %"PRIu64", phone: %s, spcode: %s, content: %s, length: %d\n",
                    message->id, message->phone, message->spcode, message->content.data, message->length);
 
-        printf("-> 9\n");
         /* Message Encoded Convert */
         char *fromcode;
         char content[512];
