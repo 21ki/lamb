@@ -31,11 +31,11 @@
 #include "scheduler.h"
 
 //static int ac;
-static lamb_rep_t resp;
 static lamb_pool_t *pools;
 static lamb_config_t config;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
+static Response resp = LAMB_RESPONSE_INIT;
 
 int main(int argc, char *argv[]) {
     char *file = "scheduler.conf";
@@ -106,29 +106,35 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_stat_loop, NULL, 1);
 
     int rc, len;
-    lamb_req_t *req;
+    Request *req;
+    char *buf = NULL;
 
-    len = sizeof(lamb_req_t);
-    
     while (true) {
-        char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
-        if (rc < 0) {
+        if (rc < HEAD) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
             continue;
         }
-        
-        if (rc != len) {
+
+        if (CHECK_COMMAND(buf) != LAMB_REQUEST) {
             nn_freemsg(buf);
             lamb_log(LOG_WARNING, "Invalid request from client");
             continue;
         }
 
-        req = (lamb_req_t *)buf;
+        req = lamb_request_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+        nn_freemsg(buf);
+
+        if (!req) {
+            lamb_log(LOG_ERR, "can't parse protocol buffer packets");
+            continue;
+        }
 
         if (req->id < 1) {
-            nn_freemsg(buf);
-            lamb_log(LOG_WARNING, "Requests from unidentified clients");
+            lamb_log(LOG_WARNING, "can't recognition client identity");
             continue;
         }
 
@@ -141,32 +147,46 @@ void lamb_event_loop(void) {
         timeout.tv_sec += 3;
 
         pthread_mutex_lock(&mutex);
-        memset(&resp, 0, sizeof(resp));
 
-        if (req->type == LAMB_NN_PULL) {
-            lamb_start_thread(lamb_pull_loop,  (void *)buf, 1);
-        } else if (req->type == LAMB_NN_PUSH) {
-            lamb_start_thread(lamb_push_loop,  (void *)buf, 1);
+        if (req->type == LAMB_PULL) {
+            lamb_start_thread(lamb_pull_loop,  (void *)req, 1);
+        } else if (req->type == LAMB_PUSH) {
+            lamb_start_thread(lamb_push_loop,  (void *)req, 1);
         } else {
-            nn_freemsg(buf);
+            lamb_request_free_unpacked(req, NULL);
             pthread_mutex_unlock(&mutex);
             continue;
         }
 
-        pthread_cond_timedwait(&cond, &mutex, &timeout);
-        nn_send(fd, (char *)&resp, sizeof(resp), 0);
+        err = pthread_cond_timedwait(&cond, &mutex, &timeout);
+
+        if (err != ETIMEDOUT) {
+            void *pk;
+            len = lamb_response_get_packed_size(&resp);
+            pk = malloc(len);
+
+            if (pk) {
+                lamb_response_pack(&resp, pk);
+                len = lamb_pack_assembly(&buf, LAMB_RESPONSE, pk, len);
+                if (len > 0) {
+                    nn_send(fd, buf, len, 0);
+                    free(buf);
+                }
+                free(pk);
+            }
+        }
+        
         pthread_mutex_unlock(&mutex);
     }
 }
 
 void *lamb_push_loop(void *arg) {
+    int fd;
     int err;
-    int fd, rc;
     int timeout;
-    lamb_req_t *client;
-    lamb_queue_t *queue;
+    Request *client;
 
-    client = (lamb_req_t *)arg;
+    client = (Request *)arg;
 
     lamb_debug("new client from %s connectd\n", client->addr);
 
@@ -175,6 +195,7 @@ void *lamb_push_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
+        lamb_request_free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -182,7 +203,7 @@ void *lamb_push_loop(void *arg) {
     pthread_mutex_lock(&mutex);
 
     resp.id = client->id;
-    memcpy(resp.addr, config.listen, 16);
+    resp.addr = config.listen;
     resp.port = port;
 
     pthread_mutex_unlock(&mutex);
@@ -192,19 +213,21 @@ void *lamb_push_loop(void *arg) {
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
 
     /* Start event processing */
-    int len, slen;
-    lamb_submit_t *submit;
-    lamb_message_t *message;
-    
+    int rc;
+    int len;
+    char *buf = NULL;
+    lamb_queue_t *queue;
+
     queue = NULL;
-    len = sizeof(lamb_message_t);
-    slen = sizeof(lamb_submit_t);
-    
+
     while (true) {
-        char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
         
-        if (rc < 0) {
+        if (rc < HEAD) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
+
             if (nn_errno() == ETIMEDOUT) {
                 if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
                     break;
@@ -213,16 +236,8 @@ void *lamb_push_loop(void *arg) {
             continue;
         }
 
-        if (rc != len && rc != slen) {
-            nn_send(fd, "0", 1, NN_DONTWAIT);
-            nn_freemsg(buf);
-            continue;
-        }
-
-        message = (lamb_message_t *)buf;
-
         /* Submit */
-        if (message->type == LAMB_SUBMIT) {
+        if (CHECK_COMMAND(buf) == LAMB_SUBMIT) {
             submit = (lamb_submit_t *)message;
             queue = lamb_pool_find(pools, submit->channel);
             if (!queue) {
@@ -244,7 +259,7 @@ void *lamb_push_loop(void *arg) {
         }
 
         /* Close */
-        if (message->type == LAMB_BYE) {
+        if (CHECK_COMMAND(buf) == LAMB_BYE) {
             nn_freemsg(buf);
             break;
         }
@@ -253,9 +268,9 @@ void *lamb_push_loop(void *arg) {
     }
 
     nn_close(fd);
-    nn_freemsg((char *)client);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_INFO, "connection closed from %s", client->addr);
+    lamb_request_free_unpacked(client, NULL);
 
     pthread_exit(NULL);
 }

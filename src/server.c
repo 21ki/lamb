@@ -194,24 +194,23 @@ void lamb_event_loop(void) {
     }
 
     
-    // lamb_debug("connect to mt %s successfull\n", config->mt_host);
+    lamb_debug("connect to mt %s successfull\n", config->mt_host);
     
     /* Connect to MO server */
-    /* 
        mo = lamb_nn_pair(config->mo_host, config->mo_port, aid, config->timeout);
 
-       if (mo == -1) {
+       if (mo < 0) {
        lamb_log(LOG_ERR, "can't connect to MO %s server", config->mo_host);
        return;
        }
 
        lamb_debug("connect to mo %s successfull\n", config->mo_host);
-    */
-    /* Connect to Scheduler server */
+
+       /* Connect to Scheduler server */
     /* 
        scheduler = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
 
-       if (scheduler == -1) {
+       if (scheduler < 0) {
        lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config->scheduler_host);
        return;
        }
@@ -223,7 +222,7 @@ void lamb_event_loop(void) {
     /* 
        deliverd = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
 
-       if (deliverd == -1) {
+       if (deliverd < 0) {
        lamb_log(LOG_ERR, "can't connect to deliver %s server", config->deliver_host);
        return;
        }

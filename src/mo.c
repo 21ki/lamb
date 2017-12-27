@@ -29,14 +29,16 @@
 #include "cache.h"
 #include "socket.h"
 #include "pool.h"
-#include "mt.h"
+#include "message.h"
+#include "mo.h"
+
 
 //static int ac;
-static lamb_rep_t resp;
 static lamb_config_t config;
 static lamb_pool_t *list_pools;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
+static Response resp = LAMB_RESPONSE_INIT;
 
 int main(int argc, char *argv[]) {
     char *file = "mo.conf";
@@ -85,6 +87,7 @@ int main(int argc, char *argv[]) {
 
 void lamb_event_loop(void) {
     int fd;
+    int err;
     char addr[128];
 
     pthread_cond_init(&cond, NULL);
@@ -116,25 +119,36 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_stat_loop, NULL, 1);
 
     int rc, len;
-    lamb_req_t *req;
-
-    len = sizeof(lamb_req_t);
     
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
-        if (rc != len) {
+        if (rc < HEAD) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
+            continue;
+        }
+
+        if (CHECK_COMMAND(buf) != LAMB_REQUEST) {
             nn_freemsg(buf);
             lamb_log(LOG_ERR, "Invalid request from client");
             continue;
         }
 
-        req = (lamb_req_t *)buf;
+        Request *req;
+        req = lamb_request_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+        nn_freemsg(buf);
+
+        if (!req) {
+            lamb_log(LOG_ERR, "can't parse protocol buffer packets");
+            continue;
+        }
 
         if (req->id < 1) {
-            nn_freemsg(buf);
-            lamb_log(LOG_ERR, "Invalid request from client");
+            lamb_request_free_unpacked(req, NULL);
+            lamb_log(LOG_ERR, "Invalid ID from client");
             continue;
         }
 
@@ -147,20 +161,34 @@ void lamb_event_loop(void) {
         timeout.tv_sec += 3;
 
         pthread_mutex_lock(&mutex);
-        memset(&resp, 0, sizeof(resp));
 
-        if (req->type == LAMB_NN_PULL) {
-            lamb_start_thread(lamb_pull_loop,  (void *)buf, 1);
-        } else if (req->type == LAMB_NN_PUSH) {
-            lamb_start_thread(lamb_push_loop,  (void *)buf, 1);
+        if (req->type == LAMB_PULL) {
+            lamb_start_thread(lamb_pull_loop,  (void *)req, 1);
+        } else if (req->type == LAMB_PUSH) {
+            lamb_start_thread(lamb_push_loop,  (void *)req, 1);
         } else {
-            nn_freemsg(buf);
             pthread_mutex_unlock(&mutex);
             continue;
         }
 
-        pthread_cond_timedwait(&cond, &mutex, &timeout);
-        nn_send(fd, (char *)&resp, sizeof(resp), 0);
+        err = pthread_cond_timedwait(&cond, &mutex, &timeout);
+
+        if (err != ETIMEDOUT) {
+            void *pk;
+            len = lamb_response_get_packed_size(&resp);
+            pk = malloc(len);
+
+            if (pk) {
+                lamb_response_pack(&resp, pk);
+                len = lamb_pack_assembly(&buf, LAMB_RESPONSE, pk, len);
+                if (len > 0) {
+                    nn_send(fd, buf, len, 0);
+                    free(buf);
+                }
+                free(pk);
+            }
+        }
+
         pthread_mutex_unlock(&mutex);
     }
 }
@@ -169,10 +197,10 @@ void *lamb_push_loop(void *arg) {
     int err;
     int fd, rc;
     int timeout;
+    Request *client;
     lamb_queue_t *queue;
-    lamb_req_t *client;
     
-    client = (lamb_req_t *)arg;
+    client = (Request *)arg;
 
     lamb_debug("new client from %s connectd\n", client->addr);
 
@@ -186,16 +214,17 @@ void *lamb_push_loop(void *arg) {
     }
 
     if (!queue) {
-        nn_freemsg((char *)client);
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
+        lamb_request_free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
-    
+
     /* Client channel initialization */
     unsigned short port = config.port + 1;
     err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
     if (err) {
         pthread_cond_signal(&cond);
+        lamb_request_free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -203,7 +232,7 @@ void *lamb_push_loop(void *arg) {
     pthread_mutex_lock(&mutex);
 
     resp.id = client->id;
-    memcpy(resp.addr, config.listen, 16);
+    resp.addr = config.listen;
     resp.port = port;
 
     pthread_mutex_unlock(&mutex);
@@ -213,61 +242,90 @@ void *lamb_push_loop(void *arg) {
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
     
     /* Start event processing */
-    int account;
-    int len, rlen, dlen;
-    lamb_report_t *report;
-    lamb_deliver_t *deliver;
-    lamb_message_t *message;
-
-    len = sizeof(lamb_message_t);
-    rlen = sizeof(lamb_report_t);
-    dlen = sizeof(lamb_deliver_t);
 
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
         
-        if (rc < 0) {
+        if (rc < HEAD) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
+
             if (nn_errno() == ETIMEDOUT) {
                 if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
                     break;
                 }
             }
+
             continue;
         }
 
-        if (rc != len && rc != rlen && rc != dlen) {
+        if (CHECK_COMMAND(buf) == LAMB_REPORT) {
+            Report *report;
+            report = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+
+            if (!report) {
+                nn_freemsg(buf);
+                continue;
+            }
+
             nn_freemsg(buf);
-            continue;
-        }
 
-        message = (lamb_message_t *)buf;
+            lamb_element *el;
+            el = (lamb_element *)malloc(sizeof(lamb_element));
 
-        if (message->type == LAMB_REPORT || message->type == LAMB_DELIVER) {
-            if (message->type == LAMB_REPORT) {
-                report = (lamb_report_t *)buf;
-                account = report->account;
-            } else {
-                deliver = (lamb_deliver_t *)buf;
-                account = deliver->account;
+            if (!el) {
+                lamb_report_free_unpacked(report, NULL);
+                continue;
             }
 
-            queue = lamb_pool_find(list_pools, account);
-            if (!queue) {
-                queue = lamb_queue_new(account);
-                if (queue) {
-                    lamb_pool_add(list_pools, queue);
-                }
-            }
+            el->type = LAMB_REPORT;
+            el->data = report;
 
-            if (queue) {
-                lamb_queue_push(queue, message);
+            err = lamb_put_element(list_pools, report->account, el);
+
+            if (err) {
+                free(el);
+                lamb_report_free_unpacked(report, NULL);
             }
 
             continue;
         }
 
-        if (message->type == LAMB_BYE) {
+        if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
+            Deliver *deliver;
+            deliver = lamb_deliver_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+
+            if (!deliver) {
+                nn_freemsg(buf);
+                continue;
+            }
+
+            nn_freemsg(buf);
+
+            lamb_element *el;
+            el = (lamb_element *)malloc(sizeof(lamb_element));
+
+            if (!el) {
+                lamb_deliver_free_unpacked(deliver, NULL);
+                continue;
+            }
+
+            el->type = LAMB_DELIVER;
+            el->data = deliver;
+
+            err = lamb_put_element(list_pools, deliver->account, el);
+
+            if (err) {
+                free(el);
+                lamb_deliver_free_unpacked(deliver, NULL);
+            }
+
+            continue;
+        }
+
+        if (CHECK_COMMAND(buf) == LAMB_BYE) {
             nn_freemsg(buf);
             break;
         }
@@ -276,9 +334,9 @@ void *lamb_push_loop(void *arg) {
     }
 
     nn_close(fd);
-    nn_freemsg((char *)client);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_INFO, "connection closed from %s", client->addr);
+    lamb_request_free_unpacked(client, NULL);
 
     pthread_exit(NULL);
 }
@@ -287,11 +345,10 @@ void *lamb_pull_loop(void *arg) {
     int err;
     int fd, rc;
     int timeout;
-    lamb_node_t *node;
     lamb_queue_t *queue;
-    lamb_req_t *client;
+    Request *client;
     
-    client = (lamb_req_t *)arg;
+    client = (Request *)arg;
 
     lamb_debug("new client from %s connectd\n", client->addr);
 
@@ -305,8 +362,8 @@ void *lamb_pull_loop(void *arg) {
     }
 
     if (!queue) {
-        nn_freemsg((char *)client);
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
+        lamb_request_free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
     
@@ -315,6 +372,7 @@ void *lamb_pull_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
+        lamb_request_free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -322,7 +380,7 @@ void *lamb_pull_loop(void *arg) {
     pthread_mutex_lock(&mutex);
 
     resp.id = client->id;
-    memcpy(resp.addr, config.listen, 16);
+    resp.addr = config.listen;
     resp.port = port;
 
     pthread_mutex_unlock(&mutex);
@@ -332,54 +390,84 @@ void *lamb_pull_loop(void *arg) {
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
     
     /* Start event processing */
-    int len, rlen, dlen;
-    lamb_message_t *message;
-
-    len = sizeof(lamb_message_t);
-    rlen = sizeof(lamb_report_t);
-    dlen = sizeof(lamb_deliver_t);
+    int len;
+    void *pk;
+    Report *report;
+    Deliver *deliver;
+    lamb_element *el;
+    lamb_node_t *node;
 
     while (true) {
         char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
         
-        if (rc < 0) {
+        if (rc < HEAD) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
+
             if (nn_errno() == ETIMEDOUT) {
                 if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
                     break;
                 }
             }
+
             continue;
         }
 
-        if (rc < len) {
-            nn_send(fd, "0", 1, NN_DONTWAIT);
+        if (CHECK_COMMAND(buf) == LAMB_REQ) {
             nn_freemsg(buf);
-            continue;
-        }
-        
-        message = (lamb_message_t *)buf;
-
-        if (message->type == LAMB_REQ) {
             node = lamb_queue_pop(queue);
-            if (node) {
-                message = (lamb_message_t *)node->val;
-                if (message->type == LAMB_REPORT) {
-                    nn_send(fd, message, rlen, NN_DONTWAIT);
-                } else if (message->type == LAMB_DELIVER) {
-                    nn_send(fd, message, dlen, NN_DONTWAIT);
+
+            if (!node) {
+                len = lamb_pack_assembly(&buf, LAMB_EMPTY, NULL, 0);
+                nn_send(fd, buf, len, NN_DONTWAIT);
+
+                if (len > 0) {
+                    free(buf);
                 }
-                nn_freemsg(message);
-                free(node);
-            } else {
-                nn_send(fd, "0", 1, NN_DONTWAIT);
+
+                continue;
             }
 
-            nn_freemsg(buf);
+            el = (lamb_element *)node->val;
+
+            if (el->type == LAMB_REPORT) {
+                report = (Report *)el->data;
+                len = lamb_report_get_packed_size(report);
+                pk = malloc(len);
+
+                if (pk) {
+                    lamb_report_pack(report, pk);
+                    len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
+                    if (len > 0) {
+                        nn_send(fd, buf, len, NN_DONTWAIT);
+                        free(buf);
+                    }
+                    free(pk);
+                }
+            } else if (el->type == LAMB_DELIVER) {
+                deliver = (Deliver *)el->data;
+                len = lamb_deliver_get_packed_size(deliver);
+                pk = malloc(len);
+
+                if (pk) {
+                    lamb_deliver_pack(deliver, pk);
+                    len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
+                    if (len > 0) {
+                        nn_send(fd, buf, len, NN_DONTWAIT);
+                        free(buf);
+                    }
+                    free(pk);
+                }
+            }
+
+            free(el);
+            free(node);
             continue;
         }
 
-        if (message->type == LAMB_BYE) {
+        if (CHECK_COMMAND(buf) == LAMB_BYE) {
             nn_freemsg(buf);
             break;
         }
@@ -388,9 +476,9 @@ void *lamb_pull_loop(void *arg) {
     }
 
     nn_close(fd);
-    nn_freemsg((char *)client);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_INFO, "connection closed from %s", client->addr);
+    lamb_request_free_unpacked(client, NULL);
 
     pthread_exit(NULL);
 }

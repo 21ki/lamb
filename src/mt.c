@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
 
 void lamb_event_loop(void) {
     int fd;
+    int err;
     char addr[128];
 
     pthread_cond_init(&cond, NULL);
@@ -118,9 +119,10 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_stat_loop, NULL, 1);
 
     int rc, len;
+    Request *req;
+    char *buf = NULL;
 
     while (true) {
-        char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
         if (rc < HEAD) {
@@ -136,18 +138,17 @@ void lamb_event_loop(void) {
             continue;
         }
 
-        Request *req;
         req = lamb_request_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
-        
+        nn_freemsg(buf);
+
         if (!req) {
-            nn_freemsg(buf);
+            lamb_log(LOG_WARNING, "can't recognition client identity");
             continue;
         }
 
         if (req->id < 1) {
-            nn_freemsg(buf);
             lamb_request_free_unpacked(req, NULL);
-            lamb_log(LOG_WARNING, "Invalid request packet from client");
+            lamb_log(LOG_WARNING, "Invalid ID from client");
             continue;
         }
 
@@ -166,30 +167,27 @@ void lamb_event_loop(void) {
         } else if (req->type == LAMB_PUSH) {
             lamb_start_thread(lamb_push_loop,  (void *)req, 1);
         } else {
-            nn_freemsg(buf);
             lamb_request_free_unpacked(req, NULL);
             pthread_mutex_unlock(&mutex);
             continue;
         }
 
-        nn_freemsg(buf);
-        pthread_cond_timedwait(&cond, &mutex, &timeout);
+        err = pthread_cond_timedwait(&cond, &mutex, &timeout);
 
-        void *pk;
-        len = lamb_response_get_packed_size(&resp);
-        pk = malloc(len);
+        if (err != ETIMEDOUT) {
+            void *pk;
+            len = lamb_response_get_packed_size(&resp);
+            pk = malloc(len);
 
-        if (pk) {
-            lamb_debug("1111111111111111\n");
-            lamb_response_pack(&resp, pk);
-            len = lamb_pack_assembly(&buf, LAMB_RESPONSE, pk, len);
-            if (len > 0) {
-                lamb_debug("2222222222222222\n");
-                nn_send(fd, buf, len, 0);
-                free(buf);
+            if (pk) {
+                lamb_response_pack(&resp, pk);
+                len = lamb_pack_assembly(&buf, LAMB_RESPONSE, pk, len);
+                if (len > 0) {
+                    nn_send(fd, buf, len, 0);
+                    free(buf);
+                }
+                free(pk);
             }
-            lamb_debug("2222222222222222\n");
-            free(pk);
         }
 
         pthread_mutex_unlock(&mutex);
@@ -217,8 +215,8 @@ void *lamb_push_loop(void *arg) {
     }
 
     if (!queue) {
-        lamb_request_free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
+        lamb_request_free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
     

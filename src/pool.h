@@ -33,5 +33,6 @@ lamb_pool_t *lamb_pool_new(void);
 lamb_queue_t *lamb_pool_add(lamb_pool_t *self, lamb_queue_t *queue);
 void lamb_pool_del(lamb_pool_t *self, int id);
 lamb_queue_t *lamb_pool_find(lamb_pool_t *self, int id);
+int lamb_put_element(lamb_pool_t *list, int queue, void *el);
 
 #endif

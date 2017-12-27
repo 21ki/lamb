@@ -88,3 +88,25 @@ lamb_pool_t *lamb_pool_new(void) {
 
     return self;
 }
+
+int lamb_put_element(lamb_pool_t *list, int id, void *el) {
+    lamb_queue_t *queue;
+
+    queue = lamb_pool_find(list, id);
+
+    if (queue) {
+        lamb_queue_push(queue, el);
+        return 0;
+    }
+
+    queue = lamb_queue_new(id);
+
+    if (!queue) {
+        return -1;
+    }
+
+    lamb_pool_add(list, queue);
+    lamb_queue_push(queue, el);
+
+    return 0;
+}
