@@ -115,7 +115,7 @@ void lamb_event_loop(void) {
     /* Storage Queue Initialization */
     global->storage = lamb_list_new();
     if (!global->storage) {
-        lamb_log(LOG_ERR, "storage queue initialization failed ");
+        lamb_log(LOG_ERR, "storage queue initialization failed");
         return;
     }
 
@@ -242,7 +242,7 @@ void lamb_event_loop(void) {
     /* Template information Initialization */
     global->templates = lamb_list_new();
     if (!global->templates) {
-        lamb_log(LOG_ERR, "template queue initialization failed ");
+        lamb_log(LOG_ERR, "template queue initialization failed");
         return;
     }
 
@@ -300,7 +300,7 @@ void lamb_event_loop(void) {
     /* Keyword information Initialization */
     global->keywords = lamb_list_new();
     if (!global->keywords) {
-        lamb_log(LOG_ERR, "keyword queue initialization failed ");
+        lamb_log(LOG_ERR, "keyword queue initialization failed");
         return;
     }
 

@@ -226,7 +226,7 @@ void *lamb_push_loop(void *arg) {
     if (err) {
         pthread_cond_signal(&cond);
         lamb_request_free_unpacked(client, NULL);
-        lamb_log(LOG_ERR, "lamb can't find available port", 0);
+        lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
 
@@ -323,7 +323,7 @@ void *lamb_pull_loop(void *arg) {
     if (err) {
         pthread_cond_signal(&cond);
         lamb_request_free_unpacked(client, NULL);
-        lamb_log(LOG_ERR, "lamb can't find available port", 0);
+        lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
 
