@@ -195,8 +195,8 @@ void lamb_event_loop(void) {
 }
 
 void *lamb_push_loop(void *arg) {
+    int fd
     int err;
-    int fd, rc;
     int timeout;
     Request *client;
     lamb_queue_t *queue;
@@ -243,9 +243,10 @@ void *lamb_push_loop(void *arg) {
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
     
     /* Start event processing */
+    int rc;
+    char *buf = NULL;
 
     while (true) {
-        char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
         if (rc < HEAD) {
@@ -291,8 +292,8 @@ void *lamb_push_loop(void *arg) {
 }
 
 void *lamb_pull_loop(void *arg) {
-    char *buf;
-    int fd, err;
+    int fd;
+    int err;
     int timeout;
     lamb_node_t *node;
     lamb_queue_t *queue;
@@ -339,7 +340,9 @@ void *lamb_pull_loop(void *arg) {
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
     
     /* Start event processing */
-    int rc, len;
+    int rc;
+    int len;
+    char *buf;
     Submit *message;
 
     while (true) {
