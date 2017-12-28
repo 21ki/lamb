@@ -329,7 +329,7 @@ void *lamb_deliver_loop(void *data) {
             }
 
             pthread_cond_signal(&cond);
-            lamb_set_cache(&cache, msgId, confirmed.id, confirmed.account);
+            lamb_set_cache(&cache, msgId, confirmed.id, confirmed.account, confirmed.company);
             lamb_debug("receive msgId: %llu message confirmation, result: %d\n", msgId, result);
 
             break;
@@ -496,7 +496,7 @@ void *lamb_work_loop(void *data) {
         if (CHECK_TYPE(message) == LAMB_REPORT) {
             r = (lamb_report_t *)message;
             msgId = r->id;
-            lamb_get_cache(&cache, &r->id, &r->account);
+            lamb_get_cache(&cache, &r->id, &r->account, &r->company);
 
             if (r->id > 0 && r->account > 0 && r->company > 0) {
                 lamb_del_cache(&cache, msgId);
@@ -711,15 +711,15 @@ void *lamb_stat_loop(void *data) {
 }
 
 int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id,
-                   int account) {
+                   int account, int company) {
     int i;
     redisReply *reply = NULL;
     
     i = (msgId % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "HMSET %llu id %llu account %d",
-                         msgId, id, account);
+    reply = redisCommand(caches->nodes[i]->handle, "HMSET %llu id %llu account %d company %d",
+                         msgId, id, account, company);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
 
     if (reply == NULL) {
@@ -730,21 +730,22 @@ int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned lon
     return 0;
 }
 
-int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account) {
+int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account, int *company) {
     int i;
     redisReply *reply = NULL;
 
     i = (*id % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "HMGET %llu id account", *id);
+    reply = redisCommand(caches->nodes[i]->handle, "HMGET %llu id account company", *id);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
     
     if (reply != NULL) {
         if (reply->type == REDIS_REPLY_ARRAY) {
-            if (reply->elements == 2) {
+            if (reply->elements == 3) {
                 *id = (reply->element[0]->len > 0) ? strtoull(reply->element[0]->str, NULL, 10) : 0;
                 *account = (reply->element[1]->len > 0) ? atoi(reply->element[1]->str) : 0;
+                *company = (reply->element[2]->len > 2) ? atoi(reply->element[2]->str) : 0;
             }
         }
         freeReplyObject(reply);
