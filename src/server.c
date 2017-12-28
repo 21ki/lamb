@@ -131,7 +131,8 @@ void lamb_event_loop(void) {
     lamb_debug("billing queue initialization successfull\n");
     
     /* Redis Initialization */
-    err = lamb_cache_connect(&global->rdb, config->redis_host, config->redis_port, NULL, config->redis_db);
+    err = lamb_cache_connect(&global->rdb, config->redis_host, config->redis_port,
+                             NULL, config->redis_db);
     if (err) {
         lamb_log(LOG_ERR, "Can't connect to redis server");
         return;
@@ -155,7 +156,8 @@ void lamb_event_loop(void) {
         return;
     }
 
-    err = lamb_db_connect(&global->db, config->db_host, config->db_port, config->db_user, config->db_password, config->db_name);
+    err = lamb_db_connect(&global->db, config->db_host, config->db_port,
+                          config->db_user, config->db_password, config->db_name);
     if (err) {
         lamb_log(LOG_ERR, "Can't connect to postgresql database");
         return;
@@ -170,7 +172,8 @@ void lamb_event_loop(void) {
         return;
     }
 
-    err = lamb_db_connect(&global->mdb, config->msg_host, config->msg_port, config->msg_user, config->msg_password, config->msg_name);
+    err = lamb_db_connect(&global->mdb, config->msg_host, config->msg_port,
+                          config->msg_user, config->msg_password, config->msg_name);
     if (err) {
         lamb_log(LOG_ERR, "Can't connect to message database");
         return;
@@ -417,7 +420,7 @@ void *lamb_work_loop(void *data) {
 
         if (!message) {
             nn_freemsg(buf);
-            lamb_log(LOG_ERR, "can't unpack for submit message");
+            lamb_log(LOG_ERR, "can't unpack for submit message packets");
             continue;
         }
 

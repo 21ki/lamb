@@ -50,46 +50,6 @@ typedef struct {
 } lamb_embed_t;
 
 typedef struct {
-    int type;
-} lamb_message_t;
-
-typedef struct {
-    int type;
-    int account;
-    int channel;
-    unsigned long long id;
-    char spid[8];
-    char spcode[24];
-    char phone[24];
-    int msgFmt;
-    int length;
-    char content[160];
-} lamb_submit_t;
-
-typedef struct {
-    int type;
-    int account;
-    unsigned long long id;
-    char spcode[24];
-    char phone[24];
-    int status;
-    char submitTime[16];
-    char doneTime[16];
-} lamb_report_t;
-
-typedef struct {
-    int type;
-    int account;
-    unsigned long long id;
-    char phone[24];
-    char spcode[24];
-    char serviceId[16];
-    int msgFmt;
-    int length;
-    char content[160];
-} lamb_deliver_t;
-
-typedef struct {
     int len;
     int ops[LAMB_MAX_OPERATOR];
 } lamb_operator_t;

@@ -22,6 +22,7 @@
 #include "mqueue.h"
 #include "queue.h"
 #include "socket.h"
+#include "message.h"
 #include "sp.h"
 
 static int mt;
@@ -109,26 +110,21 @@ void lamb_event_loop(void) {
     }
     
     /* Connect to MT Server */
-    lamb_nn_option opt;
-
-    memset(&opt, 0, sizeof(opt));
-    opt.id = config.id;
-    opt.type = LAMB_NN_PULL;
-
-    err = lamb_nn_connect(&mt, &opt, config.mt_host, config.mt_port, NN_REQ, config.timeout);
-    if (err) {
-        lamb_log(LOG_ERR, "can't connect to MT %s server", config.mt_host);
+    mt = lamb_nn_reqrep(config.mt_host, config.mt_port, config.id, config.timeout);
+    if (mt < 0) {
+        lamb_log(LOG_ERR, "can't connect to mt %s server", config.mt_host);
         return;
     }
-    
+
     /* Connect to MO Server */
-    opt.type = LAMB_NN_PUSH;
-    err = lamb_nn_connect(&mo, &opt, config.mo_host, config.mo_port, NN_PAIR, config.timeout);
-    if (err) {
-        lamb_log(LOG_ERR, "can't connect to MO %s server", config.mo_host);
-        return;
-    }
-    
+    /*
+      mo = lamb_nn_pair(config.mo_host, config.mo_port, config.id, config.timeout);
+      if (mo < 0) {
+      lamb_log(LOG_ERR, "can't connect to mo %s server", config.mo_host);
+      return;
+      }
+    */
+
     /* Cmpp client initialization */
     err = lamb_cmpp_init(&cmpp, &config);
     if (err) {
@@ -159,19 +155,14 @@ void lamb_event_loop(void) {
 }
 
 void *lamb_sender_loop(void *data) {
-    char *buf;
-    char *tocode;
+    int err;
     char spcode[21];
     long long delayed;
-    lamb_message_t req;
-    lamb_submit_t *submit;
     unsigned int sequenceId;
-    int rc, err, len, msgFmt;
     
-    req.type = LAMB_REQ;
-    memset(spcode, 0, sizeof(spcode));
-    len = sizeof(lamb_submit_t);
-    
+    int msgFmt;
+    char *tocode;
+
     if (strcasecmp(config.encoding, "ASCII") == 0) {
         msgFmt = 0;
         tocode = "ASCII";
@@ -186,59 +177,87 @@ void *lamb_sender_loop(void *data) {
         tocode = "GBK";
     }
 
+    int rc, len;
+    char *req, *buf;
+    Submit *message;
+    int length;
+    char content[256];
+
+    memset(spcode, 0, sizeof(spcode));
+    len = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
+    
     while (true) {
         if (!cmpp.ok) {
             lamb_sleep(1000);
             continue;
         }
 
-        submit = NULL;
+        rc = nn_send(mt, req, len, NN_DONTWAIT);
 
-        rc = nn_send(mt, &req, sizeof(req), NN_DONTWAIT);
-        if (rc < 0) {
+        if (rc != len) {
             lamb_sleep(1000);
             continue;
         }
 
         rc = nn_recv(mt, &buf, NN_MSG, 0);
-        if (rc < len) {
+
+        if (rc < HEAD) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(100);
             }
+            lamb_sleep(1000);
             continue;
         }
         
-        submit = (lamb_submit_t *)buf;
+        if (CHECK_COMMAND(buf) == LAMB_EMPTY) {
+            nn_freemsg(buf);
+            lamb_sleep(100);
+            continue;
+        }
 
-        /* Message Processing */
-        confirmed.id = submit->id;
-        confirmed.account = submit->account;
+        if (CHECK_COMMAND(buf) != LAMB_SUBMIT) {
+            nn_freemsg(buf);
+            lamb_log(LOG_ERR, "only submit packets are allowed");
+            continue;
+        }
 
+        message = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+        nn_freemsg(buf);
+
+        if (!message) {
+            lamb_log(LOG_ERR, "can't unpack for submit message packets");
+            continue;
+        }
+
+        /* Caching message information */
+        confirmed.id = message->id;
+        confirmed.account = message->account;
+        confirmed.company = message->company;
+
+        /* Spcode Processing */
         if (config.extended) {
-            sprintf(spcode, "%s%s", config.spcode, submit->spcode);
+            sprintf(spcode, "%s%s", config.spcode, message->spcode);
         } else {
             strcpy(spcode, config.spcode);
         }
-            
+
         /* Message Encode Convert */
-        int length;
-        char content[256];
         memset(content, 0, sizeof(content));
-        err = lamb_encoded_convert(submit->content, submit->length, content, sizeof(content), "UTF-8", tocode, &length);
+        err = lamb_encoded_convert((char *)message->content.data, message->length, content,
+                                   sizeof(content), "UTF-8", tocode, &length);
+
         if (err || (length == 0)) {
-            nn_freemsg(buf);
             continue;
         }
 
         sequenceId = confirmed.sequenceId = cmpp_sequence();
-        err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, submit->phone, content, length, msgFmt, true);
+        err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, message->phone,
+                          content, length, msgFmt, true);
         total++;
         status.sub++;
             
         if (err) {
             status.err++;
-            nn_freemsg(buf);
             lamb_sleep(config.interval * 1000);
             continue;
         }
@@ -256,7 +275,6 @@ void *lamb_sender_loop(void *data) {
             delayed = 1000 / config.concurrent;
         }
 
-        nn_freemsg(buf);
         lamb_msleep(delayed);
     }
 
@@ -266,15 +284,16 @@ void *lamb_sender_loop(void *data) {
 
 void *lamb_deliver_loop(void *data) {
     int err;
+    int result;
     char stat[8];
     cmpp_pack_t pack;
     cmpp_head_t *chp;
-    lamb_report_t *report;
-    lamb_deliver_t *deliver;
-    lamb_message_t *message;
     unsigned int commandId;
     unsigned int sequenceId;
     unsigned long long msgId;
+    char registered_delivery;
+    lamb_report_t *report;
+    lamb_deliver_t *deliver;
 
     while (true) {
         if (!cmpp.ok) {
@@ -289,17 +308,15 @@ void *lamb_deliver_loop(void *data) {
             continue;
         }
 
+        result = 0;
         chp = (cmpp_head_t *)&pack;
         commandId = ntohl(chp->commandId);
         sequenceId = ntohl(chp->sequenceId);
-        memset(&message, 0, sizeof(message));
         
         switch (commandId) {
         case CMPP_SUBMIT_RESP:;
             /* Cmpp Submit Resp */
             status.ack++;
-            int result = 0;
-
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, &msgId, 8);
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_result, &result, 1);
 
@@ -313,22 +330,26 @@ void *lamb_deliver_loop(void *data) {
 
             pthread_cond_signal(&cond);
             lamb_set_cache(&cache, msgId, confirmed.id, confirmed.account);
-            
+            lamb_debug("receive msgId: %llu message confirmation, result: %d\n", msgId, result);
+
             break;
         case CMPP_DELIVER:;
             /* Cmpp Deliver */
-            unsigned char registered_delivery;
             cmpp_pack_get_integer(&pack, cmpp_deliver_registered_delivery, &registered_delivery, 1);
 
             if (registered_delivery == 1) {
                 status.rep++;
-                report = (lamb_report_t *)calloc(1, sizeof(lamb_report_t));
-                report->type = LAMB_REPORT;
                 memset(stat, 0, sizeof(stat));
-                
+                report = (lamb_report_t *)calloc(1, sizeof(lamb_report_t));
+
+                if (!report) {
+                    result = 9;
+                    goto response1;
+                }
+
                 /* Msg_Id */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &report->id, 8);
-                
+
                 /* Src_Terminal_Id */
                 cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, report->phone, 24, 20);
 
@@ -360,15 +381,22 @@ void *lamb_deliver_loop(void *data) {
                     report->status = 6;
                 }
 
+                report->type = LAMB_REPORT;
                 lamb_queue_push(storage, report);
                 
-                //lamb_debug("msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n", report->id, report->phone, stat, report->submitTime, report->doneTime);
-                
-                cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, 0);
+                lamb_debug("receive msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n",
+                           report->id, report->phone, stat, report->submitTime, report->doneTime);
+
+            response1:
+                cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, result);
             } else {
                 status.delv++;
                 deliver = (lamb_deliver_t *)calloc(1, sizeof(lamb_deliver_t));
-                deliver->type = LAMB_DELIVER;
+
+                if (!deliver) {
+                    result = 9;
+                    goto response2;
+                }
 
                 /* Msg_Id */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_id, &deliver->id, 8);
@@ -389,22 +417,24 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_length, &deliver->length, 1);
 
                 /* Msg_Content */
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->content, 160, deliver->length);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content, deliver->content, 160,
+                                     deliver->length);
 
-                /* 
-                   lamb_debug("msgId: %llu, phone: %s, spcode: %s, serviceId: %s, msgFmt: %d, length: %d\n",
-                   deliver->id, deliver->phone, deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length);
-                */
-
+                deliver->type = LAMB_DELIVER;
                 lamb_queue_push(storage, deliver);
 
-                cmpp_deliver_resp(&cmpp.sock, sequenceId, deliver->id, 0);
+                
+                lamb_debug("receive msgId: %llu, phone: %s, spcode: %s, msgFmt: %d, length: %d\n",
+                           deliver->id, deliver->phone, deliver->spcode, deliver->msgFmt, deliver->length);
+
+            response2:
+                cmpp_deliver_resp(&cmpp.sock, sequenceId, deliver->id, result);
             }
             break;
         case CMPP_ACTIVE_TEST_RESP:
             if (heartbeat.sequenceId == sequenceId) {
                 heartbeat.count = 0;
-                //lamb_debug("Receive sequenceId: %u keepalive response\n", sequenceId);
+                lamb_debug("receive sequenceId: %u keepalive response\n", sequenceId);
             }
             break;
         }
@@ -419,7 +449,7 @@ void *lamb_cmpp_keepalive(void *data) {
 
     while (true) {
         sequenceId = heartbeat.sequenceId = cmpp_sequence();
-        //lamb_debug("sending sequenceId: %u keepalive request\n", sequenceId);
+        lamb_debug("sending sequenceId: %u keepalive request\n", sequenceId);
         
         err = cmpp_active_test(&cmpp.sock, sequenceId);
         if (err) {
@@ -441,13 +471,18 @@ void *lamb_cmpp_keepalive(void *data) {
 }
 
 void *lamb_work_loop(void *data) {
-    int rc;
+    int len;
+    void *pk;
+    char *buf;
+    void *message;
+    lamb_report_t *r;
+    lamb_deliver_t *d;
     lamb_node_t *node;
-    lamb_report_t *report;
-    //lamb_deliver_t *deliver;
-    lamb_message_t *message;
     unsigned long long msgId;
-    
+
+    Report report = LAMB_REPORT_INIT;
+    Deliver deliver = LAMB_DELIVER_INIT;
+
     while (true) {
         node = lamb_queue_pop(storage);
 
@@ -456,30 +491,78 @@ void *lamb_work_loop(void *data) {
             continue;
         }
 
-        message = (lamb_message_t *)node->val;
+        message = node->val;
 
-        if (message->type == LAMB_REPORT) {
-            report = (lamb_report_t *)message;
+        if (CHECK_TYPE(message) == LAMB_REPORT) {
+            r = (lamb_report_t *)message;
+            msgId = r->id;
+            lamb_get_cache(&cache, &r->id, &r->account);
 
-            msgId = report->id;
-            lamb_get_cache(&cache, &report->id, &report->account);
-
-            if (report->id > 0 && report->account > 0) {
-                /* Clean Message Cache */
+            if (r->id > 0 && r->account > 0 && r->company > 0) {
                 lamb_del_cache(&cache, msgId);
             } else {
                 goto done;
             }
-        }
 
-        if (message->type == LAMB_REPORT) {
-            rc = nn_send(mo, message, sizeof(lamb_report_t), 0);
-        } else {
-            rc = nn_send(mo, message, sizeof(lamb_deliver_t), 0);
-        }
-        
-        if (rc < 0) {
-            lamb_save_logfile(config.backfile, message);
+            report.id = r->id;
+            report.account = r->account;
+            report.company = r->company;
+            report.spcode = r->spcode;
+            report.phone = r->phone;
+            report.status = r->status;
+            report.submittime = r->submitTime;
+            report.donetime = r->doneTime;
+
+            len = lamb_report_get_packed_size(&report);
+            pk = malloc(len);
+
+            if (!pk) {
+                goto done;
+            }
+
+            lamb_report_pack(&report, pk);
+            len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
+
+            if (len > 0) {
+                if (nn_send(mo, buf, len, 0) != len) {
+                    lamb_save_logfile(config.backfile, message);
+                }
+                free(buf);
+            }
+
+            free(pk);
+        } else if (CHECK_TYPE(message) == LAMB_DELIVER) {
+            d = (lamb_deliver_t *)message;
+
+            deliver.id = d->id;
+            deliver.account = 0;
+            deliver.company = 0;
+            deliver.phone = d->phone;
+            deliver.spcode = d->spcode;
+            deliver.serviceid = d->serviceId;
+            deliver.msgfmt = d->msgFmt;
+            deliver.length = d->length;
+            deliver.content.len = d->length;
+            deliver.content.data = (void *)d->content;
+
+            len = lamb_deliver_get_packed_size(&deliver);
+            pk = malloc(len);
+
+            if (!pk) {
+                goto done;
+            }
+
+            lamb_deliver_pack(&deliver, pk);
+            len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
+
+            if (len > 0) {
+                if (nn_send(mo, buf, len, 0) != len) {
+                    lamb_save_logfile(config.backfile, message);
+                }
+                free(buf);
+            }
+
+            free(pk);
         }
 
     done:
@@ -579,11 +662,8 @@ int lamb_save_logfile(char *file, void *data) {
 
     lamb_report_t *report;
     lamb_deliver_t *deliver;
-    lamb_message_t *message;
 
-    message = (lamb_message_t *)data;
-
-    switch (message->type) {
+    switch (CHECK_TYPE(data)) {
     case LAMB_REPORT:
         report = (lamb_report_t *)data;
         fprintf(fp, "%d,%llu,%s,%d,%s,%s\n", LAMB_REPORT, report->id, report->phone, report->status,
@@ -592,7 +672,8 @@ int lamb_save_logfile(char *file, void *data) {
     case LAMB_DELIVER:
         deliver = (lamb_deliver_t *)data;
         fprintf(fp, "%d,%llu,%s,%s,%s,%d,%d,%s\n", LAMB_DELIVER, deliver->id, deliver->phone,
-                deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length, deliver->content);
+                deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length,
+                deliver->content);
         break;
     }
 
@@ -609,14 +690,18 @@ void *lamb_stat_loop(void *data) {
     while (true) {
         /* 
            error = status.err + status.timeo;
-           reply = redisCommand(rdb.handle, "HMSET gateway.%d pid %u status %d speed %llu error %llu", config.id, getpid(), cmpp.ok ? 1 : 0, (unsigned long long)((total - last) / 5), error);
+           reply = redisCommand(rdb.handle, "HMSET gateway.%d pid %u status %d speed %llu "
+           "error %llu", config.id, getpid(), cmpp.ok ? 1 : 0,
+           (unsigned long long)((total - last) / 5), error);
            if (reply != NULL) {
            freeReplyObject(reply);
            } else {
            lamb_log(LOG_ERR, "lamb exec redis command error");
            }
         */
-        lamb_debug("queue: %llu, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu, err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv, status.timeo, status.err);
+        lamb_debug("queue: %llu, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu"
+                   ", err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv,
+                   status.timeo, status.err);
 
         total = 0;
         sleep(5);
@@ -625,14 +710,16 @@ void *lamb_stat_loop(void *data) {
     pthread_exit(NULL);
 }
 
-int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id, int account) {
+int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id,
+                   int account) {
     int i;
     redisReply *reply = NULL;
     
     i = (msgId % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "HMSET %llu id %llu account %d", msgId, id, account);
+    reply = redisCommand(caches->nodes[i]->handle, "HMSET %llu id %llu account %d",
+                         msgId, id, account);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
 
     if (reply == NULL) {
