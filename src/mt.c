@@ -199,6 +199,7 @@ void *lamb_push_loop(void *arg) {
     int err;
     int timeout;
     Request *client;
+    lamb_node_t *node;
     lamb_queue_t *queue;
 
     client = (Request *)arg;
@@ -206,7 +207,6 @@ void *lamb_push_loop(void *arg) {
     lamb_debug("new client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
-    lamb_node_t *node;
     node = lamb_list_find(pool, (void *)(intptr_t)client->id);
 
     if (node) {
