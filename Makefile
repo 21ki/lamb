@@ -3,10 +3,10 @@ CC = gcc
 MACRO = -D_GNU_SOURCE -D_DEBUG
 CFLAGS = -std=c99 -Wall -pedantic
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o
-OBJS += src/db.o src/gateway.o src/routing.o src/mqueue.o src/queue.o
-OBJS += src/utils.o src/security.o src/list.o src/template.o src/keyword.o
-OBJS += src/delivery.o src/socket.o src/command.o src/message.o
-LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lrt -lpcre -lprotobuf-c
+OBJS += src/db.o src/gateway.o src/routing.o src/utils.o src/security.o
+OBJS += src/list.o src/template.o src/keyword.o src/delivery.o src/socket.o
+OBJS += src/command.o src/message.o
+LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lpcre -lprotobuf-c
 
 all: sp ismg server mt mo scheduler deliver test
 
@@ -19,11 +19,11 @@ ismg: src/ismg.c src/ismg.h $(OBJS)
 server: src/server.c src/server.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/server.c $(OBJS) $(LIBS) -lnanomsg -o server
 
-mt: src/mt.c src/mt.h $(OBJS) src/pool.o
-	$(CC) $(CFLAGS) $(MACRO) src/mt.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mt
+mt: src/mt.c src/mt.h $(OBJS) src/queue.o
+	$(CC) $(CFLAGS) $(MACRO) src/mt.c src/queue.o $(OBJS) $(LIBS) -lnanomsg -o mt
 
-mo: src/mo.c src/mo.h $(OBJS) src/pool.o
-	$(CC) $(CFLAGS) $(MACRO) src/mo.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o mo
+mo: src/mo.c src/mo.h $(OBJS) src/queue.o
+	$(CC) $(CFLAGS) $(MACRO) src/mo.c src/queue.o $(OBJS) $(LIBS) -lnanomsg -o mo
 
 scheduler: src/scheduler.c src/scheduler.h $(OBJS) src/pool.o
 	$(CC) $(CFLAGS) $(MACRO) src/scheduler.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o scheduler
@@ -64,9 +64,6 @@ src/routing.o: src/routing.c src/routing.h
 src/queue.o: src/queue.c src/queue.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/queue.c -o src/queue.o
 
-src/mqueue.o: src/mqueue.c src/mqueue.h
-	$(CC) $(CFLAGS) $(MACRO) -c src/mqueue.c -o src/mqueue.o
-
 src/utils.o: src/utils.c src/utils.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/utils.c -o src/utils.o
 
@@ -75,9 +72,6 @@ src/security.o: src/security.c src/security.h
 
 src/list.o: src/list.c src/list.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/list.c -o src/list.o
-
-src/pool.o: src/pool.c src/pool.h
-	$(CC) $(CFLAGS) $(MACRO) -c src/pool.c -o src/pool.o
 
 src/keyword.o: src/keyword.c src/keyword.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/keyword.c -o src/keyword.o

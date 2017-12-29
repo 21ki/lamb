@@ -1,76 +1,67 @@
 /* 
  * Lamb Gateway Platform
  * Copyright (C) 2017 typefo <typefo@qq.com>
- * Update: 2017-07-14
  */
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include "queue.h"
 
 lamb_queue_t *lamb_queue_new(int id) {
     lamb_queue_t *self;
 
-    self = malloc(sizeof(lamb_queue_t));
-    if (!self) {
-        return NULL;
-    }
+    self = (lamb_queue_t *)malloc(sizeof(lamb_queue_t));
 
-    self->id = id;
-    self->len = 0;
-    self->head = NULL;
-    self->tail = NULL;
-    self->next = NULL;
-    pthread_mutex_init(&self->lock, NULL);
-    
-    return self;
-}
-
-lamb_node_t *lamb_queue_push(lamb_queue_t *self, void *val) {
-    if (!self || !val) {
-        return NULL;
-    }
-
-    lamb_node_t *node;
-    node = (lamb_node_t *)malloc(sizeof(lamb_node_t));
-
-    pthread_mutex_lock(&self->lock);
-
-    if (node) {
-        node->val = val;
-        node->next = NULL;
-        if (self->len) {
-            self->tail->next = node;
-            self->tail = node;
-        } else {
-            self->head = self->tail = node;
+    if (self) {
+        self->id = id;
+        self->list = lamb_list_new();
+        if (self->list) {
+            pthread_mutex_init(&self->lock, NULL);
+            return self;
         }
-        ++self->len;
+        free(self);
     }
 
-    pthread_mutex_unlock(&self->lock);
-    
-    return node;
+    return NULL;
 }
 
-lamb_node_t *lamb_queue_pop(lamb_queue_t *self) {
-    if (!self || !self->len) {
-        return NULL;
+lamb_node_t *lamb_queue_push(lamb_queue_t *queue, void *val) {
+    if (queue) {
+        if (queue->list) {
+            return lamb_list_rpush(queue->list, lamb_node_new(val));
+        }
     }
 
-    pthread_mutex_lock(&self->lock);
-    
-    lamb_node_t *node = self->head;
+    return NULL;
+}
 
-    if (--self->len) {
-        self->head = node->next;
-    } else {
-        self->head = self->tail = NULL;
+lamb_node_t *lamb_queue_pop(lamb_queue_t *queue) {
+    if (queue) {
+        if (queue->list) {
+            return lamb_list_lpop(queue->list);
+        }
     }
 
-    pthread_mutex_unlock(&self->lock);
-    node->next = NULL;
+    return NULL;
+}
 
-    return node;
+int lamb_queue_compare(void *id, void *queue) {
+    if (queue) {
+        if (((lamb_queue_t *)queue)->id == (intptr_t)id) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void lamb_queue_destroy(lamb_queue_t *queue) {
+    if (queue) {
+        queue->id = 0;
+        lamb_list_destroy(queue->list);
+        pthread_mutex_destroy(&queue->lock);
+    }
+
+    return;
 }

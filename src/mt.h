@@ -10,7 +10,6 @@
 
 #include <stdbool.h>
 #include <pthread.h>
-#include "queue.h"
 
 typedef struct {
     int id;

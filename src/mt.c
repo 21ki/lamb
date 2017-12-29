@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
 #include <unistd.h>
@@ -20,7 +19,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <pthread.h>
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
 #include <nanomsg/reqrep.h>
@@ -28,14 +26,14 @@
 #include "config.h"
 #include "cache.h"
 #include "socket.h"
-#include "pool.h"
+#include "queue.h"
 #include "command.h"
 #include "message.h"
 #include "mt.h"
 
 //static int ac;
+static lamb_list_t *pool;
 static lamb_config_t config;
-static lamb_pool_t *pools;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 static Response resp = LAMB_RESPONSE_INIT;
@@ -94,11 +92,13 @@ void lamb_event_loop(void) {
     pthread_mutex_init(&mutex, NULL);
     
     /* Client Queue Pools Initialization */
-    pools = lamb_pool_new();
-    if (!pools) {
-        lamb_log(LOG_ERR, "node pool initialization failed");
+    pool = lamb_list_new();
+    if (!pool) {
+        lamb_log(LOG_ERR, "queue pool initialization failed");
         return;
     }
+
+    pool->match = lamb_queue_compare;
 
     /* Server Initialization */
     fd = nn_socket(AF_SP, NN_REP);
@@ -195,25 +195,29 @@ void lamb_event_loop(void) {
 }
 
 void *lamb_push_loop(void *arg) {
-    int fd
+    int fd;
     int err;
     int timeout;
     Request *client;
     lamb_queue_t *queue;
-    
+
     client = (Request *)arg;
 
     lamb_debug("new client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
-    queue = lamb_pool_find(pools, client->id);
-    if (!queue) {
+    lamb_node_t *node;
+    node = lamb_list_find(pool, (void *)(intptr_t)client->id);
+
+    if (node) {
+        queue = (lamb_queue_t *)node->val;
+    } else {
         queue = lamb_queue_new(client->id);
         if (queue) {
-            lamb_pool_add(pools, queue);
+            lamb_list_rpush(pool, lamb_node_new(queue));
         }
     }
-
+    
     if (!queue) {
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
         lamb_request_free_unpacked(client, NULL);
@@ -304,13 +308,18 @@ void *lamb_pull_loop(void *arg) {
     lamb_debug("new client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
-    queue = lamb_pool_find(pools, client->id);
-    if (!queue) {
+    node = lamb_list_find(pool, (void *)(intptr_t)client->id);
+
+    if (node) {
+        queue = (lamb_queue_t *)node->val;
+    } else {
         queue = lamb_queue_new(client->id);
         if (queue) {
-            lamb_pool_add(pools, queue);
+            lamb_list_rpush(pool, lamb_node_new(queue));
         }
     }
+
+    node = NULL;
 
     if (!queue) {
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
@@ -425,15 +434,19 @@ int lamb_child_server(int *sock, const char *host, unsigned short *port, int pro
 }
 
 void *lamb_stat_loop(void *arg) {
+    lamb_node_t *node;
     lamb_queue_t *queue;
-    
+
     while (true) {
-        queue = pools->head;
-        while (queue != NULL) {
-            lamb_debug("queue: %d, len: %lld\n", queue->id, queue->len);
-            queue = queue->next;
+        lamb_list_iterator_t *it;
+        it = lamb_list_iterator_new(pool, LIST_HEAD);
+        
+        while ((node = lamb_list_iterator_next(it))) {
+            queue = (lamb_queue_t *)node->val;
+            lamb_debug("queue: %d, len: %u\n", queue->id, queue->list->len);
         }
 
+        lamb_list_iterator_destroy(it);
         lamb_sleep(3000);
     }
 

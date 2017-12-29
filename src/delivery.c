@@ -9,7 +9,7 @@
 #include <string.h>
 #include "delivery.h"
 
-int lamb_get_delivery(lamb_db_t *db, lamb_queue_t *deliverys) {
+int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys) {
     int rows;
     char sql[128];
     PGresult *res = NULL;
@@ -34,7 +34,7 @@ int lamb_get_delivery(lamb_db_t *db, lamb_queue_t *deliverys) {
             delivery->id = atoi(PQgetvalue(res, i, 0));
             strncpy(delivery->rexp, PQgetvalue(res, i, 1), 127);
             delivery->target = atoi(PQgetvalue(res, i, 2));
-            lamb_queue_push(deliverys, delivery);
+            lamb_list_rpush(deliverys, lamb_node_new(delivery));
         }
     }
 

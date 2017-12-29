@@ -293,16 +293,13 @@ void lamb_work_loop(lamb_client_t *client) {
     int rc;
     int err, gid;
     cmpp_pack_t pack;
-    //lamb_submit_t submit;
     unsigned long long msgId;
-    lamb_message_t bye;
 
     gid = getpid();
     lamb_set_process("lamb-client");
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
     memset(&status, 0, sizeof(lamb_status_t));
-    bye.type = LAMB_BYE;
 
     /* Redis Cache */
     err = lamb_cache_connect(&rdb, "127.0.0.1", 6379, NULL, 0);
@@ -332,7 +329,7 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_start_thread(lamb_stat_loop, client, 1);
 
     /* Client Message Deliver */
-    lamb_start_thread(lamb_deliver_loop, client, 1);
+    //lamb_start_thread(lamb_deliver_loop, client, 1);
 
     int len;
     char *pk, *buf;
@@ -463,7 +460,15 @@ void lamb_work_loop(lamb_client_t *client) {
 exit:
     close(epfd);
     cmpp_sock_close(client->sock);
-    nn_send(mt, &bye, sizeof(bye), 0);
+
+    char *bye;
+    len = lamb_pack_assembly(&bye, LAMB_BYE, NULL, 0);
+
+    if (len > 0) {
+        nn_send(mt, bye, len, NN_DONTWAIT);
+        free(bye);
+    }
+
     nn_close(mt);
     pthread_cond_destroy(&cond);
     pthread_mutex_destroy(&mutex);
