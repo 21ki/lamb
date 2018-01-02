@@ -12,16 +12,15 @@
 
 #pragma pack(1)
 
-
-#define LAMB_REQ      1 << 1
-#define LAMB_BYE      1 << 2
-#define LAMB_EMPTY    1 << 3
-
-#define LAMB_PUSH     1 << 1
-#define LAMB_PULL     1 << 2
-
-#define LAMB_REQUEST  1 << 1
-#define LAMB_RESPONSE 1 << 2
+#define LAMB_OK       (1 << 1)
+#define LAMB_REQ      (1 << 2)
+#define LAMB_BYE      (1 << 3)
+#define LAMB_PUSH     (1 << 4)
+#define LAMB_PULL     (1 << 5)
+#define LAMB_EMPTY    (1 << 6)
+#define LAMB_BUSY     (1 << 7)
+#define LAMB_REQUEST  (1 << 8)
+#define LAMB_RESPONSE (1 << 9)
 
 #define HEAD (signed int)sizeof(int)
 #define CHECK_COMMAND(val) ntohl(*((int *)(val)))

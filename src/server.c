@@ -200,26 +200,24 @@ void lamb_event_loop(void) {
     lamb_debug("connect to mt %s successfull\n", config->mt_host);
     
     /* Connect to MO server */
-       mo = lamb_nn_pair(config->mo_host, config->mo_port, aid, config->timeout);
+    mo = lamb_nn_pair(config->mo_host, config->mo_port, aid, config->timeout);
 
-       if (mo < 0) {
-       lamb_log(LOG_ERR, "can't connect to MO %s server", config->mo_host);
-       return;
-       }
+    if (mo < 0) {
+        lamb_log(LOG_ERR, "can't connect to MO %s server", config->mo_host);
+        return;
+    }
 
-       lamb_debug("connect to mo %s successfull\n", config->mo_host);
+    lamb_debug("connect to mo %s successfull\n", config->mo_host);
 
-       /* Connect to Scheduler server */
-    /* 
-       scheduler = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
+    /* Connect to Scheduler server */
+    scheduler = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
 
-       if (scheduler < 0) {
-       lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config->scheduler_host);
-       return;
-       }
+    if (scheduler < 0) {
+        lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config->scheduler_host);
+        return;
+    }
 
-       lamb_debug("connect to scheduler %s successfull\n", config->scheduler_host);
-    */
+    lamb_debug("connect to scheduler %s successfull\n", config->scheduler_host);
     
     /* Connect to Deliver server */
     /* 
@@ -265,37 +263,6 @@ void lamb_event_loop(void) {
     while ((node = lamb_list_iterator_next(it))) {
         t = (lamb_template_t *)node->val;
         lamb_debug("template -> id: %d, rexp: %s, name: %s, contents: %s\n", t->id, t->rexp, t->name, t->contents);
-    }
-
-    lamb_list_iterator_destroy(it);
-
-    /* Fetch group information */
-    global->channels = lamb_list_new();
-    if (!global->channels) {
-        lamb_log(LOG_ERR, "routing queue initialization failed");
-        return;
-    }
-
-    err = lamb_fetch_channels(&global->db, global->account.username, global->channels);
-    if (err) {
-        lamb_log(LOG_ERR, "can't fetch channels information");
-        return;
-    }
-
-    if (global->channels->len < 1) {
-        lamb_log(LOG_WARNING, "there is no available channel");
-        return;
-    }
-    
-    lamb_debug("fetch channels information successfull\n");
-    
-    /* debug routing */
-    lamb_channel_t *c;
-    it = lamb_list_iterator_new(global->channels, LIST_HEAD);
-
-    while ((node = lamb_list_iterator_next(it))) {
-        c = (lamb_channel_t *)node->val;
-        lamb_debug("channel -> id: %d, gid: %d, weight: %d\n", c->id, c->gid, c->weight);
     }
 
     lamb_list_iterator_destroy(it);
@@ -516,47 +483,39 @@ void *lamb_work_loop(void *data) {
             lamb_debug("the keyword check SUCCESSFULL\n");
         }
 
-        lamb_submit_free_unpacked(message, NULL);
-        lamb_debug("-> message sending to schedule successfull\n");
         
         /* Scheduling */
+        lamb_submit_free_unpacked(message, NULL);
 
-        /*
-    routing:
-        success = lamb_push_message(scheduler, message, global->channels);
         
-        if (!success) {
-            lamb_sleep(100);
-            goto routing;
-        }
-
+        
+        
         lamb_debug("message sending to scheduler successfull\n");
-        */
             
         /* Save message to billing queue */
 
         /* 
-        if (global->account.charge == LAMB_CHARGE_SUBMIT) {
-            bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
-            if (bill) {
-                bill->id = global->company.id;
-                bill->money = -1;
-                lamb_list_rpush(global->billing, lamb_node_new(bill));
-            }
-        }
+           if (global->account.charge == LAMB_CHARGE_SUBMIT) {
+           bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
+           if (bill) {
+           bill->id = global->company.id;
+           bill->money = -1;
+           lamb_list_rpush(global->billing, lamb_node_new(bill));
+           }
+           }
         */
 
         /* Save message to storage queue */
 
         /* 
-        store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
-        if (store) {
-            store->type = LAMB_SUBMIT;
-            store->val = submit;
-            lamb_list_rpush(global->storage, lamb_node_new(store));
-        }
+           store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
+           if (store) {
+           store->type = LAMB_SUBMIT;
+           store->val = submit;
+           lamb_list_rpush(global->storage, lamb_node_new(store));
+           }
 
-         */
+        */
     }
 
     free(req);

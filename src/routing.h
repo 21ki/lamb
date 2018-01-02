@@ -18,5 +18,6 @@ typedef struct {
 } lamb_routing_t;
 
 int lamb_get_routing(lamb_db_t *db, lamb_list_t *routings);
+int lamb_rexp_routing(lamb_db_t *db, const char *rexp);
 
 #endif

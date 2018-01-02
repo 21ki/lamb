@@ -25,11 +25,11 @@ mt: src/mt.c src/mt.h $(OBJS) src/queue.o
 mo: src/mo.c src/mo.h $(OBJS) src/queue.o
 	$(CC) $(CFLAGS) $(MACRO) src/mo.c src/queue.o $(OBJS) $(LIBS) -lnanomsg -o mo
 
-scheduler: src/scheduler.c src/scheduler.h $(OBJS) src/pool.o
-	$(CC) $(CFLAGS) $(MACRO) src/scheduler.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o scheduler
+scheduler: src/scheduler.c src/scheduler.h $(OBJS) src/queue.o
+	$(CC) $(CFLAGS) $(MACRO) src/scheduler.c $(OBJS) src/queue.o $(LIBS) -lnanomsg -o scheduler
 
-deliver: src/deliver.c src/deliver.h $(OBJS) src/pool.o
-	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) src/pool.o $(LIBS) -lnanomsg -o deliver
+deliver: src/deliver.c src/deliver.h $(OBJS) src/queue.o
+	$(CC) $(CFLAGS) $(MACRO) src/deliver.c $(OBJS) src/queue.o $(LIBS) -lnanomsg -o deliver
 
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb

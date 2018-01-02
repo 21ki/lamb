@@ -74,7 +74,6 @@ typedef struct {
     lamb_caches_t cache;
     lamb_list_t *storage;
     lamb_list_t *billing;
-    lamb_list_t *channels;
     lamb_account_t account;
     lamb_company_t company;
     lamb_list_t *templates;

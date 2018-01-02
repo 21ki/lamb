@@ -27,12 +27,17 @@
 #include "config.h"
 #include "cache.h"
 #include "socket.h"
-#include "pool.h"
+#include "queue.h"
+#include "message.h"
+#include "channel.h"
+#include "account.h"
+#include "routing.h"
 #include "scheduler.h"
 
 //static int ac;
-static lamb_pool_t *pools;
+static lamb_db_t db;
 static lamb_config_t config;
+static lamb_list_t *gateway;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 static Response resp = LAMB_RESPONSE_INIT;
@@ -89,9 +94,24 @@ void lamb_event_loop(void) {
     pthread_mutex_init(&mutex, NULL);
     
     /* Client Queue Pools Initialization */
-    pools = lamb_pool_new();
-    if (!pools) {
-        lamb_log(LOG_ERR, "queue pool initialization failed");
+    gateway = lamb_list_new();
+    if (!gateway) {
+        lamb_log(LOG_ERR, "gateway pool initialization failed");
+        return;
+    }
+
+    gateway->match = lamb_queue_compare;
+
+    /* Database Initialization */
+    err = lamb_db_init(&db);
+    if (err) {
+        lamb_log(LOG_ERR, "database initialization failed");
+        return;
+    }
+
+    err = lamb_db_connect(&db, "127.0.0.1", 5432, "postgres", "postgres", "lamb");
+    if (err) {
+        lamb_log(LOG_ERR, "connect to database failed");
         return;
     }
 
@@ -185,10 +205,21 @@ void *lamb_push_loop(void *arg) {
     int err;
     int timeout;
     Request *client;
-
+    lamb_list_t *channels;
+    
     client = (Request *)arg;
 
     lamb_debug("new client from %s connectd\n", client->addr);
+
+    channels = lamb_list_new();
+
+    if (channels) {
+        lamb_route_channel(&db, client->id, channels);
+    } else {
+        lamb_log(LOG_ERR, "create %d routing object failed", client->id);
+        lamb_request_free_unpacked(client, NULL);
+        pthread_exit(NULL);
+    }
 
     /* Client channel initialization */
     unsigned short port = config.port + 1;
@@ -216,9 +247,12 @@ void *lamb_push_loop(void *arg) {
     int rc;
     int len;
     char *buf = NULL;
+    bool completed;
+    Submit *submit;
+    lamb_node_t *node;
     lamb_queue_t *queue;
-
-    queue = NULL;
+    lamb_channel_t *channel;
+    lamb_submit_t *message;
 
     while (true) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
@@ -238,23 +272,65 @@ void *lamb_push_loop(void *arg) {
 
         /* Submit */
         if (CHECK_COMMAND(buf) == LAMB_SUBMIT) {
-            submit = (lamb_submit_t *)message;
-            queue = lamb_pool_find(pools, submit->channel);
-            if (!queue) {
-                queue = lamb_queue_new(submit->channel);
-                if (queue) {
-                    lamb_pool_add(pools, queue);
+            submit = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+
+            nn_freemsg(buf);
+
+            if (!submit) {
+                continue;
+            }
+
+            message = (lamb_submit_t *)calloc(1, sizeof(lamb_submit_t));
+
+            if (!message) {
+                lamb_submit_free_unpacked(submit, NULL);
+                continue;
+            }
+
+            message->id = submit->id;
+            message->account = submit->account;
+            message->company = submit->company;
+            strncpy(message->spid, submit->spid, 6);
+
+            if (strlen(submit->spcode) > 8) {
+                strncpy(message->spcode, submit->spcode + 8, 12);
+            }
+
+            strncpy(message->phone, submit->phone, 11);
+            message->msgfmt = submit->msgfmt;
+            message->length = submit->length;
+            memcpy(message->content, submit->content.data, submit->content.len);
+
+            lamb_submit_free_unpacked(submit, NULL);
+
+            lamb_list_iterator_t *it;
+
+            it = lamb_list_iterator_new(channels, LIST_HEAD);
+
+            while ((node = lamb_list_iterator_next(it))) {
+                channel = (lamb_channel_t *)node->val;
+                node = lamb_list_find(gateway, (void *)(intptr_t)channel->id);
+
+                if (node) {
+                    queue = (lamb_queue_t *)node->val;
+                    if (queue->list->len < 102400) {
+                        lamb_queue_push(queue, message);
+                        completed = true;
+                        break;
+                    }
                 }
             }
 
-            if (queue && queue->len < 16) {
-                lamb_queue_push(queue, submit);
-                nn_send(fd, "ok", 2, NN_DONTWAIT);
+            lamb_list_iterator_destroy(it);
+
+            if (completed) {
+                len = lamb_pack_assembly(&buf, LAMB_OK, NULL, 0);
             } else {
-                nn_send(fd, "0", 1, NN_DONTWAIT);
-                nn_freemsg(buf);
+                len = lamb_pack_assembly(&buf, LAMB_BUSY, NULL, 0);
             }
 
+            nn_send(fd, buf, len, NN_DONTWAIT);
+            free(buf);
             continue;
         }
 
@@ -279,26 +355,29 @@ void *lamb_pull_loop(void *arg) {
     int err;
     int fd, rc;
     int timeout;
+    Request *client;
     lamb_node_t *node;
-    lamb_req_t *client;
     lamb_queue_t *queue;
     
-    client = (lamb_req_t *)arg;
+    client = (Request *)arg;
 
     lamb_debug("new client from %s connectd\n", client->addr);
 
     /* client queue initialization */
-    queue = lamb_pool_find(pools, client->id);
-    if (!queue) {
+    node = lamb_list_find(gateway, (void *)(intptr_t)client->id);
+
+    if (node) {
+        queue = (lamb_queue_t *)node->val;
+    } else {
         queue = lamb_queue_new(client->id);
         if (queue) {
-            lamb_pool_add(pools, queue);
+            lamb_list_rpush(gateway, lamb_node_new(queue));
         }
     }
 
     if (!queue) {
-        nn_freemsg((char *)client);
-        lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
+        lamb_log(LOG_ERR, "can't create %d queue from %s", client->id, client->addr);
+        lamb_request_free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
 
@@ -307,6 +386,7 @@ void *lamb_pull_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
+        lamb_request_free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -325,46 +405,69 @@ void *lamb_pull_loop(void *arg) {
     
     /* Start event processing */
     int len;
-    lamb_message_t *message;
-
-    len = sizeof(lamb_message_t);
+    char *pk;
+    char *buf = NULL;
+    lamb_submit_t *message;
+    Submit submit = LAMB_SUBMIT_INIT;
     
     while (true) {
-        char *buf = NULL;
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
-        if (rc < 0) {
+        if (rc < HEAD) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
+
             if (nn_errno() == ETIMEDOUT) {
                 if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
                     break;
                 }
             }
+
             continue;
         }
 
-        if (rc < len) {
-            nn_send(fd, "0", 1, NN_DONTWAIT);
+        if (CHECK_COMMAND(buf) == LAMB_REQ) {
             nn_freemsg(buf);
-            continue;
-        }
-
-        message = (lamb_message_t *)buf;
-
-        if (message->type == LAMB_REQ) {
             node = lamb_queue_pop(queue);
-            if (node) {
-                nn_send(fd, node->val, sizeof(lamb_submit_t), NN_DONTWAIT);
-                nn_freemsg(node->val);
-                free(node);
-            } else {
-                nn_send(fd, "0", 1, NN_DONTWAIT);
+
+            if (!node) {
+                len = lamb_pack_assembly(&buf, LAMB_EMPTY, NULL, 0);
+                nn_send(fd, buf, len, NN_DONTWAIT);
+                continue;
             }
 
-            nn_freemsg(buf);
+            message = (lamb_submit_t *)node->val;
+            submit.id = message->id;
+            submit.account = message->account;
+            submit.company = message->company;
+            submit.spid = message->spid;
+            submit.spcode = message->spcode;
+            submit.phone = message->phone;
+            submit.msgfmt = message->msgfmt;
+            submit.length = message->length;
+            submit.content.len = message->length;
+            submit.content.data = (uint8_t *)message->content;
+
+            len = lamb_submit_get_packed_size(&submit);
+            pk = malloc(len);
+
+            if (pk) {
+                lamb_submit_pack(&submit, (uint8_t *)pk);
+                len = lamb_pack_assembly(&buf, LAMB_SUBMIT, pk, len);
+                if (len > 0) {
+                    nn_send(fd, buf, len, 0);
+                    free(buf);
+                }
+                free(pk);
+            }
+
+            free(message);
+            free(node);
             continue;
         }
 
-        if (message->type == LAMB_BYE) {
+        if (CHECK_COMMAND(buf) == LAMB_BYE) {
             nn_freemsg(buf);
             break;
         }
@@ -373,27 +476,30 @@ void *lamb_pull_loop(void *arg) {
     }
 
     nn_close(fd);
-    nn_freemsg((char *)client);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_INFO, "connection closed from %s", client->addr);
+    lamb_request_free_unpacked(client, NULL);
 
     pthread_exit(NULL);
 }
 
 void *lamb_stat_loop(void *arg) {
+    lamb_node_t *node;
     lamb_queue_t *queue;
     long long length = 0;    
 
     while (true) {
         length = 0;
-        queue = pools->head;        
+        lamb_list_iterator_t *it;
+        it = lamb_list_iterator_new(gateway, LIST_HEAD);
 
-        while (queue != NULL) {
-            length += queue->len;
-            lamb_debug("queue: %d, len: %lld\n", queue->id, queue->len);
-            queue = queue->next;
+        while ((node = lamb_list_iterator_next(it))) {
+            queue = (lamb_queue_t *)node->val;
+            length += queue->list->len;
+            lamb_debug("queue: %d, len: %u\n", queue->id, queue->list->len);
         }
 
+        lamb_list_iterator_destroy(it);
         lamb_sleep(3000);
     }
 
@@ -409,6 +515,24 @@ int lamb_child_server(int *sock, const char *host, unsigned short *port, int pro
     }
 
     return 0;
+}
+
+void lamb_route_channel(lamb_db_t *db, int id, lamb_list_t *channels) {
+    int err;
+    int gid;
+    lamb_account_t account;
+
+    memset(&account, 0, sizeof(account));
+    err = lamb_account_fetch(db, id, &account);
+
+    if (!err) {
+        gid = lamb_rexp_routing(db, account.username);
+        if (gid > 0) {
+            lamb_get_channels(db, gid, channels);
+        }
+    }
+
+    return;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
