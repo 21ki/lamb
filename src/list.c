@@ -126,6 +126,7 @@ lamb_node_t *lamb_list_rpush(lamb_list_t *self, lamb_node_t *node) {
         return NULL;
     }
 
+    pthread_mutex_lock(&self->lock);
     if (self->len) {
         node->prev = self->tail;
         node->next = NULL;
@@ -137,6 +138,7 @@ lamb_node_t *lamb_list_rpush(lamb_list_t *self, lamb_node_t *node) {
     }
 
     ++self->len;
+    pthread_mutex_unlock(&self->lock);
 
     return node;
 }
@@ -150,6 +152,7 @@ lamb_node_t *lamb_list_rpop(lamb_list_t *self) {
         return NULL;
     }
 
+    pthread_mutex_lock(&self->lock);
     lamb_node_t *node = self->tail;
 
     if (--self->len) {
@@ -159,7 +162,8 @@ lamb_node_t *lamb_list_rpop(lamb_list_t *self) {
     }
 
     node->next = node->prev = NULL;
-
+    pthread_mutex_unlock(&self->lock);
+    
     return node;
 }
 
@@ -172,6 +176,7 @@ lamb_node_t *lamb_list_lpop(lamb_list_t *self) {
         return NULL;
     }
 
+    pthread_mutex_lock(&self->lock);
     lamb_node_t *node = self->head;
 
     if (--self->len) {
@@ -181,6 +186,7 @@ lamb_node_t *lamb_list_lpop(lamb_list_t *self) {
     }
 
     node->next = node->prev = NULL;
+    pthread_mutex_unlock(&self->lock);
 
     return node;
 }
@@ -195,6 +201,7 @@ lamb_node_t *lamb_list_lpush(lamb_list_t *self, lamb_node_t *node) {
         return NULL;
     }
 
+    pthread_mutex_lock(&self->lock);
     if (self->len) {
         node->next = self->head;
         node->prev = NULL;
@@ -206,7 +213,8 @@ lamb_node_t *lamb_list_lpush(lamb_list_t *self, lamb_node_t *node) {
     }
 
     ++self->len;
-    
+    pthread_mutex_unlock(&self->lock);
+
     return node;
 }
 

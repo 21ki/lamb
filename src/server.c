@@ -729,9 +729,6 @@ void *lamb_deliver_loop(void *data) {
 void *lamb_store_loop(void *data) {
     void *message;
     lamb_node_t *node;
-    lamb_report_t *report;
-    lamb_submit_t *submit;
-    lamb_deliver_t *deliver;
     
     while (true) {
         node = lamb_list_lpop(global->storage);
@@ -744,14 +741,11 @@ void *lamb_store_loop(void *data) {
         message = node->val;
 
         if (CHECK_TYPE(message) == LAMB_SUBMIT) {
-            submit = (lamb_submit_t *)message;
-            lamb_write_message(&global->mdb, submit);
+            lamb_write_message(&global->mdb, (lamb_submit_t *)message);
         } else if (CHECK_TYPE(message) == LAMB_REPORT) {
-            report = (lamb_report_t *)message;
-            lamb_write_report(&global->mdb, report);
+            lamb_write_report(&global->mdb, (lamb_report_t *)message);
         } else if (CHECK_TYPE(message) == LAMB_DELIVER) {
-            deliver = (lamb_deliver_t *)message;
-            lamb_write_deliver(&global->mdb, deliver);
+            lamb_write_deliver(&global->mdb, (lamb_deliver_t *)message);
         }
 
         free(node);
