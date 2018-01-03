@@ -19,6 +19,5 @@ typedef struct {
 } lamb_template_t;
 
 int lamb_get_template(lamb_db_t *db, lamb_list_t *templates);
-bool lamb_template_check(lamb_template_t *template, char *content, int len);
     
 #endif

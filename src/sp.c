@@ -30,7 +30,7 @@ static int mo;
 static cmpp_sp_t cmpp;
 //static lamb_cache_t rdb;
 static lamb_caches_t cache;
-static lamb_queue_t *storage;
+static lamb_list_t *storage;
 static lamb_config_t config;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
@@ -95,7 +95,7 @@ void lamb_event_loop(void) {
     memset(&status, 0, sizeof(status));
     
     /* Storage Initialization */
-    storage = lamb_queue_new(config.id);
+    storage = lamb_list_new();
     if (!storage) {
         lamb_log(LOG_ERR, "storage queue initialization failed");
         return;
@@ -357,10 +357,10 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_stat, stat, 8, 7);
 
                 /* Submit_Time */
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_submit_time, report->submitTime, 16, 10);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_submit_time, report->submittime, 16, 10);
 
                 /* Done_Time */
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_done_time, report->doneTime, 16, 10);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_done_time, report->donetime, 16, 10);
 
                 /* Stat */
                 if (strncasecmp(stat, "DELIVRD", 7) == 0) {
@@ -382,10 +382,10 @@ void *lamb_deliver_loop(void *data) {
                 }
 
                 report->type = LAMB_REPORT;
-                lamb_queue_push(storage, report);
+                lamb_list_rpush(storage, lamb_node_new(report));
                 
                 lamb_debug("receive msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n",
-                           report->id, report->phone, stat, report->submitTime, report->doneTime);
+                           report->id, report->phone, stat, report->submittime, report->donetime);
 
             response1:
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, result);
@@ -408,10 +408,10 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, deliver->spcode, 24, 21);
 
                 /* Service_Id */
-                cmpp_pack_get_string(&pack, cmpp_deliver_service_id, deliver->serviceId, 16, 10);
+                cmpp_pack_get_string(&pack, cmpp_deliver_service_id, deliver->serviceid, 16, 10);
 
                 /* Msg_Fmt */
-                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_fmt, &deliver->msgFmt, 1);
+                cmpp_pack_get_integer(&pack, cmpp_deliver_msg_fmt, &deliver->msgfmt, 1);
 
                 /* Msg_Length */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_length, &deliver->length, 1);
@@ -421,11 +421,11 @@ void *lamb_deliver_loop(void *data) {
                                      deliver->length);
 
                 deliver->type = LAMB_DELIVER;
-                lamb_queue_push(storage, deliver);
+                lamb_list_rpush(storage, lamb_node_new(deliver));
 
                 
                 lamb_debug("receive msgId: %llu, phone: %s, spcode: %s, msgFmt: %d, length: %d\n",
-                           deliver->id, deliver->phone, deliver->spcode, deliver->msgFmt, deliver->length);
+                           deliver->id, deliver->phone, deliver->spcode, deliver->msgfmt, deliver->length);
 
             response2:
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, deliver->id, result);
@@ -484,7 +484,7 @@ void *lamb_work_loop(void *data) {
     Deliver deliver = LAMB_DELIVER_INIT;
 
     while (true) {
-        node = lamb_queue_pop(storage);
+        node = lamb_list_lpop(storage);
 
         if (!node) {
             lamb_sleep(10);
@@ -510,8 +510,8 @@ void *lamb_work_loop(void *data) {
             report.spcode = r->spcode;
             report.phone = r->phone;
             report.status = r->status;
-            report.submittime = r->submitTime;
-            report.donetime = r->doneTime;
+            report.submittime = r->submittime;
+            report.donetime = r->donetime;
 
             len = lamb_report_get_packed_size(&report);
             pk = malloc(len);
@@ -539,8 +539,8 @@ void *lamb_work_loop(void *data) {
             deliver.company = 0;
             deliver.phone = d->phone;
             deliver.spcode = d->spcode;
-            deliver.serviceid = d->serviceId;
-            deliver.msgfmt = d->msgFmt;
+            deliver.serviceid = d->serviceid;
+            deliver.msgfmt = d->msgfmt;
             deliver.length = d->length;
             deliver.content.len = d->length;
             deliver.content.data = (void *)d->content;
@@ -667,12 +667,12 @@ int lamb_save_logfile(char *file, void *data) {
     case LAMB_REPORT:
         report = (lamb_report_t *)data;
         fprintf(fp, "%d,%llu,%s,%d,%s,%s\n", LAMB_REPORT, report->id, report->phone, report->status,
-                report->submitTime, report->doneTime);
+                report->submittime, report->donetime);
         break;
     case LAMB_DELIVER:
         deliver = (lamb_deliver_t *)data;
         fprintf(fp, "%d,%llu,%s,%s,%s,%d,%d,%s\n", LAMB_DELIVER, deliver->id, deliver->phone,
-                deliver->spcode, deliver->serviceId, deliver->msgFmt, deliver->length,
+                deliver->spcode, deliver->serviceid, deliver->msgfmt, deliver->length,
                 deliver->content);
         break;
     }
@@ -699,7 +699,7 @@ void *lamb_stat_loop(void *data) {
            lamb_log(LOG_ERR, "lamb exec redis command error");
            }
         */
-        lamb_debug("queue: %llu, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu"
+        lamb_debug("queue: %u, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu"
                    ", err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv,
                    status.timeo, status.err);
 

@@ -23,6 +23,7 @@
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
 #include <nanomsg/reqrep.h>
+#include <pcre.h>
 #include <cmpp.h>
 #include "server.h"
 #include "config.h"
@@ -335,18 +336,19 @@ void lamb_reload(int signum) {
 
 void *lamb_work_loop(void *data) {
     int err;
+    void *pk;
     char *buf;
     int rc, len;
     bool success;
     Submit *message;
     lamb_bill_t *bill;
-    lamb_store_t *store;
     lamb_node_t *node;
+    lamb_submit_t *storage;
     lamb_template_t *template;
     lamb_keyword_t *keyword;
 
     lamb_cpu_affinity(pthread_self());
-
+    
     int rlen;
     char *req;
 
@@ -394,12 +396,12 @@ void *lamb_work_loop(void *data) {
         nn_freemsg(buf);
 
         ++status->toal;
-        lamb_debug("id: %"PRIu64", phone: %s, spcode: %s, content: %s, length: %d\n",
-                   message->id, message->phone, message->spcode, message->content.data, message->length);
+        lamb_debug("id: %"PRIu64", phone: %s, spcode: %s, msgfmt: %d, length: %d\n",
+                   message->id, message->phone, message->spcode, message->msgfmt, message->length);
 
         /* Message Encoded Convert */
+        char *content;
         char *fromcode;
-        char content[512];
 
         if (message->msgfmt == 0) {
             fromcode = "ASCII";
@@ -412,24 +414,29 @@ void *lamb_work_loop(void *data) {
         } else {
             status->fmt++;
             lamb_debug("message encoded %d not support\n", message->msgfmt);
-            lamb_submit_free_unpacked(message, NULL);
-            continue;
+            goto done;
         }
 
         if (fromcode != NULL) {
-            memset(content, 0, sizeof(content));
-            err = lamb_encoded_convert((char *)message->content.data, message->length, content, sizeof(content),
-                                       fromcode, "UTF-8", &message->length);
-            if (err || (message->length == 0)) {
+            content = (char *)malloc(512);
+
+            if (!content) {
+                goto done;
+            }
+
+            err = lamb_encoded_convert((char *)message->content.data, message->length, content,
+                                       512, fromcode, "UTF-8", &message->length);
+            if (err || (message->length < 1)) {
                 status->fmt++;
-                lamb_submit_free_unpacked(message, NULL);
+                free(content);
                 lamb_debug("message encoding conversion failed\n");
-                continue;
+                goto done;
             }
 
             message->msgfmt = 11;
-            memset(message->content.data, 0, 160);
-            memcpy(message->content.data, content, message->length);
+            free(message->content.data);
+            message->content.len = message->length;
+            message->content.data = (uint8_t *)content;
             lamb_debug("message encoding conversion successfull\n");
         }
 
@@ -441,23 +448,23 @@ void *lamb_work_loop(void *data) {
             success = false;
             lamb_list_iterator_t *ts;
             ts = lamb_list_iterator_new(global->templates, LIST_HEAD);
-            
+
             while ((node = lamb_list_iterator_next(ts))) {
                 template = (lamb_template_t *)node->val;
-                if (lamb_template_check(template, (char *)message->content.data, message->length)) {
-                    success = true;
-                    break;
+                if (lamb_check_spcode(template, message->spcode, strlen(message->spcode))) {
+                    if (lamb_check_content(template, (char *)message->content.data, message->length)) {
+                        success = true;
+                        break;
+                    }
                 }
-            } 
+            }
 
             if (!success) {
                 status->tmp++;
-                lamb_debug("the template check will not pass\n");
-                lamb_submit_free_unpacked(message, NULL);
-                continue;
-                    
+                lamb_debug("check template failed\n");
+                goto done;
             }
-            lamb_debug("the template check successfull\n");
+            lamb_debug("check template successfull\n");
         }
 
         /* Keywords Filtration */
@@ -468,7 +475,7 @@ void *lamb_work_loop(void *data) {
             
             while ((node = lamb_list_iterator_next(ks))) {
                 keyword = (lamb_keyword_t *)node->val;
-                if (lamb_keyword_check(keyword, (char *)message->content.data)) {
+                if (lamb_check_keyword(keyword, (char *)message->content.data)) {
                     success = false;
                     break;
                 }
@@ -476,46 +483,75 @@ void *lamb_work_loop(void *data) {
                
             if (!success) {
                 status->key++;
-                lamb_submit_free_unpacked(message, NULL);
-                lamb_debug("the keyword check not pass\n");
-                continue;
+                lamb_debug("check keyword failed\n");
+                goto done;
             }
-            lamb_debug("the keyword check SUCCESSFULL\n");
+            lamb_debug("check keyword successfull\n");
         }
 
         
         /* Scheduling */
-        lamb_submit_free_unpacked(message, NULL);
+        char *packet;
+        len = lamb_submit_get_packed_size(message);
+        pk = malloc(len);
 
-        
-        
-        
-        lamb_debug("message sending to scheduler successfull\n");
+        if (pk) {
+            lamb_submit_pack(message, pk);
+            len = lamb_pack_assembly(&packet, LAMB_SUBMIT, pk, len);
+            if (len > 0) {
+                while (true) {
+                    rc = nn_send(scheduler, packet, len, 0);
+                    if (rc == len) {
+                        rc = nn_recv(scheduler, &buf, NN_MSG, 0);
+                        if (rc >= HEAD) {
+                            if (CHECK_COMMAND(buf) == LAMB_OK) {
+                                nn_freemsg(buf);
+                                break;
+                            }
+                        }
+
+                        if (rc > 0) {
+                            nn_freemsg(buf);
+                        }
+                    }
+                    lamb_sleep(1000);
+                }
+                free(packet);
+            }
+            free(pk);
+        }
+
+
+        lamb_debug("sending message to scheduler successfull\n");
             
         /* Save message to billing queue */
-
-        /* 
-           if (global->account.charge == LAMB_CHARGE_SUBMIT) {
-           bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
-           if (bill) {
-           bill->id = global->company.id;
-           bill->money = -1;
-           lamb_list_rpush(global->billing, lamb_node_new(bill));
-           }
-           }
-        */
+        if (global->account.charge == LAMB_CHARGE_SUBMIT) {
+            bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
+            if (bill) {
+                bill->id = global->company.id;
+                bill->money = -1;
+                lamb_list_rpush(global->billing, lamb_node_new(bill));
+            }
+        }
 
         /* Save message to storage queue */
+        storage = (lamb_submit_t *)calloc(1, sizeof(lamb_submit_t));
+        if (storage) {
+            storage->type = LAMB_SUBMIT;
+            storage->id = message->id;
+            storage->account = message->account;
+            storage->company = message->company;
+            strncpy(storage->spid, message->spid, 6);
+            strncpy(storage->spcode, message->spcode, 20);
+            strncpy(storage->phone, message->phone, 11);
+            storage->msgfmt = message->msgfmt;
+            storage->length = message->length;
+            memcpy(storage->content, message->content.data, message->content.len);
+            lamb_list_rpush(global->storage, lamb_node_new(storage));
+        }
 
-        /* 
-           store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
-           if (store) {
-           store->type = LAMB_SUBMIT;
-           store->val = submit;
-           lamb_list_rpush(global->storage, lamb_node_new(store));
-           }
-
-        */
+    done:
+        lamb_submit_free_unpacked(message, NULL);
     }
 
     free(req);
@@ -524,100 +560,163 @@ void *lamb_work_loop(void *data) {
 
 void *lamb_deliver_loop(void *data) {
     int rc;
+    void *pk;
     char *buf;
+    int money;
+    char *spcode;
+    Report *report;
+    Deliver *deliver;
     lamb_bill_t *bill;
-    lamb_store_t *store;
-    lamb_message_t req;
-    lamb_report_t *report;
-    lamb_deliver_t *deliver;
-    lamb_message_t *message;
 
-    char spcode[24];
-    int rlen = sizeof(lamb_report_t);
-    int dlen = sizeof(lamb_deliver_t);
+    int len;
+    int rlen;
+    char *req;
 
-    req.type = LAMB_REQ;
+    rlen = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
 
     while (true) {
-        rc = nn_send(deliverd, &req, sizeof(req), NN_DONTWAIT);
+        rc = nn_send(deliverd, req, rlen, NN_DONTWAIT);
 
-        if (rc < 0) {
+        if (rc != rlen) {
             lamb_sleep(1000);
             continue;
         }
 
         rc = nn_recv(deliverd, &buf, NN_MSG, 0);
 
-        if (rc != rlen && rc != dlen) {
+        if (rc < HEAD) {
             if (rc > 0) {
                 nn_freemsg(buf);
-                lamb_sleep(10);
             }
+            lamb_sleep(1000);
             continue;
         }
 
-        message = (lamb_message_t *)buf;
-
-        if (message->type == LAMB_REPORT) {
+        if (CHECK_COMMAND(buf) == LAMB_REPORT) {
             status->rep++;
-            report = (lamb_report_t *)buf;
+            report = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            nn_freemsg(buf);
 
-            report->account = aid;
-            memcpy(report->spcode, global->account.spcode, 20);
-            
-            int coin = 0;
-
-            if ((report->status == 1) && (global->account.charge == LAMB_CHARGE_SUCCESS)) {
-                coin = 1;
-            } else if ((report->status != 1) && (global->account.charge == LAMB_CHARGE_SUBMIT)) {
-                coin = -1;
+            if (!report) {
+                continue;
             }
 
-            if (coin != 0) {
+            spcode = (char *)calloc(1, 24);
+            if (!spcode) {
+                lamb_report_free_unpacked(report, NULL);
+                continue;
+            }
+
+            sprintf(spcode, "%s%s", global->account.spcode, report->spcode);
+            free(report->spcode);
+            report->spcode = spcode;
+
+            money = 0;
+
+            if (report->status == 1) {
+                if (global->account.charge == LAMB_CHARGE_SUCCESS) {
+                    money = 1;
+                }
+            } else {
+                if (global->account.charge == LAMB_CHARGE_SUBMIT) {
+                    money = -1;
+                }
+            }
+
+            if (money != 0) {
                 bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
                 if (bill) {
                     bill->id = global->company.id;
-                    bill->money = (report->status == 1) ? -1 : 1;
+                    bill->money = money;
                     lamb_list_rpush(global->billing, lamb_node_new(bill));
                 }
             }
 
-            nn_send(mo, report, rlen, 0);
+            len = lamb_report_get_packed_size(report);
+            pk = malloc(len);
 
-            /* Store report to database */
-            store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
-
-            if (store) {
-                store->type = LAMB_REPORT;
-                store->val = report;
-                lamb_list_rpush(global->storage, lamb_node_new(store));
-            } else {
-                nn_freemsg(buf);
+            if (pk) {
+                lamb_report_pack(report, pk);
+                len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
+                if (len > 0) {
+                    nn_send(mo, buf, len, 0);
+                    free(buf);
+                }
+                free(pk);
             }
 
+            /* Store report to database */
+            lamb_report_t *r;
+            r = (lamb_report_t *)calloc(1, sizeof(lamb_report_t));
+
+            if (r) {
+                r->type = LAMB_REPORT;
+                r->id = report->id;
+                r->account = report->account;
+                r->company = report->company;
+                strncpy(r->phone, report->phone, 11);
+                strncpy(r->spcode, report->spcode, 20);
+                r->status = report->status;
+                strncpy(r->submittime, report->submittime, 10);
+                strncpy(r->donetime, report->donetime, 10);
+                lamb_list_rpush(global->storage, lamb_node_new(r));
+            }
+
+            lamb_report_free_unpacked(report, NULL);
             continue;
         }
 
-        if (message->type == LAMB_DELIVER) {
+        if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
             status->delv++;
-            deliver = (lamb_deliver_t *)buf;
-            memcpy(spcode, deliver->spcode, 20);
-            memcpy(deliver->spcode, global->account.spcode, 20);
+            deliver = lamb_deliver_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            nn_freemsg(buf);
 
-            nn_send(mo, deliver, sizeof(lamb_deliver_t), NN_DONTWAIT);
-
-            memcpy(deliver->spcode, spcode, 20);
-
-            store = (lamb_store_t *)malloc(sizeof(lamb_store_t));
-
-            if (store) {
-                store->type = LAMB_DELIVER;
-                store->val = deliver;
-                lamb_list_rpush(global->storage, lamb_node_new(store));
-            } else {
-                nn_freemsg(buf);
+            if (!deliver) {
+                continue;
             }
 
+            spcode = (char *)calloc(1, 24);
+
+            if (!spcode) {
+                lamb_deliver_free_unpacked(deliver, NULL);
+                continue;
+            }
+
+            sprintf(spcode, "%s%s", global->account.spcode, deliver->spcode);
+            free(deliver->spcode);
+            deliver->spcode = spcode;
+
+            len = lamb_deliver_get_packed_size(deliver);
+            pk = malloc(len);
+
+            if (pk) {
+                lamb_deliver_pack(deliver, pk);
+                len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
+                if (len > 0) {
+                    nn_send(mo, buf, len, 0);
+                    free(buf);
+                }
+                free(pk);
+            }
+
+            lamb_deliver_t *d;
+            d = (lamb_deliver_t *)calloc(1, sizeof(lamb_deliver_t));
+
+            if (d) {
+                d->type = LAMB_DELIVER;
+                d->id = deliver->id;
+                d->account = deliver->account;
+                d->company = deliver->company;
+                strncpy(d->phone, deliver->phone, 11);
+                strncpy(d->spcode, deliver->spcode, 20);
+                strncpy(d->serviceid, deliver->serviceid, 10);
+                d->msgfmt = deliver->msgfmt;
+                d->length = deliver->length;
+                memcpy(d->content, deliver->content.data, deliver->content.len);
+                lamb_list_rpush(global->storage, lamb_node_new(d));  
+            }
+
+            lamb_deliver_free_unpacked(deliver, NULL);
             continue;
         }
 
@@ -628,8 +727,8 @@ void *lamb_deliver_loop(void *data) {
 }
 
 void *lamb_store_loop(void *data) {
+    void *message;
     lamb_node_t *node;
-    lamb_store_t *store;
     lamb_report_t *report;
     lamb_submit_t *submit;
     lamb_deliver_t *deliver;
@@ -642,22 +741,21 @@ void *lamb_store_loop(void *data) {
             continue;
         }
 
-        store = (lamb_store_t *)node->val;
+        message = node->val;
 
-        if (store->type == LAMB_SUBMIT) {
-            submit = (lamb_submit_t *)store->val;
-            lamb_write_message(&global->mdb, &global->account, &global->company, submit);
-        } else if (store->type == LAMB_REPORT) {
-            report = (lamb_report_t *)store->val;
+        if (CHECK_TYPE(message) == LAMB_SUBMIT) {
+            submit = (lamb_submit_t *)message;
+            lamb_write_message(&global->mdb, submit);
+        } else if (CHECK_TYPE(message) == LAMB_REPORT) {
+            report = (lamb_report_t *)message;
             lamb_write_report(&global->mdb, report);
-        } else if (store->type == LAMB_DELIVER) {
-            deliver = (lamb_deliver_t *)store->val;
-            lamb_write_deliver(&global->mdb, &global->account, &global->company, deliver);
+        } else if (CHECK_TYPE(message) == LAMB_DELIVER) {
+            deliver = (lamb_deliver_t *)message;
+            lamb_write_deliver(&global->mdb, deliver);
         }
 
-        nn_freemsg(store->val);
-        free(store);
         free(node);
+        free(message);
     }
 
     pthread_exit(NULL);
@@ -692,7 +790,7 @@ void *lamb_billing_loop(void *data) {
 }
 
 void *lamb_stat_loop(void *data) {
-    int err;
+    // int err;
     redisReply *reply = NULL;
 
     while (true) {
@@ -733,7 +831,7 @@ int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {
     return 0;
 }
 
-int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message) {
+int lamb_write_message(lamb_db_t *db, lamb_submit_t *message) {
     char *column;
     char sql[512];
     PGresult *res = NULL;
@@ -742,7 +840,7 @@ int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *c
         column = "id, spid, spcode, phone, content, status, account, company";
         sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)",
                 column, (long long int)message->id, message->spid, message->spcode, message->phone,
-                message->content, 0, account->id, company->id);
+                message->content, 0, message->account, message->company);
 
         res = PQexec(db->conn, sql);
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -756,7 +854,7 @@ int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *c
     return 0;
 }
 
-int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_deliver_t *message) {
+int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message) {
     char *column;
     char sql[512];
     PGresult *res = NULL;
@@ -823,6 +921,34 @@ int lamb_fetch_channels(lamb_db_t *db, const char *rexp, lamb_list_t *channels) 
     PQclear(res);
 
     return 0;
+}
+
+bool lamb_check_spcode(lamb_template_t *template, char *spcode, int len) {
+    if (lamb_pcre_regular(template->rexp, spcode, len)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool lamb_check_content(lamb_template_t *template, char *content, int len) {
+    char pattern[512];
+
+    memset(pattern, 0, sizeof(pattern));
+    sprintf(pattern, "【%s】%s", template->name, template->contents);
+    if (lamb_pcre_regular(pattern, content, len)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool lamb_check_keyword(lamb_keyword_t *key, char *content) {
+    if (strstr(content, key->val)) {
+        return true;
+    }
+
+    return false;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

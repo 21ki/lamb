@@ -16,6 +16,7 @@
 #include "account.h"
 #include "company.h"
 #include "template.h"
+#include "keyword.h"
 #include "gateway.h"
 
 #define LAMB_CLIENT       1
@@ -99,12 +100,15 @@ void *lamb_store_loop(void *data);
 void *lamb_billing_loop(void *data);
 void *lamb_stat_loop(void *data);
 int lamb_write_report(lamb_db_t *db, lamb_report_t *message);
-int lamb_write_message(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_submit_t *message);
-int lamb_write_deliver(lamb_db_t *db, lamb_account_t *account, lamb_company_t *company, lamb_deliver_t *message);
+int lamb_write_message(lamb_db_t *db, lamb_submit_t *message);
+int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message);
 int lamb_spcode_process(char *code, char *spcode, size_t size);
 void lamb_get_today(const char *pfx, char *val);
 void lamb_new_table(lamb_db_t *db);
 int lamb_fetch_channels(lamb_db_t *db, const char *rexp, lamb_list_t *channels);
+bool lamb_check_spcode(lamb_template_t *template, char *spcode, int len);
+bool lamb_check_content(lamb_template_t *template, char *content, int len);
+bool lamb_check_keyword(lamb_keyword_t *key, char *content);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

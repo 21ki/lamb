@@ -30,6 +30,8 @@
 #define lamb_debug(...)
 #endif
 
+#define CHECK_TYPE(val) *((int *)(val))
+
 #define LAMB_SUBMIT  1
 #define LAMB_DELIVER 2
 #define LAMB_REPORT  3
@@ -53,6 +55,44 @@ typedef struct {
     int len;
     int ops[LAMB_MAX_OPERATOR];
 } lamb_operator_t;
+
+typedef struct {
+    int type;
+    unsigned long long id;
+    int account;
+    int company;
+    char spid[8];
+    char spcode[24];
+    char phone[24];
+    int msgfmt;
+    int length;
+    char content[160];
+} lamb_submit_t;
+
+typedef struct {
+    int type;
+    int account;
+    int company;
+    unsigned long long id;
+    char spcode[24];
+    char phone[24];
+    int status;
+    char submittime[16];
+    char donetime[16];
+} lamb_report_t;
+
+typedef struct {
+    int type;
+    int account;
+    int company;
+    unsigned long long id;
+    char phone[24];
+    char spcode[24];
+    char serviceid[16];
+    int msgfmt;
+    int length;
+    char content[160];
+} lamb_deliver_t;
 
 #pragma pack()
 

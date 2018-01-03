@@ -17,6 +17,5 @@ typedef struct {
 } lamb_keyword_t;
 
 int lamb_keyword_get_all(lamb_db_t *db, lamb_list_t *keys);
-bool lamb_keyword_check(lamb_keyword_t *key, char *content);
 
 #endif

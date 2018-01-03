@@ -12,8 +12,6 @@
 #include "utils.h"
 #include "cache.h"
 
-#define CHECK_TYPE(val) *((int *)(val))
-
 typedef struct {
     int id;
     bool debug;
@@ -42,31 +40,6 @@ typedef struct {
     int mo_port;
     char *nodes[7];
 } lamb_config_t;
-
-typedef struct {
-    int type;
-    unsigned long long id;
-    char spcode[24];
-    char phone[24];
-    int status;
-    char submitTime[16];
-    char doneTime[16];
-    int account;
-    int company;
-} lamb_report_t;
-
-typedef struct {
-    int type;
-    unsigned long long id;
-    char phone[24];
-    char spcode[24];
-    char serviceId[16];
-    int msgFmt;
-    int length;
-    char content[160];
-    int account;
-    int company;
-} lamb_deliver_t;
 
 typedef struct {
     unsigned long long sub;

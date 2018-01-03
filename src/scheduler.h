@@ -24,18 +24,6 @@ typedef struct {
     char logfile[128];
 } lamb_config_t;
 
-typedef struct {
-    unsigned long long id;
-    int account;
-    int company;
-    char spid[8];
-    char spcode[24];
-    char phone[24];
-    int msgfmt;
-    int length;
-    char content[160];
-} lamb_submit_t;
-
 void lamb_event_loop(void);
 void *lamb_push_loop(void *arg);
 void *lamb_pull_loop(void *arg);
