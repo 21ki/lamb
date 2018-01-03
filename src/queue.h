@@ -6,13 +6,11 @@
 #ifndef _LAMB_QUEUE_H
 #define _LAMB_QUEUE_H
 
-#include <pthread.h>
 #include "list.h"
 
 typedef struct lamb_queue_t {
     int id;
     lamb_list_t *list;
-    pthread_mutex_t lock;
 } lamb_queue_t;
 
 lamb_queue_t *lamb_queue_new(int id);

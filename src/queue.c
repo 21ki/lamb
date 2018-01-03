@@ -17,7 +17,6 @@ lamb_queue_t *lamb_queue_new(int id) {
         self->id = id;
         self->list = lamb_list_new();
         if (self->list) {
-            pthread_mutex_init(&self->lock, NULL);
             return self;
         }
         free(self);
@@ -60,7 +59,6 @@ void lamb_queue_destroy(lamb_queue_t *queue) {
     if (queue) {
         queue->id = 0;
         lamb_list_destroy(queue->list);
-        pthread_mutex_destroy(&queue->lock);
     }
 
     return;
