@@ -371,7 +371,10 @@ void *lamb_pull_loop(void *arg) {
             continue;
         }
 
+        lamb_debug("receive a request from %s\n", client->addr);
+
         if (CHECK_COMMAND(buf) == LAMB_REQ) {
+            lamb_debug("a new client request message\n");
             nn_freemsg(buf);
             node = lamb_queue_pop(queue);
 
@@ -381,7 +384,7 @@ void *lamb_pull_loop(void *arg) {
                     nn_send(fd, buf, len, NN_DONTWAIT);
                     free(buf);
                 }
-
+                lamb_debug("no available messages were found\n");
                 continue;
             }
 
@@ -394,8 +397,9 @@ void *lamb_pull_loop(void *arg) {
                 lamb_submit_pack(message, pk);
                 len = lamb_pack_assembly(&buf, LAMB_SUBMIT, pk, len);
                 if (len > 0) {
-                    nn_send(fd, message, len, NN_DONTWAIT);
+                    nn_send(fd, buf, len, NN_DONTWAIT);
                     free(buf);
+                    lamb_debug("send messages to client %s\n", client->addr);
                 }
                 free(pk);
             }
@@ -410,6 +414,7 @@ void *lamb_pull_loop(void *arg) {
             break;
         }
 
+        lamb_debug("invalid request command\n");
         nn_freemsg(buf);
     }
 

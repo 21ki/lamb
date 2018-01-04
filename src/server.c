@@ -211,7 +211,7 @@ void lamb_event_loop(void) {
     lamb_debug("connect to mo %s successfull\n", config->mo_host);
 
     /* Connect to Scheduler server */
-    scheduler = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
+    scheduler = lamb_nn_pair(config->scheduler_host, config->scheduler_port, aid, config->timeout);
 
     if (scheduler < 0) {
         lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config->scheduler_host);
@@ -355,7 +355,7 @@ void *lamb_work_loop(void *data) {
     while (true) {
 
         /* Request */
-        rc = nn_send(mt, req, rlen, 0);
+        rc = nn_send(mt, req, rlen, NN_DONTWAIT);
 
         if (rc != rlen) {
             lamb_sleep(1000);
@@ -374,28 +374,31 @@ void *lamb_work_loop(void *data) {
 
         if (CHECK_COMMAND(buf) == LAMB_EMPTY) {
             nn_freemsg(buf);
+            lamb_debug("no available messages\n");
             lamb_sleep(1000);
             continue;
         }
 
         if (CHECK_COMMAND(buf) != LAMB_SUBMIT) {
             nn_freemsg(buf);
+            lamb_debug("receiving an invalid response packet\n");
             continue;
         }
+
+        lamb_debug("receive a new message\n");
 
         message = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
+
         if (!message) {
             nn_freemsg(buf);
-            lamb_log(LOG_ERR, "can't unpack for submit message packets");
+            lamb_debug("can't unpack for message packets");
             continue;
         }
 
-        nn_freemsg(buf);
+        lamb_debug("data packets unpack successfull\n");
 
-        ++status->toal;
-        lamb_debug("id: %"PRIu64", phone: %s, spcode: %s, msgfmt: %d, length: %d\n",
-                   message->id, message->phone, message->spcode, message->msgfmt, message->length);
+        nn_freemsg(buf);
 
         /* Message Encoded Convert */
         char *content;
@@ -487,13 +490,12 @@ void *lamb_work_loop(void *data) {
             lamb_debug("check keyword successfull\n");
         }
 
-        
         /* Scheduling */
-        char *packet;
         len = lamb_submit_get_packed_size(message);
         pk = malloc(len);
 
         if (pk) {
+            char *packet;
             lamb_submit_pack(message, pk);
             len = lamb_pack_assembly(&packet, LAMB_SUBMIT, pk, len);
             if (len > 0) {
@@ -505,6 +507,8 @@ void *lamb_work_loop(void *data) {
                             if (CHECK_COMMAND(buf) == LAMB_OK) {
                                 nn_freemsg(buf);
                                 break;
+                            } else if (CHECK_COMMAND(buf) == LAMB_BUSY) {
+                                lamb_debug("-> the scheduler is busy!\n");
                             }
                         }
 
@@ -518,7 +522,6 @@ void *lamb_work_loop(void *data) {
             }
             free(pk);
         }
-
 
         lamb_debug("sending message to scheduler successfull\n");
             

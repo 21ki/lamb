@@ -223,7 +223,7 @@ void *lamb_push_loop(void *arg) {
 
     /* Client channel initialization */
     unsigned short port = config.port + 1;
-    err = lamb_child_server(&fd, config.listen, &port, NN_REP);
+    err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
     if (err) {
         pthread_cond_signal(&cond);
         lamb_request_free_unpacked(client, NULL);
@@ -254,9 +254,12 @@ void *lamb_push_loop(void *arg) {
     lamb_channel_t *channel;
     lamb_submit_t *message;
 
+    int recv = 0;
+    int total = 0;
+
     while (true) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
-        
+
         if (rc < HEAD) {
             if (rc > 0) {
                 nn_freemsg(buf);
@@ -272,14 +275,16 @@ void *lamb_push_loop(void *arg) {
 
         /* Submit */
         if (CHECK_COMMAND(buf) == LAMB_SUBMIT) {
+            lamb_debug("-> recv: %d, total: %d\n", recv++, total);
             submit = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
-
             nn_freemsg(buf);
 
             if (!submit) {
+                lamb_debug("-> unpack message failed\n");
                 continue;
             }
 
+            lamb_debug("-> receive a new message packet\n");
             message = (lamb_submit_t *)calloc(1, sizeof(lamb_submit_t));
 
             if (!message) {
@@ -303,8 +308,8 @@ void *lamb_push_loop(void *arg) {
 
             lamb_submit_free_unpacked(submit, NULL);
 
+            completed = false;
             lamb_list_iterator_t *it;
-
             it = lamb_list_iterator_new(channels, LIST_HEAD);
 
             while ((node = lamb_list_iterator_next(it))) {
@@ -324,6 +329,7 @@ void *lamb_push_loop(void *arg) {
             lamb_list_iterator_destroy(it);
 
             if (completed) {
+                total++;
                 len = lamb_pack_assembly(&buf, LAMB_OK, NULL, 0);
             } else {
                 len = lamb_pack_assembly(&buf, LAMB_BUSY, NULL, 0);
@@ -340,6 +346,7 @@ void *lamb_push_loop(void *arg) {
             break;
         }
 
+        lamb_debug("invalid request data packet\n");
         nn_freemsg(buf);
     }
 
