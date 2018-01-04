@@ -141,7 +141,7 @@ void lamb_event_loop(void) {
 
         if (CHECK_COMMAND(buf) != LAMB_REQUEST) {
             nn_freemsg(buf);
-            lamb_log(LOG_WARNING, "Invalid request from client");
+            lamb_log(LOG_WARNING, "invalid request from client");
             continue;
         }
 
@@ -149,7 +149,7 @@ void lamb_event_loop(void) {
         nn_freemsg(buf);
 
         if (!req) {
-            lamb_log(LOG_ERR, "can't parse protocol buffer packets");
+            lamb_log(LOG_ERR, "can't parse protocol packets");
             continue;
         }
 

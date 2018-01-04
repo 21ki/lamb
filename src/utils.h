@@ -88,7 +88,7 @@ typedef struct {
     unsigned long long id;
     char phone[24];
     char spcode[24];
-    char serviceid[16];
+    char serviceid[24];
     int msgfmt;
     int length;
     char content[160];

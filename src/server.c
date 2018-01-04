@@ -221,16 +221,14 @@ void lamb_event_loop(void) {
     lamb_debug("connect to scheduler %s successfull\n", config->scheduler_host);
     
     /* Connect to Deliver server */
-    /* 
-       deliverd = lamb_nn_reqrep(config->scheduler_host, config->scheduler_port, aid, config->timeout);
+    deliverd = lamb_nn_reqrep(config->deliver_host, config->deliver_port, aid, config->timeout);
 
-       if (deliverd < 0) {
-       lamb_log(LOG_ERR, "can't connect to deliver %s server", config->deliver_host);
-       return;
-       }
+    if (deliverd < 0) {
+        lamb_log(LOG_ERR, "can't connect to deliver %s server", config->deliver_host);
+        return;
+    }
 
-       lamb_debug("connect to deliver %s successfull\n", config->deliver_host);
-    */
+    lamb_debug("connect to deliver %s successfull\n", config->deliver_host);
 
     /* Fetch company information */
     err = lamb_company_get(&global->db, global->account.company, &global->company);
@@ -307,16 +305,16 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_work_loop, NULL, 1);
 
     /* Start deliver thread */
-    //lamb_start_thread(lamb_deliver_loop, NULL, 1);
+    lamb_start_thread(lamb_deliver_loop, NULL, 1);
     
     /* Start billing thread */
-    //lamb_start_thread(lamb_billing_loop, NULL, 1);
+    lamb_start_thread(lamb_billing_loop, NULL, 1);
 
     /* Start storage thread */
-    //lamb_start_thread(lamb_store_loop, NULL, 1);
+    lamb_start_thread(lamb_store_loop, NULL, 1);
 
     /* Start status thread */
-    //lamb_start_thread(lamb_stat_loop, NULL, 1);
+    lamb_start_thread(lamb_stat_loop, NULL, 1);
 
     /* Master control loop*/
     while (true) {
@@ -592,6 +590,12 @@ void *lamb_deliver_loop(void *data) {
             continue;
         }
 
+        if (CHECK_COMMAND(buf) == LAMB_EMPTY) {
+            nn_freemsg(buf);
+            lamb_sleep(1000);
+            continue;
+        }
+
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
             status->rep++;
             report = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
@@ -706,7 +710,7 @@ void *lamb_deliver_loop(void *data) {
                 d->type = LAMB_DELIVER;
                 d->id = deliver->id;
                 d->account = deliver->account;
-                d->company = deliver->company;
+                d->company = global->company.id;
                 strncpy(d->phone, deliver->phone, 11);
                 strncpy(d->spcode, deliver->spcode, 20);
                 strncpy(d->serviceid, deliver->serviceid, 10);

@@ -163,6 +163,7 @@ void *lamb_sender_loop(void *data) {
     int msgFmt;
     char *tocode;
 
+    /* Convert the coded name to the number */
     if (strcasecmp(config.encoding, "ASCII") == 0) {
         msgFmt = 0;
         tocode = "ASCII";
@@ -231,6 +232,7 @@ void *lamb_sender_loop(void *data) {
 
         /* Caching message information */
         confirmed.id = message->id;
+        strcpy(confirmed.spcode, message->spcode);
         confirmed.account = message->account;
         confirmed.company = message->company;
 
@@ -329,7 +331,7 @@ void *lamb_deliver_loop(void *data) {
             }
 
             pthread_cond_signal(&cond);
-            lamb_set_cache(&cache, msgId, confirmed.id, confirmed.account, confirmed.company);
+            lamb_set_cache(&cache, msgId, confirmed.id, confirmed.account, confirmed.company, confirmed.spcode);
             lamb_debug("receive msgId: %llu message confirmation, result: %d\n", msgId, result);
 
             break;
@@ -475,11 +477,13 @@ void *lamb_work_loop(void *data) {
     void *pk;
     char *buf;
     void *message;
+    char spcode[24];
     lamb_report_t *r;
     lamb_deliver_t *d;
     lamb_node_t *node;
     unsigned long long msgId;
 
+    int slen = strlen(config.spcode);
     Report report = LAMB_REPORT_INIT;
     Deliver deliver = LAMB_DELIVER_INIT;
 
@@ -496,7 +500,8 @@ void *lamb_work_loop(void *data) {
         if (CHECK_TYPE(message) == LAMB_REPORT) {
             r = (lamb_report_t *)message;
             msgId = r->id;
-            lamb_get_cache(&cache, &r->id, &r->account, &r->company);
+            memset(spcode, 0, sizeof(spcode));
+            lamb_get_cache(&cache, &r->id, &r->account, &r->company, spcode, sizeof(spcode));
 
             if (r->id > 0 && r->account > 0 && r->company > 0) {
                 lamb_del_cache(&cache, msgId);
@@ -507,7 +512,12 @@ void *lamb_work_loop(void *data) {
             report.id = r->id;
             report.account = r->account;
             report.company = r->company;
-            report.spcode = r->spcode;
+
+            if (strlen(r->spcode) > slen) {
+                report.spcode = r->spcode + slen;
+            }
+
+            report.spcode = spcode;
             report.phone = r->phone;
             report.status = r->status;
             report.submittime = r->submittime;
@@ -539,7 +549,11 @@ void *lamb_work_loop(void *data) {
             deliver.company = 0;
             deliver.phone = d->phone;
             deliver.spcode = d->spcode;
-            deliver.serviceid = d->serviceid;
+
+            if (strlen(d->spcode) > slen) {
+                deliver.serviceid = d->spcode + slen;
+            }
+
             deliver.msgfmt = d->msgfmt;
             deliver.length = d->length;
             deliver.content.len = d->length;
@@ -711,15 +725,15 @@ void *lamb_stat_loop(void *data) {
 }
 
 int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id,
-                   int account, int company) {
+                   int account, int company, char *spcode) {
     int i;
     redisReply *reply = NULL;
     
     i = (msgId % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "HMSET %llu id %llu account %d company %d",
-                         msgId, id, account, company);
+    reply = redisCommand(caches->nodes[i]->handle, "HMSET %llu id %llu account %d company %d spcode %s",
+                         msgId, id, account, company, spcode);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
 
     if (reply == NULL) {
@@ -730,7 +744,7 @@ int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned lon
     return 0;
 }
 
-int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account, int *company) {
+int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account, int *company, char *spcode, size_t size) {
     int i;
     redisReply *reply = NULL;
 
@@ -746,10 +760,16 @@ int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account, 
                 *id = (reply->element[0]->len > 0) ? strtoull(reply->element[0]->str, NULL, 10) : 0;
                 *account = (reply->element[1]->len > 0) ? atoi(reply->element[1]->str) : 0;
                 *company = (reply->element[2]->len > 2) ? atoi(reply->element[2]->str) : 0;
+                if (reply->element[3]->len >= size) {
+                    memcpy(spcode, reply->element[3]->str, size - 1);
+                } else {
+                    memcpy(spcode, reply->element[3]->str, reply->element[3]->len);
+                }
             }
         }
-        freeReplyObject(reply);
     }
+
+    freeReplyObject(reply);
 
     return 0;
 }
