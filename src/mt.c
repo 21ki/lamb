@@ -371,10 +371,7 @@ void *lamb_pull_loop(void *arg) {
             continue;
         }
 
-        lamb_debug("receive a request from %s\n", client->addr);
-
         if (CHECK_COMMAND(buf) == LAMB_REQ) {
-            lamb_debug("a new client request message\n");
             nn_freemsg(buf);
             node = lamb_queue_pop(queue);
 
@@ -384,7 +381,6 @@ void *lamb_pull_loop(void *arg) {
                     nn_send(fd, buf, len, NN_DONTWAIT);
                     free(buf);
                 }
-                lamb_debug("no available messages were found\n");
                 continue;
             }
 
@@ -399,7 +395,6 @@ void *lamb_pull_loop(void *arg) {
                 if (len > 0) {
                     nn_send(fd, buf, len, NN_DONTWAIT);
                     free(buf);
-                    lamb_debug("send messages to client %s\n", client->addr);
                 }
                 free(pk);
             }

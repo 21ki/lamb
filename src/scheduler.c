@@ -102,6 +102,9 @@ void lamb_event_loop(void) {
 
     gateway->match = lamb_queue_compare;
 
+    lamb_queue_t *one = lamb_queue_new(1);
+    lamb_list_rpush(gateway, lamb_node_new(one));
+
     /* Database Initialization */
     err = lamb_db_init(&db);
     if (err) {
@@ -221,6 +224,23 @@ void *lamb_push_loop(void *arg) {
         pthread_exit(NULL);
     }
 
+    if (channels->len > 0) {
+        lamb_debug("fetch routing channels successfull\n");
+    } else {
+        lamb_debug("no routing channel is available\n");
+    }
+
+    lamb_node_t *nd;
+    lamb_channel_t *chan;
+    lamb_list_iterator_t *it = lamb_list_iterator_new(channels, LIST_HEAD);
+
+    while ((nd = lamb_list_iterator_next(it))) {
+        chan = (lamb_channel_t *)nd->val;
+        lamb_debug("-> id: %d, gid: %d, weight: %d\n", chan->id, chan->gid, chan->weight);
+    }
+
+    lamb_list_iterator_destroy(it);
+
     /* Client channel initialization */
     unsigned short port = config.port + 1;
     err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
@@ -275,16 +295,14 @@ void *lamb_push_loop(void *arg) {
 
         /* Submit */
         if (CHECK_COMMAND(buf) == LAMB_SUBMIT) {
-            lamb_debug("-> recv: %d, total: %d\n", recv++, total);
+            recv++;
             submit = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
             nn_freemsg(buf);
 
             if (!submit) {
-                lamb_debug("-> unpack message failed\n");
                 continue;
             }
 
-            lamb_debug("-> receive a new message packet\n");
             message = (lamb_submit_t *)calloc(1, sizeof(lamb_submit_t));
 
             if (!message) {
@@ -318,7 +336,7 @@ void *lamb_push_loop(void *arg) {
 
                 if (node) {
                     queue = (lamb_queue_t *)node->val;
-                    if (queue->list->len < 102400) {
+                    if (queue->list->len < 1024000) {
                         lamb_queue_push(queue, message);
                         completed = true;
                         break;
@@ -525,8 +543,7 @@ int lamb_child_server(int *sock, const char *host, unsigned short *port, int pro
 }
 
 void lamb_route_channel(lamb_db_t *db, int id, lamb_list_t *channels) {
-    int err;
-    int gid;
+    int err, gid;
     lamb_account_t account;
 
     memset(&account, 0, sizeof(account));

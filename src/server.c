@@ -381,24 +381,18 @@ void *lamb_work_loop(void *data) {
 
         if (CHECK_COMMAND(buf) != LAMB_SUBMIT) {
             nn_freemsg(buf);
-            lamb_debug("receiving an invalid response packet\n");
             continue;
         }
-
-        lamb_debug("receive a new message\n");
 
         message = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
-
         if (!message) {
             nn_freemsg(buf);
-            lamb_debug("can't unpack for message packets");
             continue;
         }
 
-        lamb_debug("data packets unpack successfull\n");
-
         nn_freemsg(buf);
+        status->toal++;
 
         /* Message Encoded Convert */
         char *content;
@@ -414,7 +408,6 @@ void *lamb_work_loop(void *data) {
             fromcode = "GBK";
         } else {
             status->fmt++;
-            lamb_debug("message encoded %d not support\n", message->msgfmt);
             goto done;
         }
 
@@ -430,7 +423,6 @@ void *lamb_work_loop(void *data) {
             if (err || (message->length < 1)) {
                 status->fmt++;
                 free(content);
-                lamb_debug("message encoding conversion failed\n");
                 goto done;
             }
 
@@ -438,11 +430,12 @@ void *lamb_work_loop(void *data) {
             free(message->content.data);
             message->content.len = message->length;
             message->content.data = (uint8_t *)content;
-            lamb_debug("message encoding conversion successfull\n");
         }
 
+        /* 
         lamb_debug("id: %"PRIu64", phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n",
                    message->id, message->phone, message->spcode, message->msgfmt, message->content.data, message->length);
+        */
 
         /* Template Processing */
         if (global->account.template) {
@@ -453,7 +446,8 @@ void *lamb_work_loop(void *data) {
             while ((node = lamb_list_iterator_next(ts))) {
                 template = (lamb_template_t *)node->val;
                 if (lamb_check_spcode(template, message->spcode, strlen(message->spcode))) {
-                    if (lamb_check_content(template, (char *)message->content.data, message->length)) {
+                    if (lamb_check_content(template, (char *)message->content.data, message->content.len)) {
+                        lamb_debug("-> check template successfull\n");
                         success = true;
                         break;
                     }
@@ -462,10 +456,8 @@ void *lamb_work_loop(void *data) {
 
             if (!success) {
                 status->tmp++;
-                lamb_debug("check template failed\n");
                 goto done;
             }
-            lamb_debug("check template successfull\n");
         }
 
         /* Keywords Filtration */
@@ -484,10 +476,8 @@ void *lamb_work_loop(void *data) {
                
             if (!success) {
                 status->key++;
-                lamb_debug("check keyword failed\n");
                 goto done;
             }
-            lamb_debug("check keyword successfull\n");
         }
 
         /* Scheduling */
@@ -506,6 +496,7 @@ void *lamb_work_loop(void *data) {
                         if (rc >= HEAD) {
                             if (CHECK_COMMAND(buf) == LAMB_OK) {
                                 nn_freemsg(buf);
+                                status->sub++;
                                 break;
                             } else if (CHECK_COMMAND(buf) == LAMB_BUSY) {
                                 lamb_debug("-> the scheduler is busy!\n");
@@ -523,8 +514,6 @@ void *lamb_work_loop(void *data) {
             free(pk);
         }
 
-        lamb_debug("sending message to scheduler successfull\n");
-            
         /* Save message to billing queue */
         if (global->account.charge == LAMB_CHARGE_SUBMIT) {
             bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
@@ -540,8 +529,8 @@ void *lamb_work_loop(void *data) {
         if (storage) {
             storage->type = LAMB_SUBMIT;
             storage->id = message->id;
-            storage->account = message->account;
-            storage->company = message->company;
+            storage->account = global->account.id;
+            storage->company = global->company.id;
             strncpy(storage->spid, message->spid, 6);
             strncpy(storage->spcode, message->spcode, 20);
             strncpy(storage->phone, message->phone, 11);
@@ -936,7 +925,7 @@ bool lamb_check_content(lamb_template_t *template, char *content, int len) {
     char pattern[512];
 
     memset(pattern, 0, sizeof(pattern));
-    sprintf(pattern, "【%s】%s", template->name, template->contents);
+    sprintf(pattern, "^【%s】%s$", template->name, template->contents);
     if (lamb_pcre_regular(pattern, content, len)) {
         return true;
     }

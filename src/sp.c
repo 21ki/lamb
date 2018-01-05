@@ -117,13 +117,11 @@ void lamb_event_loop(void) {
     }
 
     /* Connect to MO Server */
-    /*
-      mo = lamb_nn_pair(config.mo_host, config.mo_port, config.id, config.timeout);
-      if (mo < 0) {
-      lamb_log(LOG_ERR, "can't connect to mo %s server", config.mo_host);
-      return;
-      }
-    */
+    mo = lamb_nn_pair(config.mo_host, config.mo_port, config.id, config.timeout);
+    if (mo < 0) {
+        lamb_log(LOG_ERR, "can't connect to mo %s server", config.mo_host);
+        return;
+    }
 
     /* Cmpp client initialization */
     err = lamb_cmpp_init(&cmpp, &config);

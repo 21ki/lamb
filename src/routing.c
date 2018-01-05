@@ -47,7 +47,7 @@ int lamb_rexp_routing(lamb_db_t *db, const char *rexp) {
     PGresult *res = NULL;
 
     target = 0;
-    sprintf(sql, "SELECT target FROM routing WHERE target = '%s' LIMIT 1", rexp);
+    sprintf(sql, "SELECT target FROM routing WHERE rexp = '%s' LIMIT 1", rexp);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);

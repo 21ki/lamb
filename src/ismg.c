@@ -329,7 +329,7 @@ void lamb_work_loop(lamb_client_t *client) {
     lamb_start_thread(lamb_stat_loop, client, 1);
 
     /* Client Message Deliver */
-    //lamb_start_thread(lamb_deliver_loop, client, 1);
+    lamb_start_thread(lamb_deliver_loop, client, 1);
 
     int len;
     char *pk, *buf;

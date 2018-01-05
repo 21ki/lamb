@@ -33,7 +33,7 @@ class MessageModel {
 
         $where = $this->whereAssembly($data);
 
-        $sql = "SELECT * FROM {$this->table} WHERE {$where} LIMIT :limit";
+        $sql = "SELECT * FROM {$this->table} WHERE {$where} ORDER BY create_time DESC LIMIT :limit";
         $sth = $this->db->prepare($sql);
 
         foreach ($data as $key => $val) {
