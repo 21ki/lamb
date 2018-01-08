@@ -314,11 +314,7 @@ void *lamb_push_loop(void *arg) {
             message->account = submit->account;
             message->company = submit->company;
             strncpy(message->spid, submit->spid, 6);
-
-            if (strlen(submit->spcode) > 8) {
-                strncpy(message->spcode, submit->spcode + 8, 12);
-            }
-
+            strncpy(message->spcode, submit->spcode, 20);
             strncpy(message->phone, submit->phone, 11);
             message->msgfmt = submit->msgfmt;
             message->length = submit->length;

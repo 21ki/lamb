@@ -69,14 +69,11 @@ int lamb_company_get_all(lamb_db_t *db, lamb_companys_t *companys, int size) {
     return 0;
 }
 
-int lamb_company_billing(lamb_cache_t *cache, int company, int count, long long *money) {
+int lamb_company_billing(lamb_cache_t *cache, int company, long long money) {
     redisReply *reply = NULL;
 
-    reply = redisCommand(cache->handle, "HINCRBY company.%d money %d", company, count);
+    reply = redisCommand(cache->handle, "HINCRBY company.%d money %d", company, money);
     if (reply != NULL) {
-        if (reply->type == REDIS_REPLY_INTEGER) {
-            *money = reply->integer;
-        }
         freeReplyObject(reply);
         return 0;
     }

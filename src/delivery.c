@@ -318,10 +318,12 @@ void *lamb_push_loop(void *arg) {
 
         /* Report */
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
+            lamb_debug("receive a new report message\n");
             Report *r = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
             nn_freemsg(buf);
 
             if (!r) {
+                lamb_debug("can't unpack report message packet\n");
                 continue;
             }
 
@@ -349,7 +351,9 @@ void *lamb_push_loop(void *arg) {
                     strncpy(report->submittime, r->submittime, 10);
                     strncpy(report->donetime, r->donetime, 10);
                     lamb_queue_push(queue, report);
+                    lamb_debug("new report push queue successfull\n");
                 }
+
             }
 
             lamb_report_free_unpacked(r, NULL);
@@ -423,6 +427,7 @@ void *lamb_push_loop(void *arg) {
             break;
         }
 
+        lamb_debug("receive a invalid command\n");
         nn_freemsg(buf);
     }
 

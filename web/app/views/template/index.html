@@ -81,7 +81,7 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th class="text-left">接入号码</th><th>签 名</th><th>模板内容</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>帐号名称</th><th>签 名</th><th>模板内容</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody id="datalist">
           </tbody>
@@ -93,7 +93,7 @@
   {{#each data}}
   <tr>
     <td><span class="glyphicon glyphicon-credit-card"></span></td>
-    <td class="text-left">{{rexp}}</td>
+    <td>{{rexp}}</td>
     <td>{{name}}</td>
     <td><a class="text-muted" href="javascript:void(0)" onclick="detailed(this)" content="{{contents}}">{{checkoverflow contents 20}}</a></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteTemplate({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
@@ -104,12 +104,12 @@
 <script id="new-page" type="text/template">
   <form id="form" class="form-horizontal">
     <div class="form-group">
-      <label class="col-sm-3 control-label">接入号码:</label>
+      <label class="col-sm-3 control-label">帐号名称:</label>
       <div class="col-sm-6">
-        <input type="text" class="form-control" name="rexp" placeholder="Enter spcode" minlength="1" required="required">
+        <input type="text" class="form-control" name="rexp" placeholder="Enter account" minlength="1" required="required">
       </div>
       <div class="col-xs-3 col-sm-3">
-        <span class="help-block">接入号码</span>
+        <span class="help-block">帐号名称</span>
       </div>
     </div>
     <div class="form-group">
@@ -141,12 +141,12 @@
 <script id="edit-page" type="text/template">
   <form id="form" class="form-horizontal">
     <div class="form-group">
-      <label class="col-sm-3 control-label">接入号码:</label>
+      <label class="col-sm-3 control-label">帐号名称:</label>
       <div class="col-sm-6">
-        <input type="text" class="form-control" name="rexp" value="{{rexp}}" placeholder="Enter spcode" minlength="1" required="required">
+        <input type="text" class="form-control" name="rexp" value="{{rexp}}" placeholder="Enter account" minlength="1" required="required">
       </div>
       <div class="col-xs-3 col-sm-3">
-        <span class="help-block">接入号码</span>
+        <span class="help-block">帐号名称</span>
       </div>
     </div>
     <div class="form-group">

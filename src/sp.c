@@ -324,13 +324,13 @@ void *lamb_deliver_loop(void *data) {
             
             if ((confirmed.sequenceId != sequenceId) || (result != 0)) {
                 status.err++;
-                lamb_debug("message response msgId: %llu, result: %u\n", msgId, result);
+                //lamb_debug("message response msgId: %llu, result: %u\n", msgId, result);
                 break;
             }
 
             pthread_cond_signal(&cond);
             lamb_set_cache(&cache, msgId, confirmed.id, confirmed.account, confirmed.company, confirmed.spcode);
-            lamb_debug("receive msgId: %llu message confirmation, result: %d\n", msgId, result);
+            //lamb_debug("receive msgId: %llu message confirmation, result: %d\n", msgId, result);
 
             break;
         case CMPP_DELIVER:;
@@ -510,11 +510,6 @@ void *lamb_work_loop(void *data) {
             report.id = r->id;
             report.account = r->account;
             report.company = r->company;
-
-            if (strlen(r->spcode) > slen) {
-                report.spcode = r->spcode + slen;
-            }
-
             report.spcode = spcode;
             report.phone = r->phone;
             report.status = r->status;
@@ -537,7 +532,6 @@ void *lamb_work_loop(void *data) {
                 }
                 free(buf);
             }
-
             free(pk);
         } else if (CHECK_TYPE(message) == LAMB_DELIVER) {
             d = (lamb_deliver_t *)message;
@@ -749,15 +743,15 @@ int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account, 
     i = (*id % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "HMGET %llu id account company", *id);
+    reply = redisCommand(caches->nodes[i]->handle, "HMGET %llu id account company spcode", *id);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
     
     if (reply != NULL) {
         if (reply->type == REDIS_REPLY_ARRAY) {
-            if (reply->elements == 3) {
+            if (reply->elements == 4) {
                 *id = (reply->element[0]->len > 0) ? strtoull(reply->element[0]->str, NULL, 10) : 0;
                 *account = (reply->element[1]->len > 0) ? atoi(reply->element[1]->str) : 0;
-                *company = (reply->element[2]->len > 2) ? atoi(reply->element[2]->str) : 0;
+                *company = (reply->element[2]->len > 0) ? atoi(reply->element[2]->str) : 0;
                 if (reply->element[3]->len >= size) {
                     memcpy(spcode, reply->element[3]->str, size - 1);
                 } else {

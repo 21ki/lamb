@@ -106,7 +106,6 @@ int lamb_spcode_process(char *code, char *spcode, size_t size);
 void lamb_get_today(const char *pfx, char *val);
 void lamb_new_table(lamb_db_t *db);
 int lamb_fetch_channels(lamb_db_t *db, const char *rexp, lamb_list_t *channels);
-bool lamb_check_spcode(lamb_template_t *template, char *spcode, int len);
 bool lamb_check_content(lamb_template_t *template, char *content, int len);
 bool lamb_check_keyword(lamb_keyword_t *key, char *content);
 int lamb_read_config(lamb_config_t *conf, const char *file);

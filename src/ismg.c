@@ -377,10 +377,11 @@ void lamb_work_loop(lamb_client_t *client) {
                 /* Message Resolution */
                 message.id = msgId;
                 message.account = client->account->id;
+                message.company = client->account->company;
                 message.spid = client->account->username;
                 cmpp_pack_get_string(&pack, cmpp_submit_dest_terminal_id, phone, 24, 21);
                 message.phone = phone;
-                cmpp_pack_get_string(&pack, cmpp_submit_src_id, spcode, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_submit_src_id, spcode, 24, 20);
                 message.spcode = spcode;
                 cmpp_pack_get_integer(&pack, cmpp_submit_msg_fmt, &msgFmt, 1);
 
