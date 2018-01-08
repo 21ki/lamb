@@ -112,7 +112,7 @@ int lamb_mqd_writable(int fd, long long millisecond);
 int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, const char* fromcode, const char* tocode, int *length);
 size_t lamb_ucs2_strlen(const char *str);
 size_t lamb_gbk_strlen(const char *str);
-bool lamb_check_msgfmt(int coded, int list[], size_t len);
+bool lamb_check_format(int coded, int list[], size_t len);
 bool lamb_check_operator(lamb_operator_t *sp, const char *phone, size_t len);
 void lamb_rlimit_processing(void);
 long lamb_get_cpu(void);

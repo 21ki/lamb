@@ -274,7 +274,7 @@ size_t lamb_gbk_strlen(const char *str) {
     return (size_t)(ptr - str);
 }
 
-bool lamb_check_msgfmt(int coded, int list[], size_t len) {
+bool lamb_check_format(int coded, int list[], size_t len) {
     for (int i = 0; i < len; i++) {
         if (list[i] == coded) {
             return true;

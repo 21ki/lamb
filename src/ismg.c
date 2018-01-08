@@ -387,7 +387,7 @@ void lamb_work_loop(lamb_client_t *client) {
 
                 /* Check Message Encoded */
                 int codeds[] = {0, 8, 11, 15};
-                if (!lamb_check_msgfmt(msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
+                if (!lamb_check_format(msgFmt, codeds, sizeof(codeds) / sizeof(int))) {
                     result = 11;
                     status.fmt++;
                     goto response;
