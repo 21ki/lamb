@@ -667,8 +667,6 @@ void *lamb_deliver_loop(void *data) {
                 continue;
             }
 
-            lamb_debug("-> id: %llu\n", dpack->id);
-
             deliver.id = dpack->id;
             deliver.account = dpack->account;
             deliver.company = dpack->company;
@@ -764,7 +762,6 @@ void *lamb_billing_loop(void *data) {
 
         bill = (lamb_bill_t *)node->val;
         pthread_mutex_lock(&(global->rdb.lock));
-        lamb_debug("-> lamb_company_billing id: %d, money: %d\n", bill->id, bill->money);
         err = lamb_company_billing(&global->rdb, bill->id, bill->money);
         pthread_mutex_unlock(&(global->rdb.lock));
         if (err) {

@@ -234,9 +234,6 @@ void *lamb_sender_loop(void *data) {
         confirmed.account = message->account;
         confirmed.company = message->company;
 
-        lamb_debug("-> id: %llu, phone: %s, spcode: %s\n",
-                   message->id, message->phone, message->spcode);
-
         /* Spcode Processing */
         if (config.extended) {
             sprintf(spcode, "%s%s", config.spcode, message->spcode);

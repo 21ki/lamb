@@ -551,7 +551,6 @@ void *lamb_deliver_loop(void *data) {
             confirmed.msgId = deliver->id;
 
         deliver:
-            lamb_debug("-> id: %llu\n", deliver->id);
             err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone,
                                (char *)deliver->content.data, deliver->msgfmt, 8);
             if (err) {

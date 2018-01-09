@@ -318,7 +318,6 @@ void *lamb_push_loop(void *arg) {
 
         /* Report */
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
-            lamb_debug("receive a new report message\n");
             Report *r = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
             nn_freemsg(buf);
 
@@ -351,7 +350,6 @@ void *lamb_push_loop(void *arg) {
                     strncpy(report->submittime, r->submittime, 10);
                     strncpy(report->donetime, r->donetime, 10);
                     lamb_queue_push(queue, report);
-                    lamb_debug("new report push queue successfull\n");
                 }
 
             }
@@ -368,8 +366,6 @@ void *lamb_push_loop(void *arg) {
             if (!d) {
                 continue;
             }
-
-            lamb_debug("-> receive id: %llu, phone: %s, spcode: %s\n", d->id, d->phone, d->spcode);
 
             account = 0;
 
