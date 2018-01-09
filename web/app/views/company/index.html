@@ -81,7 +81,7 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>公司名称</th><th>账户余额</th><th>付费类型</th><th>备注信息</th><th>创建时间</th><th>账户充值</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>公司名称</th><th>账户余额</th><th>付费类型</th><th>备注信息</th><th>账户充值</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
           </tbody>
@@ -92,7 +92,7 @@
 <script id="contents" type="text/template">
   {{#each data}}
   <tr><td><span class="glyphicon glyphicon-copyright-mark"></span></td><td>{{name}}</td><td>{{money}}</td>
-    <td>{{checkpayment paytype}}</td><td>{{description}}</td><td>{{create_time}}</td>
+    <td>{{checkpayment paytype}}</td><td>{{description}}</td>
     <td><a class="text-muted" href="javascript:void(0)" onclick="companyRecharge({{id}}, '{{name}}')"><span class="glyphicon glyphicon-plus-sign"></span> 充 值</a></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteCompany({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="editCompany({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td></tr>

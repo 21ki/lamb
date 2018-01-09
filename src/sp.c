@@ -234,6 +234,9 @@ void *lamb_sender_loop(void *data) {
         confirmed.account = message->account;
         confirmed.company = message->company;
 
+        lamb_debug("-> id: %llu, phone: %s, spcode: %s\n",
+                   message->id, message->phone, message->spcode);
+
         /* Spcode Processing */
         if (config.extended) {
             sprintf(spcode, "%s%s", config.spcode, message->spcode);
@@ -324,7 +327,7 @@ void *lamb_deliver_loop(void *data) {
             
             if ((confirmed.sequenceId != sequenceId) || (result != 0)) {
                 status.err++;
-                //lamb_debug("message response msgId: %llu, result: %u\n", msgId, result);
+                lamb_debug("receive sending message error, result: %u\n", result);
                 break;
             }
 
@@ -383,7 +386,7 @@ void *lamb_deliver_loop(void *data) {
 
                 report->type = LAMB_REPORT;
                 lamb_list_rpush(storage, lamb_node_new(report));
-                
+
                 lamb_debug("receive msgId: %llu, phone: %s, stat: %s, submitTime: %s, doneTime: %s\n",
                            report->id, report->phone, stat, report->submittime, report->donetime);
 
@@ -434,7 +437,6 @@ void *lamb_deliver_loop(void *data) {
         case CMPP_ACTIVE_TEST_RESP:
             if (heartbeat.sequenceId == sequenceId) {
                 heartbeat.count = 0;
-                lamb_debug("receive sequenceId: %u keepalive response\n", sequenceId);
             }
             break;
         }
@@ -449,8 +451,6 @@ void *lamb_cmpp_keepalive(void *data) {
 
     while (true) {
         sequenceId = heartbeat.sequenceId = cmpp_sequence();
-        lamb_debug("sending sequenceId: %u keepalive request\n", sequenceId);
-        
         err = cmpp_active_test(&cmpp.sock, sequenceId);
         if (err) {
             lamb_log(LOG_ERR, "sending keepalive packet to %s gateway failed", config.host);
@@ -544,6 +544,8 @@ void *lamb_work_loop(void *data) {
 
             if (strlen(d->spcode) > slen) {
                 deliver.serviceid = d->spcode + slen;
+            } else {
+                deliver.serviceid = "";
             }
 
             deliver.msgfmt = d->msgfmt;

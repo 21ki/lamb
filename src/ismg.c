@@ -551,6 +551,7 @@ void *lamb_deliver_loop(void *data) {
             confirmed.msgId = deliver->id;
 
         deliver:
+            lamb_debug("-> id: %llu\n", deliver->id);
             err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone,
                                (char *)deliver->content.data, deliver->msgfmt, 8);
             if (err) {
@@ -686,6 +687,11 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_int(&cfg, "SendTimeout", (int *)&conf->send_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "AcknowledgeTimeout", (int *)&conf->acknowledge_timeout) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'AcknowledgeTimeout' parameter\n");
         goto error;
     }
 

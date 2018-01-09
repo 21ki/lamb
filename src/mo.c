@@ -304,6 +304,8 @@ void *lamb_push_loop(void *arg) {
 
             nn_freemsg(buf);
 
+            lamb_debug("-> id: %llu\n", deliver->id);
+
             lamb_element *el;
             el = (lamb_element *)malloc(sizeof(lamb_element));
 

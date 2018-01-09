@@ -667,6 +667,8 @@ void *lamb_deliver_loop(void *data) {
                 continue;
             }
 
+            lamb_debug("-> id: %llu\n", dpack->id);
+
             deliver.id = dpack->id;
             deliver.account = dpack->account;
             deliver.company = dpack->company;
@@ -678,7 +680,6 @@ void *lamb_deliver_loop(void *data) {
             deliver.length =dpack->length;
             deliver.content.len = dpack->content.len;
             deliver.content.data = dpack->content.data;
-
             len = lamb_deliver_get_packed_size(&deliver);
             pk = malloc(len);
 

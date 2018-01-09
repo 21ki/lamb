@@ -369,6 +369,8 @@ void *lamb_push_loop(void *arg) {
                 continue;
             }
 
+            lamb_debug("-> receive id: %llu, phone: %s, spcode: %s\n", d->id, d->phone, d->spcode);
+
             account = 0;
 
             deliver = (lamb_deliver_t *)calloc(1, sizeof(lamb_deliver_t));
@@ -378,10 +380,10 @@ void *lamb_push_loop(void *arg) {
             }
 
             deliver->type = LAMB_DELIVER;
+            deliver->id = d->id;
             deliver->account = account;
             strncpy(deliver->phone, d->phone, 11);
             strncpy(deliver->spcode, d->serviceid, 10);
-            memcpy(deliver->serviceid, "0", 1);
             deliver->msgfmt = d->msgfmt;
             deliver->length = d->length;
             memcpy(deliver->content, d->content.data, d->content.len);

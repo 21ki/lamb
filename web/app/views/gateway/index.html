@@ -83,7 +83,7 @@
       <div class="row contents">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>通道名称</th><th>通道类型</th><th>IP 地址</th><th>最大并发</th><th>备注信息</th><th>通道测试</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>通道名称</th><th>通道类型</th><th>IP 地址</th><th>最大并发</th><th>备注信息</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
           </tbody>
@@ -100,7 +100,6 @@
     <td>{{host}}</td>
     <td>{{concurrent}}/s</td>
     <td>{{description}}</td>
-    <td><a class="text-muted" href="javascript:void(0)" onclick="checkGateway({{id}}, '{{name}}')"><span class="glyphicon glyphicon-phone"></span> 测 试</a></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteGateway({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="changeGateway({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
   </tr>

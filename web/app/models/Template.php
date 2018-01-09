@@ -116,10 +116,10 @@ class TemplateModel {
                 $res['rexp'] = Filter::string($val, null, 1);
                 break;
             case 'name':
-                $res['name'] = Filter::string($val, null, 3, 24);
+                $res['name'] = Filter::string($val, null, 1, 24);
                 break;
             case 'contents':
-                $res['contents'] = Filter::string($val, null, 3, 480);
+                $res['contents'] = Filter::string($val, null, 1, 480);
                 break;
             }
         }
