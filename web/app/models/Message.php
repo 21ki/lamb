@@ -27,7 +27,7 @@ class MessageModel {
         }
     }
 
-    public function queryMessage(array $data, $limit = 50) {
+    public function queryMessage(array $data, $limit = 30) {
         $reply = [];
         $data = $this->checkArgs($data);
 
@@ -52,12 +52,12 @@ class MessageModel {
 
     }
 
-    public function queryDeliver(array $where, int $limit = 50) {
+    public function queryDeliver(array $where, int $limit = 30) {
         $reply = [];
         $data = $this->checkDeliverArgs($where);
         $where = $this->whereDeliverAssembly($data);
 
-        $sql = "SELECT * FROM delivery WHERE {$where} LIMIT :limit";
+        $sql = "SELECT * FROM delivery WHERE {$where} ORDER BY create_time DESC LIMIT :limit";
         $sth = $this->db->prepare($sql);
 
         foreach ($data as $key => $val) {
