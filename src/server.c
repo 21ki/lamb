@@ -596,12 +596,10 @@ void *lamb_deliver_loop(void *data) {
 
             if (rpack->status == 1) {
                 if (global->account.charge == LAMB_CHARGE_SUCCESS) {
-                    lamb_debug("account->charge lamb charge success\n");
                     money = -1;
                 }
             } else {
                 if (global->account.charge == LAMB_CHARGE_SUBMIT) {
-                    lamb_debug("account->charge lamb charge submit\n");
                     money = 1;
                 }
             }
