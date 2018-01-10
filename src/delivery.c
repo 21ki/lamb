@@ -180,7 +180,10 @@ void lamb_event_loop(void) {
         lamb_log(LOG_ERR, "bind %s", nn_strerror(nn_errno()));
         return;
     }
-    
+
+    /* Start storage processing */
+    lamb_start_thread(lamb_store_loop, NULL, 1);
+
     /* Start Data Acquisition Thread */
     lamb_start_thread(lamb_stat_loop, NULL, 1);
 
@@ -379,7 +382,7 @@ void *lamb_push_loop(void *arg) {
             deliver->id = d->id;
             deliver->account = account;
             strncpy(deliver->phone, d->phone, 11);
-            strncpy(deliver->spcode, d->serviceid, 10);
+            strncpy(deliver->spcode, d->spcode, 20);
             deliver->msgfmt = d->msgfmt;
             deliver->length = d->length;
             memcpy(deliver->content, d->content.data, d->content.len);
@@ -389,7 +392,7 @@ void *lamb_push_loop(void *arg) {
 
             while ((node = lamb_list_iterator_next(it))) {
                 dt = (lamb_delivery_t *)node->val;
-                if (lamb_check_delivery(dt, d->spcode, strlen(d->spcode))) {
+                if (lamb_check_delivery(dt, deliver->spcode, strlen(d->spcode))) {
                     account = dt->target;
                     break;
                 }

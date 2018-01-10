@@ -671,7 +671,7 @@ void *lamb_deliver_loop(void *data) {
             deliver.company = global->company.id;
             deliver.phone = dpack->phone;
             memset(spcode, 0, sizeof(spcode));
-            sprintf(spcode, "%s%s", global->account.spcode, dpack->spcode);
+            sprintf(spcode, "%s%s", global->account.spcode, dpack->serviceid);
             deliver.spcode = spcode;
             deliver.msgfmt = dpack->msgfmt;
             deliver.length =dpack->length;

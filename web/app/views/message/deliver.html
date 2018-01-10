@@ -111,7 +111,7 @@
       <div class="row contents">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>服务号码</th><th>手机号码</th><th>帐号名称</th><th>公司名称</th><th>短信内容</th><th>发送时间</th></tr>
+            <tr><th>#</th><th>手机号码</th><th>服务号码</th><th>帐号名称</th><th>公司名称</th><th>短信内容</th><th>发送时间</th></tr>
           </thead>
           <tbody>
           </tbody>
@@ -123,8 +123,8 @@
   {{#each data}}
   <tr>
     <td><span class="glyphicon glyphicon-envelope"></span></td>
-    <td>{{spcode}}</td>
     <td>{{phone}}</td>
+    <td>{{spcode}}</td>
     <td>{{account}}</td>
     <td>{{company}}</td>
     <td>{{checkoverflow content 20}}</td>
