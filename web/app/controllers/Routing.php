@@ -17,8 +17,16 @@ class RoutingController extends Yaf\Controller_Abstract {
 
     public function createAction() {
         if ($this->request->isPost()) {
+            $success = false;
             $routing = new RoutingModel();
-            $success = $routing->create($this->request->getPost());
+            $data = $this->request->getPost();
+            $target = $this->getAccountId($data['rexp']);
+
+            if ($target > 0) {
+                $data['target'] = $target;
+                $success = $routing->create($data);
+            }
+
             $status = $success ? 200 : 400;
             $message = $success ? 'success' : 'failed';
             lambResponse($status, $message);
@@ -41,8 +49,17 @@ class RoutingController extends Yaf\Controller_Abstract {
 
     public function updateAction() {
         if ($this->request->isPost()) {
+            $success = false;
             $routing = new RoutingModel();
-            $success = $routing->change($this->request->getQuery('id', null), $this->request->getPost());
+            $id = $this->request->getQuery('id', null);
+            $data = $this->request->getPost();
+
+            $target = $this->getAccountId($data['rexp']);
+            if ($target > 0) {
+                $data['target'] = $target;
+                $success = $routing->change($id, $data);
+            }
+
             $status = $success ? 200 : 400;
             $message = $success ? 'success' : 'failed';
             lambResponse($status, $message);
@@ -71,4 +88,22 @@ class RoutingController extends Yaf\Controller_Abstract {
         return false;
     }
 
+    public function getAccountId(string $username) {
+        $id = 0;
+        $db = Yaf\Registry::get('db');
+        $username = str_replace([" ", "\n", "\r", "\t"], '', $username);
+        $sql = 'SELECT id FROM account WHERE username = :username';
+        $sth = $db->prepare($sql);
+        $sth->bindValue(':username', $username, PDO::PARAM_STR);
+
+        if ($sth->execute()) {
+            $reply = $sth->fetch();
+            if (count($reply) > 0) {
+                $id = intval($reply['id']);
+            }
+            
+        }
+
+        return $id;
+    }
 }

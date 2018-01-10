@@ -42,11 +42,12 @@ class RoutingModel {
     public function create(array $data = null) {
         $data = $this->checkArgs($data);
 
-        $sql = 'INSERT INTO ' . $this->table . '(rexp, target, description) VALUES(:rexp, 0, :description)';
+        $sql = 'INSERT INTO ' . $this->table . '(rexp, target, description) VALUES(:rexp, :target, :description)';
         $sth = $this->db->prepare($sql);
 
         if (count($data) > 1) {
             $sth->bindValue(':rexp', $data['rexp'],PDO::PARAM_STR);
+            $sth->bindValue(':target', $data['target'],PDO::PARAM_INT);
             $sth->bindValue(':description', $data['description'], PDO::PARAM_STR);
             if ($sth->execute()) {
                 return true;
