@@ -42,7 +42,6 @@
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
               <ul class="dropdown-menu">
                 <li><a href="/gateway">落地通道</a></li>
-                <li><a href="/groups">通道网关组</a></li>
                 <li><a href="/gateway/report">通道数据统计</a></li>
               </ul>
             </li>
@@ -94,7 +93,7 @@
  <tr>
    <td>{{seq @index}}</td>
    <td>{{rexp}}</td>
-   <td>{{target}}</td>
+   <td><a href="/channels?gid={{id}}">channels</a></td>
    <td>{{description}}</td>
    <td><button class="btn btn-default btn-xs" onclick="deleteRouting({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
    <td><button class="btn btn-default btn-xs" onclick="changeRouting({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
@@ -107,16 +106,6 @@
       <label class="col-sm-3 control-label">路由规则</label>
       <div class="col-sm-8">
         <input type="text" class="form-control" name="rexp" placeholder="Enter name" minlength="1" required="required" />
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="col-sm-3 control-label">落地通道</label>
-      <div class="col-sm-8">
-        <select id="groups" class="form-control" name="target">
-          {{#each data}}
-          <option value="{{id}}">{{name}}</option>
-          {{/each}}
-        </select>
       </div>
     </div>
     <div class="form-group">
@@ -140,16 +129,6 @@
       <div class="col-sm-8">
         <input type="hidden" name="id" value="" />
         <input type="text" class="form-control" name="rexp" value="{{routing.rexp}}" placeholder="Enter name" minlength="3" required="required">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="col-sm-3 control-label">落地通道</label>
-      <div class="col-sm-8">
-        <select id="groups" class="form-control" name="target" >
-          {{#each group}}
-          <option value="{{id}}"{{checkselectd id}}>{{name}}</option>
-          {{/each}}
-        </select>
       </div>
     </div>
     <div class="form-group">

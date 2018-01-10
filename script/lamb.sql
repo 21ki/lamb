@@ -60,12 +60,6 @@ CREATE TABLE routing (
     description text NOT NULL
 );
 
-CREATE TABLE groups (
-    id serial PRIMARY KEY NOT NULL,
-    name varchar(64) NOT NULL,
-    description text NOT NULL
-)
-
 CREATE TABLE channels (
     id int NOT NULL,
     gid int NOT NULL,
