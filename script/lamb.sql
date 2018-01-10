@@ -56,7 +56,7 @@ CREATE TABLE gateway (
 CREATE TABLE routing (
     id serial PRIMARY KEY NOT NULL,
     rexp varchar(128) NOT NULL,
-    target int NOT NULL,
+    target int UNIQUE NOT NULL,
     description text NOT NULL
 );
 

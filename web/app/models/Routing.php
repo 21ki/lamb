@@ -57,21 +57,34 @@ class RoutingModel {
         return false;
     }
 
-    public function delete($gid = null) {
-        $gid = intval($gid);
+    public function delete($id = null) {
+        $id = intval($id);
 
-        if (!$this->isUsed($gid)) {
-            $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($gid);
+        $sql = 'SELECT target as gid FROM routing WHERE id = ' . $id;
+        $sth = $this->db->query($sql);
+        
+        if ($sth === false) {
+            return false;
+        }
+        
+        $reply = $sth->fetch();
+        if (isset($reply['gid'])) {
+            $sql = 'DELETE FROM channels WHERE gid = ' . intval($reply['gid']);
             if ($this->db->query($sql)) {
-                return true;
+                $sql = 'DELETE FROM routing WHERE id = ' . $id;
+                if ($this->db->query($sql)) {
+                    return true;
+                }
             }
         }
+
         return false;
     }
 
     public function change($id = null, array $data = null) {
         $id = intval($id);
         $data = $this->checkArgs($data);
+        unset($data['rexp'], $data['target']);
         $column = $this->keyAssembly($data);
 
         if (count($data) > 0) {
@@ -86,19 +99,6 @@ class RoutingModel {
             }
 
             if ($sth->execute()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-    
-    public function isUsed($gid = NULL) {
-        $sql = 'SELECT count(id) AS total FROM account WHERE route = ' . intval($gid);
-        $sth = $this->db->query($sql);
-        if ($sth) {
-            $result = $sth->fetch();
-            if (intval($result['total']) > 0) {
                 return true;
             }
         }

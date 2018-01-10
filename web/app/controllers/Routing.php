@@ -53,13 +53,7 @@ class RoutingController extends Yaf\Controller_Abstract {
             $routing = new RoutingModel();
             $id = $this->request->getQuery('id', null);
             $data = $this->request->getPost();
-
-            $target = $this->getAccountId($data['rexp']);
-            if ($target > 0) {
-                $data['target'] = $target;
-                $success = $routing->change($id, $data);
-            }
-
+            $success = $routing->change($id, $data);
             $status = $success ? 200 : 400;
             $message = $success ? 'success' : 'failed';
             lambResponse($status, $message);
