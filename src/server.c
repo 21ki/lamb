@@ -636,8 +636,6 @@ void *lamb_deliver_loop(void *data) {
                 free(pk);
             }
 
-            lamb_report_free_unpacked(rpack, NULL);
-
             /* Store report to database */
             lamb_report_t *r;
             r = (lamb_report_t *)calloc(1, sizeof(lamb_report_t));
@@ -655,6 +653,7 @@ void *lamb_deliver_loop(void *data) {
                 lamb_list_rpush(global->storage, lamb_node_new(r));
             }
 
+            lamb_report_free_unpacked(rpack, NULL);
             continue;
         }
 
@@ -668,8 +667,8 @@ void *lamb_deliver_loop(void *data) {
             }
 
             deliver.id = dpack->id;
-            deliver.account = dpack->account;
-            deliver.company = dpack->company;
+            deliver.account = global->account.id;
+            deliver.company = global->company.id;
             deliver.phone = dpack->phone;
             memset(spcode, 0, sizeof(spcode));
             sprintf(spcode, "%s%s", global->account.spcode, dpack->spcode);
@@ -691,15 +690,13 @@ void *lamb_deliver_loop(void *data) {
                 free(pk);
             }
 
-            lamb_deliver_free_unpacked(dpack, NULL);
-
             lamb_deliver_t *d;
             d = (lamb_deliver_t *)calloc(1, sizeof(lamb_deliver_t));
 
             if (d) {
                 d->type = LAMB_DELIVER;
                 d->id = deliver.id;
-                d->account = deliver.account;
+                d->account = global->account.id;
                 d->company = global->company.id;
                 strncpy(d->phone, deliver.phone, 11);
                 strncpy(d->spcode, deliver.spcode, 20);
@@ -709,6 +706,8 @@ void *lamb_deliver_loop(void *data) {
                 memcpy(d->content, deliver.content.data, deliver.content.len);
                 lamb_list_rpush(global->storage, lamb_node_new(d));  
             }
+
+            lamb_deliver_free_unpacked(dpack, NULL);
             continue;
         }
 
@@ -801,18 +800,20 @@ int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {
     char sql[512];
     PGresult *res = NULL;
 
-    if (message != NULL) {
-        sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld",
-                message->status, (long long)message->id);
-
-        res = PQexec(db->conn, sql);
-        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-            PQclear(res);
-            return -1;
-        }
-
-        PQclear(res);
+    if (!message) {
+        return -1;
     }
+
+    sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld",
+            message->status, (long long)message->id);
+
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
 
     return 0;
 }
@@ -822,41 +823,77 @@ int lamb_write_message(lamb_db_t *db, lamb_submit_t *message) {
     char sql[512];
     PGresult *res = NULL;
 
-    if (message != NULL) {
-        column = "id, spid, spcode, phone, content, status, account, company";
-        sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)",
-                column, (long long int)message->id, message->spid, message->spcode, message->phone,
-                message->content, 0, message->account, message->company);
-
-        res = PQexec(db->conn, sql);
-        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-            PQclear(res);
-            return -1;
-        }
-
-        PQclear(res);
+    if (!message) {
+        return -1;
     }
+
+    column = "id, spid, spcode, phone, content, status, account, company";
+    sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)",
+            column, (long long int)message->id, message->spid, message->spcode, message->phone,
+            message->content, 0, message->account, message->company);
+
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
 
     return 0;
 }
 
 int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message) {
+    int err;
     char *column;
     char sql[512];
+    char *fromcode;
+    char content[512];
     PGresult *res = NULL;
 
-    if (message != NULL) {
-        column = "id, spcode, phone, content";
-        sprintf(sql, "INSERT INTO deliver(%s) VALUES(%lld, '%s', '%s', '%s')",
-                column, (long long int)message->id, message->spcode, message->phone, message->content);
-        res = PQexec(db->conn, sql);
-        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-            PQclear(res);
+    if (!message) {
+        return -1;
+    }
+
+    switch (message->msgfmt) {
+    case 0:
+        fromcode = "ASCII";
+        break;
+    case 8:
+        fromcode = "UCS-2BE";
+        break;
+    case 11:
+        fromcode = NULL;
+        break;
+    case 15:
+        fromcode = "GBK";
+        break;
+    default:
+        return -1;
+    }
+
+    if (fromcode != NULL) {
+        memset(content, 0, sizeof(content));
+        err = lamb_encoded_convert(message->content, message->length, content, sizeof(content),
+                                   fromcode, "UTF-8", &message->length);
+        if (err || (message->length < 1)) {
             return -1;
         }
-
-        PQclear(res);
     }
+
+    column = "id, spcode, phone, content, account, company";
+    sprintf(sql, "INSERT INTO delivery(%s) VALUES(%lld, '%s', '%s', '%s', %d, %d)",
+            column, (long long int)message->id, message->spcode,
+            message->phone, fromcode ? content : message->content,
+            message->account, message->company);
+
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
 
     return 0;
 }

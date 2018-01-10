@@ -412,6 +412,8 @@ void *lamb_push_loop(void *arg) {
                     lamb_queue_push(queue, deliver);
                 }
             } else {
+                deliver->account = 0;
+                deliver->company = 0;
                 lamb_list_rpush(storage, lamb_node_new(deliver));
             }
 
@@ -719,22 +721,56 @@ int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys) {
 }
 
 int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message) {
+    int err;
     char *column;
     char sql[512];
+    char *fromcode;
+    char content[512];
     PGresult *res = NULL;
 
-    if (message != NULL) {
-        column = "id, spcode, phone, content";
-        sprintf(sql, "INSERT INTO deliver(%s) VALUES(%lld, '%s', '%s', '%s')",
-                column, (long long int)message->id, message->spcode, message->phone, message->content);
-        res = PQexec(db->conn, sql);
-        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-            PQclear(res);
+    if (!message) {
+        return -1;
+    }
+
+    switch (message->msgfmt) {
+    case 0:
+        fromcode = "ASCII";
+        break;
+    case 8:
+        fromcode = "UCS-2BE";
+        break;
+    case 11:
+        fromcode = NULL;
+        break;
+    case 15:
+        fromcode = "GBK";
+        break;
+    default:
+        return -1;
+    }
+
+    if (fromcode != NULL) {
+        memset(content, 0, sizeof(content));
+        err = lamb_encoded_convert(message->content, message->length, content, sizeof(content),
+                                   fromcode, "UTF-8", &message->length);
+        if (err || (message->length < 1)) {
             return -1;
         }
-
-        PQclear(res);
     }
+
+    column = "id, spcode, phone, content, account, company";
+    sprintf(sql, "INSERT INTO delivery(%s) VALUES(%lld, '%s', '%s', '%s', %d, %d)",
+            column, (long long int)message->id, message->spcode,
+            message->phone, fromcode ? content : message->content,
+            message->account, message->company);
+
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
 
     return 0;
 }
