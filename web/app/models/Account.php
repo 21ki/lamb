@@ -14,7 +14,7 @@ class AccountModel {
     public $redis = null;
     private $config = null;
     private $table = 'account';
-    private $column = ['username', 'password', 'spcode', 'company', 'charge', 'address', 'concurrent', 'dbase', 'template', 'keyword', 'description'];
+    private $column = ['username', 'password', 'spcode', 'company', 'address', 'concurrent', 'dbase', 'template', 'keyword', 'description'];
 
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -77,8 +77,8 @@ class AccountModel {
 
         if (count($data) == count($this->column)) {
             $sql = 'INSERT INTO ' . $this->table;
-            $sql .= '(username, password, spcode, company, charge, address, concurrent, dbase, template, keyword, description) ';
-            $sql .= 'VALUES(:username, :password, :spcode, :company, :charge, :address, :concurrent, :dbase, :template, :keyword, :description)';
+            $sql .= '(username, password, spcode, company, address, concurrent, dbase, template, keyword, description) ';
+            $sql .= 'VALUES(:username, :password, :spcode, :company, :address, :concurrent, :dbase, :template, :keyword, :description)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -191,9 +191,6 @@ class AccountModel {
                 break;
             case 'company':
                 $res['company'] = Filter::number($val, null, 1);
-                break;
-            case 'charge':
-                $res['charge'] = Filter::number($val, 1, 1, 2);
                 break;
             case 'address':
                 $res['address'] = Filter::ip($val, null);

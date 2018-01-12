@@ -30,12 +30,20 @@
 #define lamb_debug(...)
 #endif
 
-#define CHECK_TYPE(val) *((int *)(val))
+#define LAMB_MT        (1 << 1)
+#define LAMB_MO        (1 << 2)
+#define LAMB_ISMG      (1 << 3)
+#define LAMB_SERVER    (1 << 4)
+#define LAMB_SCHEDULER (1 << 5)
+#define LAMB_DELIVERY  (1 << 6)
+#define LAMB_GATEWAY   (1 << 7)
 
 #define LAMB_SUBMIT  1
 #define LAMB_DELIVER 2
 #define LAMB_REPORT  3
 #define LAMB_UPDATE  4
+
+#define CHECK_TYPE(val) *((int *)(val))
 
 #define LAMB_CMCC    1
 #define LAMB_CTCC    2

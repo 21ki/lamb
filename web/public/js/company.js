@@ -28,7 +28,7 @@ function show() {
     layer.open({
         type: 1,
         title: '创建新企业',
-        area: ['700px', '420px'],
+        area: ['700px', '385px'],
         content: template
     });
 }
@@ -85,7 +85,7 @@ function editCompany(id) {
             layer.open({
                 type: 1,
                 title: '编辑企业信息',
-                area: ['700px', '420px'],
+                area: ['700px', '385px'],
                 content: contents
             });
         }
@@ -124,7 +124,7 @@ function companyRecharge(id, name) {
     layer.open({
         type: 1,
         title: '账户充值',
-        area: ['540px', '300px'],
+        area: ['540px', '320px'],
         content: contents
     });
 }

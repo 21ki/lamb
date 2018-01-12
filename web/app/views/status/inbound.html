@@ -98,12 +98,12 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>接入帐号</th><th>公司名称</th><th>通道路由</th><th>提交队列</th><th>推送队列</th><th>流量速度</th><th>错误总数</th></tr>
+            <tr><th>#</th><th>接入帐号</th><th>公司名称</th><th>提交队列</th><th>推送队列</th><th>流量速度</th><th>错误总数</th></tr>
           </thead>
           <tbody>
             <?php
               foreach ($clients as $c) {
-                echo '<tr><td><span class="glyphicon glyphicon-record"></span></td><td>',$c['username'],'</td><td>',$c['company'],'</td><td>',$c['route'],'</td><td>',intval($c['queue']),'</td><td>',$c['deliver'],'</td><td>',intval($c['speed']),'/s</td><td>',$c['error'],'</td></tr>';
+                echo '<tr><td><span class="glyphicon glyphicon-record"></span></td><td>',$c['username'],'</td><td>',$c['company'],'</td><td>',intval($c['queue']),'</td><td>',$c['deliver'],'</td><td>',intval($c['speed']),'/s</td><td>',$c['error'],'</td></tr>';
               }
               ?>
           </tbody>

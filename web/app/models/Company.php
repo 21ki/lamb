@@ -15,7 +15,7 @@ class CompanyModel {
     public $backup = null;
     public $config = null;
     private $table = 'company';
-    private $column = ['name', 'paytype', 'contacts', 'telephone', 'description'];
+    private $column = ['name', 'contacts', 'telephone', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -61,7 +61,8 @@ class CompanyModel {
         $data = $this->checkArgs($data);
         
         if (count($data) == count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(name, paytype, contacts, telephone, description) VALUES(:name, :paytype, :contacts, :telephone, :description)';
+            $column = 'name, contacts, telephone, description';
+            $sql = 'INSERT INTO ' . $this->table . '(' . $column . ') VALUES(:name, :contacts, :telephone, :description)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -180,9 +181,6 @@ class CompanyModel {
             switch ($key) {
             case 'name':
                 $res['name'] = Filter::string($val, null, 1, 32);
-                break;
-            case 'paytype':
-                $res['paytype'] = Filter::number($val, 1, 1, 2);
                 break;
             case 'contacts':
                 $res['contacts'] = Filter::string($val, null, 1, 32);

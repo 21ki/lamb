@@ -21,7 +21,7 @@ function show() {
     layer.open({
         type: 1,
         title: '新建签名模板',
-        area: ['650px', '350px'],
+        area: ['650px', '365px'],
         content: template
     });
 }
@@ -75,7 +75,7 @@ function changeTemplate(id) {
             layer.open({
                 type: 1,
                 title: '编辑签名模板',
-                area: ['650px', '350px'],
+                area: ['650px', '365px'],
                 content: contents
             });
         }

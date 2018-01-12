@@ -33,6 +33,10 @@ th:last-child, td:last-child {
     padding-left: 0px;
 }
 
+form div:last-child div {
+    margin-top: 10px;
+}
+
 form .form-group button, form .form-group a {
     width: 80px;
     margin-right: 20px;

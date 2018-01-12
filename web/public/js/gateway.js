@@ -25,7 +25,7 @@ function show() {
     layer.open({
         type: 1,
         title: '创建新网关',
-        area: ['915px', '610px'],
+        area: ['915px', '620px'],
         content: template
     });
 
@@ -91,7 +91,7 @@ function changeGateway(id) {
             layer.open({
                 type: 1,
                 title: '编辑网关信息',
-                area: ['915px', '610px'],
+                area: ['915px', '620px'],
                 content: contents
             });
 

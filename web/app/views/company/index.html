@@ -80,7 +80,7 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>公司名称</th><th>账户余额</th><th>付费类型</th><th>备注信息</th><th>账户充值</th><th>编 辑</th><th>删 除</th></tr>
+            <tr><th>#</th><th>公司名称</th><th>账户余额</th><th>备注信息</th><th>账户充值</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody>
           </tbody>
@@ -90,8 +90,11 @@
 </div>
 <script id="contents" type="text/template">
   {{#each data}}
-  <tr><td><span class="glyphicon glyphicon-copyright-mark"></span></td><td>{{name}}</td><td>{{money}}</td>
-    <td>{{checkpayment paytype}}</td><td>{{description}}</td>
+  <tr>
+    <td><span class="glyphicon glyphicon-copyright-mark"></span></td>
+    <td>{{name}}</td>
+    <td>{{money}}</td>
+    <td>{{description}}</td>
     <td><a class="text-muted" href="javascript:void(0)" onclick="companyRecharge({{id}}, '{{name}}')"><span class="glyphicon glyphicon-plus-sign"></span> 充 值</a></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteCompany({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="editCompany({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td></tr>
@@ -128,8 +131,8 @@
     </div>
     <div class="form-group">
       <div class="col-sm-offset-3 col-xs-9 col-sm-9">
-        <button type="button" id="submit" onclick="formRecharge({{id}})" class="btn btn-success" style="width:75px;margin-top:15px">充 值</button>
-        <button type="button" class="btn btn-default" onclick="layer.closeAll()" style="width:75px;margin-top:15px">取 消</button>
+        <button type="button" class="btn btn-success" id="submit" onclick="formRecharge({{id}})" style="width:75px">充 值</button>
+        <button type="button" class="btn btn-default" onclick="layer.closeAll()" style="width:75px">取 消</button>
       </div>
     </div>
   </form>
@@ -161,18 +164,6 @@
       </div>
       <div class="col-xs-4 col-sm-4">
         <span class="help-block">联系人电话或手机</span>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="col-xs-4 col-sm-4 control-label">付费类型:</label>
-      <div class="col-xs-4 col-sm-4">
-        <select class="form-control" name="paytype">
-          <option value="1">预付费</option>
-          <option value="2">后付费</option>
-        </select>
-      </div>
-      <div class="col-xs-4 col-sm-4">
-        <span class="help-block">账户付费结算方式</span>
       </div>
     </div>
     <div class="form-group">
@@ -219,18 +210,6 @@
       </div>
       <div class="col-xs-4 col-sm-4">
         <span class="help-block">联系人电话或手机</span>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="col-xs-4 col-sm-4 control-label">付费类型:</label>
-      <div class="col-xs-4 col-sm-4">
-        <select class="form-control" name="paytype">
-          <option value="1"{{checkpayment paytype 1}}>预付费</option>
-          <option value="2"{{checkpayment paytype 2}}>后付费</option>
-        </select>
-      </div>
-      <div class="col-xs-4 col-sm-4">
-        <span class="help-block">账户付费结算方式</span>
       </div>
     </div>
     <div class="form-group">

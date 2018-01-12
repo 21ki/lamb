@@ -81,6 +81,10 @@ form {
     margin-right: 18px;
 }
 
+form div:last-child div {
+    margin-top: 10px;
+}
+
 .statistics {
     padding: 8px 15px;
 }
