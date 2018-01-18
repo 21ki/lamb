@@ -12,18 +12,14 @@
 #include "utils.h"
 #include "list.h"
 #include "cache.h"
+#include "config.h"
 #include "routing.h"
 #include "account.h"
 #include "company.h"
 #include "template.h"
 #include "keyword.h"
 #include "gateway.h"
-
-#define LAMB_CLIENT       1
-#define LAMB_GATEWAY      2
-
-#define LAMB_BLACKLIST 1
-#define LAMB_WHITELIST 2
+#include "message.h"
 
 typedef struct {
     int id;
@@ -63,6 +59,9 @@ typedef struct {
     unsigned long long delv;
     unsigned long long fmt;
     unsigned long long blk;
+    unsigned long long usb;
+    unsigned long long limt;
+    unsigned long long rejt;
     unsigned long long tmp;
     unsigned long long key;
 } lamb_status_t;
@@ -72,9 +71,9 @@ typedef struct {
     lamb_db_t mdb;
     long long money;
     lamb_cache_t rdb;
-    lamb_caches_t cache;
     lamb_list_t *storage;
     lamb_list_t *billing;
+    lamb_list_t *unsubscribe;
     lamb_account_t account;
     lamb_company_t company;
     lamb_list_t *templates;
@@ -99,6 +98,7 @@ void *lamb_deliver_loop(void *data);
 void *lamb_store_loop(void *data);
 void *lamb_billing_loop(void *data);
 void *lamb_stat_loop(void *data);
+void *lamb_unsubscribe_loop(void *arg);
 int lamb_write_report(lamb_db_t *db, lamb_report_t *message);
 int lamb_write_message(lamb_db_t *db, lamb_submit_t *message);
 int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message);
@@ -108,6 +108,12 @@ void lamb_new_table(lamb_db_t *db);
 int lamb_fetch_channels(lamb_db_t *db, const char *rexp, lamb_list_t *channels);
 bool lamb_check_content(lamb_template_t *template, char *content, int len);
 bool lamb_check_keyword(lamb_keyword_t *key, char *content);
+bool lamb_check_blacklist(lamb_caches_t *cache, char *number);
+bool lamb_check_unsubscribe(lamb_caches_t *cache, int id, char *number);
+bool lamb_check_frequency(lamb_caches_t *cache, int id, char *number);
+bool lamb_check_unsubval(char *content, int len);
+void lamb_fail_response(int sock, Report *resp, Submit *message, int cause);
+int lamb_component_initialization(lamb_config_t *cfg);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

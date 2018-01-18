@@ -26,13 +26,13 @@
 #include <pcre.h>
 #include <cmpp.h>
 #include "server.h"
-#include "config.h"
 #include "socket.h"
 #include "keyword.h"
 #include "security.h"
 #include "channel.h"
-#include "command.h"
-#include "message.h"
+
+#define LAMB_LIMIT   3
+#define MAX_LIFETIME 60
 
 static int aid;
 static int mt, mo;
@@ -41,6 +41,9 @@ static int deliverd;
 static lamb_status_t *status;
 static lamb_config_t *config;
 static lamb_global_t *global;
+static lamb_caches_t *blacklist;
+static lamb_caches_t *frequency;
+static lamb_caches_t *unsubscribe;
 
 int main(int argc, char *argv[]) {
     bool background = false;
@@ -103,156 +106,11 @@ void lamb_event_loop(void) {
 
     lamb_set_process("lamb-server");
 
-    status = (lamb_status_t *)calloc(1, sizeof(lamb_status_t));
-    global = (lamb_global_t *)calloc(1, sizeof(lamb_global_t));
-
-    err = lamb_signal(SIGHUP, lamb_reload);
+    err = lamb_component_initialization(config);
     if (err) {
-        lamb_debug("lamb signal initialization  failed\n");
-    } else {
-        lamb_debug("lamb signal initialization successfull\n");
-    }
-
-    /* Storage Queue Initialization */
-    global->storage = lamb_list_new();
-    if (!global->storage) {
-        lamb_log(LOG_ERR, "storage queue initialization failed");
+        lamb_debug("component initialization failed\n");
         return;
     }
-
-    lamb_debug("storage queue initialization successfull\n");
-    
-    /* Billing Queue Initialization */
-    global->billing = lamb_list_new();
-    if (!global->billing) {
-        lamb_log(LOG_ERR, "billing queue initialization failed");
-        return;
-    }
-
-    lamb_debug("billing queue initialization successfull\n");
-    
-    /* Redis Initialization */
-    err = lamb_cache_connect(&global->rdb, config->redis_host, config->redis_port,
-                             NULL, config->redis_db);
-    if (err) {
-        lamb_log(LOG_ERR, "Can't connect to redis server");
-        return;
-    }
-
-    lamb_debug("connect to cache server %s successfull\n", config->redis_host);
-    
-    /* Cache Cluster Initialization */
-    lamb_nodes_connect(&global->cache, LAMB_MAX_CACHE, config->nodes, 7, 1);
-    if (global->cache.len != 7) {
-        lamb_log(LOG_ERR, "connect to cache cluster server failed");
-        return;
-    }
-
-    lamb_debug("connect to cache node successfull\n");
-    
-    /* Postgresql Database  */
-    err = lamb_db_init(&global->db);
-    if (err) {
-        lamb_log(LOG_ERR, "postgresql database initialization failed");
-        return;
-    }
-
-    err = lamb_db_connect(&global->db, config->db_host, config->db_port,
-                          config->db_user, config->db_password, config->db_name);
-    if (err) {
-        lamb_log(LOG_ERR, "Can't connect to postgresql database");
-        return;
-    }
-
-    lamb_debug("connect to postgresql %s successfull\n", config->db_host);
-    
-    /* Postgresql Database  */
-    err = lamb_db_init(&global->mdb);
-    if (err) {
-        lamb_log(LOG_ERR, "postgresql database initialization failed");
-        return;
-    }
-
-    err = lamb_db_connect(&global->mdb, config->msg_host, config->msg_port,
-                          config->msg_user, config->msg_password, config->msg_name);
-    if (err) {
-        lamb_log(LOG_ERR, "Can't connect to message database");
-        return;
-    }
-
-    /* fetch  account */
-    err = lamb_account_fetch(&global->db, aid, &global->account);
-    if (err) {
-        lamb_log(LOG_ERR, "Can't fetch account '%d' information", aid);
-        return;
-    }
-
-    lamb_debug("fetch account information successfull\n");
-
-    /* Connect to MT server */
-    mt = lamb_nn_reqrep(config->mt_host, config->mt_port, aid, config->timeout);
-
-    if (mt < 0) {
-        lamb_log(LOG_ERR, "can't connect to MT %s server", config->mt_host);
-        return;
-    }
-
-    
-    lamb_debug("connect to mt %s successfull\n", config->mt_host);
-    
-    /* Connect to MO server */
-    mo = lamb_nn_pair(config->mo_host, config->mo_port, aid, config->timeout);
-
-    if (mo < 0) {
-        lamb_log(LOG_ERR, "can't connect to MO %s server", config->mo_host);
-        return;
-    }
-
-    lamb_debug("connect to mo %s successfull\n", config->mo_host);
-
-    /* Connect to Scheduler server */
-    scheduler = lamb_nn_pair(config->scheduler_host, config->scheduler_port, aid, config->timeout);
-
-    if (scheduler < 0) {
-        lamb_log(LOG_ERR, "can't connect to Scheduler %s server", config->scheduler_host);
-        return;
-    }
-
-    lamb_debug("connect to scheduler %s successfull\n", config->scheduler_host);
-    
-    /* Connect to Deliver server */
-    deliverd = lamb_nn_reqrep(config->deliver_host, config->deliver_port, aid, config->timeout);
-
-    if (deliverd < 0) {
-        lamb_log(LOG_ERR, "can't connect to deliver %s server", config->deliver_host);
-        return;
-    }
-
-    lamb_debug("connect to deliver %s successfull\n", config->deliver_host);
-
-    /* Fetch company information */
-    err = lamb_company_get(&global->db, global->account.company, &global->company);
-    if (err) {
-        lamb_log(LOG_ERR, "Can't fetch id %d company information", global->account.company);
-        return;
-    }
-
-    lamb_debug("fetch company information successfull\n");
-    
-    /* Template information Initialization */
-    global->templates = lamb_list_new();
-    if (!global->templates) {
-        lamb_log(LOG_ERR, "template queue initialization failed");
-        return;
-    }
-
-    err = lamb_get_template(&global->db, global->account.username, global->templates);
-    if (err) {
-        lamb_log(LOG_ERR, "Can't fetch template information");
-        return;
-    }
-
-    lamb_debug("fetch template information successfull\n");
 
     /* debug templage */
     lamb_template_t *t;
@@ -261,27 +119,12 @@ void lamb_event_loop(void) {
 
     while ((node = lamb_list_iterator_next(it))) {
         t = (lamb_template_t *)node->val;
-        lamb_debug("template -> id: %d, rexp: %s, name: %s, contents: %s\n", t->id, t->rexp, t->name, t->contents);
+        lamb_debug("template -> id: %d, rexp: %s, name: %s, contents: %s\n",
+                   t->id, t->rexp, t->name, t->contents);
     }
 
     lamb_list_iterator_destroy(it);
 
-    /* Keyword information Initialization */
-    global->keywords = lamb_list_new();
-    if (!global->keywords) {
-        lamb_log(LOG_ERR, "keyword queue initialization failed");
-        return;
-    }
-
-    if (global->account.keyword) {
-        err = lamb_keyword_get_all(&global->db, global->keywords);
-        if (err) {
-            lamb_log(LOG_ERR, "Can't fetch keyword information");
-        }
-    }
-
-    lamb_debug("fetch keywords information successfull\n");
-    
     lamb_keyword_t *k;
     it = lamb_list_iterator_new(global->keywords, LIST_HEAD);
 
@@ -295,9 +138,6 @@ void lamb_event_loop(void) {
     /* Thread lock initialization */
     pthread_mutex_init(&global->lock, NULL);
 
-    /* Message Table initialization */
-    //lamb_new_table(&global->mdb);
-    
     /* Start sender thread */
     //long cpus = lamb_get_cpu();
     //lamb_start_thread(lamb_work_loop, NULL, config->work_threads > cpus ? cpus : config->work_threads);
@@ -312,6 +152,9 @@ void lamb_event_loop(void) {
 
     /* Start storage thread */
     lamb_start_thread(lamb_store_loop, NULL, 1);
+
+    /* Start unsubscribe thread */
+    lamb_start_thread(lamb_unsubscribe_loop, NULL, 1);
 
     /* Start status thread */
     lamb_start_thread(lamb_stat_loop, NULL, 1);
@@ -344,6 +187,10 @@ void *lamb_work_loop(void *data) {
     lamb_submit_t *storage;
     lamb_template_t *template;
     lamb_keyword_t *keyword;
+    Report resp = LAMB_REPORT_INIT;
+
+    resp.account = global->account.id;
+    resp.company = global->company.id;
 
     lamb_cpu_affinity(pthread_self());
     
@@ -408,6 +255,28 @@ void *lamb_work_loop(void *data) {
             fromcode = "GBK";
         } else {
             status->fmt++;
+            lamb_fail_response(mo, &resp, message, 7);
+            goto done;
+        }
+
+        /* Check phone blacklist */
+        if (lamb_check_blacklist(blacklist, message->phone)) {
+            status->blk++;
+            lamb_fail_response(mo, &resp, message, 7);
+            goto done;
+        }
+
+        /* Check user unsubscribe */
+        if (lamb_check_unsubscribe(unsubscribe, aid, message->phone)) {
+            status->usb++;
+            lamb_fail_response(mo, &resp, message, 7);
+            goto done;
+        }
+
+        /* Check limit frequency */
+        if (lamb_check_frequency(frequency, aid, message->phone)) {
+            status->limt++;
+            lamb_fail_response(mo, &resp, message, 7);
             goto done;
         }
 
@@ -415,14 +284,17 @@ void *lamb_work_loop(void *data) {
             content = (char *)malloc(512);
 
             if (!content) {
+                lamb_fail_response(mo, &resp, message, 4);
                 goto done;
             }
 
+            /* Message coding conversion */
             err = lamb_encoded_convert((char *)message->content.data, message->length, content,
                                        512, fromcode, "UTF-8", &message->length);
             if (err || (message->length < 1)) {
                 status->fmt++;
                 free(content);
+                lamb_fail_response(mo, &resp, message, 4);
                 goto done;
             }
 
@@ -454,6 +326,7 @@ void *lamb_work_loop(void *data) {
 
             if (!success) {
                 status->tmp++;
+                lamb_fail_response(mo, &resp, message, 7);
                 goto done;
             }
         }
@@ -474,52 +347,65 @@ void *lamb_work_loop(void *data) {
                
             if (!success) {
                 status->key++;
+                lamb_fail_response(mo, &resp, message, 7);
                 goto done;
             }
         }
 
-        /* Scheduling */
         len = lamb_submit_get_packed_size(message);
         pk = malloc(len);
 
-        if (pk) {
-            char *packet;
-            lamb_submit_pack(message, pk);
-            len = lamb_pack_assembly(&packet, LAMB_SUBMIT, pk, len);
-            if (len > 0) {
-                while (true) {
-                    rc = nn_send(scheduler, packet, len, 0);
-                    if (rc == len) {
-                        rc = nn_recv(scheduler, &buf, NN_MSG, 0);
-                        if (rc >= HEAD) {
-                            if (CHECK_COMMAND(buf) == LAMB_OK) {
-                                nn_freemsg(buf);
-                                status->sub++;
-                                break;
-                            } else if (CHECK_COMMAND(buf) == LAMB_BUSY) {
-                                lamb_debug("-> the scheduler is busy!\n");
-                            }
-                        }
-
-                        if (rc > 0) {
-                            nn_freemsg(buf);
-                        }
-                    }
-                    lamb_sleep(1000);
-                }
-                free(packet);
-            }
-            free(pk);
+        if (!pk) {
+            lamb_fail_response(mo, &resp, message, 4);
+            goto done;
         }
 
-        /* Save message to billing queue */
-        if (global->account.charge == LAMB_CHARGE_SUBMIT) {
-            bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
-            if (bill) {
-                bill->id = global->company.id;
-                bill->money = -1;
-                lamb_list_rpush(global->billing, lamb_node_new(bill));
+        char *packet;
+        lamb_submit_pack(message, pk);
+        len = lamb_pack_assembly(&packet, LAMB_SUBMIT, pk, len);
+        if (len < 1) {
+            lamb_fail_response(mo, &resp, message, 4);
+            goto done;
+        }
+
+        /* Scheduling */
+        while (true) {
+            rc = nn_send(scheduler, packet, len, 0);
+            if (rc == len) {
+                rc = nn_recv(scheduler, &buf, NN_MSG, 0);
+                if (rc >= HEAD) {
+                    if (CHECK_COMMAND(buf) == LAMB_OK) {
+                        nn_freemsg(buf);
+                        status->sub++;
+                        break;
+                    } else if (CHECK_COMMAND(buf) == LAMB_BUSY) {
+                        lamb_debug("-> the scheduler is busy!\n");
+                    } else if (CHECK_COMMAND(buf) == LAMB_REJECT) {
+                        status->rejt++;
+                        nn_freemsg(buf);
+                        lamb_fail_response(mo, &resp, message, 7);
+                        lamb_debug("-> message was rejected by the scheduler!\n");
+                        goto done;
+                    }
+                }
+
+                if (rc > 0) {
+                    nn_freemsg(buf);
+                }
             }
+            lamb_sleep(1000);
+        }
+
+        free(packet);
+        free(pk);
+
+
+        /* Save message to billing queue */
+        bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
+        if (bill) {
+            bill->id = global->company.id;
+            bill->money = -1;
+            lamb_list_rpush(global->billing, lamb_node_new(bill));
         }
 
         /* Save message to storage queue */
@@ -553,7 +439,7 @@ void *lamb_deliver_loop(void *data) {
     char *req, *buf;
     char spcode[24];
     lamb_bill_t *bill;
-    int rc, len, rlen, money;
+    int rc, len, rlen;
 
     Report report = LAMB_REPORT_INIT;
     Deliver deliver = LAMB_DELIVER_INIT;
@@ -592,27 +478,15 @@ void *lamb_deliver_loop(void *data) {
                 continue;
             }
 
-            money = 0;
-
-            if (rpack->status == 1) {
-                if (global->account.charge == LAMB_CHARGE_SUCCESS) {
-                    money = -1;
-                }
-            } else {
-                if (global->account.charge == LAMB_CHARGE_SUBMIT) {
-                    money = 1;
-                }
-            }
-
-            if (money != 0) {
+            if (rpack->status != 1) {
                 bill = (lamb_bill_t *)malloc(sizeof(lamb_bill_t));
                 if (bill) {
                     bill->id = global->company.id;
-                    bill->money = money;
+                    bill->money = 1;
                     lamb_list_rpush(global->billing, lamb_node_new(bill));
                 }
             }
-
+    
             report.id = rpack->id;
             report.account = rpack->account;
             report.company = rpack->company;
@@ -716,9 +590,13 @@ void *lamb_deliver_loop(void *data) {
 }
 
 void *lamb_store_loop(void *data) {
+    int err;
     void *message;
+    char *fromcode;
+    char content[512];
     lamb_node_t *node;
-    
+    lamb_deliver_t *d;    
+
     while (true) {
         node = lamb_list_lpop(global->storage);
 
@@ -734,7 +612,48 @@ void *lamb_store_loop(void *data) {
         } else if (CHECK_TYPE(message) == LAMB_REPORT) {
             lamb_write_report(&global->mdb, (lamb_report_t *)message);
         } else if (CHECK_TYPE(message) == LAMB_DELIVER) {
-            lamb_write_deliver(&global->mdb, (lamb_deliver_t *)message);
+            d = (lamb_deliver_t *)message;
+            switch (d->msgfmt) {
+            case 0:
+                fromcode = "ASCII";
+                break;
+            case 8:
+                fromcode = "UCS-2BE";
+                break;
+            case 11:
+                fromcode = "UTF-8";
+                break;
+            case 15:
+                fromcode = "GBK";
+                break;
+            default:
+                fromcode = NULL;
+                break;
+            }
+
+            if (fromcode != NULL) {
+                if (d->msgfmt == 11) {
+                    lamb_write_deliver(&global->mdb, d);
+                } else {
+                    /* message coding conversion */
+                    memset(content, 0, sizeof(content));
+                    err = lamb_encoded_convert(d->content, d->length, content, sizeof(content),
+                                               fromcode, "UTF-8", &d->length);
+                    if (!err && (d->length > 0)) {
+                        memset(d->content, 0, 160);
+                        memcpy(d->content, content, d->length);
+
+                        /* check unsubscribe content */
+                        if (lamb_check_unsubval(d->content, d->length)) {
+                            lamb_list_rpush(global->unsubscribe,
+                                            lamb_node_new(lamb_strdup(d->phone)));
+                        }
+
+                        /* save to message database */
+                        lamb_write_deliver(&global->mdb, d);
+                    }
+                }
+            }
         }
 
         free(node);
@@ -772,6 +691,43 @@ void *lamb_billing_loop(void *data) {
     pthread_exit(NULL);
 }
 
+void *lamb_unsubscribe_loop(void *arg) {
+    int i;
+    char *number;
+    unsigned long phone;
+    lamb_node_t *node;
+    redisReply *reply = NULL;
+
+    while (true) {
+        node = lamb_list_lpop(global->unsubscribe);
+
+        if (!node) {
+            lamb_sleep(100);
+            continue;
+        }
+
+        number = node->val;
+
+        phone = atol(number);
+
+        if (phone > 0) {
+            i = (phone % unsubscribe->len);
+            pthread_mutex_lock(&unsubscribe->nodes[i]->lock);
+            reply = redisCommand(unsubscribe->nodes[i]->handle, "SET %d.%lu 1", aid, phone);
+            pthread_mutex_unlock(&unsubscribe->nodes[i]->lock);
+
+            if (reply) {
+                freeReplyObject(reply);
+            }
+        }
+
+        free(node);
+        free(number);
+    }
+
+    pthread_exit(NULL);
+}
+
 void *lamb_stat_loop(void *data) {
     // int err;
     redisReply *reply = NULL;
@@ -784,8 +740,11 @@ void *lamb_stat_loop(void *data) {
             freeReplyObject(reply);
         }
 
-        lamb_debug("store: %u, bill: %u, toal: %lld, sub: %llu, rep: %llu, delv: %llu, fmt: %llu, blk: %llu, tmp: %llu, key: %llu\n",
-                   global->storage->len, global->billing->len, status->toal, status->sub, status->rep, status->delv, status->fmt, status->blk, status->tmp, status->key);
+        lamb_debug("store: %u, bill: %u, toal: %lld, sub: %llu, rep: %llu, delv: %llu, "
+                   "fmt: %llu, blk: %llu, tmp: %llu, key: %llu, usb: %llu, limt: %llu, rejt: %llu\n",
+                   global->storage->len, global->billing->len, status->toal, status->sub,
+                   status->rep, status->delv, status->fmt, status->blk, status->tmp,
+                   status->key, status->usb, status->limt, status->rejt);
 
         sleep(3);
     }
@@ -842,48 +801,18 @@ int lamb_write_message(lamb_db_t *db, lamb_submit_t *message) {
 }
 
 int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message) {
-    int err;
     char *column;
     char sql[512];
-    char *fromcode;
-    char content[512];
     PGresult *res = NULL;
 
     if (!message) {
         return -1;
     }
 
-    switch (message->msgfmt) {
-    case 0:
-        fromcode = "ASCII";
-        break;
-    case 8:
-        fromcode = "UCS-2BE";
-        break;
-    case 11:
-        fromcode = NULL;
-        break;
-    case 15:
-        fromcode = "GBK";
-        break;
-    default:
-        return -1;
-    }
-
-    if (fromcode != NULL) {
-        memset(content, 0, sizeof(content));
-        err = lamb_encoded_convert(message->content, message->length, content, sizeof(content),
-                                   fromcode, "UTF-8", &message->length);
-        if (err || (message->length < 1)) {
-            return -1;
-        }
-    }
-
     column = "id, spcode, phone, content, account, company";
     sprintf(sql, "INSERT INTO delivery(%s) VALUES(%lld, '%s', '%s', '%s', %d, %d)",
-            column, (long long int)message->id, message->spcode,
-            message->phone, fromcode ? content : message->content,
-            message->account, message->company);
+            column, (long long int)message->id, message->spcode, message->phone,
+            message->content, message->account, message->company);
 
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -962,6 +891,350 @@ bool lamb_check_keyword(lamb_keyword_t *key, char *content) {
     }
 
     return false;
+}
+
+bool lamb_check_unsubval(char *content, int len) {
+    if (strstr(content, "t")) {
+        return true;
+    } else if (strstr(content, "T")) {
+        return true;
+    } else if (strstr(content, "TD")) {
+        return true;
+    } else if (strstr(content, "退")) {
+        return true;
+    } else if (strstr(content, "退订")) {
+        return true;
+    }
+
+    return false;
+}
+
+bool lamb_check_blacklist(lamb_caches_t *cache, char *number) {
+    int i = -1;
+    bool r = false;
+    unsigned long phone;
+    redisReply *reply = NULL;
+
+    phone = atol(number);
+
+    if (phone > 0) {
+        i = (phone % cache->len);
+    }
+
+    if (i > -1) {
+        pthread_mutex_lock(&cache->nodes[i]->lock);
+        reply = redisCommand(cache->nodes[i]->handle, "EXISTS %lu", phone);
+        pthread_mutex_unlock(&cache->nodes[i]->lock);
+
+        if (reply != NULL) {
+            if (reply->type == REDIS_REPLY_INTEGER) {
+                if (reply->integer == 1) {
+                    r = true;
+                }
+            }
+            freeReplyObject(reply);
+        }
+    }
+
+    return r;
+}
+
+bool lamb_check_unsubscribe(lamb_caches_t *cache, int id, char *number) {
+    int i = -1;
+    bool r = false;
+    unsigned long phone;
+    redisReply *reply = NULL;
+
+    phone = atol(number);
+
+    if (phone > 0) {
+        i = (phone % cache->len);
+    }
+
+    if (i > -1) {
+        pthread_mutex_lock(&cache->nodes[i]->lock);
+        reply = redisCommand(cache->nodes[i]->handle, "EXISTS %d.%lu", id, phone);
+        pthread_mutex_unlock(&cache->nodes[i]->lock);
+
+        if (reply != NULL) {
+            if (reply->type == REDIS_REPLY_INTEGER) {
+                if (reply->integer == 1) {
+                    r = true;
+                }
+            }
+            freeReplyObject(reply);
+        }
+    }
+
+    return r;
+}
+
+bool lamb_check_frequency(lamb_caches_t *cache, int id, char *number) {
+    int i = -1;
+    bool r = false;
+    unsigned long phone;
+    redisReply *reply = NULL;
+
+    phone = atol(number);
+
+    if (phone > 0) {
+        i = (phone % cache->len);
+    }
+
+    if (i > -1) {
+        pthread_mutex_lock(&cache->nodes[i]->lock);
+        reply = redisCommand(cache->nodes[i]->handle, "INCRBY %d.%lu 1", id, phone);
+        pthread_mutex_unlock(&cache->nodes[i]->lock);
+
+        if (reply != NULL) {
+            if (reply->type == REDIS_REPLY_INTEGER) {
+                if (reply->integer == 1) {
+                    freeReplyObject(reply);
+                    pthread_mutex_lock(&cache->nodes[i]->lock);
+                    reply = redisCommand(cache->nodes[i]->handle, "EXPIRE %d.%lu %d", id, phone, MAX_LIFETIME);
+                    pthread_mutex_unlock(&cache->nodes[i]->lock);
+                } else if (reply->integer > LAMB_LIMIT) {
+                    r = true;
+                }
+            }
+            freeReplyObject(reply);
+        }
+    }
+
+    return r;
+}
+
+void lamb_fail_response(int sock, Report *resp, Submit *message, int cause) {
+    int len;
+    void *pk;
+    char *buf;
+
+    resp->id = message->id;
+    resp->phone = message->phone;
+    resp->spcode = message->spcode;
+    resp->status = cause;
+    resp->submittime = "";
+    resp->donetime = "";
+
+    len = lamb_report_get_packed_size(resp);
+    pk = malloc(len);
+
+    if (pk) {
+        lamb_report_pack(resp, pk);
+        len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
+        if (len > 0) {
+            nn_send(sock, buf, len, NN_DONTWAIT);
+            free(buf);
+        }
+        free(pk);
+    }
+
+    return;
+}
+
+int lamb_component_initialization(lamb_config_t *cfg) {
+    int err;
+
+    if (!cfg) {
+        return -1;
+    }
+
+    status = (lamb_status_t *)calloc(1, sizeof(lamb_status_t));
+    global = (lamb_global_t *)calloc(1, sizeof(lamb_global_t));
+    blacklist = (lamb_caches_t *)malloc(sizeof(lamb_caches_t));
+    frequency = (lamb_caches_t *)malloc(sizeof(lamb_caches_t));
+    unsubscribe = (lamb_caches_t *)malloc(sizeof(lamb_caches_t));
+
+    if (!status || !global || !blacklist || !frequency || !unsubscribe) {
+        return -1;
+    }
+
+    err = lamb_signal(SIGHUP, lamb_reload);
+    lamb_debug("lamb signal initialization %s\n", err ? "failed" : "successfull");
+
+    /* Storage Queue Initialization */
+    global->storage = lamb_list_new();
+    if (!global->storage) {
+        lamb_log(LOG_ERR, "storage queue initialization failed");
+        return -1;
+    }
+
+    lamb_debug("storage queue initialization successfull\n");
+    
+    /* Billing Queue Initialization */
+    global->billing = lamb_list_new();
+    if (!global->billing) {
+        lamb_log(LOG_ERR, "billing queue initialization failed");
+        return -1;
+    }
+
+    lamb_debug("billing queue initialization successfull\n");
+
+    /* Unsubscribe queue initialization */
+    global->unsubscribe = lamb_list_new();
+    if (!global->unsubscribe) {
+        lamb_log(LOG_ERR, "unsubscribe queue initialization failed");
+        return -1;
+    }
+
+    lamb_debug("unsubscribe queue initialization successfull\n");
+
+    /* Redis Initialization */
+    err = lamb_cache_connect(&global->rdb, cfg->redis_host, cfg->redis_port,
+                             NULL, cfg->redis_db);
+    if (err) {
+        lamb_log(LOG_ERR, "Can't connect to redis server");
+        return -1;
+    }
+
+    lamb_debug("connect to redis server %s successfull\n", cfg->redis_host);
+
+    /* Blacklist database initialization */
+    lamb_nodes_connect(blacklist, LAMB_MAX_CACHE, cfg->nodes, 7, 1);
+    if (blacklist->len != 7) {
+        lamb_log(LOG_ERR, "connect to blacklist database failed");
+        return -1;
+    }
+
+    lamb_debug("connect to blacklist database successfull\n");
+
+    lamb_nodes_connect(unsubscribe, LAMB_MAX_CACHE, cfg->nodes, 7, 2);
+    if (unsubscribe->len != 7) {
+        lamb_log(LOG_ERR, "connect to unsubscribe database failed");
+        return -1;
+    }
+
+    lamb_debug("connect to unsubscribe database successfull\n");
+
+    lamb_nodes_connect(frequency, LAMB_MAX_CACHE, cfg->nodes, 7, 3);
+    if (frequency->len != 7) {
+        lamb_log(LOG_ERR, "connect to frequency database failed %d", frequency->len);
+        return -1;
+    }
+
+    lamb_debug("connect to frequency database successfull\n");
+
+    /* Postgresql Database  */
+    err = lamb_db_init(&global->db);
+    if (err) {
+        lamb_log(LOG_ERR, "postgresql database initialization failed");
+        return -1;
+    }
+
+    err = lamb_db_connect(&global->db, cfg->db_host, cfg->db_port,
+                          cfg->db_user, cfg->db_password, cfg->db_name);
+    if (err) {
+        lamb_log(LOG_ERR, "Can't connect to postgresql database");
+        return -1;
+    }
+
+    lamb_debug("connect to postgresql %s successfull\n", cfg->db_host);
+    
+    /* Postgresql Database  */
+    err = lamb_db_init(&global->mdb);
+    if (err) {
+        lamb_log(LOG_ERR, "postgresql database initialization failed");
+        return -1;
+    }
+
+    err = lamb_db_connect(&global->mdb, cfg->msg_host, cfg->msg_port,
+                          cfg->msg_user, cfg->msg_password, cfg->msg_name);
+    if (err) {
+        lamb_log(LOG_ERR, "can't connect to message database");
+        return -1;
+    }
+
+    /* fetch  account */
+    err = lamb_account_fetch(&global->db, aid, &global->account);
+    if (err) {
+        lamb_log(LOG_ERR, "can't fetch account '%d' information", aid);
+        return -1;
+    }
+
+    lamb_debug("fetch account information successfull\n");
+
+    /* Connect to MT server */
+    mt = lamb_nn_reqrep(config->mt_host, cfg->mt_port, aid, cfg->timeout);
+
+    if (mt < 0) {
+        lamb_log(LOG_ERR, "can't connect to MT %s server", cfg->mt_host);
+        return -1;
+    }
+    
+    lamb_debug("connect to mt %s successfull\n", cfg->mt_host);
+    
+    /* Connect to MO server */
+    mo = lamb_nn_pair(cfg->mo_host, cfg->mo_port, aid, cfg->timeout);
+
+    if (mo < 0) {
+        lamb_log(LOG_ERR, "can't connect to MO %s server", cfg->mo_host);
+        return -1;
+    }
+
+    lamb_debug("connect to mo %s successfull\n", cfg->mo_host);
+
+    /* Connect to Scheduler server */
+    scheduler = lamb_nn_pair(cfg->scheduler_host, cfg->scheduler_port, aid, cfg->timeout);
+
+    if (scheduler < 0) {
+        lamb_log(LOG_ERR, "can't connect to Scheduler %s server", cfg->scheduler_host);
+        return -1;
+    }
+
+    lamb_debug("connect to scheduler %s successfull\n", cfg->scheduler_host);
+    
+    /* Connect to Deliver server */
+    deliverd = lamb_nn_reqrep(cfg->deliver_host, cfg->deliver_port, aid, cfg->timeout);
+
+    if (deliverd < 0) {
+        lamb_log(LOG_ERR, "can't connect to deliver %s server", cfg->deliver_host);
+        return -1;
+    }
+
+    lamb_debug("connect to deliver %s successfull\n", cfg->deliver_host);
+
+    /* Fetch company information */
+    err = lamb_company_get(&global->db, global->account.company, &global->company);
+    if (err) {
+        lamb_log(LOG_ERR, "Can't fetch id %d company information", global->account.company);
+        return -1;
+    }
+
+    lamb_debug("fetch company information successfull\n");
+    
+    /* Template information Initialization */
+    global->templates = lamb_list_new();
+    if (!global->templates) {
+        lamb_log(LOG_ERR, "template queue initialization failed");
+        return -1;
+    }
+
+    err = lamb_get_template(&global->db, global->account.username, global->templates);
+    if (err) {
+        lamb_log(LOG_ERR, "Can't fetch template information");
+        return -1;
+    }
+
+    lamb_debug("fetch template information successfull\n");
+
+    /* Keyword information Initialization */
+    global->keywords = lamb_list_new();
+    if (!global->keywords) {
+        lamb_log(LOG_ERR, "keyword queue initialization failed");
+        return -1;
+    }
+
+    if (global->account.keyword) {
+        err = lamb_keyword_get_all(&global->db, global->keywords);
+        if (err) {
+            lamb_log(LOG_ERR, "Can't fetch keyword information");
+            return -1;
+        }
+    }
+
+    lamb_debug("fetch keywords information successfull\n");
+
+    return 0;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

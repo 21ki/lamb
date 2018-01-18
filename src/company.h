@@ -15,7 +15,6 @@
 
 typedef struct {
     int id;
-    int paytype;
     long long money;
     int status;
 } lamb_company_t;

@@ -28,7 +28,7 @@ scheduler: src/scheduler.c src/scheduler.h $(OBJS) src/queue.o
 	$(CC) $(CFLAGS) $(MACRO) src/scheduler.c $(OBJS) src/queue.o $(LIBS) -lnanomsg -o scheduler
 
 delivery: src/delivery.c src/delivery.h $(OBJS) src/queue.o
-	$(CC) $(CFLAGS) $(MACRO) src/delivery.c $(OBJS) src/queue.o $(LIBS) -lnanomsg -o deliver
+	$(CC) $(CFLAGS) $(MACRO) src/delivery.c $(OBJS) src/queue.o $(LIBS) -lnanomsg -o delivery
 
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb

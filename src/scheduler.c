@@ -29,7 +29,6 @@
 #include "socket.h"
 #include "queue.h"
 #include "message.h"
-#include "channel.h"
 #include "account.h"
 #include "routing.h"
 #include "scheduler.h"
@@ -328,14 +327,22 @@ void *lamb_push_loop(void *arg) {
 
             while ((node = lamb_list_iterator_next(it))) {
                 channel = (lamb_channel_t *)node->val;
-                node = lamb_list_find(gateway, (void *)(intptr_t)channel->id);
 
-                if (node) {
-                    queue = (lamb_queue_t *)node->val;
-                    if (queue->list->len < 1024000) {
-                        lamb_queue_push(queue, message);
-                        completed = true;
-                        break;
+                /* Check operators */
+                if (lamb_check_operators(channel, message->phone)) {
+                    /* Check province */
+                    if (lamb_check_province(channel, message->phone)) {
+                        node = lamb_list_find(gateway, (void *)(intptr_t)channel->id);
+
+                        if (node) {
+                            queue = (lamb_queue_t *)node->val;
+                            if (queue->list->len < 1024000) {
+                                lamb_queue_push(queue, message);
+                                completed = true;
+                                break;
+                            }
+                        }
+
                     }
                 }
             }
@@ -553,6 +560,14 @@ void lamb_route_channel(lamb_db_t *db, int id, lamb_list_t *channels) {
     }
 
     return;
+}
+
+bool lamb_check_operators(lamb_channel_t *channel, char *phone) {
+    return true;
+}
+
+bool lamb_check_province(lamb_channel_t *channel, char *phone) {
+    return true;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

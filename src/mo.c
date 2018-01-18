@@ -28,7 +28,6 @@
 #include "config.h"
 #include "cache.h"
 #include "socket.h"
-#include "pool.h"
 #include "message.h"
 #include "mo.h"
 

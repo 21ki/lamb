@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include "db.h"
 #include "list.h"
+#include "channel.h"
 
 typedef struct {
     int id;
@@ -31,6 +32,8 @@ int lamb_server_init(int *sock, const char *addr, int port);
 int lamb_child_server(int *sock, const char *listen, unsigned short *port, int protocol);
 void *lamb_stat_loop(void *arg);
 void lamb_route_channel(lamb_db_t *db, int id, lamb_list_t *channels);
+bool lamb_check_operators(lamb_channel_t *channel, char *phone);
+bool lamb_check_province(lamb_channel_t *channel, char *phone);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

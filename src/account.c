@@ -15,14 +15,14 @@ int lamb_account_get(lamb_cache_t *cache, char *username, lamb_account_t *accoun
     const char *cmd;
     redisReply *reply = NULL;
 
-    cmd = "HMGET account.%s id username password spcode company charge address concurrent dbase template keyword";
+    cmd = "HMGET account.%s id username password spcode company address concurrent dbase template keyword";
     reply = redisCommand(cache->handle, cmd, username);
 
     if (reply == NULL ) {
         return -1;
     }
 
-    if ((reply->type != REDIS_REPLY_ARRAY) || (reply->elements != 11)) {
+    if ((reply->type != REDIS_REPLY_ARRAY) || (reply->elements != 10)) {
         freeReplyObject(reply);
         return -1;
     }
@@ -64,38 +64,33 @@ int lamb_account_get(lamb_cache_t *cache, char *username, lamb_account_t *accoun
         account->company = atoi(reply->element[4]->str);
     }
 
-    /* Charge Type */
-    if (reply->element[5]->len > 0) {
-        account->charge = atoi(reply->element[5]->str);
-    }
-
     /* IP Address */
-    if (reply->element[6]->len > 0) {
-        if (reply->element[6]->len > 15) {
-            memcpy(account->address, reply->element[6]->str, 15);
+    if (reply->element[5]->len > 0) {
+        if (reply->element[5]->len > 15) {
+            memcpy(account->address, reply->element[5]->str, 15);
         } else {
-            memcpy(account->address, reply->element[6]->str, reply->element[6]->len);
+            memcpy(account->address, reply->element[5]->str, reply->element[5]->len);
         }
     }
 
     /* Concurrent */
-    if (reply->element[7]->len > 0) {
-        account->concurrent = atoi(reply->element[7]->str);
+    if (reply->element[6]->len > 0) {
+        account->concurrent = atoi(reply->element[6]->str);
     }
 
     /* Database */
-    if (reply->element[8]->len > 0) {
-        account->dbase = atoi(reply->element[8]->str);
+    if (reply->element[7]->len > 0) {
+        account->dbase = atoi(reply->element[7]->str);
     }
 
     /* Template */
-    if (reply->element[9]->len > 0) {
-        account->template = (atoi(reply->element[9]->str) == 0) ? false : true;
+    if (reply->element[8]->len > 0) {
+        account->template = (atoi(reply->element[8]->str) == 0) ? false : true;
     }
 
     /* Keyword */
-    if (reply->element[10]->len > 0) {
-        account->keyword = (atoi(reply->element[10]->str) == 0) ? false : true;
+    if (reply->element[9]->len > 0) {
+        account->keyword = (atoi(reply->element[9]->str) == 0) ? false : true;
     }
 
     freeReplyObject(reply);
@@ -108,7 +103,7 @@ int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account) {
     char *column = NULL;
     PGresult *res = NULL;
 
-    column = "id, username, spcode, company, charge, address, concurrent, dbase, template, keyword";
+    column = "id, username, spcode, company, address, concurrent, dbase, template, keyword";
     sprintf(sql, "SELECT %s FROM account WHERE id = %d", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -124,12 +119,11 @@ int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account) {
     strncpy(account->username, PQgetvalue(res, 0, 1), 7);
     strncpy(account->spcode, PQgetvalue(res, 0, 2), 20);
     account->company = atoi(PQgetvalue(res, 0, 3));
-    account->charge = atoi(PQgetvalue(res, 0, 4));
-    strncpy(account->address, PQgetvalue(res, 0, 5), 15);
-    account->concurrent = atoi(PQgetvalue(res, 0, 6));
-    account->dbase = atoi(PQgetvalue(res, 0, 7));
-    account->template = atoi(PQgetvalue(res, 0, 8)) == 0 ? false : true;
-    account->keyword = atoi(PQgetvalue(res, 0, 9)) == 0 ? false : true;
+    strncpy(account->address, PQgetvalue(res, 0, 4), 15);
+    account->concurrent = atoi(PQgetvalue(res, 0, 5));
+    account->dbase = atoi(PQgetvalue(res, 0, 6));
+    account->template = atoi(PQgetvalue(res, 0, 7)) == 0 ? false : true;
+    account->keyword = atoi(PQgetvalue(res, 0, 8)) == 0 ? false : true;
 
     PQclear(res);
     return 0;
@@ -142,7 +136,7 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
     PGresult *res = NULL;
 
     accounts->len = 0;
-    column = "id, username, spcode, company, charge, address, concurrent, dbase, template, keyword";
+    column = "id, username, spcode, company, address, concurrent, dbase, template, keyword";
     sprintf(sql, "SELECT %s FROM account ORDER BY id", column);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -160,12 +154,11 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
             strncpy(a->username, PQgetvalue(res, i, 1), 7);
             strncpy(a->spcode, PQgetvalue(res, i, 2), 20);
             a->company = atoi(PQgetvalue(res, i, 3));
-            a->charge = atoi(PQgetvalue(res, i, 4));
-            strncpy(a->address, PQgetvalue(res, i, 5), 15);
-            a->concurrent = atoi(PQgetvalue(res, i, 6));
-            a->dbase = atoi(PQgetvalue(res, i, 7));
-            a->template = atoi(PQgetvalue(res, i, 8)) == 0 ? false : true;
-            a->keyword = atoi(PQgetvalue(res, i, 9)) == 0 ? false : true;
+            strncpy(a->address, PQgetvalue(res, i, 4), 15);
+            a->concurrent = atoi(PQgetvalue(res, i, 5));
+            a->dbase = atoi(PQgetvalue(res, i, 6));
+            a->template = atoi(PQgetvalue(res, i, 7)) == 0 ? false : true;
+            a->keyword = atoi(PQgetvalue(res, i, 8)) == 0 ? false : true;
             accounts->list[j] = a;
             accounts->len++;
         } else {

@@ -101,20 +101,26 @@ void lamb_event_loop(void) {
         return;
     }
 
+    lamb_debug("storage initialization successfull\n");
+
     /* Cache Cluster Initialization */
     memset(&cache, 0, sizeof(cache));
-    lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 2);
+    lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 4);
     if (cache.len != 7) {
         lamb_log(LOG_ERR, "connect to cache cluster server failed");
         return;
     }
-    
+
+    lamb_debug("connect to cache cluster server successfull\n");
+
     /* Connect to MT Server */
     mt = lamb_nn_reqrep(config.mt_host, config.mt_port, config.id, config.timeout);
     if (mt < 0) {
         lamb_log(LOG_ERR, "can't connect to mt %s server", config.mt_host);
         return;
     }
+
+    lamb_debug("connect to mt server successfull\n");
 
     /* Connect to MO Server */
     mo = lamb_nn_pair(config.mo_host, config.mo_port, config.id, config.timeout);
@@ -123,29 +129,38 @@ void lamb_event_loop(void) {
         return;
     }
 
+    lamb_debug("connect to mo server successfull\n");
+
     /* Cmpp client initialization */
     err = lamb_cmpp_init(&cmpp, &config);
     if (err) {
         return;
     }
 
+    lamb_debug("connect cmpp gateway successfull\n");
+
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
     
     /* Start Sender Thread */
     lamb_start_thread(lamb_sender_loop, NULL, 1);
+    lamb_debug("start sender thread successfull\n");
 
     /* Start Work Thread */
     lamb_start_thread(lamb_work_loop, NULL, 1);
-    
+    lamb_debug("start work thread successfull\n");
+
     /* Start Deliver Thread */
     lamb_start_thread(lamb_deliver_loop, NULL, 1);
-    
+    lamb_debug("start deliver thread successfull\n");
+
     /* Start Keepalive Thread */
     lamb_start_thread(lamb_cmpp_keepalive, NULL, 1);
+    lamb_debug("start keepalive thread successfull\n");
 
     /* Start Status Update Thread */
     lamb_start_thread(lamb_stat_loop, NULL, 1);
+    lamb_debug("start stat thread successfull\n");
 
     while (true) {
         lamb_sleep(3000);

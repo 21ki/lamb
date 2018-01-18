@@ -22,7 +22,6 @@ typedef struct {
     char password[64];
     char spcode[24];
     int company;
-    int charge;
     char address[16];
     int concurrent;
     int dbase;

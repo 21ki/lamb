@@ -368,10 +368,12 @@ int lamb_cpu_affinity(pthread_t thread) {
 
 int lamb_hp_parse(char *str, char *host, int *port) {
     int len;
+    char *src;
     char *delims = ":";
     char *result = NULL;
 
-    result = strtok(str, delims);
+    src = strdup(str);
+    result = strtok(src, delims);
     for (int i = 0; (i < 2) && (result != NULL); i++) {
         if (i == 0) {
             len = strlen(result);
@@ -380,6 +382,10 @@ int lamb_hp_parse(char *str, char *host, int *port) {
             *port = atoi(result);
         }
         result = strtok(NULL, delims);
+    }
+
+    if (src) {
+        free(src);
     }
 
     return 0;

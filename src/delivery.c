@@ -115,38 +115,42 @@ void lamb_event_loop(void) {
         return;
     }
 
+    /* delivery queue initialization */
     delivery = lamb_list_new();
     if (!delivery) {
         lamb_log(LOG_ERR, "delivery routing table initialization failed");
         return;
     }
 
-    /* Postgresql Database  */
+    /* Core database initialization */
     err = lamb_db_init(&db);
     if (err) {
         lamb_log(LOG_ERR, "postgresql database initialization failed");
         return;
     }
 
-    err = lamb_db_connect(&db, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name);
+    err = lamb_db_connect(&db, config.db_host, config.db_port, config.db_user,
+                          config.db_password, config.db_name);
     if (err) {
         lamb_log(LOG_ERR, "Can't connect to postgresql database");
         return;
     }
 
-    /* Postgresql Database  */
+    /* Message database initialization */
     err = lamb_db_init(&mdb);
     if (err) {
         lamb_log(LOG_ERR, "postgresql database initialization failed");
         return;
     }
 
-    err = lamb_db_connect(&mdb, config.msg_host, config.msg_port, config.msg_user, config.msg_password, config.msg_name);
+    err = lamb_db_connect(&mdb, config.msg_host, config.msg_port, config.msg_user,
+                          config.msg_password, config.msg_name);
     if (err) {
         lamb_log(LOG_ERR, "Can't connect to postgresql database");
         return;
     }
 
+    /* fetch delivery routing */
     err = lamb_get_delivery(&db, delivery);
     if (err) {
         lamb_log(LOG_ERR, "get delivery routing failed");
@@ -166,7 +170,7 @@ void lamb_event_loop(void) {
 
     lamb_list_iterator_destroy(it);
 
-    /* Server Initialization */
+    /* delivery server Initialization */
     fd = nn_socket(AF_SP, NN_REP);
     if (fd < 0) {
         lamb_log(LOG_ERR, "socket %s", nn_strerror(nn_errno()));
@@ -181,7 +185,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Start storage processing */
+    /* Start storage processing thread */
     lamb_start_thread(lamb_store_loop, NULL, 1);
 
     /* Start Data Acquisition Thread */
@@ -648,6 +652,7 @@ void *lamb_store_loop(void *data) {
         message = node->val;
 
         if (CHECK_TYPE(message) == LAMB_DELIVER) {
+            
             lamb_write_deliver(&mdb, (lamb_deliver_t *)message);
         }
 
