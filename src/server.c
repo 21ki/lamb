@@ -632,30 +632,30 @@ void *lamb_store_loop(void *data) {
             }
 
             if (fromcode != NULL) {
-                if (d->msgfmt == 11) {
-                    lamb_write_deliver(&global->mdb, d);
-                } else {
+                if (d->msgfmt != 11) {
                     /* message coding conversion */
                     memset(content, 0, sizeof(content));
                     err = lamb_encoded_convert(d->content, d->length, content, sizeof(content),
                                                fromcode, "UTF-8", &d->length);
-                    if (!err && (d->length > 0)) {
-                        memset(d->content, 0, 160);
-                        memcpy(d->content, content, d->length);
-
-                        /* check unsubscribe content */
-                        if (lamb_check_unsubval(d->content, d->length)) {
-                            lamb_list_rpush(global->unsubscribe,
-                                            lamb_node_new(lamb_strdup(d->phone)));
-                        }
-
-                        /* save to message database */
-                        lamb_write_deliver(&global->mdb, d);
+                    if (err || (d->length < 1)) {
+                        goto skip;
                     }
+
+                    memset(d->content, 0, 160);
+                    memcpy(d->content, content, d->length);
                 }
+
+                /* check unsubscribe content */
+                if (lamb_check_unsubval(d->content, d->length)) {
+                    lamb_list_rpush(global->unsubscribe, lamb_node_new(lamb_strdup(d->phone)));
+                }
+
+                /* save to message database */
+                lamb_write_deliver(&global->mdb, d);
             }
         }
 
+    skip:
         free(node);
         free(message);
     }
