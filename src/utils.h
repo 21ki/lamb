@@ -46,8 +46,9 @@
 #define CHECK_TYPE(val) *((int *)(val))
 
 #define LAMB_CMCC    1
-#define LAMB_CTCC    2
-#define LAMB_CUCC    3
+#define LAMB_CTCC    (1 << 1)
+#define LAMB_CUCC    (1 << 2)
+#define LAMB_MVNO    (1 << 3)
 
 #define LAMB_MAX_OPERATOR 4
 
@@ -121,7 +122,6 @@ int lamb_encoded_convert(const char *src, size_t slen, char *dst, size_t dlen, c
 size_t lamb_ucs2_strlen(const char *str);
 size_t lamb_gbk_strlen(const char *str);
 bool lamb_check_format(int coded, int list[], size_t len);
-bool lamb_check_operator(lamb_operator_t *sp, const char *phone, size_t len);
 void lamb_rlimit_processing(void);
 long lamb_get_cpu(void);
 int lamb_cpu_affinity(pthread_t thread);

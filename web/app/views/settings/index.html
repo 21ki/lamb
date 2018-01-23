@@ -5,10 +5,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>blacklist - lamb</title>
+    <title>Settings - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/blacklist.css">
+    <link type="text/css" rel="stylesheet" href="/css/all.css">
+    <link type="text/css" rel="stylesheet" href="/css/flat/blue.css">
+    <link type="text/css" rel="stylesheet" href="/css/setting.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -34,7 +36,7 @@
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">路由管理</a>
               <ul class="dropdown-menu">
-                 <li><a href="/routing">上行路由</a></li>
+                <li><a href="/routing">上行路由</a></li>
                 <li><a href="/delivery">下发路由</a></li>
               </ul>
             </li>
@@ -74,28 +76,40 @@
         <ol class="breadcrumb">
           <li><a href="#">Home</a></li>
           <li class="active">Settings</li>
-          <li class="pull-right add"><a class="btn btn-success btn-xs" href="/server/create"><span class="glyphicon glyphicon-plus"></span> 添 加</a></li>
+          <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
       <div class="row">
-        <table class="table table-hover">
-          <thead>
-            <tr><th>#</th><th>手机号码</th><th>号码类型</th><th>号码归属地</th><th>创建时间</th><th>删 除</th></tr>
-          </thead>
-          <tbody>
-            <?php
-              foreach ($blacklist as $l) {
-              echo '<tr><td><span class="glyphicon glyphicon-phone"></span></td><td>',$l['phone'],'</td><td>黑名单</td><td>江苏省苏州市</td><td>1970-01-01 08:00:00</td>';
-              echo '<td><button class="btn btn-default btn-xs" onclick="deletePhone(',$l['phone'],')"><span class="glyphicon glyphicon-edit"></span> 删 除</button></td></tr>',"\n";
-              }
-              ?>
-          </tbody>
-        </table>
+        <ul class="nav nav-tabs">
+          <li role="presentation" class="active"><a href="/settings/">常规选项</a></li>
+          <li role="presentation"><a href="/settings/frequency">频次限制</a></li>
+          <li role="presentation"><a href="/settings/password">修改密码</a></li>
+          <li role="presentation"><a href="/settings/about">关于系统</a></li>
+          <li class="pull-right"><button class="btn btn-sm btn-success"><span class="glyphicon glyphicon-floppy-disk"></span> 保 存</button></li>
+        </ul>
+      </div>
+      <div class="row">
+        <div class="checkbox">
+          <label>
+            <input id="blacklist" type="checkbox" checked="checked" /> Enable blacklist for global
+          </label>
+        </div>
+        <div class="checkbox">
+          <label>
+            <input id="unsubscribe" type="checkbox" /> Enable the unsubscribe blacklist
+          </label>
+        </div>
+        <div class="checkbox">
+          <label>
+            <input id="frequency" type="checkbox" /> Enable frequency restriction
+          </label>
+        </div>
       </div>
     </div>
 </div>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/icheck.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript">
   $('li.dropdown').mouseover(function() {   
@@ -104,19 +118,13 @@
     $(this).removeClass('open');
   });
 
-  function deletePhone(phone) {
-    layer.confirm('亲，确定要将 ' + phone +  ' 号码删除？', {
-      btn: ['是','否'], icon: 3
-    }, function(){
-      var url = '/settings/delete?type=blacklist&phone=' + phone;
-      $.get(url, function(){
-        layer.msg('删除成功!', {icon: 1, time: 1000});
-        setTimeout(function() {
-          window.location.reload();
-        }, 1000);
-      });
+  $(document).ready(function(){
+    $('input').iCheck({
+      checkboxClass: 'icheckbox_flat-blue',
+      radioClass: 'iradio_flat-blue',
+      increaseArea: '20%'
     });
-  }
+  });
 </script>
 </body>
 </html>

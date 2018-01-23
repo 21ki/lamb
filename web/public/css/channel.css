@@ -14,6 +14,22 @@ body {
     content: "";
 }
 
+.label-cmcc {
+    background-color: #4299ce;
+}
+
+.label-ctcc {
+    background-color: #5a7caf;
+}
+
+.label-cucc {
+    background-color: #ca4247;
+}
+
+.label-other {
+    background-color: #7b7b7b;
+}
+
 .table .text-left {
     text-align: left;
 }
@@ -72,3 +88,10 @@ form .form-group button, form .form-group a {
     margin-right: 20px;
 }
 
+.form-group .checkbox label {
+    margin-right: 7px;
+}
+
+td .label {
+    border-radius: 0.5em;
+}

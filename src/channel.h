@@ -15,6 +15,7 @@ typedef struct {
     int id;
     int gid;
     int weight;
+    int operator;
 } lamb_channel_t;
 
 int lamb_get_channels(lamb_db_t *db, int gid, lamb_list_t *channels);

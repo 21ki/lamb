@@ -18,7 +18,7 @@ class PaymentModel {
 
     public function getLogs() {
         $result = [];
-        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id DESC';
+        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id DESC LIMIT 30';
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetchAll();

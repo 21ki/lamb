@@ -16,7 +16,7 @@ int lamb_get_channels(lamb_db_t *db, int gid, lamb_list_t *channels) {
     PGresult *res = NULL;
 
     channels->len = 0;
-    column = "id, gid, weight";
+    column = "id, gid, weight, operator";
     sprintf(sql, "SELECT %s FROM channels WHERE gid = %d ORDER BY weight ASC", column, gid);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -33,6 +33,7 @@ int lamb_get_channels(lamb_db_t *db, int gid, lamb_list_t *channels) {
             c->id = atoi(PQgetvalue(res, i, 0));
             c->gid = atoi(PQgetvalue(res, i, 1));
             c->weight = atoi(PQgetvalue(res, i, 2));
+            c->operator = atoi(PQgetvalue(res, i, 3));
             lamb_list_rpush(channels, lamb_node_new(c));
         }
     }

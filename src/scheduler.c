@@ -41,6 +41,13 @@ static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 static Response resp = LAMB_RESPONSE_INIT;
 
+static char *cmcc[] = {"134", "135", "136", "137", "138", "139", "147", "150",
+                       "151", "152", "157", "158", "159", "178", "182", "183",
+                       "184", "187", "188", "198"};
+static char *ctcc[] = {"133", "149", "153", "173", "177", "180", "181", "189", "199"};
+static char *cucc[] = {"130", "131", "132", "155", "156", "145", "175", "176", "185",
+                       "186", "166"};
+
 int main(int argc, char *argv[]) {
     char *file = "scheduler.conf";
     bool background = false;
@@ -266,6 +273,8 @@ void *lamb_push_loop(void *arg) {
     int rc;
     int len;
     char *buf = NULL;
+    bool operator;
+    bool province;
     bool completed;
     Submit *submit;
     lamb_node_t *node;
@@ -321,7 +330,10 @@ void *lamb_push_loop(void *arg) {
 
             lamb_submit_free_unpacked(submit, NULL);
 
+            operator = false;
+            province = false;
             completed = false;
+
             lamb_list_iterator_t *it;
             it = lamb_list_iterator_new(channels, LIST_HEAD);
 
@@ -329,16 +341,18 @@ void *lamb_push_loop(void *arg) {
                 channel = (lamb_channel_t *)node->val;
 
                 /* Check operators */
-                if (lamb_check_operators(channel, message->phone)) {
+                if (lamb_check_operator(channel, message->phone)) {
+                    operator = true;
                     /* Check province */
                     if (lamb_check_province(channel, message->phone)) {
+                        province = true;
                         node = lamb_list_find(gateway, (void *)(intptr_t)channel->id);
 
                         if (node) {
                             queue = (lamb_queue_t *)node->val;
                             if (queue->list->len < 1024000) {
-                                lamb_queue_push(queue, message);
                                 completed = true;
+                                lamb_queue_push(queue, message);
                                 break;
                             }
                         }
@@ -353,7 +367,11 @@ void *lamb_push_loop(void *arg) {
                 total++;
                 len = lamb_pack_assembly(&buf, LAMB_OK, NULL, 0);
             } else {
-                len = lamb_pack_assembly(&buf, LAMB_BUSY, NULL, 0);
+                if (!operator || !province) {
+                    len = lamb_pack_assembly(&buf, LAMB_REJECT, NULL, 0);
+                } else {
+                    len = lamb_pack_assembly(&buf, LAMB_BUSY, NULL, 0);
+                }
             }
 
             nn_send(fd, buf, len, NN_DONTWAIT);
@@ -562,8 +580,45 @@ void lamb_route_channel(lamb_db_t *db, int id, lamb_list_t *channels) {
     return;
 }
 
-bool lamb_check_operators(lamb_channel_t *channel, char *phone) {
-    return true;
+bool lamb_check_operator(lamb_channel_t *channel, char *phone) {
+    int i;
+    int len;
+
+    len = sizeof(cmcc) / sizeof(cmcc[0]);
+
+    for (i = 0; i < len; i++) {
+        if (memcmp(phone, cmcc[i], 3) == 0) {
+            if (channel->operator & LAMB_CMCC) {
+                return true;
+            }
+        }
+    }
+
+    len = sizeof(ctcc) / sizeof(ctcc[0]);
+
+    for (i = 0; i < len; i++) {
+        if (memcmp(phone, ctcc[i], 3) == 0) {
+            if (channel->operator & LAMB_CTCC) {
+                return true;
+            }
+        }
+    }
+
+    len = sizeof(cucc) / sizeof(cucc[0]);
+
+    for (i = 0; i < len; i++) {
+        if (memcmp(phone, cucc[i], 3) == 0) {
+            if (channel->operator & LAMB_CUCC) {
+                return true;
+            }
+        }
+    }
+
+    if (channel->operator & LAMB_MVNO) {
+        return true;
+    }
+
+    return false;
 }
 
 bool lamb_check_province(lamb_channel_t *channel, char *phone) {

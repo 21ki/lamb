@@ -8,6 +8,7 @@ function startup() {
     xhr.onreadystatechange = function(){
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             var source = document.getElementById("contents").innerHTML;
+            Handlebars.registerHelper('checkoperator', checkoperator);
             var template = Handlebars.compile(source);
             var contents = template(xhr.response);
             $("tbody").append(contents);
@@ -34,7 +35,7 @@ function show() {
             layer.open({
                 type: 1,
                 title: '添加新通道',
-                area: ['460px', '260px'],
+                area: ['460px', '280px'],
                 content: contents
             });
         }
@@ -48,7 +49,32 @@ function formSubmit() {
     var url = '/channels/create';
     var form = document.getElementById("form");
     var data = new FormData(form);
+
+    var operator = 0;
     data.append("gid", getQuery("gid"));
+
+    if (data.has("cmcc")) {
+        operator |= 1;
+        data.delete("cmcc");
+    }
+
+    if (data.has("ctcc")) {
+        operator |= (1 << 1);
+        data.delete("ctcc");
+    }
+
+    if (data.has("cucc")) {
+        operator |= (1 << 2);
+        data.delete("cucc");
+    }
+
+    if (data.has("mvno")) {
+        operator |= (1 << 3);
+        data.delete("mvno");
+    }
+
+    data.append("operator", operator);
+
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function() {
@@ -67,6 +93,31 @@ function formChange(id, gid) {
     var url = '/channels/update?id=' + id + '&gid=' + gid;
     var form = document.getElementById("form");
     var data = new FormData(form);
+
+    var operator = 0;
+
+    if (data.has("cmcc")) {
+        operator |= 1;
+        data.delete("cmcc");
+    }
+
+    if (data.has("ctcc")) {
+        operator |= (1 << 1);
+        data.delete("ctcc");
+    }
+
+    if (data.has("cucc")) {
+        operator |= (1 << 2);
+        data.delete("cucc");
+    }
+
+    if (data.has("mvno")) {
+        operator |= (1 << 3);
+        data.delete("mvno");
+    }
+
+    data.append("operator", operator);
+
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function(){
@@ -88,12 +139,13 @@ function changeChannel(id, gid) {
     xhr.onreadystatechange = function(){
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             var source = document.getElementById("edit-page").innerHTML;
+            Handlebars.registerHelper('checked', checked);
             var template = Handlebars.compile(source);
             var contents = template(xhr.response.data);
             layer.open({
                 type: 1,
                 title: '编辑通道信息',
-                area: ['460px', '260px'],
+                area: ['460px', '280px'],
                 content: contents
             });
         }
@@ -128,4 +180,33 @@ function getQuery(name) {
     var rexp = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
     var r = window.location.search.substr(1).match(rexp);
     return  (r != null) ? unescape(r[2]) : '';
+}
+
+function checked(oper, val) {
+    if (oper & (1 << parseInt(val))) {
+        return new Handlebars.SafeString('checked="checked"');
+    }
+}
+
+function checkoperator(val) {
+    var text = '';
+    val = parseInt(val);
+
+    if (val & 1) {
+        text += '<span class="label label-cmcc">移动</span> ';
+    }
+
+    if (val & (1 << 1)) {
+        text += '<span class="label label-ctcc">电信</span> ';
+    }
+
+    if (val & (1 << 2)) {
+        text += '<span class="label label-cucc">联通</span> ';
+    }
+
+    if (val & (1 << 3)) {
+        text += '<span class="label label-other">其他</span>';
+    }
+
+    return new Handlebars.SafeString(text);
 }

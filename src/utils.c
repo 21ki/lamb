@@ -284,55 +284,6 @@ bool lamb_check_format(int coded, int list[], size_t len) {
     return false;
 }
 
-bool lamb_check_operator(lamb_operator_t *sp, const char *phone, size_t len) {
-    int count;
-    char tmp[8];
-    int num;
-
-    if (len < 3) {
-        return false;
-    }
-
-    int cmcc[] = {134, 135, 136, 137, 138, 139, 147, 150, 151, 152, 157, 158, 159, 178, 182, 183, 184, 187, 188, 198};
-    int ctcc[] = {133, 149, 153, 173, 177, 180, 181, 189, 199};
-    int cucc[] = {130, 131, 132, 155, 156, 145, 175, 176, 185, 186, 166};
-
-    memset(tmp, 0, sizeof(tmp));
-    memcpy(tmp, phone, 3);
-    num = atoi(tmp);
-
-    for (int i = 0; i < sp->len; i++) {
-        switch (sp->ops[i]) {
-        case LAMB_CMCC:
-            count = sizeof(cmcc) / sizeof(cmcc[0]);
-            for (int j = 0; j < count; j++) {
-                if (num == cmcc[j]) {
-                    return true;
-                }
-            }
-            break;
-        case LAMB_CTCC:
-            count = sizeof(ctcc) / sizeof(ctcc[0]);
-            for (int j = 0; j < count; j++) {
-                if (num == ctcc[j]) {
-                    return true;
-                }
-            }
-            break;
-        case LAMB_CUCC:
-            count = sizeof(cucc) / sizeof(cucc[0]);
-            for (int j = 0; j < count; j++) {
-                if (num == cucc[j]) {
-                    return true;
-                }
-            }
-            break;
-        }
-    }
-
-    return false;
-}
-
 void lamb_rlimit_processing(void) {
     struct rlimit rlim;
 

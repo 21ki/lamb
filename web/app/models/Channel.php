@@ -105,7 +105,7 @@ class ChannelModel {
         $sth->bindValue(':gid', $gid, PDO::PARAM_INT);
 
         foreach ($data as $key => $val) {
-            if ($val != null) {
+            if ($val !== null) {
                 $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
             }
         }

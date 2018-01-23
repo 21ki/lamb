@@ -6,10 +6,10 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
-use Tool\Filter;
-
 class SettingsController extends Yaf\Controller_Abstract {
-    
+    public function indexAction() {
+        return true;
+    }
 }
 
 
