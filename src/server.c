@@ -693,7 +693,6 @@ void *lamb_billing_loop(void *data) {
 
 void *lamb_unsubscribe_loop(void *arg) {
     int i;
-    char *number;
     unsigned long phone;
     lamb_node_t *node;
     redisReply *reply = NULL;
@@ -706,9 +705,11 @@ void *lamb_unsubscribe_loop(void *arg) {
             continue;
         }
 
-        number = node->val;
+        if (!node->val) {
+            continue;
+        }
 
-        phone = atol(number);
+        phone = atol((const char *)node->val);
 
         if (phone > 0) {
             i = (phone % unsubscribe->len);
