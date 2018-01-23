@@ -255,28 +255,28 @@ void *lamb_work_loop(void *data) {
             fromcode = "GBK";
         } else {
             status->fmt++;
-            lamb_fail_response(mo, &resp, message, 7);
+            lamb_direct_response(mo, &resp, message, 7);
             goto done;
         }
 
         /* Check phone blacklist */
         if (lamb_check_blacklist(blacklist, message->phone)) {
             status->blk++;
-            lamb_fail_response(mo, &resp, message, 7);
+            lamb_direct_response(mo, &resp, message, 7);
             goto done;
         }
 
         /* Check user unsubscribe */
         if (lamb_check_unsubscribe(unsubscribe, aid, message->phone)) {
             status->usb++;
-            lamb_fail_response(mo, &resp, message, 7);
+            lamb_direct_response(mo, &resp, message, 7);
             goto done;
         }
 
         /* Check limit frequency */
         if (lamb_check_frequency(frequency, aid, message->phone)) {
             status->limt++;
-            lamb_fail_response(mo, &resp, message, 7);
+            lamb_direct_response(mo, &resp, message, 7);
             goto done;
         }
 
@@ -284,7 +284,7 @@ void *lamb_work_loop(void *data) {
             content = (char *)malloc(512);
 
             if (!content) {
-                lamb_fail_response(mo, &resp, message, 4);
+                lamb_direct_response(mo, &resp, message, 4);
                 goto done;
             }
 
@@ -294,7 +294,7 @@ void *lamb_work_loop(void *data) {
             if (err || (message->length < 1)) {
                 status->fmt++;
                 free(content);
-                lamb_fail_response(mo, &resp, message, 4);
+                lamb_direct_response(mo, &resp, message, 4);
                 goto done;
             }
 
@@ -326,7 +326,7 @@ void *lamb_work_loop(void *data) {
 
             if (!success) {
                 status->tmp++;
-                lamb_fail_response(mo, &resp, message, 7);
+                lamb_direct_response(mo, &resp, message, 7);
                 goto done;
             }
         }
@@ -347,7 +347,7 @@ void *lamb_work_loop(void *data) {
                
             if (!success) {
                 status->key++;
-                lamb_fail_response(mo, &resp, message, 7);
+                lamb_direct_response(mo, &resp, message, 7);
                 goto done;
             }
         }
@@ -356,7 +356,7 @@ void *lamb_work_loop(void *data) {
         pk = malloc(len);
 
         if (!pk) {
-            lamb_fail_response(mo, &resp, message, 4);
+            lamb_direct_response(mo, &resp, message, 4);
             goto done;
         }
 
@@ -364,7 +364,7 @@ void *lamb_work_loop(void *data) {
         lamb_submit_pack(message, pk);
         len = lamb_pack_assembly(&packet, LAMB_SUBMIT, pk, len);
         if (len < 1) {
-            lamb_fail_response(mo, &resp, message, 4);
+            lamb_direct_response(mo, &resp, message, 4);
             goto done;
         }
 
@@ -383,7 +383,7 @@ void *lamb_work_loop(void *data) {
                     } else if (CHECK_COMMAND(buf) == LAMB_REJECT) {
                         status->rejt++;
                         nn_freemsg(buf);
-                        lamb_fail_response(mo, &resp, message, 7);
+                        lamb_direct_response(mo, &resp, message, 7);
                         lamb_debug("-> message was rejected by the scheduler!\n");
                         goto done;
                     }
@@ -894,15 +894,9 @@ bool lamb_check_keyword(lamb_keyword_t *key, char *content) {
 }
 
 bool lamb_check_unsubval(char *content, int len) {
-    if (strstr(content, "t")) {
+    if (strstr(content, "hello")) {
         return true;
-    } else if (strstr(content, "T")) {
-        return true;
-    } else if (strstr(content, "TD")) {
-        return true;
-    } else if (strstr(content, "退")) {
-        return true;
-    } else if (strstr(content, "退订")) {
+    } else if (strstr(content, "world")) {
         return true;
     }
 
@@ -1004,7 +998,7 @@ bool lamb_check_frequency(lamb_caches_t *cache, int id, char *number) {
     return r;
 }
 
-void lamb_fail_response(int sock, Report *resp, Submit *message, int cause) {
+void lamb_direct_response(int sock, Report *resp, Submit *message, int cause) {
     int len;
     void *pk;
     char *buf;

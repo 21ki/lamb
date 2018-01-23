@@ -112,7 +112,7 @@ bool lamb_check_blacklist(lamb_caches_t *cache, char *number);
 bool lamb_check_unsubscribe(lamb_caches_t *cache, int id, char *number);
 bool lamb_check_frequency(lamb_caches_t *cache, int id, char *number);
 bool lamb_check_unsubval(char *content, int len);
-void lamb_fail_response(int sock, Report *resp, Submit *message, int cause);
+void lamb_direct_response(int sock, Report *resp, Submit *message, int cause);
 int lamb_component_initialization(lamb_config_t *cfg);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
