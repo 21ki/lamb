@@ -722,8 +722,8 @@ void *lamb_unsubscribe_loop(void *arg) {
             }
         }
 
+        free(node->val);
         free(node);
-        free(number);
     }
 
     pthread_exit(NULL);
@@ -826,54 +826,6 @@ int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message) {
     return 0;
 }
 
-int lamb_spcode_process(char *code, char *spcode, size_t size) {
-    size_t len;
-
-    len = strlen(code);
-    
-    if (len > strlen(spcode)) {
-        memcpy(spcode, code, len >= size ? (size - 1) : len);
-        return 0;
-    }
-
-    for (int i = 0; (i < len) && (i < (size - 1)); i++) {
-        spcode[i] = code[i];
-    }
-
-    return 0;
-}
-
-int lamb_fetch_channels(lamb_db_t *db, const char *rexp, lamb_list_t *channels) {
-    int rows;
-    char sql[512];
-    PGresult *res;
-    
-    sprintf(sql, "SELECT * FROM channels WHERE gid = (SELECT target FROM routing WHERE rexp = '%s') ORDER BY weight ASC ", rexp);
-
-    res = PQexec(db->conn, sql);
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        PQclear(res);
-        return -1;
-    }
-
-    rows = PQntuples(res);
-
-    for (int i = 0; i < rows; i++) {
-        lamb_channel_t *c = NULL;
-        c = (lamb_channel_t *)calloc(1, sizeof(lamb_channel_t));
-        if (c != NULL) {
-            c->id = atoi(PQgetvalue(res, i, 0));
-            c->gid = atoi(PQgetvalue(res, i, 1));
-            c->weight = atoi(PQgetvalue(res, i, 2));
-            lamb_list_rpush(channels, lamb_node_new(c));
-        }
-    }
-
-    PQclear(res);
-
-    return 0;
-}
-
 bool lamb_check_content(lamb_template_t *template, char *content, int len) {
     char pattern[512];
 
@@ -895,9 +847,17 @@ bool lamb_check_keyword(lamb_keyword_t *key, char *content) {
 }
 
 bool lamb_check_unsubval(char *content, int len) {
-    if (strstr(content, "hello")) {
+    if (strstr(content, "t")) {
         return true;
-    } else if (strstr(content, "world")) {
+    } else if (strstr(content, "T")) {
+        return true;
+    } else if (strstr(content, "td")) {
+        return true;
+    } else if (strstr(content, "TD")) {
+        return true;
+    } else if (strstr(content, "退")) {
+        return true;
+    } else if (strstr(content, "退订")) {
         return true;
     }
 
