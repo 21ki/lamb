@@ -546,7 +546,7 @@ void *lamb_deliver_loop(void *data) {
             sprintf(spcode, "%s%s", global->account.spcode, dpack->serviceid);
             deliver.spcode = spcode;
             deliver.msgfmt = dpack->msgfmt;
-            deliver.length =dpack->length;
+            deliver.length = dpack->length;
             deliver.content.len = dpack->content.len;
             deliver.content.data = dpack->content.data;
             len = lamb_deliver_get_packed_size(&deliver);
