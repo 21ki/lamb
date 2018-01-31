@@ -206,7 +206,7 @@ const ProtobufCMessageDescriptor lamb_request_descriptor =
   (ProtobufCMessageInit) lamb_request_init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor lamb_response_field_descriptors[3] =
+static const ProtobufCFieldDescriptor lamb_response_field_descriptors[2] =
 {
   {
     "id",
@@ -221,39 +221,26 @@ static const ProtobufCFieldDescriptor lamb_response_field_descriptors[3] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "addr",
+    "host",
     2,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(Response, addr),
+    offsetof(Response, host),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
-  {
-    "port",
-    3,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    offsetof(Response, port),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
 };
 static const unsigned lamb_response_field_indices_by_name[] = {
-  1,   /* field[1] = addr */
+  1,   /* field[1] = host */
   0,   /* field[0] = id */
-  2,   /* field[2] = port */
 };
 static const ProtobufCIntRange lamb_response_number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 3 }
+  { 0, 2 }
 };
 const ProtobufCMessageDescriptor lamb_response_descriptor =
 {
@@ -263,7 +250,7 @@ const ProtobufCMessageDescriptor lamb_response_descriptor =
   "Response",
   "",
   sizeof(Response),
-  3,
+  2,
   lamb_response_field_descriptors,
   lamb_response_field_indices_by_name,
   1,  lamb_response_number_ranges,

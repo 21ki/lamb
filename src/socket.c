@@ -14,10 +14,9 @@
 #include <nanomsg/reqrep.h>
 #include "socket.h"
 
-int lamb_nn_connect(int *sock, const char *host, int port, int protocol, int timeout) {
+int lamb_nn_connect(int *sock, const char *host, int protocol, int timeout) {
     int fd;
     int timeo;
-    char url[128];
     
     fd = nn_socket(AF_SP, protocol);
 
@@ -27,9 +26,8 @@ int lamb_nn_connect(int *sock, const char *host, int port, int protocol, int tim
 
     timeo = timeout;
     nn_setsockopt(fd, NN_SOL_SOCKET, NN_SNDTIMEO, &timeo, sizeof(timeo));
-    sprintf(url, "tcp://%s:%d", host, port);
 
-    if (nn_connect(fd, url) < 0) {
+    if (nn_connect(fd, host) < 0) {
         nn_close(fd);
         return -1;
     }
@@ -39,7 +37,7 @@ int lamb_nn_connect(int *sock, const char *host, int port, int protocol, int tim
     return 0;
 }
 
-int lamb_nn_reqrep(const char *host, int port, int id, int timeout) {
+int lamb_nn_reqrep(const char *host, int id, int timeout) {
     int fd;
     int err;
     Response *resp;
@@ -49,13 +47,13 @@ int lamb_nn_reqrep(const char *host, int port, int id, int timeout) {
     req.type = LAMB_PULL;
     req.addr = "0.0.0.0";
 
-    resp = lamb_nn_request(host, port, &req, timeout);
+    resp = lamb_nn_request(host, &req, timeout);
     
     if (!resp) {
         return -1;
     }
 
-    err = lamb_nn_connect(&fd, resp->addr, resp->port, NN_REQ, timeout);
+    err = lamb_nn_connect(&fd, resp->host, NN_REQ, timeout);
 
     lamb_response_free_unpacked(resp, NULL);
 
@@ -66,7 +64,7 @@ int lamb_nn_reqrep(const char *host, int port, int id, int timeout) {
     return fd;
 }
 
-int lamb_nn_pair(const char *host, int port, int id, int timeout) {
+int lamb_nn_pair(const char *host, int id, int timeout) {
     int fd;
     int err;
     Response *resp;
@@ -76,13 +74,13 @@ int lamb_nn_pair(const char *host, int port, int id, int timeout) {
     req.type = LAMB_PUSH;
     req.addr = "0.0.0.0";
 
-    resp = lamb_nn_request(host, port, &req, timeout);
+    resp = lamb_nn_request(host, &req, timeout);
 
     if (!resp) {
         return -1;
     }
 
-    err = lamb_nn_connect(&fd, resp->addr, resp->port, NN_PAIR, timeout);
+    err = lamb_nn_connect(&fd, resp->host, NN_PAIR, timeout);
 
     lamb_response_free_unpacked(resp, NULL);
 
@@ -93,7 +91,7 @@ int lamb_nn_pair(const char *host, int port, int id, int timeout) {
     return fd;
 }
 
-Response *lamb_nn_request(const char *host, int port, Request *req, int timeout) {
+Response *lamb_nn_request(const char *host, Request *req, int timeout) {
     int rc;
     int err;
     int sock;
@@ -117,7 +115,7 @@ Response *lamb_nn_request(const char *host, int port, Request *req, int timeout)
         return NULL;
     }
 
-    err = lamb_nn_connect(&sock, host, port, NN_REQ, timeout);
+    err = lamb_nn_connect(&sock, host, NN_REQ, timeout);
     if (err) {
         free(buf);
         return NULL;

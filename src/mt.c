@@ -198,6 +198,7 @@ void *lamb_push_loop(void *arg) {
     int fd;
     int err;
     int timeout;
+    char host[64];
     Request *client;
     lamb_node_t *node;
     lamb_queue_t *queue;
@@ -236,9 +237,10 @@ void *lamb_push_loop(void *arg) {
 
     pthread_mutex_lock(&mutex);
 
+    memset(host, 0, sizeof(host));
     resp.id = client->id;
-    resp.addr = config.listen;
-    resp.port = port;
+    sprintf(host, "tcp://%s:%d", config.listen, port);
+    resp.host = host;
 
     pthread_mutex_unlock(&mutex);
     pthread_cond_signal(&cond);
@@ -299,6 +301,7 @@ void *lamb_pull_loop(void *arg) {
     int fd;
     int err;
     int timeout;
+    char host[64];
     lamb_node_t *node;
     lamb_queue_t *queue;
     Request *client;
@@ -338,9 +341,11 @@ void *lamb_pull_loop(void *arg) {
     }
 
     pthread_mutex_lock(&mutex);
+
+    memset(host, 0, sizeof(host));
     resp.id = client->id;
-    resp.addr = config.listen;
-    resp.port = port;
+    sprintf(host, "tcp://%s:%d", config.listen, port);
+    resp.host = host;
 
     pthread_mutex_unlock(&mutex);
     pthread_cond_signal(&cond);
@@ -489,14 +494,10 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "AcHost", conf->ac_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
+    if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
     }
 
-    if (lamb_get_int(&cfg, "AcPort", &conf->ac_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
-    }
-    
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;

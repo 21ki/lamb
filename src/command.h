@@ -18,7 +18,6 @@ typedef struct _Request Request;
 typedef struct _Response Response;
 typedef struct _Connect Connect;
 
-
 /* --- messages --- */
 
 struct  _Request
@@ -37,12 +36,11 @@ struct  _Response
 {
   ProtobufCMessage base;
   int32_t id;
-  char *addr;
-  int32_t port;
+  char *host;
 };
 #define LAMB_RESPONSE_INIT \
  { PROTOBUF_C_MESSAGE_INIT (&lamb_response_descriptor) \
-    , 0, (char *)protobuf_c_empty_string, 0 }
+    , 0, (char *)protobuf_c_empty_string }
 
 
 struct  _Connect
@@ -125,7 +123,6 @@ typedef void (*Response_Closure)
 typedef void (*Connect_Closure)
                  (const Connect *message,
                   void *closure_data);
-
 
 /* --- descriptors --- */
 

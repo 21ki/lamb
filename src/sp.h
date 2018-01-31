@@ -32,12 +32,9 @@ typedef struct {
     int concurrent;
     char backfile[128];
     char logfile[128];
-    char ac_host[16];
-    int ac_port;
-    char mt_host[16];
-    int mt_port;
-    char mo_host[16];
-    int mo_port;
+    char ac[128];
+    char mt[128];
+    char mo[128];
     char *nodes[7];
 } lamb_config_t;
 

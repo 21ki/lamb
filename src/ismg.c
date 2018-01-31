@@ -309,10 +309,9 @@ void lamb_work_loop(lamb_client_t *client) {
     }
 
     /* Connect to MT server */
-    mt = lamb_nn_pair(config.mt_host, config.mt_port, client->account->id,
-                      config.timeout);
+    mt = lamb_nn_pair(config.mt, client->account->id, config.timeout);
     if (mt < 0) {
-        lamb_log(LOG_ERR, "can't connect to mt %s server", config.mt_host);
+        lamb_log(LOG_ERR, "can't connect to mt %s", config.mt);
         return;
     }
 
@@ -488,9 +487,9 @@ void *lamb_deliver_loop(void *data) {
     client = (lamb_client_t *)data;
 
     /* Connect to MO server */
-    mo = lamb_nn_reqrep(config.mo_host, config.mo_port, client->account->id, config.timeout);
+    mo = lamb_nn_reqrep(config.mo, client->account->id, config.timeout);
     if (mo < 0) {
-        lamb_log(LOG_ERR, "can't connect to mo %s server", config.mo_host);
+        lamb_log(LOG_ERR, "can't connect to mo %s", config.mo);
         pthread_exit(NULL);
     }
 
@@ -694,39 +693,20 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "AcHost", conf->ac_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
+    if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
     }
 
-    if (lamb_get_int(&cfg, "AcPort", &conf->ac_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
-    }
-
-    if (conf->ac_port < 1 || conf->ac_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid AC port number\n");
+    if (lamb_get_string(&cfg, "Mt", conf->mt, 128) != 0) {
+        fprintf(stderr, "ERROR: Invalid MT server address\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "MtHost", conf->mt_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid MT server IP address\n");
+    if (lamb_get_string(&cfg, "Mo", conf->mo, 128) != 0) {
+        fprintf(stderr, "ERROR: Invalid MO server address\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "MtPort", &conf->mt_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MtPort' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_string(&cfg, "MoHost", conf->mo_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid MO server IP address\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "MoPort", &conf->mo_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MoPort' parameter\n");
-        goto error;
-    }
-    
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;

@@ -19,8 +19,7 @@ typedef struct {
     char listen[16];
     int port;
     long long timeout;
-    char ac_host[16];
-    int ac_port;
+    char ac[128];
     char db_host[16];
     int db_port;
     char db_user[64];

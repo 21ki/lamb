@@ -26,12 +26,9 @@ typedef struct {
     long recv_timeout;
     long acknowledge_timeout;
     char queue[64];
-    char ac_host[16];
-    int ac_port;
-    char mt_host[16];
-    int mt_port;
-    char mo_host[16];
-    int mo_port;
+    char ac[128];
+    char mt[128];
+    char mo[128];
     char logfile[128];
     bool debug;
     bool daemon;

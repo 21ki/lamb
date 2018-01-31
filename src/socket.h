@@ -49,10 +49,10 @@ typedef struct {
 #pragma pack()
 
 
-int lamb_nn_connect(int *sock, const char *host, int port, int protocol, int timeout);
-int lamb_nn_reqrep(const char *host, int port, int id, int timeout);
-int lamb_nn_pair(const char *host, int port, int id, int timeout);
-Response *lamb_nn_request(const char *host, int port, Request *req, int timeout);
+int lamb_nn_connect(int *sock, const char *host, int protocol, int timeout);
+int lamb_nn_reqrep(const char *host, int id, int timeout);
+int lamb_nn_pair(const char *host, int id, int timeout);
+Response *lamb_nn_request(const char *host, Request *req, int timeout);
 int lamb_nn_server(int *sock, const char *listen, unsigned short port, int protocol);
 size_t lamb_pack_assembly(char **buf, int method, void *pk, size_t len);
 

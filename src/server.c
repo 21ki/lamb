@@ -1109,44 +1109,44 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     lamb_debug("fetch account information successfull\n");
 
     /* Connect to MT server */
-    mt = lamb_nn_reqrep(config->mt_host, cfg->mt_port, aid, cfg->timeout);
+    mt = lamb_nn_reqrep(config->mt, aid, cfg->timeout);
 
     if (mt < 0) {
-        lamb_log(LOG_ERR, "can't connect to MT %s server", cfg->mt_host);
+        lamb_log(LOG_ERR, "can't connect to MT %s", cfg->mt);
         return -1;
     }
     
-    lamb_debug("connect to mt %s successfull\n", cfg->mt_host);
+    lamb_debug("connect to mt %s successfull\n", cfg->mt);
     
     /* Connect to MO server */
-    mo = lamb_nn_pair(cfg->mo_host, cfg->mo_port, aid, cfg->timeout);
+    mo = lamb_nn_pair(cfg->mo, aid, cfg->timeout);
 
     if (mo < 0) {
-        lamb_log(LOG_ERR, "can't connect to MO %s server", cfg->mo_host);
+        lamb_log(LOG_ERR, "can't connect to MO %s", cfg->mo);
         return -1;
     }
 
-    lamb_debug("connect to mo %s successfull\n", cfg->mo_host);
+    lamb_debug("connect to mo %s successfull\n", cfg->mo);
 
     /* Connect to Scheduler server */
-    scheduler = lamb_nn_pair(cfg->scheduler_host, cfg->scheduler_port, aid, cfg->timeout);
+    scheduler = lamb_nn_pair(cfg->scheduler, aid, cfg->timeout);
 
     if (scheduler < 0) {
-        lamb_log(LOG_ERR, "can't connect to Scheduler %s server", cfg->scheduler_host);
+        lamb_log(LOG_ERR, "can't connect to scheduler %s", cfg->scheduler);
         return -1;
     }
 
-    lamb_debug("connect to scheduler %s successfull\n", cfg->scheduler_host);
+    lamb_debug("connect to scheduler %s successfull\n", cfg->scheduler);
     
     /* Connect to Deliver server */
-    deliverd = lamb_nn_reqrep(cfg->deliver_host, cfg->deliver_port, aid, cfg->timeout);
+    deliverd = lamb_nn_reqrep(cfg->deliver, aid, cfg->timeout);
 
     if (deliverd < 0) {
-        lamb_log(LOG_ERR, "can't connect to deliver %s server", cfg->deliver_host);
+        lamb_log(LOG_ERR, "can't connect to deliver %s", cfg->deliver);
         return -1;
     }
 
-    lamb_debug("connect to deliver %s successfull\n", cfg->deliver_host);
+    lamb_debug("connect to deliver %s successfull\n", cfg->deliver);
 
     /* Fetch company information */
     err = lamb_company_get(&global->db, global->account.company, &global->company);
@@ -1253,43 +1253,28 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "MtHost", conf->mt_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid MT server IP address\n");
+    if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
+        fprintf(stderr, "ERROR: Invalid AC server address\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "MtPort", &conf->mt_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MtPort' parameter\n");
+    if (lamb_get_string(&cfg, "Mt", conf->mt, 128) != 0) {
+        fprintf(stderr, "ERROR: Invalid MT server address\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "MoHost", conf->mo_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid MO server IP address\n");
+    if (lamb_get_string(&cfg, "Mo", conf->mo, 128) != 0) {
+        fprintf(stderr, "ERROR: Invalid MO server address\n");
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "MoPort", &conf->mo_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MoPort' parameter\n");
+    if (lamb_get_string(&cfg, "Scheduler", conf->scheduler, 128) != 0) {
+        fprintf(stderr, "ERROR: Invalid scheduler server address\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "SchedulerHost", conf->scheduler_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid scheduler server IP address\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "SchedulerPort", &conf->scheduler_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read scheduler server port parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_string(&cfg, "DeliverHost", conf->deliver_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid deliver server IP address\n");
-        goto error;
-    }
-
-    if (lamb_get_int(&cfg, "DeliverPort", &conf->deliver_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read deliver server port parameter\n");
+    if (lamb_get_string(&cfg, "Deliver", conf->deliver, 128) != 0) {
+        fprintf(stderr, "ERROR: Invalid deliver server address\n");
         goto error;
     }
 
