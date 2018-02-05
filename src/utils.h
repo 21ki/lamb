@@ -71,8 +71,8 @@ typedef struct {
     int account;
     int company;
     char spid[8];
-    char spcode[24];
-    char phone[24];
+    char spcode[21];
+    char phone[21];
     int msgfmt;
     int length;
     char content[160];
@@ -83,11 +83,11 @@ typedef struct {
     int account;
     int company;
     unsigned long long id;
-    char spcode[24];
-    char phone[24];
+    char spcode[21];
+    char phone[21];
     int status;
-    char submittime[16];
-    char donetime[16];
+    char submittime[11];
+    char donetime[11];
 } lamb_report_t;
 
 typedef struct {
@@ -95,9 +95,9 @@ typedef struct {
     int account;
     int company;
     unsigned long long id;
-    char phone[24];
-    char spcode[24];
-    char serviceid[24];
+    char phone[21];
+    char spcode[21];
+    char serviceid[11];
     int msgfmt;
     int length;
     char content[160];

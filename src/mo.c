@@ -250,6 +250,10 @@ void *lamb_push_loop(void *arg) {
     
     /* Start event processing */
     int rc;
+    Report *rpack;
+    Deliver *dpack;
+    lamb_report_t *r;
+    lamb_deliver_t *d;
     char *buf = NULL;
 
     while (true) {
@@ -270,52 +274,59 @@ void *lamb_push_loop(void *arg) {
         }
 
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
-            Report *report;
-            report = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            rpack = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
-            if (!report) {
+            if (!rpack) {
                 nn_freemsg(buf);
                 continue;
             }
 
-            nn_freemsg(buf);
+            r = (lamb_report_t *)calloc(1, sizeof(lamb_report_t));
 
-            lamb_element *el;
-            el = (lamb_element *)malloc(sizeof(lamb_element));
-
-            if (!el) {
-                lamb_report_free_unpacked(report, NULL);
-                continue;
+            if (r) {
+                r->type = LAMB_REPORT;
+                r->id = rpack->id;
+                r->account = rpack->account;
+                r->company = rpack->company;
+                strncpy(r->spcode, rpack->spcode, 20);
+                strncpy(r->phone, rpack->phone, 11);
+                r->status = rpack->status;
+                strncpy(r->submittime, rpack->submittime, 10);
+                strncpy(r->donetime, rpack->donetime, 10);
+                lamb_queue_push(queue, r);
             }
 
-            el->type = LAMB_REPORT;
-            el->data = report;
-            lamb_queue_push(queue, el);
+            lamb_report_free_unpacked(rpack, NULL);
+            nn_freemsg(buf);
             continue;
         }
 
         if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
-            Deliver *deliver;
-            deliver = lamb_deliver_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            dpack = lamb_deliver_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
-            if (!deliver) {
+            if (!dpack) {
                 nn_freemsg(buf);
                 continue;
             }
 
-            nn_freemsg(buf);
+            d = (lamb_deliver_t *)calloc(1, sizeof(lamb_deliver_t));
 
-            lamb_element *el;
-            el = (lamb_element *)malloc(sizeof(lamb_element));
-
-            if (!el) {
-                lamb_deliver_free_unpacked(deliver, NULL);
-                continue;
+            if (d) {
+                d->type = LAMB_DELIVER;
+                d->id = dpack->id;
+                d->account = dpack->account;
+                d->company = dpack->company;
+                strncpy(d->phone, dpack->phone, 11);
+                strncpy(d->spcode, dpack->spcode, 20);
+                strncpy(d->serviceid, dpack->serviceid, 10);
+                d->msgfmt = dpack->msgfmt;
+                d->length = dpack->length;
+                memcpy(d->content, dpack->content.data, dpack->content.len);
+                lamb_queue_push(queue, d);
             }
 
-            el->type = LAMB_DELIVER;
-            el->data = deliver;
-            lamb_queue_push(queue, el);
+            lamb_deliver_free_unpacked(dpack, NULL);
+            nn_freemsg(buf);
             continue;
         }
 
@@ -392,9 +403,11 @@ void *lamb_pull_loop(void *arg) {
     /* Start event processing */
     void *pk;
     int rc, len;
-    Report *report;
-    Deliver *deliver;
-    lamb_element *el;
+    void *message;
+    lamb_report_t *report;
+    lamb_deliver_t *deliver;
+    Report rpack = LAMB_REPORT_INIT;
+    Deliver dpack = LAMB_DELIVER_INIT;
 
     while (true) {
         char *buf = NULL;
@@ -429,15 +442,25 @@ void *lamb_pull_loop(void *arg) {
                 continue;
             }
 
-            el = (lamb_element *)node->val;
+            message = node->val;
 
-            if (el->type == LAMB_REPORT) {
-                report = (Report *)el->data;
-                len = lamb_report_get_packed_size(report);
+            if (CHECK_TYPE(message) == LAMB_REPORT) {
+                report = (lamb_report_t *)message;
+
+                rpack.id = report->id;
+                rpack.account = report->account;
+                rpack.company = report->company;
+                rpack.spcode = report->spcode;
+                rpack.phone = report->phone;
+                rpack.status = report->status;
+                rpack.submittime = report->submittime;
+                rpack.donetime = report->donetime;
+
+                len = lamb_report_get_packed_size(&rpack);
                 pk = malloc(len);
 
                 if (pk) {
-                    lamb_report_pack(report, pk);
+                    lamb_report_pack(&rpack, pk);
                     len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
                     if (len > 0) {
                         nn_send(fd, buf, len, NN_DONTWAIT);
@@ -445,13 +468,25 @@ void *lamb_pull_loop(void *arg) {
                     }
                     free(pk);
                 }
-            } else if (el->type == LAMB_DELIVER) {
-                deliver = (Deliver *)el->data;
-                len = lamb_deliver_get_packed_size(deliver);
+            } else if (CHECK_TYPE(message) == LAMB_DELIVER) {
+                deliver = (lamb_deliver_t *)message;
+
+                dpack.id = deliver->id;
+                dpack.account = deliver->account;
+                dpack.company = deliver->company;
+                dpack.phone = deliver->phone;
+                dpack.spcode = deliver->spcode;
+                dpack.serviceid = deliver->serviceid;
+                dpack.msgfmt = deliver->msgfmt;
+                dpack.length = deliver->length;
+                dpack.content.len = deliver->length;
+                dpack.content.data = (uint8_t *)deliver->content;
+
+                len = lamb_deliver_get_packed_size(&dpack);
                 pk = malloc(len);
 
                 if (pk) {
-                    lamb_deliver_pack(deliver, pk);
+                    lamb_deliver_pack(&dpack, pk);
                     len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
                     if (len > 0) {
                         nn_send(fd, buf, len, NN_DONTWAIT);
@@ -461,7 +496,7 @@ void *lamb_pull_loop(void *arg) {
                 }
             }
 
-            free(el);
+            free(message);
             free(node);
             continue;
         }

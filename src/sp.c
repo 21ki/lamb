@@ -366,16 +366,16 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &report->id, 8);
 
                 /* Src_Terminal_Id */
-                cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, report->phone, 24, 20);
+                cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, report->phone, 21, 20);
 
                 /* Stat */
                 cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_stat, stat, 8, 7);
 
                 /* Submit_Time */
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_submit_time, report->submittime, 16, 10);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_submit_time, report->submittime, 11, 10);
 
                 /* Done_Time */
-                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_done_time, report->donetime, 16, 10);
+                cmpp_pack_get_string(&pack, cmpp_deliver_msg_content_done_time, report->donetime, 11, 10);
 
                 /* Stat */
                 if (strncasecmp(stat, "DELIVRD", 7) == 0) {
@@ -417,13 +417,13 @@ void *lamb_deliver_loop(void *data) {
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_id, &deliver->id, 8);
 
                 /* Src_Terminal_Id */
-                cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, deliver->phone, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_deliver_src_terminal_id, deliver->phone, 21, 20);
 
                 /* Dest_Id */
-                cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, deliver->spcode, 24, 21);
+                cmpp_pack_get_string(&pack, cmpp_deliver_dest_id, deliver->spcode, 21, 20);
 
                 /* Service_Id */
-                cmpp_pack_get_string(&pack, cmpp_deliver_service_id, deliver->serviceid, 16, 10);
+                cmpp_pack_get_string(&pack, cmpp_deliver_service_id, deliver->serviceid, 11, 10);
 
                 /* Msg_Fmt */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_fmt, &deliver->msgfmt, 1);

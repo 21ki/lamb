@@ -250,7 +250,9 @@ void *lamb_push_loop(void *arg) {
     
     /* Start event processing */
     int rc;
+    Submit *packet;
     char *buf = NULL;
+    lamb_submit_t *message;
 
     while (true) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
@@ -270,11 +272,23 @@ void *lamb_push_loop(void *arg) {
         }
 
         if (CHECK_COMMAND(buf) == LAMB_SUBMIT) {
-            Submit *message;
-            message = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            packet = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
-            if (message) {
-                lamb_queue_push(queue, message);
+            if (packet) {
+                message = (lamb_submit_t *)calloc(1, sizeof(lamb_submit_t));
+                if (message) {
+                    message->id = packet->id;
+                    message->account = packet->account;
+                    message->company = packet->company;
+                    strncpy(message->spid, packet->spid, 6);
+                    strncpy(message->spcode, packet->spcode, 20);
+                    strncpy(message->phone, packet->phone, 11);
+                    message->msgfmt = packet->msgfmt;
+                    message->length = packet->length;
+                    memcpy(message->content, packet->content.data, packet->content.len);
+                    lamb_queue_push(queue, message);
+                }
+                lamb_submit_free_unpacked(packet, NULL);
             }
 
             nn_freemsg(buf);
@@ -357,7 +371,8 @@ void *lamb_pull_loop(void *arg) {
     int rc;
     int len;
     char *buf;
-    Submit *message;
+    lamb_submit_t *message;
+    Submit packet = LAMB_SUBMIT_INIT;
 
     while (true) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
@@ -390,12 +405,24 @@ void *lamb_pull_loop(void *arg) {
             }
 
             void *pk;
-            message = (Submit *)node->val;
-            len = lamb_submit_get_packed_size(message);
+            message = (lamb_submit_t *)node->val;
+
+            packet.id = message->id;
+            packet.account = message->account;
+            packet.company = message->company;
+            packet.spid = message->spid;
+            packet.spcode = message->spcode;
+            packet.phone = message->phone;
+            packet.msgfmt = message->msgfmt;
+            packet.length = message->length;
+            packet.content.len = message->length;
+            packet.content.data = (uint8_t *)message->content;
+
+            len = lamb_submit_get_packed_size(&packet);
             pk = malloc(len);
 
             if (pk) {
-                lamb_submit_pack(message, pk);
+                lamb_submit_pack(&packet, pk);
                 len = lamb_pack_assembly(&buf, LAMB_SUBMIT, pk, len);
                 if (len > 0) {
                     nn_send(fd, buf, len, NN_DONTWAIT);
@@ -404,8 +431,8 @@ void *lamb_pull_loop(void *arg) {
                 free(pk);
             }
 
-            lamb_submit_free_unpacked(message, NULL);
             free(node);
+            free(message);
             continue;
         }
 
