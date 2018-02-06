@@ -91,6 +91,33 @@ int lamb_nn_pair(const char *host, int id, int timeout) {
     return fd;
 }
 
+int lamb_nn_access(const char *host, int id, int type, int timeout) {
+    int fd;
+    int err;
+    Response *resp;
+    Request req = LAMB_REQUEST_INIT;
+
+    req.id = id;
+    req.type = type;
+    req.addr = "0.0.0.0";
+
+    resp = lamb_nn_request(host, &req, timeout);
+
+    if (!resp) {
+        return -1;
+    }
+
+    err = lamb_nn_connect(&fd, resp->host, NN_PAIR, timeout);
+
+    lamb_response_free_unpacked(resp, NULL);
+
+    if (err) {
+        return -1;
+    }
+
+    return fd;
+}
+
 Response *lamb_nn_request(const char *host, Request *req, int timeout) {
     int rc;
     int err;

@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <cmpp.h>
 #include "ac.h"
+#include "db.h"
 #include "utils.h"
 #include "cache.h"
 #include "list.h"
@@ -75,7 +76,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* log file setting */
-    if (setenv("logfile", config->logfile, 1) == -1) {
+    if (setenv("logfile", config.logfile, 1) == -1) {
         lamb_vlog(LOG_ERR, "setenv error: %s", strerror(errno));
         return -1;
     }
@@ -94,15 +95,15 @@ void lamb_event_loop(void) {
     int err;
     void *pk;
     int rc, len;
+    int timeout;
     Request *req;
     char *buf = NULL;
+    char host[64] = {0};
     unsigned short port;
+    lamb_client_t *client;
     Response resp = LAMB_RESPONSE_INIT;
 
     lamb_set_process("lamb-acd");
-
-    pthread_cond_init(&cond, NULL);
-    pthread_mutex_init(&mutex, NULL);
 
     err = lamb_component_initialization(&config);
 
@@ -114,22 +115,22 @@ void lamb_event_loop(void) {
     lamb_start_thread(lamb_mt_loop, NULL, 1);
 
     /* Start mo processing thread */
-    lamb_start_thread(lamb_mo_loop, NULL, 1);
+    //lamb_start_thread(lamb_mo_loop, NULL, 1);
     
     /* Start ismg processing thread */
-    lamb_start_thread(lamb_ismg_loop, NULL, 1);
+    //lamb_start_thread(lamb_ismg_loop, NULL, 1);
     
     /* Start server processing thread */
-    lamb_start_thread(lamb_server_loop, NULL, 1);
+    //lamb_start_thread(lamb_server_loop, NULL, 1);
     
     /* Start scheduler processing thread */
-    lamb_start_thread(lamb_scheduler_loop, NULL, 1);
+    //lamb_start_thread(lamb_scheduler_loop, NULL, 1);
     
     /* Start delivery processing thread */
-    lamb_start_thread(lamb_delivery_loop, NULL, 1);
+    //lamb_start_thread(lamb_delivery_loop, NULL, 1);
     
     /* Start gateway processing thread */
-    lamb_start_thread(lamb_gateway_loop, NULL, 1);
+    //lamb_start_thread(lamb_gateway_loop, NULL, 1);
 
     /* Start main loop thread */
     err = lamb_nn_server(&fd, config.listen, config.port, NN_REP);
@@ -175,13 +176,12 @@ void lamb_event_loop(void) {
         if (err) {
             lamb_request_free_unpacked(req, NULL);
             lamb_log(LOG_ERR, "lamb can't find available port");
-
             continue;
         }
 
         resp.id = req->id;
-        resp.addr = config.listen;
-        resp.port = port;
+        sprintf(host, "tcp://%s:%d", config.listen, port);
+        resp.host = host;
 
         timeout = config.timeout;
         nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
@@ -202,21 +202,33 @@ void lamb_event_loop(void) {
         }
 
         free(pk);
+        client = (lamb_client_t *)calloc(1, sizeof(lamb_client_t));
+
+        if (!client) {
+            nn_close(cli);
+            lamb_request_free_unpacked(req, NULL);
+            continue;
+        }
+
+        client->id = req->id;
+        client->sock = cli;
+        strncpy(client->addr, req->addr, 15);
 
         if (req->type == LAMB_MT) {
-            lamb_list_rpush(mt, req);
+            lamb_list_rpush(mt, lamb_node_new(client));
+            lamb_debug("-> new mt client connected!\n");
         } else if (req->type == LAMB_MO) {
-            lamb_list_rpush(mt, req);
+            lamb_list_rpush(mo, lamb_node_new(client));
         } else if (req->type == LAMB_ISMG) {
-            lamb_list_rpush(mt, req);
+            lamb_list_rpush(ismg, lamb_node_new(client));
         } else if (req->type == LAMB_SERVER) {
-            lamb_list_rpush(mt, req);
+            lamb_list_rpush(server, lamb_node_new(client));
         } else if (req->type == LAMB_SCHEDULER) {
-            lamb_list_rpush(mt, req);
+            lamb_list_rpush(scheduler, lamb_node_new(client));
         } else if (req->type == LAMB_DELIVERY) {
-            lamb_list_rpush(mt, req);
+            lamb_list_rpush(delivery, lamb_node_new(client));
         } else if (req->type == LAMB_GATEWAY) {
-            lamb_list_rpush(mt, req);
+            lamb_list_rpush(gateway, lamb_node_new(client));
         } else {
             nn_close(cli);
             lamb_log(LOG_ERR, "invalid type of client");
@@ -229,8 +241,26 @@ void lamb_event_loop(void) {
 }
 
 void *lamb_mt_loop(void *arg) {
-    int fd, err;
+    int fd;
+    int err;
     int timeout;
+    lamb_node_t *node;
+    lamb_list_iterator_t *it;
+    lamb_client_t *client;
+
+    while (true) {
+        it = lamb_list_iterator_new(mt, LIST_HEAD);
+
+        while ((node = lamb_list_iterator_next(it))) {
+            client = (lamb_client_t *)node->val;
+            printf("-> mt: %d\n", mt->len);
+        }
+
+        lamb_list_iterator_destroy(it);
+        lamb_sleep(3000);
+    }
+
+    pthread_exit(NULL);
 }
 
 void *lamb_mo_loop(void *arg) {
@@ -257,7 +287,20 @@ void *lamb_gateway_loop(void *arg) {
 
 }
 
+int lamb_child_server(int *sock, const char *host, unsigned short *port, int protocol) {
+    while (true) {
+        if (!lamb_nn_server(sock, host, *port, protocol)) {
+            break;
+        }
+        (*port)++;
+    }
+
+    return 0;
+}
+
 int lamb_component_initialization(lamb_config_t *cfg) {
+    int err;
+
     if (!cfg) {
         return -1;
     }
@@ -352,16 +395,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
     
-    if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
-        goto error;
-    }
-
-    if (lamb_get_bool(&cfg, "Daemon", &conf->daemon) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Daemon' parameter\n");
-        goto error;
-    }
-        
     if (lamb_get_string(&cfg, "Listen", conf->listen, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid Listen IP address\n");
         goto error;
@@ -387,22 +420,14 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "RecvTimeout", &conf->recv_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
+    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
         goto error;
     }
 
-    if (lamb_get_int64(&cfg, "SendTimeout", &conf->send_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
+    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
         goto error;
-    }
-
-    if (lamb_get_string(&cfg, "redisHost", conf->redis_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'redisHost' parameter\n");
-    }
-
-    if (lamb_get_int(&cfg, "redisPort", &conf->redis_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'redisPort' parameter\n");
     }
 
     if (conf->redis_port < 1 || conf->redis_port > 65535) {
@@ -410,10 +435,40 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
-    if (lamb_get_int(&cfg, "redisDb", &conf->redis_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'redisDb' parameter\n");
+    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+    }
+
+    if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "DbPort", &conf->db_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->db_port < 1 || conf->db_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid DB port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DbUser", conf->db_user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbUser' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DbPassword", conf->db_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbPassword' parameter\n");
+        goto error;
     }
     
+    if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
+        goto error;
+    }
+
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;

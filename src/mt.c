@@ -31,7 +31,7 @@
 #include "message.h"
 #include "mt.h"
 
-//static int ac;
+static int ac;
 static lamb_list_t *pool;
 static lamb_config_t config;
 static pthread_cond_t cond;
@@ -99,6 +99,15 @@ void lamb_event_loop(void) {
     }
 
     pool->match = lamb_queue_compare;
+
+    /* Connect to AC server */
+    ac = lamb_nn_access(config.ac, config.id, LAMB_MT, config.timeout);
+    if (ac < 0) {
+        lamb_log(LOG_ERR, "can't connect to AC %s", config.ac);
+        return;
+    }
+
+    lamb_debug("connect to ac %s successfull\n", config.ac);
 
     /* Server Initialization */
     fd = nn_socket(AF_SP, NN_REP);
@@ -523,6 +532,7 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
+        goto error;
     }
 
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
