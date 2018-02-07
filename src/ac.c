@@ -111,9 +111,6 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Start mt processing thread */
-    lamb_start_thread(lamb_mt_loop, NULL, 1);
-
     /* Start mo processing thread */
     //lamb_start_thread(lamb_mo_loop, NULL, 1);
     
@@ -215,8 +212,8 @@ void lamb_event_loop(void) {
         strncpy(client->addr, req->addr, 15);
 
         if (req->type == LAMB_MT) {
-            lamb_list_rpush(mt, lamb_node_new(client));
-            lamb_debug("-> new mt client connected!\n");
+            /* Start mt processing thread */
+            lamb_start_thread(lamb_mt_loop, (void *)client, 1);
         } else if (req->type == LAMB_MO) {
             lamb_list_rpush(mo, lamb_node_new(client));
         } else if (req->type == LAMB_ISMG) {
@@ -241,25 +238,22 @@ void lamb_event_loop(void) {
 }
 
 void *lamb_mt_loop(void *arg) {
-    int fd;
     int err;
-    int timeout;
-    lamb_node_t *node;
-    lamb_list_iterator_t *it;
     lamb_client_t *client;
 
+    client = (lamb_client_t *)arg;
+    //lamb_list_rpush(mt, lamb_node_new(client));
+
+    lamb_debug("-> new mt client connected!\n");
+
+    int rc;
+    void *buf;
+
     while (true) {
-        it = lamb_list_iterator_new(mt, LIST_HEAD);
-
-        while ((node = lamb_list_iterator_next(it))) {
-            client = (lamb_client_t *)node->val;
-            printf("-> mt: %d\n", mt->len);
-        }
-
-        lamb_list_iterator_destroy(it);
-        lamb_sleep(3000);
+        
     }
 
+    free(client);
     pthread_exit(NULL);
 }
 
