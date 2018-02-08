@@ -104,7 +104,7 @@ int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account) {
     PGresult *res = NULL;
 
     column = "id, username, spcode, company, address, concurrent, dbase, template, keyword";
-    sprintf(sql, "SELECT %s FROM account WHERE id = %d", column, id);
+    snprintf(sql, sizeof(sql), "SELECT %s FROM account WHERE id = %d", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -137,7 +137,7 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
 
     accounts->len = 0;
     column = "id, username, spcode, company, address, concurrent, dbase, template, keyword";
-    sprintf(sql, "SELECT %s FROM account ORDER BY id", column);
+    snprintf(sql, sizeof(sql), "SELECT %s FROM account ORDER BY id", column);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);

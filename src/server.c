@@ -437,7 +437,7 @@ void *lamb_deliver_loop(void *data) {
     Report *rpack;
     Deliver *dpack;
     char *req, *buf;
-    char spcode[24];
+    char spcode[21];
     lamb_bill_t *bill;
     int rc, len, rlen;
 
@@ -543,7 +543,7 @@ void *lamb_deliver_loop(void *data) {
             deliver.company = global->company.id;
             deliver.phone = dpack->phone;
             memset(spcode, 0, sizeof(spcode));
-            sprintf(spcode, "%s%s", global->account.spcode, dpack->serviceid);
+            snprintf(spcode, sizeof(spcode), "%s%s", global->account.spcode, dpack->serviceid);
             deliver.spcode = spcode;
             deliver.msgfmt = dpack->msgfmt;
             deliver.length = dpack->length;
@@ -762,7 +762,7 @@ int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {
         return -1;
     }
 
-    sprintf(sql, "UPDATE message SET status = %d WHERE id = %lld",
+    snprintf(sql, sizeof(sql), "UPDATE message SET status = %d WHERE id = %lld",
             message->status, (long long)message->id);
 
     res = PQexec(db->conn, sql);
@@ -786,7 +786,7 @@ int lamb_write_message(lamb_db_t *db, lamb_submit_t *message) {
     }
 
     column = "id, spid, spcode, phone, content, status, account, company";
-    sprintf(sql, "INSERT INTO message(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)",
+    snprintf(sql, sizeof(sql), "INSERT INTO message(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)",
             column, (long long int)message->id, message->spid, message->spcode, message->phone,
             message->content, 0, message->account, message->company);
 
@@ -811,7 +811,7 @@ int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message) {
     }
 
     column = "id, spcode, phone, content, account, company";
-    sprintf(sql, "INSERT INTO delivery(%s) VALUES(%lld, '%s', '%s', '%s', %d, %d)",
+    snprintf(sql, sizeof(sql), "INSERT INTO delivery(%s) VALUES(%lld, '%s', '%s', '%s', %d, %d)",
             column, (long long int)message->id, message->spcode, message->phone,
             message->content, message->account, message->company);
 
@@ -830,7 +830,7 @@ bool lamb_check_content(lamb_template_t *template, char *content, int len) {
     char pattern[512];
 
     memset(pattern, 0, sizeof(pattern));
-    sprintf(pattern, "^【%s】%s$", template->name, template->contents);
+    snprintf(pattern, sizeof(pattern), "^【%s】%s$", template->name, template->contents);
     if (lamb_pcre_regular(pattern, content, len)) {
         return true;
     }

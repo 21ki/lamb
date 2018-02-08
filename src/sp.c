@@ -251,7 +251,7 @@ void *lamb_sender_loop(void *data) {
 
         /* Spcode Processing */
         if (config.extended) {
-            sprintf(spcode, "%s%s", config.spcode, message->spcode);
+            snprintf(spcode, sizeof(spcode), "%s%s", config.spcode, message->spcode);
         } else {
             strcpy(spcode, config.spcode);
         }

@@ -177,7 +177,7 @@ void lamb_event_loop(void) {
         }
 
         resp.id = req->id;
-        sprintf(host, "tcp://%s:%d", config.listen, port);
+        snprintf(host, sizeof(host), "tcp://%s:%d", config.listen, port);
         resp.host = host;
 
         timeout = config.timeout;

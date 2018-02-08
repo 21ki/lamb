@@ -15,7 +15,7 @@ int lamb_company_get(lamb_db_t *db, int id, lamb_company_t *company) {
     PGresult *res = NULL;
 
     column = "id, money";
-    sprintf(sql, "SELECT %s FROM company WHERE id = %d", column, id);
+    snprintf(sql, sizeof(sql), "SELECT %s FROM company WHERE id = %d", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);

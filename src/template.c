@@ -17,7 +17,7 @@ int lamb_get_templates(lamb_db_t *db, lamb_list_t *templates) {
     PGresult *res = NULL;
 
     column = "id, rexp, name, contents";
-    sprintf(sql, "SELECT %s FROM template ORDER BY id", column);
+    snprintf(sql, sizeof(sql), "SELECT %s FROM template ORDER BY id", column);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -49,7 +49,8 @@ int lamb_get_template(lamb_db_t *db, const char *rexp, lamb_list_t *templates) {
     PGresult *res = NULL;
 
     column = "id, rexp, name, contents";
-    sprintf(sql, "SELECT %s FROM template WHERE rexp = '%s' ORDER BY id", column, rexp);
+    snprintf(sql, sizeof(sql), "SELECT %s FROM template WHERE rexp = '%s' ORDER BY id",
+             column, rexp);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);

@@ -212,7 +212,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     memset(username, 0, sizeof(username));
                     cmpp_pack_get_string(&pack, cmpp_connect_source_addr, username,
                                          sizeof(username), 6);
-                    sprintf(key, "account.%s", username);
+                    snprintf(key, sizeof(key), "account.%s", username);
                     
                     if (!lamb_cache_has(&rdb, key)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);

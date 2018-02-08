@@ -17,7 +17,8 @@ int lamb_get_channels(lamb_db_t *db, int gid, lamb_list_t *channels) {
 
     channels->len = 0;
     column = "id, gid, weight, operator";
-    sprintf(sql, "SELECT %s FROM channels WHERE gid = %d ORDER BY weight ASC", column, gid);
+    snprintf(sql, sizeof(sql), "SELECT %s FROM channels WHERE gid = %d ORDER BY weight ASC",
+             column, gid);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);

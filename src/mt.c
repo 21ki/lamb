@@ -116,7 +116,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    sprintf(addr, "tcp://%s:%d", config.listen, config.port);
+    snprintf(addr, sizeof(addr), "tcp://%s:%d", config.listen, config.port);
 
     if (nn_bind(fd, addr) < 0) {
         nn_close(fd);
@@ -248,7 +248,7 @@ void *lamb_push_loop(void *arg) {
 
     memset(host, 0, sizeof(host));
     resp.id = client->id;
-    sprintf(host, "tcp://%s:%d", config.listen, port);
+    snprintf(host, sizeof(host), "tcp://%s:%d", config.listen, port);
     resp.host = host;
 
     pthread_mutex_unlock(&mutex);
@@ -367,7 +367,7 @@ void *lamb_pull_loop(void *arg) {
 
     memset(host, 0, sizeof(host));
     resp.id = client->id;
-    sprintf(host, "tcp://%s:%d", config.listen, port);
+    snprintf(host, sizeof(host), "tcp://%s:%d", config.listen, port);
     resp.host = host;
 
     pthread_mutex_unlock(&mutex);

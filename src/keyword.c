@@ -17,7 +17,7 @@ int lamb_keyword_get_all(lamb_db_t *db, lamb_list_t *keys) {
     PGresult *res = NULL;
 
     column = "id, val";
-    sprintf(sql, "SELECT %s FROM keyword ORDER BY id", column);
+    snprintf(sql, sizeof(sql), "SELECT %s FROM keyword ORDER BY id", column);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);

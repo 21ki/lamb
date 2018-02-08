@@ -189,7 +189,7 @@ int lamb_nn_server(int *sock, const char *listen, unsigned short port, int proto
         return -1;
     }
 
-    sprintf(addr, "tcp://%s:%u", listen, port);
+    snprintf(addr, sizeof(addr), "tcp://%s:%u", listen, port);
 
     if (nn_bind(fd, addr) < 0) {
         nn_close(fd);

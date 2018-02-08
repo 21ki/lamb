@@ -17,7 +17,7 @@ int lamb_db_init(lamb_db_t *db) {
 int lamb_db_connect(lamb_db_t *db, char *host, int port, char *user, char *password, char *dbname) {
     char info[512];
     char *string = "host=%s port=%d user=%s password=%s dbname=%s connect_timeout=3";
-    sprintf(info, string, host, port, user, password, dbname);
+    snprintf(info, sizeof(info), string, host, port, user, password, dbname);
 
     db->conn = PQconnectdb(info);
     if (PQstatus(db->conn) != CONNECTION_OK) {

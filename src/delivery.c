@@ -177,7 +177,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    sprintf(addr, "tcp://%s:%d", config.listen, config.port);
+    snprintf(addr, sizeof(addr), "tcp://%s:%d", config.listen, config.port);
         
     if (nn_bind(fd, addr) < 0) {
         nn_close(fd);
@@ -291,7 +291,7 @@ void *lamb_push_loop(void *arg) {
 
     memset(host, 0, sizeof(host));
     resp.id = client->id;
-    sprintf(host, "tcp://%s:%d", config.listen, port);
+    snprintf(host, sizeof(host), "tcp://%s:%d", config.listen, port);
     resp.host = host;
 
     pthread_mutex_unlock(&mutex);
@@ -495,7 +495,7 @@ void *lamb_pull_loop(void *arg) {
 
     memset(host, 0, sizeof(host));
     resp.id = client->id;
-    sprintf(host, "tcp://%s:%d", config.listen, port);
+    snprintf(host, sizeof(host), "tcp://%s:%d", config.listen, port);
     resp.host = host;
 
     pthread_mutex_unlock(&mutex);
@@ -627,7 +627,7 @@ int lamb_child_server(int *sock, const char *listen, unsigned short *port, int p
     }
 
     while (true) {
-        sprintf(addr, "tcp://%s:%u", listen, *port);
+        snprintf(addr, sizeof(addr), "tcp://%s:%u", listen, *port);
 
         if (nn_bind(fd, addr) > 0) {
             break;
@@ -703,7 +703,7 @@ int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys) {
     char sql[128];
     PGresult *res = NULL;
 
-    sprintf(sql, "SELECT id, rexp, target FROM delivery");
+    snprintf(sql, sizeof(sql), "SELECT id, rexp, target FROM delivery");
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
@@ -771,7 +771,7 @@ int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message) {
     }
 
     column = "id, spcode, phone, content, account, company";
-    sprintf(sql, "INSERT INTO delivery(%s) VALUES(%lld, '%s', '%s', '%s', %d, %d)",
+    snprintf(sql, sizeof(sql), "INSERT INTO delivery(%s) VALUES(%lld, '%s', '%s', '%s', %d, %d)",
             column, (long long int)message->id, message->spcode,
             message->phone, fromcode ? content : message->content,
             message->account, message->company);
