@@ -40,6 +40,7 @@ static lamb_list_t *delivery;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 static Response resp = LAMB_RESPONSE_INIT;
+static volatile bool sleeping = false;
 
 int main(int argc, char *argv[]) {
     char *file = "deliver.conf";
@@ -76,11 +77,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    if (setenv("logfile", config.logfile, 1) == -1) {
-        fprintf(stderr, "setenv error: %s", strerror(errno));
-        return -1;
-    }
-
     /* Signal event processing */
     lamb_signal_processing();
 
@@ -93,12 +89,16 @@ int main(int argc, char *argv[]) {
 }
 
 void lamb_event_loop(void) {
-    int fd, err;
+    int fd;
+    int err;
     char addr[128];
 
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
-    
+
+    err = lamb_signal(SIGHUP, lamb_reload);
+    lamb_debug("lamb signal initialization %s\n", err ? "failed" : "successfull");
+
     /* Client Queue Pools Initialization */
     pool = lamb_list_new();
     if (!pool) {
@@ -266,6 +266,43 @@ void lamb_event_loop(void) {
     }
 }
 
+void lamb_reload(int signum) {
+    int err;
+    lamb_node_t *node;
+    lamb_list_iterator_t *it;
+
+    if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
+        lamb_debug("signal setting process failed\n");
+    }
+
+    sleeping = true;
+    lamb_sleep(3000);
+
+    delivery->free = free;
+    it = lamb_list_iterator_new(delivery, LIST_TAIL);
+
+    /* clean delivery information */
+    while ((node = lamb_list_iterator_next(it))) {
+        lamb_list_remove(delivery, node);
+    }
+
+    lamb_list_iterator_destroy(it);
+
+    /* fetch delivery routing */
+    err = lamb_get_delivery(&db, delivery);
+
+    if (err) {
+        lamb_log(LOG_ERR, "fetch delivery information failed");
+    } else {
+        lamb_log(LOG_ERR, "fetch delivery information successfull\n");
+    }
+
+    sleeping = false;
+    lamb_debug("-> reload delivery information successfull\n");
+
+    return;
+}
+
 void *lamb_push_loop(void *arg) {
     int err;
     int fd, rc;
@@ -309,6 +346,11 @@ void *lamb_push_loop(void *arg) {
     lamb_deliver_t *deliver;
 
     while (true) {
+        if (sleeping) {
+            lamb_sleep(1000);
+            continue;
+        }
+
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
         if (rc < HEAD) {
@@ -772,9 +814,9 @@ int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message) {
 
     column = "id, spcode, phone, content, account, company";
     snprintf(sql, sizeof(sql), "INSERT INTO delivery(%s) VALUES(%lld, '%s', '%s', '%s', %d, %d)",
-            column, (long long int)message->id, message->spcode,
-            message->phone, fromcode ? content : message->content,
-            message->account, message->company);
+             column, (long long int)message->id, message->spcode,
+             message->phone, fromcode ? content : message->content,
+             message->account, message->company);
 
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
