@@ -20,8 +20,9 @@
 #define LAMB_BUSY     (1 << 7)
 #define LAMB_EMPTY    (1 << 6)
 #define LAMB_REJECT   (1 << 8)
-#define LAMB_REQUEST  (1 << 9)
-#define LAMB_RESPONSE (1 << 10)
+#define LAMB_NOROUTE  (1 << 9)
+#define LAMB_REQUEST  (1 << 10)
+#define LAMB_RESPONSE (1 << 11)
 
 #define HEAD (signed int)sizeof(int)
 #define CHECK_COMMAND(val) ntohl(*((int *)(val)))

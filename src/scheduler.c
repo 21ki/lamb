@@ -275,6 +275,7 @@ void *lamb_push_loop(void *arg) {
     int rc;
     int len;
     char *buf = NULL;
+    bool available;
     bool operator;
     bool province;
     bool completed;
@@ -332,6 +333,7 @@ void *lamb_push_loop(void *arg) {
 
             lamb_submit_free_unpacked(submit, NULL);
 
+            available = false;
             operator = false;
             province = false;
             completed = false;
@@ -340,6 +342,7 @@ void *lamb_push_loop(void *arg) {
             it = lamb_list_iterator_new(channels, LIST_HEAD);
 
             while ((node = lamb_list_iterator_next(it))) {
+                available = true;
                 channel = (lamb_channel_t *)node->val;
 
                 /* Check operators */
@@ -369,7 +372,9 @@ void *lamb_push_loop(void *arg) {
                 total++;
                 len = lamb_pack_assembly(&buf, LAMB_OK, NULL, 0);
             } else {
-                if (!operator || !province) {
+                if (!available) {
+                    len = lamb_pack_assembly(&buf, LAMB_NOROUTE, NULL, 0);
+                } else if (!operator || !province) {
                     len = lamb_pack_assembly(&buf, LAMB_REJECT, NULL, 0);
                 } else {
                     len = lamb_pack_assembly(&buf, LAMB_BUSY, NULL, 0);

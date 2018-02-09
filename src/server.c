@@ -44,6 +44,7 @@ static lamb_global_t *global;
 static lamb_caches_t *blacklist;
 static lamb_caches_t *frequency;
 static lamb_caches_t *unsubscribe;
+static volatile bool sleeping = false;
 
 int main(int argc, char *argv[]) {
     bool background = false;
@@ -168,22 +169,91 @@ void lamb_event_loop(void) {
 }
 
 void lamb_reload(int signum) {
+    int err;
+    lamb_node_t *node;
+    lamb_list_iterator_t *it;
+
     if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
-        printf("-> [signal] Can't setting SIGHUP signal to lamb_reload()\n");
+        lamb_debug("signal setting process failed\n");
     }
-    printf("lamb reload configuration file success!\n");
+
+    sleeping = true;
+    lamb_sleep(3000);
+
+    /* fetch account information */
+    err = lamb_account_fetch(&global->db, aid, &global->account);
+    if (err) {
+        lamb_log(LOG_ERR, "can't fetch account '%d' information", aid);
+    }
+
+    /* fetch company information */
+    err = lamb_company_get(&global->db, global->account.company, &global->company);
+    if (err) {
+        lamb_log(LOG_ERR, "can't fetch id %d company information", global->account.company);
+    }
+
+    /* fetch template information */
+    if (global->account.template) {
+        global->templates->free = free;
+        it = lamb_list_iterator_new(global->templates, LIST_TAIL);
+        while ((node = lamb_list_iterator_next(it))) {
+            lamb_list_remove(global->templates, node);
+        }
+
+        lamb_list_iterator_destroy(it);
+
+        err = lamb_get_template(&global->db, global->account.username, global->templates);
+        if (err) {
+            lamb_log(LOG_ERR, "can't fetch template information");
+        }
+    }
+
+    /* fetch keyword information */
+    if (global->account.keyword) {
+        global->keywords->free = free;
+        it = lamb_list_iterator_new(global->keywords, LIST_TAIL);
+        while ((node = lamb_list_iterator_next(it))) {
+            lamb_list_remove(global->keywords, node);
+        }
+        err = lamb_keyword_get_all(&global->db, global->keywords);
+        if (err) {
+            lamb_log(LOG_ERR, "can't fetch keyword information");
+        }
+    }
+
+    int len;
+    char *bye;
+    len = lamb_pack_assembly(&bye, LAMB_BYE, NULL, 0);
+    if (len > 0) {
+        nn_send(scheduler, bye, len, 0);
+        nn_close(scheduler);
+
+        /* connect to scheduler server */
+    recont:
+        scheduler = lamb_nn_pair(config->scheduler, aid, config->timeout);
+
+        if (scheduler < 0) {
+            lamb_log(LOG_ERR, "can't connect to scheduler %s", config->scheduler);
+            goto recont;
+        }
+
+        free(bye);
+    }
+    
+    sleeping = false;
+    lamb_debug("-> reload configuration successfull!\n");
     return;
 }
 
 void *lamb_work_loop(void *data) {
     int err;
+    int rc, len;
     void *pk;
     char *buf;
-    int rc, len;
     bool success;
-    Submit *message;
     lamb_bill_t *bill;
     lamb_node_t *node;
+    Submit *message;
     lamb_submit_t *storage;
     lamb_template_t *template;
     lamb_keyword_t *keyword;
@@ -200,6 +270,10 @@ void *lamb_work_loop(void *data) {
     rlen = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
 
     while (true) {
+        if (sleeping) {
+            lamb_sleep(1000);
+            continue;
+        }
 
         /* Request */
         rc = nn_send(mt, req, rlen, NN_DONTWAIT);
@@ -311,6 +385,7 @@ void *lamb_work_loop(void *data) {
 
         /* Template Processing */
         if (global->account.template) {
+            lamb_debug("-> checking the template ...\n");
             success = false;
             lamb_list_iterator_t *ts;
             ts = lamb_list_iterator_new(global->templates, LIST_HEAD);
@@ -318,7 +393,6 @@ void *lamb_work_loop(void *data) {
             while ((node = lamb_list_iterator_next(ts))) {
                 template = (lamb_template_t *)node->val;
                 if (lamb_check_content(template, (char *)message->content.data, message->content.len)) {
-                    lamb_debug("-> check template successfull\n");
                     success = true;
                     break;
                 }
@@ -333,6 +407,7 @@ void *lamb_work_loop(void *data) {
 
         /* Keywords Filtration */
         if (global->account.keyword) {
+            lamb_debug("-> checking the keyword ...\n");
             success = true;
             lamb_list_iterator_t *ks;
             ks = lamb_list_iterator_new(global->keywords, LIST_HEAD);
@@ -380,11 +455,17 @@ void *lamb_work_loop(void *data) {
                         break;
                     } else if (CHECK_COMMAND(buf) == LAMB_BUSY) {
                         lamb_debug("-> the scheduler is busy!\n");
+                    } else if (CHECK_COMMAND(buf) == LAMB_NOROUTE) {
+                        nn_freemsg(buf);
+                        lamb_direct_response(mo, &resp, message, 4);
+                        lamb_debug("-> the scheduler is no route!\n");
+                        lamb_sleep(1000);
+                        goto done;
                     } else if (CHECK_COMMAND(buf) == LAMB_REJECT) {
                         status->rejt++;
                         nn_freemsg(buf);
                         lamb_direct_response(mo, &resp, message, 7);
-                        lamb_debug("-> message was rejected by the scheduler!\n");
+                        lamb_debug("-> the scheduler is rejected!\n");
                         goto done;
                     }
                 }
@@ -446,6 +527,11 @@ void *lamb_deliver_loop(void *data) {
     rlen = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
 
     while (true) {
+        if (sleeping) {
+            lamb_sleep(1000);
+            continue;
+        }
+
         rc = nn_send(deliverd, req, rlen, NN_DONTWAIT);
 
         if (rc != rlen) {
@@ -763,7 +849,7 @@ int lamb_write_report(lamb_db_t *db, lamb_report_t *message) {
     }
 
     snprintf(sql, sizeof(sql), "UPDATE message SET status = %d WHERE id = %lld",
-            message->status, (long long)message->id);
+             message->status, (long long)message->id);
 
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -787,8 +873,8 @@ int lamb_write_message(lamb_db_t *db, lamb_submit_t *message) {
 
     column = "id, spid, spcode, phone, content, status, account, company";
     snprintf(sql, sizeof(sql), "INSERT INTO message(%s) VALUES(%lld, '%s', '%s', '%s', '%s', %d, %d, %d)",
-            column, (long long int)message->id, message->spid, message->spcode, message->phone,
-            message->content, 0, message->account, message->company);
+             column, (long long int)message->id, message->spid, message->spcode, message->phone,
+             message->content, 0, message->account, message->company);
 
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -812,8 +898,8 @@ int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message) {
 
     column = "id, spcode, phone, content, account, company";
     snprintf(sql, sizeof(sql), "INSERT INTO delivery(%s) VALUES(%lld, '%s', '%s', '%s', %d, %d)",
-            column, (long long int)message->id, message->spcode, message->phone,
-            message->content, message->account, message->company);
+             column, (long long int)message->id, message->spcode, message->phone,
+             message->content, message->account, message->company);
 
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -1164,13 +1250,14 @@ int lamb_component_initialization(lamb_config_t *cfg) {
         return -1;
     }
 
-    err = lamb_get_template(&global->db, global->account.username, global->templates);
-    if (err) {
-        lamb_log(LOG_ERR, "Can't fetch template information");
-        return -1;
+    if (global->account.template) {
+        err = lamb_get_template(&global->db, global->account.username, global->templates);
+        if (err) {
+            lamb_log(LOG_ERR, "Can't fetch template information");
+            return -1;
+        }
+        lamb_debug("fetch template information successfull\n");
     }
-
-    lamb_debug("fetch template information successfull\n");
 
     /* Keyword information Initialization */
     global->keywords = lamb_list_new();
