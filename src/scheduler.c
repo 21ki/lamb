@@ -108,9 +108,6 @@ void lamb_event_loop(void) {
 
     gateway->match = lamb_queue_compare;
 
-    lamb_queue_t *one = lamb_queue_new(1);
-    lamb_list_rpush(gateway, lamb_node_new(one));
-
     /* Database Initialization */
     err = lamb_db_init(&db);
     if (err) {

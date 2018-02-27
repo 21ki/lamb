@@ -245,7 +245,7 @@ void *lamb_sender_loop(void *data) {
 
         /* Caching message information */
         confirmed.id = message->id;
-        strcpy(confirmed.spcode, message->spcode);
+        strncpy(confirmed.spcode, message->spcode, 20);
         confirmed.account = message->account;
         confirmed.company = message->company;
 
@@ -270,7 +270,8 @@ void *lamb_sender_loop(void *data) {
                           content, length, msgFmt, true);
         total++;
         status.sub++;
-            
+        lamb_submit_free_unpacked(message, NULL);
+
         if (err) {
             status.err++;
             lamb_sleep(config.interval * 1000);

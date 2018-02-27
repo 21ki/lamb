@@ -111,24 +111,12 @@ void lamb_event_loop(void) {
         return;
     }
 
-    /* Start mo processing thread */
-    //lamb_start_thread(lamb_mo_loop, NULL, 1);
-    
-    /* Start ismg processing thread */
-    //lamb_start_thread(lamb_ismg_loop, NULL, 1);
-    
-    /* Start server processing thread */
-    //lamb_start_thread(lamb_server_loop, NULL, 1);
-    
-    /* Start scheduler processing thread */
-    //lamb_start_thread(lamb_scheduler_loop, NULL, 1);
-    
-    /* Start delivery processing thread */
-    //lamb_start_thread(lamb_delivery_loop, NULL, 1);
-    
-    /* Start gateway processing thread */
-    //lamb_start_thread(lamb_gateway_loop, NULL, 1);
+    /* start listen daemon thread */
+    lamb_start_thread(lamb_listen_loop, NULL, 1);
 
+    /* start heartbeat detection thread */
+    lamb_start_thread(lamb_check_keepalive, NULL, 1);
+    
     /* Start main loop thread */
     err = lamb_nn_server(&fd, config.listen, config.port, NN_REP);
     if (err) {
@@ -210,6 +198,8 @@ void lamb_event_loop(void) {
         client->id = req->id;
         client->sock = cli;
         strncpy(client->addr, req->addr, 15);
+        pthread_mutex_init(&client->lock, NULL);
+        nn_setsockopt(cli, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
 
         if (req->type == LAMB_MT) {
             /* Start mt processing thread */
@@ -237,48 +227,83 @@ void lamb_event_loop(void) {
     return;
 }
 
-void *lamb_mt_loop(void *arg) {
-    int err;
-    lamb_client_t *client;
-
-    client = (lamb_client_t *)arg;
-    //lamb_list_rpush(mt, lamb_node_new(client));
-
-    lamb_debug("-> new mt client connected!\n");
-
+void *lamb_listen_loop(void *arg) {
     int rc;
-    void *buf;
+    int err;
+    int sock;
+    char *buf;
 
-    while (true) {
-        
+    err = lamb_cli_daemon(&scok, "127.0.0.1", 1024);
+
+    if (err) {
+        lamb_log(LOG_ERR, "can't start the cli daemon");
+        pthread_exit(NULL);
     }
 
-    free(client);
+    lamb_debug("-> start cli listen successfull!\n");
+    
+    while (true) {
+        rc = nn_recv(sock, &buf, NN_MSG, 0);
+
+        if (rc < HEAD) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
+            continue;
+        }
+
+        lamb_debug("recvive a client command\n");
+
+        nn_freemsg(buf);
+    }
+
     pthread_exit(NULL);
 }
 
-void *lamb_mo_loop(void *arg) {
+void *lamb_check_keepalive(void *arg) {
+    char *buf;
+    char *ping;
+    int rc, len, err;
+    lamb_node_t *node;
+    lamb_list_t *list;
+    lamb_list_iterator_t *it;
+    lamb_client_t *client;
 
-}
+    list = (lamb_list_t *)arg;
+    len = lamb_pack_assembly(&ping, LAMB_PING, NULL, 0);
 
-void *lamb_ismg_loop(void *arg) {
+    while (true) {
+        it = lamb_list_iterator_new(list, LIST_HEAD);
 
-}
+        while ((node = lamb_list_iterator_next(it))) {
+            client = (lamb_client_t *)node->val;
+            pthread_mutex_lock(&client->lock);
+            nn_send(client->sock, ping, len, NN_DONTWAIT);
 
-void *lamb_server_loop(void *arg) {
+            rc = nn_recv(client->sock, buf, NN_MSG, 0);
+
+            if (rc < HEAD) {
+                if (rc > 0) {
+                    nn_freemsg(buf);
+                }
+                pthread_mutex_lock(&client->lock);
+                continue;
+            }
+
+            if (CHECK_COMMAND(buf) == LAMB_OK) {
+                pthread_mutex_lock(&client->lock);
+                continue;
+            }
+
+            lamb_list_remove(list, node);
+            nn_freemsg(buf);
+        }
+
+        lamb_list_iterator_destroy(it);
+        lamb_sleep(5000);
+    }
     
-}
-
-void *lamb_scheduler_loop(void *arg) {
-
-}
-
-void *lamb_delivery_loop(void *arg) {
-
-}
-
-void *lamb_gateway_loop(void *arg) {
-
+    pthread_exit(NULL);
 }
 
 int lamb_child_server(int *sock, const char *host, unsigned short *port, int protocol) {
@@ -290,6 +315,18 @@ int lamb_child_server(int *sock, const char *host, unsigned short *port, int pro
     }
 
     return 0;
+}
+
+int lamb_cli_daemon(int *sock, const char *host, unsigned short port) {
+    return lamb_nn_server(sock, host, port, NN_PAIR);
+}
+
+void lamb_free_client(void *val) {
+    lamb_client_t *cli;
+
+    cli = (lamb_client_t *)val;
+
+    
 }
 
 int lamb_component_initialization(lamb_config_t *cfg) {
@@ -305,6 +342,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
         lamb_log(LOG_ERR, "mt object queue initialization failed");
         return -1;
     }
+    mt->free = lamb_free_client;
 
     /* mo object queue initialization */
     mo = lamb_list_new();
@@ -312,6 +350,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
         lamb_log(LOG_ERR, "mo object queue initialization failed");
         return -1;
     }
+    mo->free = lamb_free_client;
 
     /* ismg object queue initialization */
     ismg = lamb_list_new();
@@ -319,20 +358,23 @@ int lamb_component_initialization(lamb_config_t *cfg) {
         lamb_log(LOG_ERR, "ismg object queue initialization failed");
         return -1;
     }
-
+    ismg->free = lamb_free_client;
+    
     /* server object queue initialization */
     server = lamb_list_new();
     if (!server) {
         lamb_log(LOG_ERR, "server object queue initialization failed");
         return -1;
     }
-
+    server->free = lamb_free_client;
+    
     /* scheduler object queue initialization */
     scheduler = lamb_list_new();
     if (!scheduler) {
         lamb_log(LOG_ERR, "scheduler object queue initialization failed");
         return -1;
     }
+    scheduler->free = lamb_free_client;
 
     /* delivery object queue initialization */
     delivery = lamb_list_new();
@@ -340,6 +382,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
         lamb_log(LOG_ERR, "delivery object queue initialization failed");
         return -1;
     }
+    delivery->free = lamb_free_client;
 
     /* gateway object queue initialization */
     gateway = lamb_list_new();
@@ -347,6 +390,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
         lamb_log(LOG_ERR, "gateway object queue initialization failed");
         return -1;
     }
+    gateway->free = lamb_free_client;
 
     /* redis initialization */
     err = lamb_cache_connect(&rdb, cfg->redis_host, cfg->redis_port, NULL,

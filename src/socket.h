@@ -23,6 +23,7 @@
 #define LAMB_NOROUTE  (1 << 9)
 #define LAMB_REQUEST  (1 << 10)
 #define LAMB_RESPONSE (1 << 11)
+#define LAMB_PING     (1 << 12)
 
 #define HEAD (signed int)sizeof(int)
 #define CHECK_COMMAND(val) ntohl(*((int *)(val)))

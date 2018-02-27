@@ -446,34 +446,40 @@ void *lamb_work_loop(void *data) {
         /* Scheduling */
         while (true) {
             rc = nn_send(scheduler, packet, len, 0);
-            if (rc == len) {
-                rc = nn_recv(scheduler, &buf, NN_MSG, 0);
-                if (rc >= HEAD) {
-                    if (CHECK_COMMAND(buf) == LAMB_OK) {
-                        nn_freemsg(buf);
-                        status->sub++;
-                        break;
-                    } else if (CHECK_COMMAND(buf) == LAMB_BUSY) {
-                        lamb_debug("-> the scheduler is busy!\n");
-                    } else if (CHECK_COMMAND(buf) == LAMB_NOROUTE) {
-                        nn_freemsg(buf);
-                        lamb_direct_response(mo, &resp, message, 4);
-                        lamb_debug("-> the scheduler is no route!\n");
-                        lamb_sleep(1000);
-                        goto done;
-                    } else if (CHECK_COMMAND(buf) == LAMB_REJECT) {
-                        status->rejt++;
-                        nn_freemsg(buf);
-                        lamb_direct_response(mo, &resp, message, 7);
-                        lamb_debug("-> the scheduler is rejected!\n");
-                        goto done;
-                    }
-                }
+            if (rc != len) {
+                lamb_sleep(1000);
+                continue;
+            }
 
+            rc = nn_recv(scheduler, &buf, NN_MSG, 0);
+            if (rc < HEAD) {
                 if (rc > 0) {
                     nn_freemsg(buf);
                 }
+                lamb_sleep(1000);
+                continue;
             }
+
+            if (CHECK_COMMAND(buf) == LAMB_OK) {
+                nn_freemsg(buf);
+                status->sub++;
+                break;
+            } else if (CHECK_COMMAND(buf) == LAMB_BUSY) {
+                lamb_debug("-> the scheduler is busy!\n");
+            } else if (CHECK_COMMAND(buf) == LAMB_NOROUTE) {
+                nn_freemsg(buf);
+                lamb_direct_response(mo, &resp, message, 4);
+                lamb_debug("-> the scheduler is no route!\n");
+                lamb_sleep(1000);
+                goto done;
+            } else if (CHECK_COMMAND(buf) == LAMB_REJECT) {
+                status->rejt++;
+                nn_freemsg(buf);
+                lamb_direct_response(mo, &resp, message, 7);
+                lamb_debug("-> the scheduler is rejected!\n");
+                goto done;
+            }
+
             lamb_sleep(1000);
         }
 
