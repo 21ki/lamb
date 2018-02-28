@@ -252,6 +252,10 @@ void *lamb_listen_loop(void *arg) {
             continue;
         }
 
+        if (CHECK_COMMAND(buf) == LAMB_DELIVERY_RELOAD) {
+            
+        }
+
         lamb_debug("recvive a client command\n");
 
         nn_freemsg(buf);
