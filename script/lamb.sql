@@ -106,5 +106,5 @@ CREATE TABLE database (
     name varchar(128) NOT NULL,
     type int NOT NULL,
     total bigint NOT NULL,
-    description text NOT NULL,
+    description text NOT NULL
 );

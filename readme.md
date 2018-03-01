@@ -16,6 +16,7 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
 
     yum install -y gcc gcc-c++ make automake autoconf libtool openssl-devel pcre-devel
     yum install -y re2c re2c-devl flex flex-devel bison bison-devl curl-devel libconfig-devel
+    yum install -y readline-devel
 
 ### 内核参数配置 (/etc/sysctl.conf)
 
