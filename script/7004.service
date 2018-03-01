@@ -6,8 +6,8 @@ After=network.target
 User=redis
 Group=redis
 LimitNOFILE=10240
-ExecStart=/usr/local/bin/redis-server /etc/redis/backup.conf --daemonize no
-ExecStop=/usr/local/bin/redis-cli -h 127.0.0.1 -p 6378 shutdown
+ExecStart=/usr/local/bin/redis-server /etc/redis/7004.conf --daemonize no
+ExecStop=/usr/local/bin/redis-cli -h 127.0.0.1 -p 7004 shutdown
 
 [Install]
 WantedBy=multi-user.target
