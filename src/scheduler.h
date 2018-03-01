@@ -21,6 +21,11 @@ typedef struct {
     int port;
     long long timeout;
     char ac[128];
+    char db_host[16];
+    int db_port;
+    char db_user[64];
+    char db_password[64];
+    char db_name[64];
     char logfile[128];
 } lamb_config_t;
 

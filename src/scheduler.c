@@ -115,9 +115,10 @@ void lamb_event_loop(void) {
         return;
     }
 
-    err = lamb_db_connect(&db, "127.0.0.1", 5432, "postgres", "postgres", "lamb");
+    err = lamb_db_connect(&db, config.db_host, config.db_port,
+                          config.db_user, config.db_password, config.db_name);
     if (err) {
-        lamb_log(LOG_ERR, "connect to database failed");
+        lamb_log(LOG_ERR, "can't connect to database %s", config.db_host);
         return;
     }
 
@@ -669,6 +670,36 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
+    }
+
+   if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "DbPort", &conf->db_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->db_port < 1 || conf->db_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid DB port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DbUser", conf->db_user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbUser' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DbPassword", conf->db_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbPassword' parameter\n");
+        goto error;
+    }
+    
+    if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
+        goto error;
     }
 
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {

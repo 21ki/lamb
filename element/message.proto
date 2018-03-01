@@ -34,8 +34,3 @@ message Deliver {
     int32 length = 8;
     bytes content = 9;
 }
-
-message Schedule {
-    Submit message = 1;
-    repeated int32 channels = 2;
-}

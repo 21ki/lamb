@@ -1,0 +1,13 @@
+[Unit]
+Description=Redis persistent key-value database
+After=network.target
+
+[Service]
+User=redis
+Group=redis
+LimitNOFILE=10240
+ExecStart=/usr/local/bin/redis-server /etc/redis/cache.conf --daemonize no
+ExecStop=/usr/local/bin/redis-cli -h 127.0.0.1 -p 6380 shutdown
+
+[Install]
+WantedBy=multi-user.target
