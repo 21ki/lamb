@@ -34,11 +34,6 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     fs.nr_open = 2048000
     fs.file-max = 1024000
     fs.aio-max-nr = 1048576
-    fs.mqueue.msg_default = 512
-    fs.mqueue.msg_max = 65536
-    fs.mqueue.msgsize_default = 512
-    fs.mqueue.msgsize_max = 512
-    fs.mqueue.queues_max = 1024
 
 ### 内核参数配置 /etc/security/limits.conf
 
