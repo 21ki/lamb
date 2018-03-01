@@ -2,15 +2,17 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
 
 ### 基础环境说明
 
-- CentOS 7.x
+- CentOS 7.3
 - nginx 1.12
-- php 7.x
-- yaf 3.x
-- redis 4.x
-- cmpp 1.x
-- hiredis 0.13.x
+- php 7.2
+- yaf 3.0
+- redis 4.0
+- cmpp 1.0
+- hiredis 0.13
 - libiconv 1.15
-- postgresql 10.x
+- postgresql 10.2
+- protobuf 3.5.0
+- protobuf-c 1.3.0
 
 ### 依赖软件库
 
@@ -18,7 +20,7 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     yum install -y re2c re2c-devl flex flex-devel bison bison-devl curl-devel libconfig-devel
     yum install -y readline-devel libxml2-devel hiredis-devel libpqxx-devel
 
-### 内核参数配置 (/etc/sysctl.conf)
+### 内核参数配置 /etc/sysctl.conf
 
     net.ipv6.conf.all.disable_ipv6 = 1
     net.ipv6.conf.default.disable_ipv6 = 1
@@ -38,7 +40,7 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     fs.mqueue.msgsize_max = 512
     fs.mqueue.queues_max = 1024
 
-### 内核参数配置 (/etc/security/limits.conf)
+### 内核参数配置 /etc/security/limits.conf
 
     * soft    nofile  1024000
     * hard    nofile  1024000
