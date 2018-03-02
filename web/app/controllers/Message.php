@@ -200,7 +200,7 @@ class MessageController extends Yaf\Controller_Abstract {
 
         if ($sth->execute()) {
             $reply = $sth->fetch();
-            if (count($reply) > 0) {
+            if (is_array($reply) && count($reply) > 0) {
                 $id = intval($reply['id']);
             }
         }

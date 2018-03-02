@@ -35,7 +35,7 @@
               <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">路由管理</a>
               <ul class="dropdown-menu">
                 <li><a href="/routing">上行路由</a></li>
-                <li><a href="/delivery">下发路由</a></li>
+                <li><a href="/delivery">下行路由</a></li>
               </ul>
             </li>
             <li class="dropdown">
@@ -94,7 +94,7 @@
     <td><span class="glyphicon glyphicon-credit-card"></span></td>
     <td>{{rexp}}</td>
     <td>{{name}}</td>
-    <td><a class="text-muted" href="javascript:void(0)" onclick="detailed(this)" content="{{contents}}">{{checkoverflow contents 20}}</a></td>
+    <td><a class="text-muted" href="javascript:void(0)" onclick="detailed(this)" content="{{content}}">{{checkoverflow content 20}}</a></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="deleteTemplate({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
     <td><button type="button" class="btn btn-default btn-xs" onclick="changeTemplate({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
   </tr>
@@ -123,7 +123,7 @@
     <div class="form-group">
       <label class="col-xs-3 col-sm-3 control-label" style="line-height:60px">模板内容:</label>
       <div class="col-xs-6 col-sm-6">
-        <textarea class="form-control" rows="4" cols="24" name="contents" placeholder="Enter Template Content" required="required"></textarea>
+        <textarea class="form-control" rows="4" cols="24" name="content" placeholder="Enter Template Content" required="required"></textarea>
       </div>
       <div class="col-xs-3 col-sm-3" style="line-height:60px">
         <span class="help-block">短信内容</span>
@@ -160,7 +160,7 @@
     <div class="form-group">
       <label class="col-xs-3 col-sm-3 control-label" style="line-height:60px">模板内容:</label>
       <div class="col-xs-6 col-sm-6">
-        <textarea class="form-control" rows="4" cols="24" name="contents" placeholder="Enter Template Content" required="required">{{contents}}</textarea>
+        <textarea class="form-control" rows="4" cols="24" name="content" placeholder="Enter Template Content" required="required">{{content}}</textarea>
       </div>
       <div class="col-xs-3 col-sm-3" style="line-height:60px">
         <span class="help-block">短信内容</span>

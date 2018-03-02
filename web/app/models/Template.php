@@ -11,7 +11,7 @@ use Tool\Filter;
 class TemplateModel {
     public $db = null;
     private $table = 'template';
-    private $column = ['rexp', 'name', 'contents'];
+    private $column = ['rexp', 'name', 'content'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -45,7 +45,7 @@ class TemplateModel {
         $data = $this->checkArgs($data);
 
         if (count($data) == count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(rexp, name, contents) VALUES(:rexp, :name, :contents)';
+            $sql = 'INSERT INTO ' . $this->table . '(rexp, name, content) VALUES(:rexp, :name, :content)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -118,8 +118,8 @@ class TemplateModel {
             case 'name':
                 $res['name'] = Filter::string($val, null, 1, 24);
                 break;
-            case 'contents':
-                $res['contents'] = Filter::string($val, null, 1, 480);
+            case 'content':
+                $res['content'] = Filter::string($val, null, 1, 480);
                 break;
             }
         }
