@@ -76,7 +76,7 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     $ make
     $ make install
 
-> `--with-pdo-pgsql` 与 `--with-pgsql` 为 postgresql 的安装目录
+> 如果 postgresql 是自定义编译安装，`--with-pdo-pgsql` 与 `--with-pgsql` 设置为 postgresql 的安装目录
 
 ### protobuf 编译安装
 
