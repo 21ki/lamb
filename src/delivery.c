@@ -39,7 +39,7 @@ static lamb_list_t *storage;
 static lamb_list_t *delivery;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
-static Response resp = LAMB_RESPONSE_INIT;
+static Response resp = RESPONSE__INIT;
 static volatile bool sleeping = false;
 
 int main(int argc, char *argv[]) {
@@ -211,7 +211,7 @@ void lamb_event_loop(void) {
             continue;
         }
 
-        req = lamb_request_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+        req = request__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
         nn_freemsg(buf);
 
         if (!req) {
@@ -239,7 +239,7 @@ void lamb_event_loop(void) {
         } else if (req->type == LAMB_PUSH) {
             lamb_start_thread(lamb_push_loop,  (void *)req, 1);
         } else {
-            lamb_request_free_unpacked(req, NULL);
+            request__free_unpacked(req, NULL);
             pthread_mutex_unlock(&mutex);
             continue;
         }
@@ -248,11 +248,11 @@ void lamb_event_loop(void) {
 
         if (err != ETIMEDOUT) {
             void *pk;
-            len = lamb_response_get_packed_size(&resp);
+            len = response__get_packed_size(&resp);
             pk = malloc(len);
 
             if (pk) {
-                lamb_response_pack(&resp, pk);
+                response__pack(&resp, pk);
                 len = lamb_pack_assembly(&buf, LAMB_RESPONSE, pk, len);
                 if (len > 0) {
                     nn_send(fd, buf, len, 0);
@@ -319,7 +319,7 @@ void *lamb_push_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
     if (err) {
         pthread_cond_signal(&cond);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -369,7 +369,7 @@ void *lamb_push_loop(void *arg) {
 
         /* Report */
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
-            Report *r = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            Report *r = report__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
             nn_freemsg(buf);
 
             if (!r) {
@@ -405,13 +405,13 @@ void *lamb_push_loop(void *arg) {
 
             }
 
-            lamb_report_free_unpacked(r, NULL);
+            report__free_unpacked(r, NULL);
             continue;
         }
 
         /* Delivery */
         if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
-            Deliver *d = lamb_deliver_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            Deliver *d = deliver__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
             nn_freemsg(buf);
 
             if (!d) {
@@ -468,7 +468,7 @@ void *lamb_push_loop(void *arg) {
                 lamb_list_rpush(storage, lamb_node_new(deliver));
             }
 
-            lamb_deliver_free_unpacked(d, NULL);
+            deliver__free_unpacked(d, NULL);
             continue;
         }
 
@@ -485,7 +485,7 @@ void *lamb_push_loop(void *arg) {
     nn_close(fd);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_INFO, "connection closed from %s", client->addr);
-    lamb_request_free_unpacked(client, NULL);
+    request__free_unpacked(client, NULL);
 
     pthread_exit(NULL);
 }
@@ -519,7 +519,7 @@ void *lamb_pull_loop(void *arg) {
 
     if (!queue) {
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
 
@@ -528,7 +528,7 @@ void *lamb_pull_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -551,8 +551,8 @@ void *lamb_pull_loop(void *arg) {
     void *pk;
     void *message;
     char *buf = NULL;
-    Report report = LAMB_REPORT_INIT;
-    Deliver deliver = LAMB_DELIVER_INIT;
+    Report report = REPORT__INIT;
+    Deliver deliver = DELIVER__INIT;
 
     while (true) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
@@ -597,11 +597,11 @@ void *lamb_pull_loop(void *arg) {
                 report.submittime = r->submittime;
                 report.donetime = r->donetime;
 
-                len = lamb_report_get_packed_size(&report);
+                len = report__get_packed_size(&report);
                 pk = malloc(len);
 
                 if (pk) {
-                    lamb_report_pack(&report, pk);
+                    report__pack(&report, pk);
                     len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
                     if (len > 0) {
                         nn_send(fd, buf, len, NN_DONTWAIT);
@@ -623,11 +623,11 @@ void *lamb_pull_loop(void *arg) {
                 deliver.content.len = d->length;
                 deliver.content.data = (uint8_t *)d->content;
 
-                len = lamb_deliver_get_packed_size(&deliver);
+                len = deliver__get_packed_size(&deliver);
                 pk = malloc(len);
 
                 if (pk) {
-                    lamb_deliver_pack(&deliver, pk);
+                    deliver__pack(&deliver, pk);
                     len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
                     if (len > 0) {
                         nn_send(fd, buf, len, NN_DONTWAIT);
@@ -653,7 +653,7 @@ void *lamb_pull_loop(void *arg) {
     nn_close(fd);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_ERR, "connection closed from %s", client->addr);
-    lamb_request_free_unpacked(client, NULL);
+    request__free_unpacked(client, NULL);
 
     pthread_exit(NULL);
 }

@@ -31,12 +31,11 @@
 #include "message.h"
 #include "mt.h"
 
-static int ac;
 static lamb_list_t *pool;
 static lamb_config_t config;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
-static Response resp = LAMB_RESPONSE_INIT;
+static Response resp = RESPONSE__INIT;
 
 int main(int argc, char *argv[]) {
     char *file = "mt.conf";
@@ -100,15 +99,6 @@ void lamb_event_loop(void) {
 
     pool->match = lamb_queue_compare;
 
-    /* Connect to AC server */
-    ac = lamb_nn_access(config.ac, config.id, LAMB_MT, config.timeout);
-    if (ac < 0) {
-        lamb_log(LOG_ERR, "can't connect to AC %s", config.ac);
-        return;
-    }
-
-    lamb_debug("connect to ac %s successfull\n", config.ac);
-
     /* Server Initialization */
     fd = nn_socket(AF_SP, NN_REP);
     if (fd < 0) {
@@ -147,7 +137,7 @@ void lamb_event_loop(void) {
             continue;
         }
 
-        req = lamb_request_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+        req = request__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
         nn_freemsg(buf);
 
         if (!req) {
@@ -156,7 +146,7 @@ void lamb_event_loop(void) {
         }
 
         if (req->id < 1) {
-            lamb_request_free_unpacked(req, NULL);
+            request__free_unpacked(req, NULL);
             lamb_log(LOG_WARNING, "Invalid ID from client");
             continue;
         }
@@ -176,7 +166,7 @@ void lamb_event_loop(void) {
         } else if (req->type == LAMB_PUSH) {
             lamb_start_thread(lamb_push_loop,  (void *)req, 1);
         } else {
-            lamb_request_free_unpacked(req, NULL);
+            request__free_unpacked(req, NULL);
             pthread_mutex_unlock(&mutex);
             continue;
         }
@@ -185,11 +175,11 @@ void lamb_event_loop(void) {
 
         if (err != ETIMEDOUT) {
             void *pk;
-            len = lamb_response_get_packed_size(&resp);
+            len = response__get_packed_size(&resp);
             pk = malloc(len);
 
             if (pk) {
-                lamb_response_pack(&resp, pk);
+                response__pack(&resp, pk);
                 len = lamb_pack_assembly(&buf, LAMB_RESPONSE, pk, len);
                 if (len > 0) {
                     nn_send(fd, buf, len, 0);
@@ -230,7 +220,7 @@ void *lamb_push_loop(void *arg) {
     
     if (!queue) {
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
     
@@ -239,7 +229,7 @@ void *lamb_push_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
     if (err) {
         pthread_cond_signal(&cond);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -281,7 +271,7 @@ void *lamb_push_loop(void *arg) {
         }
 
         if (CHECK_COMMAND(buf) == LAMB_SUBMIT) {
-            packet = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            packet = submit__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
             if (packet) {
                 message = (lamb_submit_t *)calloc(1, sizeof(lamb_submit_t));
@@ -297,7 +287,7 @@ void *lamb_push_loop(void *arg) {
                     memcpy(message->content, packet->content.data, packet->content.len);
                     lamb_queue_push(queue, message);
                 }
-                lamb_submit_free_unpacked(packet, NULL);
+                submit__free_unpacked(packet, NULL);
             }
 
             nn_freemsg(buf);
@@ -315,7 +305,7 @@ void *lamb_push_loop(void *arg) {
     nn_close(fd);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_INFO, "connection closed from %s", client->addr);
-    lamb_request_free_unpacked(client, NULL);
+    request__free_unpacked(client, NULL);
     
     pthread_exit(NULL);
 }
@@ -349,7 +339,7 @@ void *lamb_pull_loop(void *arg) {
 
     if (!queue) {
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
     
@@ -358,7 +348,7 @@ void *lamb_pull_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -381,7 +371,7 @@ void *lamb_pull_loop(void *arg) {
     int len;
     char *buf;
     lamb_submit_t *message;
-    Submit packet = LAMB_SUBMIT_INIT;
+    Submit packet = SUBMIT__INIT;
 
     while (true) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
@@ -427,11 +417,11 @@ void *lamb_pull_loop(void *arg) {
             packet.content.len = message->length;
             packet.content.data = (uint8_t *)message->content;
 
-            len = lamb_submit_get_packed_size(&packet);
+            len = submit__get_packed_size(&packet);
             pk = malloc(len);
 
             if (pk) {
-                lamb_submit_pack(&packet, pk);
+                submit__pack(&packet, pk);
                 len = lamb_pack_assembly(&buf, LAMB_SUBMIT, pk, len);
                 if (len > 0) {
                     nn_send(fd, buf, len, NN_DONTWAIT);
@@ -457,7 +447,7 @@ void *lamb_pull_loop(void *arg) {
     nn_close(fd);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_INFO, "connection closed from %s", client->addr);
-    lamb_request_free_unpacked(client, NULL);
+    request__free_unpacked(client, NULL);
 
     pthread_exit(NULL);
 }

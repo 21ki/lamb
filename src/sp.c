@@ -235,7 +235,7 @@ void *lamb_sender_loop(void *data) {
             continue;
         }
 
-        message = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+        message = submit__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
         nn_freemsg(buf);
 
         if (!message) {
@@ -270,7 +270,7 @@ void *lamb_sender_loop(void *data) {
                           content, length, msgFmt, true);
         total++;
         status.sub++;
-        lamb_submit_free_unpacked(message, NULL);
+        submit__free_unpacked(message, NULL);
 
         if (err) {
             status.err++;
@@ -495,8 +495,8 @@ void *lamb_work_loop(void *data) {
     unsigned long long msgId;
 
     int slen = strlen(config.spcode);
-    Report report = LAMB_REPORT_INIT;
-    Deliver deliver = LAMB_DELIVER_INIT;
+    Report report = REPORT__INIT;
+    Deliver deliver = DELIVER__INIT;
 
     while (true) {
         node = lamb_list_lpop(storage);
@@ -529,14 +529,14 @@ void *lamb_work_loop(void *data) {
             report.submittime = r->submittime;
             report.donetime = r->donetime;
 
-            len = lamb_report_get_packed_size(&report);
+            len = report__get_packed_size(&report);
             pk = malloc(len);
 
             if (!pk) {
                 goto done;
             }
 
-            lamb_report_pack(&report, pk);
+            report__pack(&report, pk);
             len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
 
             if (len > 0) {
@@ -566,14 +566,14 @@ void *lamb_work_loop(void *data) {
             deliver.content.len = d->length;
             deliver.content.data = (void *)d->content;
 
-            len = lamb_deliver_get_packed_size(&deliver);
+            len = deliver__get_packed_size(&deliver);
             pk = malloc(len);
 
             if (!pk) {
                 goto done;
             }
 
-            lamb_deliver_pack(&deliver, pk);
+            deliver__pack(&deliver, pk);
             len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
 
             if (len > 0) {

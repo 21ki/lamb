@@ -79,27 +79,19 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
 
 ### protobuf 编译安装
 
-    $ wget https://github.com/google/protobuf/releases/download/v3.5.0/protobuf-cpp-3.5.0.tar.gz
-    $ tar -zxvf protobuf-cpp-3.5.0.tar.gz
-    $ cd protobuf-3.5.0
-    $ ./configure --prefix=/usr
+    $ wget https://github.com/google/protobuf/releases/download/v3.5.1/protobuf-cpp-3.5.1.tar.gz
+    $ tar -zxvf protobuf-cpp-3.5.1.tar.gz
+    $ cd protobuf-3.5.1
+    $ ./configure
     $ make
     $ make install
+    $ export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
 ### protobuf-c 编译安装
 
-    $ export PKG_CONFIG_PATH=/usr/lib/pkgconfig
     $ wget https://github.com/protobuf-c/protobuf-c/releases/download/v1.3.0/protobuf-c-1.3.0.tar.gz
     $ cd protobuf-c-1.3.0
-    $ ./configure --prefix=/usr
-
-修改 Makefile 文件将
-
-    protobuf_LIBS = /usr/local/lib
-
-修改为
-
-    protobuf_LIBS = /usr/lib/libprotobuf.a
+    $ ./configure
 
 开始编译
 

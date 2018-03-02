@@ -337,7 +337,7 @@ void lamb_work_loop(lamb_client_t *client) {
     int msgFmt = 0;
     int length = 0;
     char content[160] = {0};
-    Submit message = LAMB_SUBMIT_INIT;
+    Submit message = SUBMIT__INIT;
 
     while (true) {
         nfds = epoll_wait(epfd, events, 32, -1);
@@ -409,7 +409,7 @@ void lamb_work_loop(lamb_client_t *client) {
                 message.content.len = length;
                 message.content.data = (uint8_t *)content;
 
-                len = lamb_submit_get_packed_size(&message);
+                len = submit__get_packed_size(&message);
                 pk = (char *)malloc(len);
 
                 if (!pk) {
@@ -417,7 +417,7 @@ void lamb_work_loop(lamb_client_t *client) {
                     goto response;
                 }
 
-                lamb_submit_pack(&message, (uint8_t *)pk);
+                submit__pack(&message, (uint8_t *)pk);
 
                 len = lamb_pack_assembly(&buf, LAMB_SUBMIT, pk, len);
 
@@ -521,7 +521,7 @@ void *lamb_deliver_loop(void *data) {
         }
 
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
-            report = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            report = report__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
             if (!report) {
                 nn_freemsg(buf);
@@ -539,7 +539,7 @@ void *lamb_deliver_loop(void *data) {
                 lamb_log(LOG_WARNING, "sending 'cmpp_report' packet to client %s failed", client->addr);
             }
         } else if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
-            deliver = lamb_deliver_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            deliver = deliver__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
             if (!deliver) {
                 nn_freemsg(buf);
@@ -571,9 +571,9 @@ void *lamb_deliver_loop(void *data) {
         }
 
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
-            lamb_report_free_unpacked(report, NULL);
+            report__free_unpacked(report, NULL);
         } else if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
-            lamb_deliver_free_unpacked(deliver, NULL);
+            deliver__free_unpacked(deliver, NULL);
         }
 
         status.rep++;        

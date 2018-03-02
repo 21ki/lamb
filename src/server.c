@@ -257,7 +257,7 @@ void *lamb_work_loop(void *data) {
     lamb_submit_t *storage;
     lamb_template_t *template;
     lamb_keyword_t *keyword;
-    Report resp = LAMB_REPORT_INIT;
+    Report resp = REPORT__INIT;
 
     resp.account = global->account.id;
     resp.company = global->company.id;
@@ -305,7 +305,7 @@ void *lamb_work_loop(void *data) {
             continue;
         }
 
-        message = lamb_submit_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+        message = submit__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
         if (!message) {
             nn_freemsg(buf);
@@ -427,7 +427,7 @@ void *lamb_work_loop(void *data) {
             }
         }
 
-        len = lamb_submit_get_packed_size(message);
+        len = submit__get_packed_size(message);
         pk = malloc(len);
 
         if (!pk) {
@@ -436,7 +436,7 @@ void *lamb_work_loop(void *data) {
         }
 
         char *packet;
-        lamb_submit_pack(message, pk);
+        submit__pack(message, pk);
         len = lamb_pack_assembly(&packet, LAMB_SUBMIT, pk, len);
         if (len < 1) {
             lamb_direct_response(mo, &resp, message, 4);
@@ -512,7 +512,7 @@ void *lamb_work_loop(void *data) {
         }
 
     done:
-        lamb_submit_free_unpacked(message, NULL);
+        submit__free_unpacked(message, NULL);
     }
 
     free(req);
@@ -528,8 +528,8 @@ void *lamb_deliver_loop(void *data) {
     lamb_bill_t *bill;
     int rc, len, rlen;
 
-    Report report = LAMB_REPORT_INIT;
-    Deliver deliver = LAMB_DELIVER_INIT;
+    Report report = REPORT__INIT;
+    Deliver deliver = DELIVER__INIT;
     rlen = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
 
     while (true) {
@@ -563,7 +563,7 @@ void *lamb_deliver_loop(void *data) {
 
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
             status->rep++;
-            rpack = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            rpack = report__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
             nn_freemsg(buf);
 
             if (!rpack) {
@@ -587,11 +587,11 @@ void *lamb_deliver_loop(void *data) {
             report.status = rpack->status;
             report.submittime = rpack->submittime;
             report.donetime = rpack->donetime;
-            len = lamb_report_get_packed_size(&report);
+            len = report__get_packed_size(&report);
             pk = malloc(len);
 
             if (pk) {
-                lamb_report_pack(&report, pk);
+                report__pack(&report, pk);
                 len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
                 if (len > 0) {
                     nn_send(mo, buf, len, 0);
@@ -617,13 +617,13 @@ void *lamb_deliver_loop(void *data) {
                 lamb_list_rpush(global->storage, lamb_node_new(r));
             }
 
-            lamb_report_free_unpacked(rpack, NULL);
+            report__free_unpacked(rpack, NULL);
             continue;
         }
 
         if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
             status->delv++;
-            dpack = lamb_deliver_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            dpack = deliver__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
             nn_freemsg(buf);
 
             if (!dpack) {
@@ -641,11 +641,11 @@ void *lamb_deliver_loop(void *data) {
             deliver.length = dpack->length;
             deliver.content.len = dpack->content.len;
             deliver.content.data = dpack->content.data;
-            len = lamb_deliver_get_packed_size(&deliver);
+            len = deliver__get_packed_size(&deliver);
             pk = malloc(len);
 
             if (pk) {
-                lamb_deliver_pack(&deliver, pk);
+                deliver__pack(&deliver, pk);
                 len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
                 if (len > 0) {
                     nn_send(mo, buf, len, 0);
@@ -671,7 +671,7 @@ void *lamb_deliver_loop(void *data) {
                 lamb_list_rpush(global->storage, lamb_node_new(d));  
             }
 
-            lamb_deliver_free_unpacked(dpack, NULL);
+            deliver__free_unpacked(dpack, NULL);
             continue;
         }
 
@@ -1063,11 +1063,11 @@ void lamb_direct_response(int sock, Report *resp, Submit *message, int cause) {
     resp->submittime = "";
     resp->donetime = "";
 
-    len = lamb_report_get_packed_size(resp);
+    len = report__get_packed_size(resp);
     pk = malloc(len);
 
     if (pk) {
-        lamb_report_pack(resp, pk);
+        report__pack(resp, pk);
         len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
         if (len > 0) {
             nn_send(sock, buf, len, NN_DONTWAIT);

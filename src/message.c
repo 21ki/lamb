@@ -7,187 +7,142 @@
 #endif
 
 #include "message.h"
-void   lamb_submit_init
+void   submit__init
                      (Submit         *message)
 {
-  static const Submit init_value = LAMB_SUBMIT_INIT;
+  static const Submit init_value = SUBMIT__INIT;
   *message = init_value;
 }
-size_t lamb_submit_get_packed_size
+size_t submit__get_packed_size
                      (const Submit *message)
 {
-  assert(message->base.descriptor == &lamb_submit_descriptor);
+  assert(message->base.descriptor == &submit__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t lamb_submit_pack
+size_t submit__pack
                      (const Submit *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &lamb_submit_descriptor);
+  assert(message->base.descriptor == &submit__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t lamb_submit_pack_to_buffer
+size_t submit__pack_to_buffer
                      (const Submit *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &lamb_submit_descriptor);
+  assert(message->base.descriptor == &submit__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Submit *
-       lamb_submit_unpack
+       submit__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
   return (Submit *)
-     protobuf_c_message_unpack (&lamb_submit_descriptor,
+     protobuf_c_message_unpack (&submit__descriptor,
                                 allocator, len, data);
 }
-void   lamb_submit_free_unpacked
+void   submit__free_unpacked
                      (Submit *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &lamb_submit_descriptor);
+  assert(message->base.descriptor == &submit__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   lamb_report_init
+void   report__init
                      (Report         *message)
 {
-  static const Report init_value = LAMB_REPORT_INIT;
+  static const Report init_value = REPORT__INIT;
   *message = init_value;
 }
-size_t lamb_report_get_packed_size
+size_t report__get_packed_size
                      (const Report *message)
 {
-  assert(message->base.descriptor == &lamb_report_descriptor);
+  assert(message->base.descriptor == &report__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t lamb_report_pack
+size_t report__pack
                      (const Report *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &lamb_report_descriptor);
+  assert(message->base.descriptor == &report__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t lamb_report_pack_to_buffer
+size_t report__pack_to_buffer
                      (const Report *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &lamb_report_descriptor);
+  assert(message->base.descriptor == &report__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Report *
-       lamb_report_unpack
+       report__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
   return (Report *)
-     protobuf_c_message_unpack (&lamb_report_descriptor,
+     protobuf_c_message_unpack (&report__descriptor,
                                 allocator, len, data);
 }
-void   lamb_report_free_unpacked
+void   report__free_unpacked
                      (Report *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &lamb_report_descriptor);
+  assert(message->base.descriptor == &report__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   lamb_deliver_init
+void   deliver__init
                      (Deliver         *message)
 {
-  static const Deliver init_value = LAMB_DELIVER_INIT;
+  static const Deliver init_value = DELIVER__INIT;
   *message = init_value;
 }
-size_t lamb_deliver_get_packed_size
+size_t deliver__get_packed_size
                      (const Deliver *message)
 {
-  assert(message->base.descriptor == &lamb_deliver_descriptor);
+  assert(message->base.descriptor == &deliver__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t lamb_deliver_pack
+size_t deliver__pack
                      (const Deliver *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &lamb_deliver_descriptor);
+  assert(message->base.descriptor == &deliver__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t lamb_deliver_pack_to_buffer
+size_t deliver__pack_to_buffer
                      (const Deliver *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &lamb_deliver_descriptor);
+  assert(message->base.descriptor == &deliver__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Deliver *
-       lamb_deliver_unpack
+       deliver__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
   return (Deliver *)
-     protobuf_c_message_unpack (&lamb_deliver_descriptor,
+     protobuf_c_message_unpack (&deliver__descriptor,
                                 allocator, len, data);
 }
-void   lamb_deliver_free_unpacked
+void   deliver__free_unpacked
                      (Deliver *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &lamb_deliver_descriptor);
+  assert(message->base.descriptor == &deliver__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   lamb_schedule_init
-                     (Schedule         *message)
-{
-  static const Schedule init_value = LAMB_SCHEDULE_INIT;
-  *message = init_value;
-}
-size_t lamb_schedule_get_packed_size
-                     (const Schedule *message)
-{
-  assert(message->base.descriptor == &lamb_schedule_descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
-}
-size_t lamb_schedule_pack
-                     (const Schedule *message,
-                      uint8_t       *out)
-{
-  assert(message->base.descriptor == &lamb_schedule_descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
-}
-size_t lamb_schedule_pack_to_buffer
-                     (const Schedule *message,
-                      ProtobufCBuffer *buffer)
-{
-  assert(message->base.descriptor == &lamb_schedule_descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
-}
-Schedule *
-       lamb_schedule_unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
-{
-  return (Schedule *)
-     protobuf_c_message_unpack (&lamb_schedule_descriptor,
-                                allocator, len, data);
-}
-void   lamb_schedule_free_unpacked
-                     (Schedule *message,
-                      ProtobufCAllocator *allocator)
-{
-  if(!message)
-    return;
-  assert(message->base.descriptor == &lamb_schedule_descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
-}
-static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
+static const ProtobufCFieldDescriptor submit__field_descriptors[9] =
 {
   {
     "id",
@@ -298,7 +253,7 @@ static const ProtobufCFieldDescriptor lamb_submit_field_descriptors[9] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned lamb_submit_field_indices_by_name[] = {
+static const unsigned submit__field_indices_by_name[] = {
   1,   /* field[1] = account */
   2,   /* field[2] = company */
   8,   /* field[8] = content */
@@ -309,12 +264,12 @@ static const unsigned lamb_submit_field_indices_by_name[] = {
   4,   /* field[4] = spcode */
   3,   /* field[3] = spid */
 };
-static const ProtobufCIntRange lamb_submit_number_ranges[1 + 1] =
+static const ProtobufCIntRange submit__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 9 }
 };
-const ProtobufCMessageDescriptor lamb_submit_descriptor =
+const ProtobufCMessageDescriptor submit__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
   "Submit",
@@ -323,13 +278,13 @@ const ProtobufCMessageDescriptor lamb_submit_descriptor =
   "",
   sizeof(Submit),
   9,
-  lamb_submit_field_descriptors,
-  lamb_submit_field_indices_by_name,
-  1,  lamb_submit_number_ranges,
-  (ProtobufCMessageInit) lamb_submit_init,
+  submit__field_descriptors,
+  submit__field_indices_by_name,
+  1,  submit__number_ranges,
+  (ProtobufCMessageInit) submit__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
+static const ProtobufCFieldDescriptor report__field_descriptors[8] =
 {
   {
     "id",
@@ -428,7 +383,7 @@ static const ProtobufCFieldDescriptor lamb_report_field_descriptors[8] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned lamb_report_field_indices_by_name[] = {
+static const unsigned report__field_indices_by_name[] = {
   1,   /* field[1] = account */
   2,   /* field[2] = company */
   7,   /* field[7] = doneTime */
@@ -438,12 +393,12 @@ static const unsigned lamb_report_field_indices_by_name[] = {
   5,   /* field[5] = status */
   6,   /* field[6] = submitTime */
 };
-static const ProtobufCIntRange lamb_report_number_ranges[1 + 1] =
+static const ProtobufCIntRange report__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 8 }
 };
-const ProtobufCMessageDescriptor lamb_report_descriptor =
+const ProtobufCMessageDescriptor report__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
   "Report",
@@ -452,13 +407,13 @@ const ProtobufCMessageDescriptor lamb_report_descriptor =
   "",
   sizeof(Report),
   8,
-  lamb_report_field_descriptors,
-  lamb_report_field_indices_by_name,
-  1,  lamb_report_number_ranges,
-  (ProtobufCMessageInit) lamb_report_init,
+  report__field_descriptors,
+  report__field_indices_by_name,
+  1,  report__number_ranges,
+  (ProtobufCMessageInit) report__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
+static const ProtobufCFieldDescriptor deliver__field_descriptors[9] =
 {
   {
     "id",
@@ -569,7 +524,7 @@ static const ProtobufCFieldDescriptor lamb_deliver_field_descriptors[9] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned lamb_deliver_field_indices_by_name[] = {
+static const unsigned deliver__field_indices_by_name[] = {
   1,   /* field[1] = account */
   2,   /* field[2] = company */
   8,   /* field[8] = content */
@@ -580,12 +535,12 @@ static const unsigned lamb_deliver_field_indices_by_name[] = {
   5,   /* field[5] = serviceId */
   4,   /* field[4] = spcode */
 };
-static const ProtobufCIntRange lamb_deliver_number_ranges[1 + 1] =
+static const ProtobufCIntRange deliver__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 9 }
 };
-const ProtobufCMessageDescriptor lamb_deliver_descriptor =
+const ProtobufCMessageDescriptor deliver__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
   "Deliver",
@@ -594,60 +549,9 @@ const ProtobufCMessageDescriptor lamb_deliver_descriptor =
   "",
   sizeof(Deliver),
   9,
-  lamb_deliver_field_descriptors,
-  lamb_deliver_field_indices_by_name,
-  1,  lamb_deliver_number_ranges,
-  (ProtobufCMessageInit) lamb_deliver_init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor lamb_schedule_field_descriptors[2] =
-{
-  {
-    "message",
-    1,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_MESSAGE,
-    0,   /* quantifier_offset */
-    offsetof(Schedule, message),
-    &lamb_submit_descriptor,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "channels",
-    2,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_INT32,
-    offsetof(Schedule, n_channels),
-    offsetof(Schedule, channels),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-};
-static const unsigned lamb_schedule_field_indices_by_name[] = {
-  1,   /* field[1] = channels */
-  0,   /* field[0] = message */
-};
-static const ProtobufCIntRange lamb_schedule_number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 2 }
-};
-const ProtobufCMessageDescriptor lamb_schedule_descriptor =
-{
-  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "Schedule",
-  "Schedule",
-  "Schedule",
-  "",
-  sizeof(Schedule),
-  2,
-  lamb_schedule_field_descriptors,
-  lamb_schedule_field_indices_by_name,
-  1,  lamb_schedule_number_ranges,
-  (ProtobufCMessageInit) lamb_schedule_init,
+  deliver__field_descriptors,
+  deliver__field_indices_by_name,
+  1,  deliver__number_ranges,
+  (ProtobufCMessageInit) deliver__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

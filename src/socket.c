@@ -41,7 +41,7 @@ int lamb_nn_reqrep(const char *host, int id, int timeout) {
     int fd;
     int err;
     Response *resp;
-    Request req = LAMB_REQUEST_INIT;
+    Request req = REQUEST__INIT;
 
     req.id = id;
     req.type = LAMB_PULL;
@@ -55,7 +55,7 @@ int lamb_nn_reqrep(const char *host, int id, int timeout) {
 
     err = lamb_nn_connect(&fd, resp->host, NN_REQ, timeout);
 
-    lamb_response_free_unpacked(resp, NULL);
+    response__free_unpacked(resp, NULL);
 
     if (err) {
         return -1;
@@ -68,7 +68,7 @@ int lamb_nn_pair(const char *host, int id, int timeout) {
     int fd;
     int err;
     Response *resp;
-    Request req = LAMB_REQUEST_INIT;
+    Request req = REQUEST__INIT;
 
     req.id = id;
     req.type = LAMB_PUSH;
@@ -82,7 +82,7 @@ int lamb_nn_pair(const char *host, int id, int timeout) {
 
     err = lamb_nn_connect(&fd, resp->host, NN_PAIR, timeout);
 
-    lamb_response_free_unpacked(resp, NULL);
+    response__free_unpacked(resp, NULL);
 
     if (err) {
         return -1;
@@ -95,7 +95,7 @@ int lamb_nn_access(const char *host, int id, int type, int timeout) {
     int fd;
     int err;
     Response *resp;
-    Request req = LAMB_REQUEST_INIT;
+    Request req = REQUEST__INIT;
 
     req.id = id;
     req.type = type;
@@ -109,7 +109,7 @@ int lamb_nn_access(const char *host, int id, int type, int timeout) {
 
     err = lamb_nn_connect(&fd, resp->host, NN_PAIR, timeout);
 
-    lamb_response_free_unpacked(resp, NULL);
+    response__free_unpacked(resp, NULL);
 
     if (err) {
         return -1;
@@ -127,14 +127,14 @@ Response *lamb_nn_request(const char *host, Request *req, int timeout) {
     Response *resp;
     unsigned int len;
 
-    len = lamb_request_get_packed_size(req);
+    len = request__get_packed_size(req);
     pk = malloc(len);
 
     if (!pk) {
         return NULL;
     }
 
-    lamb_request_pack(req, pk);
+    request__pack(req, pk);
     len = lamb_pack_assembly(&buf, LAMB_REQUEST, pk, len);
     free(pk);
 
@@ -173,7 +173,7 @@ Response *lamb_nn_request(const char *host, Request *req, int timeout) {
         return NULL;
     }
     
-    resp = lamb_response_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+    resp = response__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
     nn_freemsg(buf);
 

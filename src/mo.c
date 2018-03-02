@@ -32,12 +32,11 @@
 #include "mo.h"
 
 
-//static int ac;
 static lamb_list_t *pool;
 static lamb_config_t config;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
-static Response resp = LAMB_RESPONSE_INIT;
+static Response resp = RESPONSE__INIT;
 
 int main(int argc, char *argv[]) {
     char *file = "mo.conf";
@@ -139,7 +138,7 @@ void lamb_event_loop(void) {
         }
 
         Request *req;
-        req = lamb_request_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+        req = request__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
         nn_freemsg(buf);
 
         if (!req) {
@@ -148,7 +147,7 @@ void lamb_event_loop(void) {
         }
 
         if (req->id < 1) {
-            lamb_request_free_unpacked(req, NULL);
+            request__free_unpacked(req, NULL);
             lamb_log(LOG_ERR, "Invalid ID from client");
             continue;
         }
@@ -176,11 +175,11 @@ void lamb_event_loop(void) {
 
         if (err != ETIMEDOUT) {
             void *pk;
-            len = lamb_response_get_packed_size(&resp);
+            len = response__get_packed_size(&resp);
             pk = malloc(len);
 
             if (pk) {
-                lamb_response_pack(&resp, pk);
+                response__pack(&resp, pk);
                 len = lamb_pack_assembly(&buf, LAMB_RESPONSE, pk, len);
                 if (len > 0) {
                     nn_send(fd, buf, len, 0);
@@ -221,7 +220,7 @@ void *lamb_push_loop(void *arg) {
 
     if (!queue) {
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
 
@@ -230,7 +229,7 @@ void *lamb_push_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
     if (err) {
         pthread_cond_signal(&cond);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -274,7 +273,7 @@ void *lamb_push_loop(void *arg) {
         }
 
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
-            rpack = lamb_report_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            rpack = report__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
             if (!rpack) {
                 nn_freemsg(buf);
@@ -296,13 +295,13 @@ void *lamb_push_loop(void *arg) {
                 lamb_queue_push(queue, r);
             }
 
-            lamb_report_free_unpacked(rpack, NULL);
+            report__free_unpacked(rpack, NULL);
             nn_freemsg(buf);
             continue;
         }
 
         if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
-            dpack = lamb_deliver_unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            dpack = deliver__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
             if (!dpack) {
                 nn_freemsg(buf);
@@ -325,7 +324,7 @@ void *lamb_push_loop(void *arg) {
                 lamb_queue_push(queue, d);
             }
 
-            lamb_deliver_free_unpacked(dpack, NULL);
+            deliver__free_unpacked(dpack, NULL);
             nn_freemsg(buf);
             continue;
         }
@@ -341,7 +340,7 @@ void *lamb_push_loop(void *arg) {
     nn_close(fd);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_INFO, "connection closed from %s", client->addr);
-    lamb_request_free_unpacked(client, NULL);
+    request__free_unpacked(client, NULL);
 
     pthread_exit(NULL);
 }
@@ -373,7 +372,7 @@ void *lamb_pull_loop(void *arg) {
 
     if (!queue) {
         lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
     
@@ -382,7 +381,7 @@ void *lamb_pull_loop(void *arg) {
     err = lamb_child_server(&fd, config.listen, &port, NN_REP);
     if (err) {
         pthread_cond_signal(&cond);
-        lamb_request_free_unpacked(client, NULL);
+        request__free_unpacked(client, NULL);
         lamb_log(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
@@ -406,8 +405,8 @@ void *lamb_pull_loop(void *arg) {
     void *message;
     lamb_report_t *report;
     lamb_deliver_t *deliver;
-    Report rpack = LAMB_REPORT_INIT;
-    Deliver dpack = LAMB_DELIVER_INIT;
+    Report rpack = REPORT__INIT;
+    Deliver dpack = DELIVER__INIT;
 
     while (true) {
         char *buf = NULL;
@@ -456,11 +455,11 @@ void *lamb_pull_loop(void *arg) {
                 rpack.submittime = report->submittime;
                 rpack.donetime = report->donetime;
 
-                len = lamb_report_get_packed_size(&rpack);
+                len = report__get_packed_size(&rpack);
                 pk = malloc(len);
 
                 if (pk) {
-                    lamb_report_pack(&rpack, pk);
+                    report__pack(&rpack, pk);
                     len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
                     if (len > 0) {
                         nn_send(fd, buf, len, NN_DONTWAIT);
@@ -482,11 +481,11 @@ void *lamb_pull_loop(void *arg) {
                 dpack.content.len = deliver->length;
                 dpack.content.data = (uint8_t *)deliver->content;
 
-                len = lamb_deliver_get_packed_size(&dpack);
+                len = deliver__get_packed_size(&dpack);
                 pk = malloc(len);
 
                 if (pk) {
-                    lamb_deliver_pack(&dpack, pk);
+                    deliver__pack(&dpack, pk);
                     len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
                     if (len > 0) {
                         nn_send(fd, buf, len, NN_DONTWAIT);
@@ -512,7 +511,7 @@ void *lamb_pull_loop(void *arg) {
     nn_close(fd);
     lamb_debug("connection closed from %s\n", client->addr);
     lamb_log(LOG_INFO, "connection closed from %s", client->addr);
-    lamb_request_free_unpacked(client, NULL);
+    request__free_unpacked(client, NULL);
 
     pthread_exit(NULL);
 }

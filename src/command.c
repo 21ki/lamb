@@ -7,142 +7,142 @@
 #endif
 
 #include "command.h"
-void   lamb_request_init
+void   request__init
                      (Request         *message)
 {
-  static const Request init_value = LAMB_REQUEST_INIT;
+  static const Request init_value = REQUEST__INIT;
   *message = init_value;
 }
-size_t lamb_request_get_packed_size
+size_t request__get_packed_size
                      (const Request *message)
 {
-  assert(message->base.descriptor == &lamb_request_descriptor);
+  assert(message->base.descriptor == &request__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t lamb_request_pack
+size_t request__pack
                      (const Request *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &lamb_request_descriptor);
+  assert(message->base.descriptor == &request__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t lamb_request_pack_to_buffer
+size_t request__pack_to_buffer
                      (const Request *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &lamb_request_descriptor);
+  assert(message->base.descriptor == &request__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Request *
-       lamb_request_unpack
+       request__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
   return (Request *)
-     protobuf_c_message_unpack (&lamb_request_descriptor,
+     protobuf_c_message_unpack (&request__descriptor,
                                 allocator, len, data);
 }
-void   lamb_request_free_unpacked
+void   request__free_unpacked
                      (Request *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &lamb_request_descriptor);
+  assert(message->base.descriptor == &request__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   lamb_response_init
+void   response__init
                      (Response         *message)
 {
-  static const Response init_value = LAMB_RESPONSE_INIT;
+  static const Response init_value = RESPONSE__INIT;
   *message = init_value;
 }
-size_t lamb_response_get_packed_size
+size_t response__get_packed_size
                      (const Response *message)
 {
-  assert(message->base.descriptor == &lamb_response_descriptor);
+  assert(message->base.descriptor == &response__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t lamb_response_pack
+size_t response__pack
                      (const Response *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &lamb_response_descriptor);
+  assert(message->base.descriptor == &response__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t lamb_response_pack_to_buffer
+size_t response__pack_to_buffer
                      (const Response *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &lamb_response_descriptor);
+  assert(message->base.descriptor == &response__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Response *
-       lamb_response_unpack
+       response__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
   return (Response *)
-     protobuf_c_message_unpack (&lamb_response_descriptor,
+     protobuf_c_message_unpack (&response__descriptor,
                                 allocator, len, data);
 }
-void   lamb_response_free_unpacked
+void   response__free_unpacked
                      (Response *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &lamb_response_descriptor);
+  assert(message->base.descriptor == &response__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   lamb_connect_init
+void   connect__init
                      (Connect         *message)
 {
-  static const Connect init_value = LAMB_CONNECT_INIT;
+  static const Connect init_value = CONNECT__INIT;
   *message = init_value;
 }
-size_t lamb_connect_get_packed_size
+size_t connect__get_packed_size
                      (const Connect *message)
 {
-  assert(message->base.descriptor == &lamb_connect_descriptor);
+  assert(message->base.descriptor == &connect__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t lamb_connect_pack
+size_t connect__pack
                      (const Connect *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &lamb_connect_descriptor);
+  assert(message->base.descriptor == &connect__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t lamb_connect_pack_to_buffer
+size_t connect__pack_to_buffer
                      (const Connect *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &lamb_connect_descriptor);
+  assert(message->base.descriptor == &connect__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Connect *
-       lamb_connect_unpack
+       connect__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
   return (Connect *)
-     protobuf_c_message_unpack (&lamb_connect_descriptor,
+     protobuf_c_message_unpack (&connect__descriptor,
                                 allocator, len, data);
 }
-void   lamb_connect_free_unpacked
+void   connect__free_unpacked
                      (Connect *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &lamb_connect_descriptor);
+  assert(message->base.descriptor == &connect__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor lamb_request_field_descriptors[3] =
+static const ProtobufCFieldDescriptor request__field_descriptors[3] =
 {
   {
     "id",
@@ -181,17 +181,17 @@ static const ProtobufCFieldDescriptor lamb_request_field_descriptors[3] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned lamb_request_field_indices_by_name[] = {
+static const unsigned request__field_indices_by_name[] = {
   2,   /* field[2] = addr */
   0,   /* field[0] = id */
   1,   /* field[1] = type */
 };
-static const ProtobufCIntRange lamb_request_number_ranges[1 + 1] =
+static const ProtobufCIntRange request__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 3 }
 };
-const ProtobufCMessageDescriptor lamb_request_descriptor =
+const ProtobufCMessageDescriptor request__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
   "Request",
@@ -200,13 +200,13 @@ const ProtobufCMessageDescriptor lamb_request_descriptor =
   "",
   sizeof(Request),
   3,
-  lamb_request_field_descriptors,
-  lamb_request_field_indices_by_name,
-  1,  lamb_request_number_ranges,
-  (ProtobufCMessageInit) lamb_request_init,
+  request__field_descriptors,
+  request__field_indices_by_name,
+  1,  request__number_ranges,
+  (ProtobufCMessageInit) request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor lamb_response_field_descriptors[2] =
+static const ProtobufCFieldDescriptor response__field_descriptors[2] =
 {
   {
     "id",
@@ -233,16 +233,16 @@ static const ProtobufCFieldDescriptor lamb_response_field_descriptors[2] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned lamb_response_field_indices_by_name[] = {
+static const unsigned response__field_indices_by_name[] = {
   1,   /* field[1] = host */
   0,   /* field[0] = id */
 };
-static const ProtobufCIntRange lamb_response_number_ranges[1 + 1] =
+static const ProtobufCIntRange response__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 2 }
 };
-const ProtobufCMessageDescriptor lamb_response_descriptor =
+const ProtobufCMessageDescriptor response__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
   "Response",
@@ -251,13 +251,13 @@ const ProtobufCMessageDescriptor lamb_response_descriptor =
   "",
   sizeof(Response),
   2,
-  lamb_response_field_descriptors,
-  lamb_response_field_indices_by_name,
-  1,  lamb_response_number_ranges,
-  (ProtobufCMessageInit) lamb_response_init,
+  response__field_descriptors,
+  response__field_indices_by_name,
+  1,  response__number_ranges,
+  (ProtobufCMessageInit) response__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor lamb_connect_field_descriptors[3] =
+static const ProtobufCFieldDescriptor connect__field_descriptors[3] =
 {
   {
     "id",
@@ -296,17 +296,17 @@ static const ProtobufCFieldDescriptor lamb_connect_field_descriptors[3] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned lamb_connect_field_indices_by_name[] = {
+static const unsigned connect__field_indices_by_name[] = {
   2,   /* field[2] = addr */
   0,   /* field[0] = id */
   1,   /* field[1] = type */
 };
-static const ProtobufCIntRange lamb_connect_number_ranges[1 + 1] =
+static const ProtobufCIntRange connect__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 3 }
 };
-const ProtobufCMessageDescriptor lamb_connect_descriptor =
+const ProtobufCMessageDescriptor connect__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
   "Connect",
@@ -315,9 +315,9 @@ const ProtobufCMessageDescriptor lamb_connect_descriptor =
   "",
   sizeof(Connect),
   3,
-  lamb_connect_field_descriptors,
-  lamb_connect_field_indices_by_name,
-  1,  lamb_connect_number_ranges,
-  (ProtobufCMessageInit) lamb_connect_init,
+  connect__field_descriptors,
+  connect__field_indices_by_name,
+  1,  connect__number_ranges,
+  (ProtobufCMessageInit) connect__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
