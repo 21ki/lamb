@@ -16,8 +16,8 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
 
 ### 依赖软件库
 
-    yum install -y gcc gcc-c++ make cmake automake autoconf libtool openssl-devel
-    yum install -y re2c re2c-devl flex flex-devel bison bison-devl curl-devel libconfig-devel
+    yum install -y gcc gcc-c++ make cmake automake autoconf libtool openssl-devel curl-devel
+    yum install -y git wget re2c re2c-devl flex flex-devel bison bison-devl libconfig-devel
     yum install -y pcre-devel readline-devel libxml2-devel hiredis-devel libpqxx-devel
 
 ### 内核参数配置 /etc/sysctl.conf
@@ -76,6 +76,7 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     $ make
     $ make install
 
+> `--with-pdo-pgsql` 与 `--with-pgsql` 为 postgresql 的安装目录
 
 ### protobuf 编译安装
 
@@ -94,3 +95,11 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     $ ./configure
     $ make
     $ make install
+
+### cmpp 协议库安装
+
+    $ git clone https://github.com/typefo/cmpp.git
+    $ cd cmpp
+    $ make
+    $ make install
+
