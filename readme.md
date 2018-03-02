@@ -22,6 +22,12 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     $ yum install -y git wget re2c re2c-devl flex flex-devel bison bison-devl libconfig-devel
     $ yum install -y pcre-devel readline-devel libxml2-devel hiredis-devel libpqxx-devel
 
+### 其他组件安装方法
+
+* [nginx 安装方法](https://github.com/typefo/blog/blob/master/nginx/nginx-compile-install.md)
+* [php 安装方法](https://github.com/typefo/blog/blob/master/php/php7-compile-install.md)
+* [postgresql 安装方法](https://github.com/typefo/blog/blob/master/postgresql/postgresql10-compile-install.md)
+
 ### 内核参数配置 /etc/sysctl.conf
 
     net.ipv6.conf.all.disable_ipv6 = 1
@@ -47,38 +53,6 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     * hard    core    unlimited
     * soft    memlock unlimited
     * hard    memlock unlimited
-
-### nginx 编译安装
-
-    $ wget http://nginx.org/download/nginx-1.12.2.tar.gz
-    $ tar -zxvf nginx-1.12.2.tar.gz
-    $ cd nginx-1.12.2
-    $ ./configure --prefix=/usr/local/nginx
-                  --with-threads
-                  --with-file-aio
-                  --with-http_ssl_module
-                  --with-http_v2_module
-                  --without-mail_pop3_module
-                  --without-mail_imap_module
-                  --without-mail_smtp_module
-    $ make
-    $ make install
-
-### php 编译安装
-
-    $ wget http://cn2.php.net/distributions/php-7.2.2.tar.gz
-    $ tar -zxvf php-7.2.2.tar.gz
-    $ cd php-7.2.2
-    $ ./configure --prefix=/usr/local/php
-                  --enable-fpm
-                  --disable-ipv6
-                  --enable-mbstring
-                  --with-pdo-pgsql=/usr/local/postgresql
-                  --with-pgsql=/usr/local/postgresql
-    $ make
-    $ make install
-
-> 如果 postgresql 是自定义编译安装，`--with-pdo-pgsql` 与 `--with-pgsql` 设置为 postgresql 的安装目录
 
 ### protobuf 编译安装
 
