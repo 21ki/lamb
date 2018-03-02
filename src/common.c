@@ -22,7 +22,7 @@
 #include <sys/resource.h>
 #include <iconv.h>
 #include <cmpp.h>
-#include "utils.h"
+#include "common.h"
 
 int lamb_signal(int sig, void (*handler)(int)) {
     struct sigaction sa;

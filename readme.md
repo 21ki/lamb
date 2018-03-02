@@ -1,6 +1,6 @@
 This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
 
-### 基础环境说明
+### 基础环境
 
 - CentOS 7.3
 - nginx 1.12
@@ -11,14 +11,14 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
 - hiredis 0.13
 - libiconv 1.15
 - postgresql 10.2
-- protobuf 3.5.0
+- protobuf 3.5.1
 - protobuf-c 1.3.0
 
 ### 依赖软件库
 
-    yum install -y gcc gcc-c++ make automake autoconf libtool openssl-devel pcre-devel
+    yum install -y gcc gcc-c++ make cmake automake autoconf libtool openssl-devel
     yum install -y re2c re2c-devl flex flex-devel bison bison-devl curl-devel libconfig-devel
-    yum install -y readline-devel libxml2-devel hiredis-devel libpqxx-devel
+    yum install -y pcre-devel readline-devel libxml2-devel hiredis-devel libpqxx-devel
 
 ### 内核参数配置 /etc/sysctl.conf
 
@@ -92,8 +92,5 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     $ wget https://github.com/protobuf-c/protobuf-c/releases/download/v1.3.0/protobuf-c-1.3.0.tar.gz
     $ cd protobuf-c-1.3.0
     $ ./configure
-
-开始编译
-
     $ make
     $ make install

@@ -25,9 +25,9 @@
 #include <nanomsg/reqrep.h>
 #include <errno.h>
 #include <cmpp.h>
+#include "common.h"
 #include "ac.h"
 #include "db.h"
-#include "utils.h"
 #include "cache.h"
 #include "list.h"
 #include "queue.h"

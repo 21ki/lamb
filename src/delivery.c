@@ -23,7 +23,7 @@
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
 #include <nanomsg/reqrep.h>
-#include "utils.h"
+#include "common.h"
 #include "config.h"
 #include "cache.h"
 #include "socket.h"

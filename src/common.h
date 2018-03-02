@@ -5,8 +5,8 @@
  * Update: 2017-07-14
  */
 
-#ifndef _LAMB_UTILS_H
-#define _LAMB_UTILS_H
+#ifndef _LAMB_COMMON_H
+#define _LAMB_COMMON_H
 
 #include <stdio.h>
 #include <stdbool.h>

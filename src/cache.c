@@ -11,7 +11,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include "cache.h"
-#include "utils.h"
+#include "common.h"
 
 int lamb_cache_connect(lamb_cache_t *cache, char *host, int port, char *password, int db) {
     redisReply *reply = NULL;

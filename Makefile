@@ -3,7 +3,7 @@ CC = gcc
 MACRO = -D_GNU_SOURCE -D_DEBUG
 CFLAGS = -std=c99 -Wall -pedantic
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o
-OBJS += src/gateway.o src/routing.o src/utils.o src/security.o src/message.o
+OBJS += src/gateway.o src/routing.o src/common.o src/security.o src/message.o
 OBJS += src/list.o src/template.o src/keyword.o src/socket.o src/command.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lpcre -lprotobuf-c
 
@@ -66,8 +66,8 @@ src/routing.o: src/routing.c src/routing.h
 src/queue.o: src/queue.c src/queue.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/queue.c -o src/queue.o
 
-src/utils.o: src/utils.c src/utils.h
-	$(CC) $(CFLAGS) $(MACRO) -c src/utils.c -o src/utils.o
+src/common.o: src/common.c src/common.h
+	$(CC) $(CFLAGS) $(MACRO) -c src/common.c -o src/common.o
 
 src/security.o: src/security.c src/security.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/security.c -o src/security.o
@@ -110,5 +110,5 @@ install:
 
 clean:
 	rm -f src/*.o
-	rm -f ismg mt mo server scheduler deliver sp test
+	rm -f ismg mt mo server scheduler delivery sp test
 

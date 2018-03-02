@@ -7,7 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "utils.h"
+#include "common.h"
 #include "template.h"
 
 int lamb_get_templates(lamb_db_t *db, lamb_list_t *templates) {

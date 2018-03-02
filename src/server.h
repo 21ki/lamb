@@ -9,7 +9,7 @@
 #define _LAMB_SERVER_H
 
 #include "db.h"
-#include "utils.h"
+#include "common.h"
 #include "list.h"
 #include "cache.h"
 #include "config.h"

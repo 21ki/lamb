@@ -19,14 +19,15 @@
 #include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "config.h"
-#include "mqueue.h"
+#include "db.h"
 #include "queue.h"
 #include "socket.h"
 #include "message.h"
 #include "sp.h"
 
-static int mt;
-static int mo;
+static int scheduler;
+static int delivery;
+static lamb_db_t *db;
 static cmpp_sp_t cmpp;
 //static lamb_cache_t rdb;
 static lamb_caches_t cache;
@@ -103,33 +104,56 @@ void lamb_event_loop(void) {
 
     lamb_debug("storage initialization successfull\n");
 
-    /* Cache Cluster Initialization */
+    /* Database initialization */
+    db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
+    if (!db) {
+        lamb_log(LOG_ERR, "the kernel can't allocate memory");
+        return;
+    }
+
+    err = lamb_db_init(db);
+    if (err) {
+        lamb_log(LOG_ERR, "database handle initialize failed");
+        return;
+    }
+
+    /* Connect to database */
+    err = lamb_db_connect(db, config.db_host, config.db_port, config.db_user,
+                          config.db_password, config.db_name);
+    if (err) {
+        lamb_log(LOG_ERR, "can't connect to database %s", config.db_host);
+        return;
+    }
+
+    lamb_debug("connect to database successfull\n");
+
+    /* Cache cluster initialization */
     memset(&cache, 0, sizeof(cache));
     lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 4);
     if (cache.len != 7) {
-        lamb_log(LOG_ERR, "connect to cache cluster server failed");
+        lamb_log(LOG_ERR, "connect to cache cluster failed");
         return;
     }
 
-    lamb_debug("connect to cache cluster server successfull\n");
+    lamb_debug("connect to cache cluster successfull\n");
 
-    /* Connect to MT Server */
-    mt = lamb_nn_reqrep(config.mt, config.id, config.timeout);
-    if (mt < 0) {
-        lamb_log(LOG_ERR, "can't connect to mt %s", config.mt);
+    /* Connect to scheduler server */
+    scheduler = lamb_nn_reqrep(config.scheduler, config.id, config.timeout);
+    if (scheduler < 0) {
+        lamb_log(LOG_ERR, "can't connect to scheduler %s", config.scheduler);
         return;
     }
 
-    lamb_debug("connect to mt server successfull\n");
+    lamb_debug("connect to scheduler server successfull\n");
 
-    /* Connect to MO Server */
-    mo = lamb_nn_pair(config.mo, config.id, config.timeout);
-    if (mo < 0) {
-        lamb_log(LOG_ERR, "can't connect to mo %s", config.mo);
+    /* Connect to delivery server */
+    delivery = lamb_nn_pair(config.delivery, config.id, config.timeout);
+    if (delivery < 0) {
+        lamb_log(LOG_ERR, "can't connect to delivery %s", config.delivery);
         return;
     }
 
-    lamb_debug("connect to mo server successfull\n");
+    lamb_debug("connect to delivery server successfull\n");
 
     /* Cmpp client initialization */
     err = lamb_cmpp_init(&cmpp, &config);
@@ -206,7 +230,7 @@ void *lamb_sender_loop(void *data) {
             continue;
         }
 
-        rc = nn_send(mt, req, len, NN_DONTWAIT);
+        rc = nn_send(scheduler, req, len, NN_DONTWAIT);
 
         if (rc != len) {
             lamb_sleep(1000);
@@ -705,7 +729,6 @@ int lamb_save_logfile(char *file, void *data) {
 
 void *lamb_stat_loop(void *data) {
     //unsigned long long last, error;
-
     //last = 0;
 
     while (true) {
@@ -913,13 +936,43 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
     }
 
-    if (lamb_get_string(&cfg, "Mt", conf->mt, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid Mt server address\n");
+    if (lamb_get_string(&cfg, "Scheduler", conf->scheduler, 128) != 0) {
+        fprintf(stderr, "ERROR: Invalid Scheduler server address\n");
         goto error;
     }
 
-    if (lamb_get_string(&cfg, "Mo", conf->mo, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid Mo server address\n");
+    if (lamb_get_string(&cfg, "Delivery", conf->delivery, 128) != 0) {
+        fprintf(stderr, "ERROR: Invalid Delivery server address\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "DbPort", &conf->db_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->db_port < 1 || conf->db_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid DB port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DbUser", conf->db_user, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbUser' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "DbPassword", conf->db_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbPassword' parameter\n");
+        goto error;
+    }
+    
+    if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
         goto error;
     }
 

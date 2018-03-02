@@ -9,7 +9,7 @@
 #define _LAMB_SP_H
 
 #include <stdbool.h>
-#include "utils.h"
+#include "common.h"
 #include "cache.h"
 
 typedef struct {
@@ -33,8 +33,13 @@ typedef struct {
     char backfile[128];
     char logfile[128];
     char ac[128];
-    char mt[128];
-    char mo[128];
+    char scheduler[128];
+    char delivery[128];
+    char db_host[16];
+    int db_port;
+    char db_user[64];
+    char db_password[64];
+    char db_name[64];
     char *nodes[7];
 } lamb_config_t;
 
