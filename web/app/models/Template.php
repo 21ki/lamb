@@ -32,7 +32,7 @@ class TemplateModel {
 
     public function getAll() {
         $result = [];
-        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY id';
+        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY rexp';
         $sth = $this->db->query($sql);
         if ($sth) {
             $result = $sth->fetchAll();

@@ -174,7 +174,7 @@ void lamb_reload(int signum) {
     lamb_list_iterator_t *it;
 
     if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
-        lamb_debug("signal setting process failed\n");
+        lamb_log(LOG_ERR, "signal setting process failed\n");
     }
 
     sleeping = true;
@@ -241,7 +241,8 @@ void lamb_reload(int signum) {
     }
     
     sleeping = false;
-    lamb_debug("-> reload configuration successfull!\n");
+    lamb_log(LOG_NOTICE, "reload the configuration complete");
+
     return;
 }
 
@@ -385,7 +386,6 @@ void *lamb_work_loop(void *data) {
 
         /* Template Processing */
         if (global->account.template) {
-            lamb_debug("-> checking the template ...\n");
             success = false;
             lamb_list_iterator_t *ts;
             ts = lamb_list_iterator_new(global->templates, LIST_HEAD);
@@ -407,7 +407,6 @@ void *lamb_work_loop(void *data) {
 
         /* Keywords Filtration */
         if (global->account.keyword) {
-            lamb_debug("-> checking the keyword ...\n");
             success = true;
             lamb_list_iterator_t *ks;
             ks = lamb_list_iterator_new(global->keywords, LIST_HEAD);

@@ -551,7 +551,7 @@ void *lamb_deliver_loop(void *data) {
 
         deliver:
             err = cmpp_deliver(client->sock, sequenceId, deliver->id, deliver->spcode, deliver->phone,
-                               (char *)deliver->content.data, deliver->msgfmt, 8);
+                               (char *)deliver->content.data, deliver->content.len, deliver->msgfmt);
             if (err) {
                 status.err++;
                 lamb_log(LOG_WARNING, "sending 'cmpp_deliver' packet to client %s failed", client->addr);

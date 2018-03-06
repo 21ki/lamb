@@ -48,7 +48,7 @@ int lamb_get_template(lamb_db_t *db, const char *rexp, lamb_list_t *templates) {
     char sql[256];
     PGresult *res = NULL;
 
-    column = "id, rexp, name, contents";
+    column = "id, rexp, name, content";
     snprintf(sql, sizeof(sql), "SELECT %s FROM template WHERE rexp = '%s' ORDER BY id",
              column, rexp);
     res = PQexec(db->conn, sql);

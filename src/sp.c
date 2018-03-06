@@ -619,11 +619,11 @@ void *lamb_work_loop(void *data) {
 }
 
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
-    lamb_log(LOG_ERR, "Reconnecting to gateway %s ...", config->host);
+    lamb_log(LOG_ERR, "reconnecting to gateway %s ...", config->host);
     while (lamb_cmpp_init(cmpp, config) != 0) {
         lamb_sleep(config->interval * 1000);
     }
-    lamb_log(LOG_ERR, "Connect to gateway %s successfull", config->host);
+    lamb_log(LOG_ERR, "connect to gateway %s successfull", config->host);
     return;
 }
 
@@ -642,7 +642,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     /* Initialization cmpp connection */
     err = cmpp_init_sp(cmpp, config->host, config->port);
     if (err) {
-        lamb_log(LOG_ERR, "Can't connect to gateway %s server", config->host);
+        lamb_log(LOG_ERR, "can't connect to gateway %s server", config->host);
         return 1;
     }
 
@@ -650,13 +650,13 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     sequenceId = cmpp_sequence();
     err = cmpp_connect(&cmpp->sock, sequenceId, config->user, config->password);
     if (err) {
-        lamb_log(LOG_ERR, "Sending connection request to %s failed", config->host);
+        lamb_log(LOG_ERR, "sending connection request to %s failed", config->host);
         return 2;
     }
 
     err = cmpp_recv_timeout(&cmpp->sock, &pack, sizeof(pack), config->recv_timeout);
     if (err) {
-        lamb_log(LOG_ERR, "Receive gateway response packet from %s failed", config->host);
+        lamb_log(LOG_ERR, "receive gateway response packet from %s failed", config->host);
         return 3;
     }
 
@@ -671,25 +671,25 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
             cmpp->ok = true;
             goto success;
         case 1:
-            lamb_log(LOG_ERR, "Incorrect protocol packets");
+            lamb_log(LOG_ERR, "incorrect protocol packets");
             break;
         case 2:
-            lamb_log(LOG_ERR, "Illegal source address");
+            lamb_log(LOG_ERR, "illegal source address");
             break;
         case 3:
-            lamb_log(LOG_ERR, "Authenticator failed");
+            lamb_log(LOG_ERR, "authenticator failed");
             break;
         case 4:
-            lamb_log(LOG_ERR, "Protocol version is too high");
+            lamb_log(LOG_ERR, "protocol version is too high");
             break;
         default:
-            lamb_log(LOG_ERR, "Cmpp unknown error code: %d", status);
+            lamb_log(LOG_ERR, "cmpp unknown error, code: %d", status);
             break;
         }
 
         return 4;
     } else {
-        lamb_log(LOG_ERR, "Incorrect response packet from %s gateway", config->host);
+        lamb_log(LOG_ERR, "incorrect response packet from %s gateway", config->host);
         return 5;
     }
     
