@@ -512,11 +512,14 @@ void *lamb_work_loop(void *data) {
     void *pk;
     char *buf;
     void *message;
-    char spcode[24];
     lamb_report_t *r;
     lamb_deliver_t *d;
     lamb_node_t *node;
+
     unsigned long long msgId;
+    char spcode[21];
+    int account;
+    int company;
 
     int slen = strlen(config.spcode);
     Report report = REPORT__INIT;
@@ -534,39 +537,36 @@ void *lamb_work_loop(void *data) {
 
         if (CHECK_TYPE(message) == LAMB_REPORT) {
             r = (lamb_report_t *)message;
-            msgId = r->id;
             memset(spcode, 0, sizeof(spcode));
-            lamb_get_cache(&cache, &r->id, &r->account, &r->company, spcode, sizeof(spcode));
+            lamb_get_cache(&cache, r->id, &msgId, &account, &company, spcode, sizeof(spcode));
 
-            if (r->id > 0 && r->account > 0 && r->company > 0) {
+            if (msgId > 0 && account > 0 && company > 0) {
                 lamb_del_cache(&cache, msgId);
             } else {
                 goto done;
             }
 
-            report.id = r->id;
-            report.account = r->account;
-            report.company = r->company;
+            report.id = msgId;
+            report.account = account;
+            report.company = company;
             report.spcode = spcode;
             report.phone = r->phone;
             report.status = r->status;
             report.submittime = r->submittime;
             report.donetime = r->donetime;
 
-            len = report__get_packed_size(&report);
+            len = lamb_report_get_packed_size(&report);
             pk = malloc(len);
 
             if (!pk) {
                 goto done;
             }
 
-            report__pack(&report, pk);
+            lamb_report_pack(&report, pk);
             len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
 
             if (len > 0) {
-                if (nn_send(mo, buf, len, 0) != len) {
-                    lamb_save_logfile(config.backfile, message);
-                }
+                nn_send(mo, buf, len, 0);
                 free(buf);
             }
             free(pk);
@@ -774,27 +774,34 @@ int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned lon
     return 0;
 }
 
-int lamb_get_cache(lamb_caches_t *caches, unsigned long long *id, int *account, int *company, char *spcode, size_t size) {
+int lamb_get_cache(lamb_caches_t *caches, unsigned long long id, unsigned long long *msgId,
+                   int *account, int *company, char *spcode, size_t size) {
     int i;
     redisReply *reply = NULL;
 
-    i = (*id % caches->len);
+    *msgId = 0;
+    *account = 0;
+    *company = 0;
+
+    i = (id % caches->len);
 
     pthread_mutex_lock(&caches->nodes[i]->lock);
-    reply = redisCommand(caches->nodes[i]->handle, "HMGET %llu id account company spcode", *id);
+    reply = redisCommand(caches->nodes[i]->handle, "HMGET %llu id account company spcode", id);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
-    
-    if (reply != NULL) {
-        if (reply->type == REDIS_REPLY_ARRAY) {
-            if (reply->elements == 4) {
-                *id = (reply->element[0]->len > 0) ? strtoull(reply->element[0]->str, NULL, 10) : 0;
-                *account = (reply->element[1]->len > 0) ? atoi(reply->element[1]->str) : 0;
-                *company = (reply->element[2]->len > 0) ? atoi(reply->element[2]->str) : 0;
-                if (reply->element[3]->len >= size) {
-                    memcpy(spcode, reply->element[3]->str, size - 1);
-                } else {
-                    memcpy(spcode, reply->element[3]->str, reply->element[3]->len);
-                }
+
+    if (!reply) {
+        return -1;
+    }
+
+    if (reply->type == REDIS_REPLY_ARRAY) {
+        if (reply->elements == 4) {
+            *msgId = (reply->element[0]->len > 0) ? strtoull(reply->element[0]->str, NULL, 10) : 0;
+            *account = (reply->element[1]->len > 0) ? atoi(reply->element[1]->str) : 0;
+            *company = (reply->element[2]->len > 0) ? atoi(reply->element[2]->str) : 0;
+            if (reply->element[3]->len >= size) {
+                memcpy(spcode, reply->element[3]->str, size - 1);
+            } else {
+                memcpy(spcode, reply->element[3]->str, reply->element[3]->len);
             }
         }
     }
