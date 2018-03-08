@@ -171,8 +171,8 @@ void lamb_event_loop(void) {
     lamb_debug("start sender thread successfull\n");
 
     /* Start Work Thread */
-    lamb_start_thread(lamb_work_loop, NULL, 1);
-    lamb_debug("start work thread successfull\n");
+    //lamb_start_thread(lamb_work_loop, NULL, 1);
+    //lamb_debug("start work thread successfull\n");
 
     /* Start Deliver Thread */
     lamb_start_thread(lamb_deliver_loop, NULL, 1);
@@ -237,7 +237,7 @@ void *lamb_sender_loop(void *data) {
             continue;
         }
 
-        rc = nn_recv(mt, &buf, NN_MSG, 0);
+        rc = nn_recv(scheduler, &buf, NN_MSG, 0);
 
         if (rc < HEAD) {
             if (rc > 0) {
@@ -379,13 +379,14 @@ void *lamb_deliver_loop(void *data) {
 
             if (registered_delivery == 1) {
                 status.rep++;
-                memset(stat, 0, sizeof(stat));
                 report = (lamb_report_t *)calloc(1, sizeof(lamb_report_t));
 
                 if (!report) {
                     result = 9;
                     goto response1;
                 }
+
+                memset(stat, 0, sizeof(stat));
 
                 /* Msg_Id */
                 cmpp_pack_get_integer(&pack, cmpp_deliver_msg_content_msg_id, &report->id, 8);
@@ -429,6 +430,11 @@ void *lamb_deliver_loop(void *data) {
 
             response1:
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, result);
+                lamb_node_t *node = lamb_list_lpop(storage);
+                if (node) {
+                    free(node->val);
+                    free(node);
+                }
             } else {
                 status.delv++;
                 deliver = (lamb_deliver_t *)calloc(1, sizeof(lamb_deliver_t));
@@ -555,18 +561,18 @@ void *lamb_work_loop(void *data) {
             report.submittime = r->submittime;
             report.donetime = r->donetime;
 
-            len = lamb_report_get_packed_size(&report);
+            len = report__get_packed_size(&report);
             pk = malloc(len);
 
             if (!pk) {
                 goto done;
             }
 
-            lamb_report_pack(&report, pk);
+            report__pack(&report, pk);
             len = lamb_pack_assembly(&buf, LAMB_REPORT, pk, len);
 
             if (len > 0) {
-                nn_send(mo, buf, len, 0);
+                nn_send(delivery, buf, len, 0);
                 free(buf);
             }
             free(pk);
@@ -601,7 +607,7 @@ void *lamb_work_loop(void *data) {
             len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
 
             if (len > 0) {
-                if (nn_send(mo, buf, len, 0) != len) {
+                if (nn_send(delivery, buf, len, 0) != len) {
                     lamb_save_logfile(config.backfile, message);
                 }
                 free(buf);

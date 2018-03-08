@@ -7,7 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "utils.h"
+#include "common.h"
 #include "keyword.h"
 
 int lamb_keyword_get_all(lamb_db_t *db, lamb_list_t *keys) {

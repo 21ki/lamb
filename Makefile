@@ -2,8 +2,8 @@
 CC = gcc
 MACRO = -D_GNU_SOURCE -D_DEBUG
 CFLAGS = -std=c99 -Wall -pedantic
-OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o src/db.o
-OBJS += src/gateway.o src/routing.o src/common.o src/security.o src/message.o
+OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o
+OBJS += src/db.o src/routing.o src/common.o src/security.o src/message.o
 OBJS += src/list.o src/template.o src/keyword.o src/socket.o src/command.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lpcre -lprotobuf-c
 

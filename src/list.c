@@ -172,11 +172,12 @@ lamb_node_t *lamb_list_rpop(lamb_list_t *self) {
  */
 
 lamb_node_t *lamb_list_lpop(lamb_list_t *self) {
+    pthread_mutex_lock(&self->lock);
     if (!self->len) {
+        pthread_mutex_unlock(&self->lock);
         return NULL;
     }
 
-    pthread_mutex_lock(&self->lock);
     lamb_node_t *node = self->head;
 
     if (--self->len) {
