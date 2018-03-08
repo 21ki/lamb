@@ -74,8 +74,8 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
 
 ### cmpp 协议库安装
 
-    $ git clone https://github.com/typefo/cmpp.git
-    $ cd cmpp
+    $ git clone https://github.com/typefo/libcmpp.git
+    $ cd libcmpp
     $ make
     $ make install
 
