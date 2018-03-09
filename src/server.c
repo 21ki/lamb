@@ -821,7 +821,7 @@ void *lamb_unsubscribe_loop(void *arg) {
 }
 
 void *lamb_stat_loop(void *data) {
-    // int err;
+    int err;
     redisReply *reply = NULL;
 
     while (true) {

@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include "common.h"
+#include "db.h"
 #include "cache.h"
 
 typedef struct {
@@ -53,6 +54,18 @@ typedef struct {
 } lamb_status_t;
 
 typedef struct {
+    int gid;
+    unsigned long long submit;
+    unsigned long long delivrd;
+    unsigned long long expired;
+    unsigned long long deleted;
+    unsigned long long undeliv;
+    unsigned long long acceptd;
+    unsigned long long unknown;
+    unsigned long long rejectd;
+} lamb_statistical_t;
+
+typedef struct {
     int account;
     int company;
     char spcode[24];
@@ -78,5 +91,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file);
 int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id, int account, int company, char *spcode);
 int lamb_get_cache(lamb_caches_t *caches, unsigned long long id, unsigned long long *msgId, int *account, int *company, char *spcode, size_t size);
 int lamb_del_cache(lamb_caches_t *caches, unsigned long long msgId);
+int lamb_write_statistical(lamb_db_t *db, lamb_statistical_t *stat);
 
 #endif

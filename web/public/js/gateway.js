@@ -176,12 +176,13 @@ function getdateofday(time) {
     var day = now.getDate(); 
 
     if (month >= 1 && month <= 9) {
-        month += "0";
+        month = "0" + month;
     }
 
     if (day >= 1 && day <= 9) {
-        day += "0";
+        day = "0" + day;
     }
     
     return now.getFullYear() + '-' + month + '-' + day + " " + time;
 }
+

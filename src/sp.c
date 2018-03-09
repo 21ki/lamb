@@ -19,7 +19,6 @@
 #include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "config.h"
-#include "db.h"
 #include "queue.h"
 #include "socket.h"
 #include "message.h"
@@ -39,6 +38,7 @@ static lamb_heartbeat_t heartbeat;
 static lamb_confirmed_t confirmed;
 static unsigned long long total;
 static lamb_status_t status;
+static lamb_statistical_t *statistical;
 
 int main(int argc, char *argv[]) {
     char *file = "sp.conf";
@@ -103,6 +103,11 @@ void lamb_event_loop(void) {
     }
 
     lamb_debug("storage initialization successfull\n");
+
+    statistical = (lamb_statistical_t *)calloc(1, sizeof(lamb_statistical_t));
+    if (!statistical) {
+        lamb_log(LOG_ERR, "the kernel can't allocate memory");
+    }
 
     /* Database initialization */
     db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
@@ -273,14 +278,14 @@ void *lamb_sender_loop(void *data) {
         confirmed.account = message->account;
         confirmed.company = message->company;
 
-        /* Spcode Processing */
+        /* Spcode processing */
         if (config.extended) {
             snprintf(spcode, sizeof(spcode), "%s%s", config.spcode, message->spcode);
         } else {
             strcpy(spcode, config.spcode);
         }
 
-        /* Message Encode Convert */
+        /* Message encode convert */
         memset(content, 0, sizeof(content));
         err = lamb_encoded_convert((char *)message->content.data, message->length, content,
                                    sizeof(content), "UTF-8", tocode, &length);
@@ -289,12 +294,16 @@ void *lamb_sender_loop(void *data) {
             continue;
         }
 
+        /* Send message to gateway */
         sequenceId = confirmed.sequenceId = cmpp_sequence();
         err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, message->phone,
                           content, length, msgFmt, true);
+        submit__free_unpacked(message, NULL);
+
+        /* Submit count statistical  */
         total++;
         status.sub++;
-        submit__free_unpacked(message, NULL);
+        statistical->submit++;
 
         if (err) {
             status.err++;
@@ -302,6 +311,7 @@ void *lamb_sender_loop(void *data) {
             continue;
         }
 
+        /* Wait for ACK confirmation */
         err = lamb_wait_confirmation(&cond, &mutex, config.acknowledge_timeout);
 
         if (err == ETIMEDOUT) {
@@ -309,6 +319,7 @@ void *lamb_sender_loop(void *data) {
             lamb_sleep(config.interval * 1000);
         }
 
+        /* Flow control */
         if (config.concurrent > 1000) {
             delayed = 1000;
         } else {
@@ -355,7 +366,7 @@ void *lamb_deliver_loop(void *data) {
         
         switch (commandId) {
         case CMPP_SUBMIT_RESP:;
-            /* Cmpp Submit Resp */
+            /* cmpp submit resp */
             status.ack++;
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_msg_id, &msgId, 8);
             cmpp_pack_get_integer(&pack, cmpp_submit_resp_result, &result, 1);
@@ -406,20 +417,28 @@ void *lamb_deliver_loop(void *data) {
                 /* Stat */
                 if (strncasecmp(stat, "DELIVRD", 7) == 0) {
                     report->status = 1;
+                    statistical->delivrd++;
                 } else if (strncasecmp(stat, "EXPIRED", 7) == 0) {
                     report->status = 2;
+                    statistical->expired++;
                 } else if (strncasecmp(stat, "DELETED", 7) == 0) {
                     report->status = 3;
+                    statistical->deleted++;
                 } else if (strncasecmp(stat, "UNDELIV", 7) == 0) {
                     report->status = 4;
+                    statistical->undeliv++;
                 } else if (strncasecmp(stat, "ACCEPTD", 7) == 0) {
                     report->status = 5;
+                    statistical->acceptd++;
                 } else if (strncasecmp(stat, "UNKNOWN", 7) == 0) {
                     report->status = 6;
+                    statistical->unknown++;
                 } else if (strncasecmp(stat, "REJECTD", 7) == 0) {
                     report->status = 7;
+                    statistical->rejectd++;
                 } else {
                     report->status = 6;
+                    statistical->unknown++;
                 }
 
                 report->type = LAMB_REPORT;
@@ -471,7 +490,8 @@ void *lamb_deliver_loop(void *data) {
 
                 
                 lamb_debug("receive msgId: %llu, phone: %s, spcode: %s, msgFmt: %d, length: %d\n",
-                           deliver->id, deliver->phone, deliver->spcode, deliver->msgfmt, deliver->length);
+                           deliver->id, deliver->phone, deliver->spcode, deliver->msgfmt,
+                           deliver->length);
 
             response2:
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, deliver->id, result);
@@ -543,6 +563,7 @@ void *lamb_work_loop(void *data) {
 
         if (CHECK_TYPE(message) == LAMB_REPORT) {
             r = (lamb_report_t *)message;
+            msgId = account = company = 0;
             memset(spcode, 0, sizeof(spcode));
             lamb_get_cache(&cache, r->id, &msgId, &account, &company, spcode, sizeof(spcode));
 
@@ -734,8 +755,16 @@ int lamb_save_logfile(char *file, void *data) {
 }
 
 void *lamb_stat_loop(void *data) {
-    //unsigned long long last, error;
     //last = 0;
+    //unsigned long long last, error;
+
+    int err;
+    lamb_statistical_t last;
+    lamb_statistical_t result;
+    lamb_statistical_t current;
+
+    memset(&last, 0, sizeof(lamb_statistical_t));
+    last.gid = result.gid = current.gid = config.id;
 
     while (true) {
         /* 
@@ -749,6 +778,45 @@ void *lamb_stat_loop(void *data) {
            lamb_log(LOG_ERR, "lamb exec redis command error");
            }
         */
+
+        current.submit = statistical->submit;
+        current.delivrd = statistical->delivrd;
+        current.expired = statistical->expired;
+        current.deleted = statistical->deleted;
+        current.undeliv = statistical->undeliv;
+        current.acceptd = statistical->acceptd;
+        current.unknown = statistical->unknown;
+        current.rejectd = statistical->rejectd;
+
+        result.submit = current.submit - last.submit;
+        result.delivrd = current.delivrd - last.delivrd;
+        result.expired = current.expired - last.expired;
+        result.deleted = current.deleted - last.deleted;
+        result.undeliv = current.undeliv - last.undeliv;
+        result.acceptd = current.acceptd - last.acceptd;
+        result.unknown = current.unknown - last.unknown;
+        result.rejectd = current.rejectd - last.rejectd;
+
+        /* Write data statistical */
+        if (result.submit > 0 || result.delivrd > 0 || result.expired > 0 ||
+            result.deleted > 0 || result.undeliv > 0 || result.acceptd > 0 ||
+            result.unknown || result.rejectd > 0) {
+            err = lamb_write_statistical(db, &last);
+            
+            if (err) {
+                lamb_log(LOG_ERR, "can't write data statistical to database");
+            }
+        }
+
+        last.submit = current.submit;
+        last.delivrd = current.delivrd;
+        last.expired = current.expired;
+        last.deleted = current.deleted;
+        last.undeliv = current.undeliv;
+        last.acceptd = current.acceptd;
+        last.unknown = current.unknown;
+        last.rejectd = current.rejectd;
+
         lamb_debug("queue: %u, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu"
                    ", err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv,
                    status.timeo, status.err);
@@ -784,10 +852,6 @@ int lamb_get_cache(lamb_caches_t *caches, unsigned long long id, unsigned long l
                    int *account, int *company, char *spcode, size_t size) {
     int i;
     redisReply *reply = NULL;
-
-    *msgId = 0;
-    *account = 0;
-    *company = 0;
 
     i = (id % caches->len);
 
@@ -827,11 +891,35 @@ int lamb_del_cache(lamb_caches_t *caches, unsigned long long msgId) {
     reply = redisCommand(caches->nodes[i]->handle, "DEL %llu", msgId);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
     
-    if (reply == NULL) {
+    if (reply != NULL) {
+        freeReplyObject(reply);
+        return 0;
+    }
+
+    return -1;
+}
+
+int lamb_write_statistical(lamb_db_t *db, lamb_statistical_t *stat) {
+    char sql[512];
+    PGresult *res = NULL;
+
+    if (!db || !stat) {
         return -1;
     }
 
-    freeReplyObject(reply);
+    snprintf(sql, sizeof(sql), "INSERT INTO statistical "
+             "VALUES(%d, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, current_date)",
+             stat->gid, stat->submit, stat->delivrd, stat->expired, stat->deleted,
+             stat->undeliv, stat->acceptd, stat->unknown, stat->rejectd);
+
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
+
     return 0;
 }
 
