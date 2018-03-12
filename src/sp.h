@@ -36,6 +36,10 @@ typedef struct {
     char ac[128];
     char scheduler[128];
     char delivery[128];
+    char redis_host[16];
+    int redis_port;
+    char redis_password[64];
+    int redis_db;
     char db_host[16];
     int db_port;
     char db_user[64];

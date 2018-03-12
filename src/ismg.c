@@ -593,16 +593,20 @@ void *lamb_stat_loop(void *data) {
 
     while (true) {
         error = status.timeo + status.fmt + status.len + status.err;
-        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu error %llu", client->account->id, getpid(), (unsigned long long)((total - last) / 5), error);
+        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu error %llu",
+                             client->account->id, getpid(),
+                             (unsigned long long)((total - last) / 5), error);
         if (reply != NULL) {
             freeReplyObject(reply);
             reply = NULL;
         } else {
-            lamb_log(LOG_ERR, "Lamb exec redis command error");
+            lamb_log(LOG_ERR, "lamb exec redis command error");
         }
 
-        printf("-[ %s ]-> recv: %llu, store: %llu, rep: %llu, delv: %llu, ack: %llu, timeo: %llu, fmt: %llu, len: %llu, err: %llu\n",
-               client->account->username, status.recv, status.store, status.rep, status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
+        printf("-[ %s ]-> recv: %llu, store: %llu, rep: %llu, delv: %llu, ack: %llu, "
+               "timeo: %llu, fmt: %llu, len: %llu, err: %llu\n",
+               client->account->username, status.recv, status.store, status.rep,
+               status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
 
         total = 0;
         sleep(5);

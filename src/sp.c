@@ -28,7 +28,7 @@ static int scheduler;
 static int delivery;
 static lamb_db_t *db;
 static cmpp_sp_t cmpp;
-//static lamb_cache_t rdb;
+static lamb_cache_t *rdb;
 static lamb_caches_t cache;
 static lamb_list_t *storage;
 static lamb_config_t config;
@@ -107,6 +107,21 @@ void lamb_event_loop(void) {
     statistical = (lamb_statistical_t *)calloc(1, sizeof(lamb_statistical_t));
     if (!statistical) {
         lamb_log(LOG_ERR, "the kernel can't allocate memory");
+        return;
+    }
+
+    /* Redis initialization */
+    rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
+    if (!rdb) {
+        lamb_log(LOG_ERR, "redis database initialize failed");
+        return;
+    }
+
+    err = lamb_cache_connect(rdb, config.redis_host, config.redis_port, NULL,
+                             config.redis_db);
+    if (err) {
+        lamb_log(LOG_ERR, "can't connect to redis %s", config.redis_host);
+        return;
     }
 
     /* Database initialization */
@@ -738,8 +753,8 @@ int lamb_save_logfile(char *file, void *data) {
     switch (CHECK_TYPE(data)) {
     case LAMB_REPORT:
         report = (lamb_report_t *)data;
-        fprintf(fp, "%d,%llu,%s,%d,%s,%s\n", LAMB_REPORT, report->id, report->phone, report->status,
-                report->submittime, report->donetime);
+        fprintf(fp, "%d,%llu,%s,%d,%s,%s\n", LAMB_REPORT, report->id, report->phone,
+                report->status, report->submittime, report->donetime);
         break;
     case LAMB_DELIVER:
         deliver = (lamb_deliver_t *)data;
@@ -755,29 +770,30 @@ int lamb_save_logfile(char *file, void *data) {
 }
 
 void *lamb_stat_loop(void *data) {
-    //last = 0;
-    //unsigned long long last, error;
-
     int err;
     lamb_statistical_t last;
     lamb_statistical_t result;
     lamb_statistical_t current;
+    unsigned long long last_tatol, error;
 
     memset(&last, 0, sizeof(lamb_statistical_t));
     last.gid = result.gid = current.gid = config.id;
 
     while (true) {
-        /* 
-           error = status.err + status.timeo;
-           reply = redisCommand(rdb.handle, "HMSET gateway.%d pid %u status %d speed %llu "
-           "error %llu", config.id, getpid(), cmpp.ok ? 1 : 0,
-           (unsigned long long)((total - last) / 5), error);
-           if (reply != NULL) {
-           freeReplyObject(reply);
-           } else {
-           lamb_log(LOG_ERR, "lamb exec redis command error");
-           }
-        */
+        error = status.err + status.timeo;
+        reply = redisCommand(rdb->handle, "HMSET gateway.%d pid %u "
+                             "status %d speed %llu error %llu",
+                             config.id, getpid(), cmpp.ok ? 1 : 0,
+                             (unsigned long long)((total - last_tatol) / 5),
+                             error);
+        if (reply != NULL) {
+            freeReplyObject(reply);
+        } else {
+            lamb_log(LOG_ERR, "lamb exec redis command error");
+        }
+
+        last_tatol = total;
+        total = 0;
 
         current.submit = statistical->submit;
         current.delivrd = statistical->delivrd;
@@ -821,7 +837,6 @@ void *lamb_stat_loop(void *data) {
                    ", err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv,
                    status.timeo, status.err);
 
-        total = 0;
         sleep(5);
     }
 
