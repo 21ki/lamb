@@ -23,17 +23,14 @@ class Bootstrap extends Yaf\Bootstrap_Abstract{
     }
     
     public function _initDatabase() {
-        $host = $this->config->db->host;
-        $port = $this->config->db->port;
-        $user = $this->config->db->user;
-        $pass = $this->config->db->pass;
-        $name = $this->config->db->name;
+        $db = $this->config->db;
         $options = [PDO::ATTR_PERSISTENT => true];
 
         try {
-            $db = new PDO('pgsql:host=' . $host . ';port=' . $port . ';dbname=' . $name, $user, $pass, $options);
-            $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            Yaf\Registry::set('db', $db);
+            $url = 'pgsql:host=' . $db->host . ';port=' . $db->port . ';dbname=' . $db->name;
+            $conn = new PDO($url, $db->user, $db->pass, $options);
+            $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            Yaf\Registry::set('db', $conn);
         } catch (PDOException $e) {
             error_log($e->getMessage(), 0);
         }
