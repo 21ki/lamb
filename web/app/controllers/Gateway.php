@@ -54,14 +54,6 @@ class GatewayController extends Yaf\Controller_Abstract {
     }
 
     public function checkAction() {
-        if ($this->request->isPost()) {
-            $gateway = new GatewayModel();
-            $id = $this->request->getQuery('id', null);
-            $phone = $this->request->getPost('phone', null);
-            $message = $this->request->getPost('message', null);
-            $gateway->test($id, $phone, $message);
-        }
-
         return false;
     }
 
