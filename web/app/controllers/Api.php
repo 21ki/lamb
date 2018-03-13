@@ -229,4 +229,38 @@ class ApiController extends Yaf\Controller_Abstract {
 
         return false;
     }
+
+    public function inboundAction() {
+        $company = new CompanyModel();
+        $companys = [];
+
+        foreach($company->getAll() as $c) {
+            $companys[$c['id']] = $c;
+        }
+        
+        $status = new StatusModel();
+        $accounts = $status->inbound();
+        foreach ($accounts as &$a) {
+            $a['company'] = $companys[$a['company']]['name'];
+        }
+        $response['status'] = 200;
+        $response['message'] = 'success';
+        $response['data'] = $accounts;
+
+        header('Content-type: application/json');
+        echo json_encode($response);
+        return false;
+    }
+
+    public function outboundAction() {
+        $status = new StatusModel();
+
+        $response['status'] = 200;
+        $response['message'] = 'success';
+        $response['data'] = $status->outbound();
+
+        header('Content-type: application/json');
+        echo json_encode($response);
+        return false;
+    }
 }

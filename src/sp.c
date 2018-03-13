@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
 void lamb_event_loop(void) {
     int err;
 
+    total = 0;
     heartbeat.count = 0;
     lamb_set_process("lamb-gateway");
     memset(&status, 0, sizeof(status));
@@ -643,9 +644,7 @@ void *lamb_work_loop(void *data) {
             len = lamb_pack_assembly(&buf, LAMB_DELIVER, pk, len);
 
             if (len > 0) {
-                if (nn_send(delivery, buf, len, 0) != len) {
-                    lamb_save_logfile(config.backfile, message);
-                }
+                nn_send(delivery, buf, len, 0);
                 free(buf);
             }
 
@@ -739,42 +738,13 @@ success:
     return 0;
 }
 
-int lamb_save_logfile(char *file, void *data) {
-    FILE *fp;
-    
-    fp = fopen(file, "a");
-    if (!fp) {
-        return -1;
-    }
-
-    lamb_report_t *report;
-    lamb_deliver_t *deliver;
-
-    switch (CHECK_TYPE(data)) {
-    case LAMB_REPORT:
-        report = (lamb_report_t *)data;
-        fprintf(fp, "%d,%llu,%s,%d,%s,%s\n", LAMB_REPORT, report->id, report->phone,
-                report->status, report->submittime, report->donetime);
-        break;
-    case LAMB_DELIVER:
-        deliver = (lamb_deliver_t *)data;
-        fprintf(fp, "%d,%llu,%s,%s,%s,%d,%d,%s\n", LAMB_DELIVER, deliver->id, deliver->phone,
-                deliver->spcode, deliver->serviceid, deliver->msgfmt, deliver->length,
-                deliver->content);
-        break;
-    }
-
-    fclose(fp);
-
-    return 0;
-}
-
 void *lamb_stat_loop(void *data) {
     int err;
+    redisReply *reply = NULL;
     lamb_statistical_t last;
     lamb_statistical_t result;
     lamb_statistical_t current;
-    unsigned long long last_tatol, error;
+    unsigned long long error;
 
     memset(&last, 0, sizeof(lamb_statistical_t));
     last.gid = result.gid = current.gid = config.id;
@@ -784,16 +754,15 @@ void *lamb_stat_loop(void *data) {
         reply = redisCommand(rdb->handle, "HMSET gateway.%d pid %u "
                              "status %d speed %llu error %llu",
                              config.id, getpid(), cmpp.ok ? 1 : 0,
-                             (unsigned long long)((total - last_tatol) / 5),
+                             (unsigned long long)(total / 5),
                              error);
+        total = 0;
+
         if (reply != NULL) {
             freeReplyObject(reply);
         } else {
-            lamb_log(LOG_ERR, "lamb exec redis command error");
+            lamb_log(LOG_ERR, "redis command executes errors");
         }
-
-        last_tatol = total;
-        total = 0;
 
         current.submit = statistical->submit;
         current.delivrd = statistical->delivrd;
@@ -988,7 +957,32 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'AcknowledgeTimeout' parameter\n");
         goto error;
     }
-    
+
+    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+        goto error;
+    }
+
+    if (conf->redis_port < 1 || conf->redis_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid redis port number\n");
+        goto error;
+    }
+
+    if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
+        goto error;
+    }
+
+    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+        goto error;
+    }
+
     if (lamb_get_string(&cfg, "Host", conf->host, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid host IP address\n");
         goto error;

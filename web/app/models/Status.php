@@ -22,38 +22,39 @@ class StatusModel {
         }
     }
 
-    public function inbound(array $object) {
+    public function inbound() {
         $result = array();
-        
-        foreach ($object as $obj) {
-            $pid = $this->getPid($obj['id'], 'client');
+        $account = new AccountModel();
+
+        foreach ($account->getAll() as $a) {
+            $pid = $this->getPid($a['id'], 'client');
             if ($pid > 0 && is_dir('/proc/' . $pid)) {
-                $result[$obj['id']]['username'] = $obj['username'];
-                $result[$obj['id']]['company'] = $obj['company'];
-                $result[$obj['id']]['route'] = $obj['route'];
-                $result[$obj['id']]['queue'] = $this->getQueue($obj['id']);
-                $result[$obj['id']]['deliver'] = $this->getDeliver($obj['id']);
-                $result[$obj['id']]['speed'] = $this->getSpeed($obj['id'], 'client');
-                $result[$obj['id']]['error'] = $this->getError($obj['id'], 'client');
+                $result[$a['id']]['username'] = $a['username'];
+                $result[$a['id']]['company'] = $a['company'];
+                $result[$a['id']]['queue'] = $this->getQueue($a['id']);
+                $result[$a['id']]['deliver'] = $this->getDeliver($a['id']);
+                $result[$a['id']]['speed'] = $this->getSpeed($a['id'], 'client');
+                $result[$a['id']]['error'] = $this->getError($a['id'], 'client');
             }
         }
 
         return $result;
     }
 
-    public function outbound(array $object) {
+    public function outbound() {
         $result = array();
+        $gateway = new GatewayModel();
 
-        foreach ($object as $obj) {
-            $result[$obj['id']]['name'] = $obj['name'];
-            $result[$obj['id']]['type'] = $obj['type'];
-            $result[$obj['id']]['host'] = $obj['host'];
-            $result[$obj['id']]['speed'] = $this->getSpeed($obj['id'], 'gateway');
-            $result[$obj['id']]['error'] = $this->getError($obj['id'], 'gateway');
-            if (is_dir('/proc/' . $this->getPid($obj['id'], 'gateway'))) {
-                $result[$obj['id']]['status'] = $this->getStatus($obj['id'], 'gateway');
+        foreach ($gateway->getAll() as $g) {
+            $result[$g['id']]['name'] = $g['name'];
+            $result[$g['id']]['type'] = $g['type'];
+            $result[$g['id']]['host'] = $g['host'];
+            $result[$g['id']]['speed'] = $this->getSpeed($g['id'], 'gateway');
+            $result[$g['id']]['error'] = $this->getError($g['id'], 'gateway');
+            if (is_dir('/proc/' . $this->getPid($g['id'], 'gateway'))) {
+                $result[$g['id']]['status'] = $this->getStatus($g['id'], 'gateway');
             } else {
-                $result[$obj['id']]['status'] = -1;
+                $result[$g['id']]['status'] = -1;
             }
         }
 

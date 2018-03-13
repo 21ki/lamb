@@ -89,7 +89,6 @@ void *lamb_work_loop(void *data);
 void *lamb_cmpp_keepalive(void *data);
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config);
 int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config);
-int lamb_save_logfile(char *file, void *data);
 void *lamb_stat_loop(void *data);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id, int account, int company, char *spcode);
