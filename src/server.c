@@ -140,9 +140,6 @@ void lamb_event_loop(void) {
     pthread_mutex_init(&global->lock, NULL);
 
     /* Start sender thread */
-    //long cpus = lamb_get_cpu();
-    //lamb_start_thread(lamb_work_loop, NULL, config->work_threads > cpus ? cpus : config->work_threads);
-
     lamb_start_thread(lamb_work_loop, NULL, 1);
 
     /* Start deliver thread */
@@ -378,11 +375,6 @@ void *lamb_work_loop(void *data) {
             message->content.len = message->length;
             message->content.data = (uint8_t *)content;
         }
-
-        /* 
-           lamb_debug("id: %"PRIu64", phone: %s, spcode: %s, msgFmt: %d, content: %s, length: %d\n",
-           message->id, message->phone, message->spcode, message->msgfmt, message->content.data, message->length);
-        */
 
         /* Template Processing */
         if (global->account.template) {
