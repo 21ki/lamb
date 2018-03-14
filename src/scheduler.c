@@ -359,7 +359,6 @@ void *lamb_push_loop(void *arg) {
                                 break;
                             }
                         }
-
                     }
                 }
             }
@@ -672,7 +671,7 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
     }
 
-   if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
+    if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
         goto error;
     }

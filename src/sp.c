@@ -192,8 +192,8 @@ void lamb_event_loop(void) {
     lamb_debug("start sender thread successfull\n");
 
     /* Start Work Thread */
-    //lamb_start_thread(lamb_work_loop, NULL, 1);
-    //lamb_debug("start work thread successfull\n");
+    lamb_start_thread(lamb_work_loop, NULL, 1);
+    lamb_debug("start work thread successfull\n");
 
     /* Start Deliver Thread */
     lamb_start_thread(lamb_deliver_loop, NULL, 1);
@@ -824,12 +824,12 @@ int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned lon
                          msgId, id, account, company, spcode);
     pthread_mutex_unlock(&caches->nodes[i]->lock);
 
-    if (reply == NULL) {
-        return -1;
+    if (reply != NULL) {
+        freeReplyObject(reply);
+        return 0;
     }
 
-    freeReplyObject(reply);
-    return 0;
+    return -1;
 }
 
 int lamb_get_cache(lamb_caches_t *caches, unsigned long long id, unsigned long long *msgId,
