@@ -91,7 +91,7 @@
 </div>
 <script id="contents" type="text/template">
   {{#each data}}
-  <tr>
+  <tr{{checkArrears money}}>
     <td><span class="glyphicon glyphicon-copyright-mark"></span></td>
     <td>{{name}}</td>
     <td>{{money}}</td>

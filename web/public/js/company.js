@@ -10,6 +10,7 @@ function startup() {
             Handlebars.registerHelper('checkpayment', function(type) {
                 return type == 1 ? '预付费' : '后付费';
             });
+            Handlebars.registerHelper('checkArrears', checkArrears);
             var template = Handlebars.compile(source);
             var contents = template(xhr.response);
             $("tbody").append(contents);
@@ -160,4 +161,14 @@ function formRecharge(id) {
     }
     xhr.open(method, url, true);
     xhr.send(data);
+}
+
+function checkArrears(val) {
+    var style = '';
+
+    if (val < 0) {
+        style = new Handlebars.SafeString(' class="danger"');
+    }
+
+    return style;
 }
