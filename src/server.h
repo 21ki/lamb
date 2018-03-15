@@ -18,7 +18,6 @@
 #include "company.h"
 #include "template.h"
 #include "keyword.h"
-#include "gateway.h"
 #include "message.h"
 
 typedef struct {

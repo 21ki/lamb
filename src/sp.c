@@ -465,11 +465,6 @@ void *lamb_deliver_loop(void *data) {
 
             response1:
                 cmpp_deliver_resp(&cmpp.sock, sequenceId, report->id, result);
-                lamb_node_t *node = lamb_list_lpop(storage);
-                if (node) {
-                    free(node->val);
-                    free(node);
-                }
             } else {
                 status.delv++;
                 deliver = (lamb_deliver_t *)calloc(1, sizeof(lamb_deliver_t));
@@ -503,7 +498,6 @@ void *lamb_deliver_loop(void *data) {
 
                 deliver->type = LAMB_DELIVER;
                 lamb_list_rpush(storage, lamb_node_new(deliver));
-
                 
                 lamb_debug("receive msgId: %llu, phone: %s, spcode: %s, msgFmt: %d, length: %d\n",
                            deliver->id, deliver->phone, deliver->spcode, deliver->msgfmt,
