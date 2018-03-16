@@ -432,28 +432,20 @@ void *lamb_deliver_loop(void *data) {
                 /* Stat */
                 if (strncasecmp(stat, "DELIVRD", 7) == 0) {
                     report->status = 1;
-                    statistical->delivrd++;
                 } else if (strncasecmp(stat, "EXPIRED", 7) == 0) {
                     report->status = 2;
-                    statistical->expired++;
                 } else if (strncasecmp(stat, "DELETED", 7) == 0) {
                     report->status = 3;
-                    statistical->deleted++;
                 } else if (strncasecmp(stat, "UNDELIV", 7) == 0) {
                     report->status = 4;
-                    statistical->undeliv++;
                 } else if (strncasecmp(stat, "ACCEPTD", 7) == 0) {
                     report->status = 5;
-                    statistical->acceptd++;
                 } else if (strncasecmp(stat, "UNKNOWN", 7) == 0) {
                     report->status = 6;
-                    statistical->unknown++;
                 } else if (strncasecmp(stat, "REJECTD", 7) == 0) {
                     report->status = 7;
-                    statistical->rejectd++;
                 } else {
                     report->status = 6;
-                    statistical->unknown++;
                 }
 
                 report->type = LAMB_REPORT;
@@ -581,6 +573,9 @@ void *lamb_work_loop(void *data) {
             } else {
                 goto done;
             }
+
+            /* Gateway state statistics */
+            lamb_check_statistical(r->status, statistical);
 
             report.id = msgId;
             report.account = account;
@@ -898,6 +893,34 @@ int lamb_write_statistical(lamb_db_t *db, lamb_statistical_t *stat) {
     PQclear(res);
 
     return 0;
+}
+
+void lamb_check_statistical(int status, lamb_statistical_t *stat) {
+    switch (status) {
+    case 1:
+        stat->delivrd++;
+        break;
+    case 2:
+        stat->expired++;
+        break;
+    case 3:
+        stat->deleted++;
+        break;
+    case 4:
+        stat->undeliv++;
+        break;
+    case 5:
+        stat->acceptd++;
+        break;
+    case 6:
+        stat->unknown++;
+        break;
+    case 7:
+        stat->rejectd++;
+        break;
+    }
+
+    return;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

@@ -93,6 +93,7 @@ int lamb_read_config(lamb_config_t *conf, const char *file);
 int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id, int account, int company, char *spcode);
 int lamb_get_cache(lamb_caches_t *caches, unsigned long long id, unsigned long long *msgId, int *account, int *company, char *spcode, size_t size);
 int lamb_del_cache(lamb_caches_t *caches, unsigned long long msgId);
+void lamb_check_statistical(int status, lamb_statistical_t *stat);
 int lamb_write_statistical(lamb_db_t *db, lamb_statistical_t *stat);
 
 #endif
