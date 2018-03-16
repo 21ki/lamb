@@ -7,7 +7,7 @@ OBJS += src/db.o src/routing.o src/common.o src/security.o src/message.o
 OBJS += src/list.o src/template.o src/keyword.o src/socket.o src/command.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lpcre -lprotobuf-c
 
-all: ac sp ismg server mt mo scheduler delivery test
+all: sp ismg server mt mo scheduler delivery
 
 ac: src/ac.c src/ac.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/ac.c $(OBJS) $(LIBS) -lnanomsg -o ac

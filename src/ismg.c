@@ -28,7 +28,7 @@
 #include <nanomsg/reqrep.h>
 #include <cmpp.h>
 #include "ismg.h"
-#include "utils.h"
+#include "common.h"
 #include "cache.h"
 #include "socket.h"
 #include "config.h"

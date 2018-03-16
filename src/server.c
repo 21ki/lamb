@@ -45,6 +45,7 @@ static lamb_caches_t *blacklist;
 static lamb_caches_t *frequency;
 static lamb_caches_t *unsubscribe;
 static volatile bool sleeping = false;
+static volatile bool arrears = false;
 
 int main(int argc, char *argv[]) {
     bool background = false;
@@ -112,29 +113,6 @@ void lamb_event_loop(void) {
         lamb_debug("component initialization failed\n");
         return;
     }
-
-    /* debug templage */
-    lamb_template_t *t;
-    lamb_node_t *node = NULL;
-    lamb_list_iterator_t *it = lamb_list_iterator_new(global->templates, LIST_HEAD);
-
-    while ((node = lamb_list_iterator_next(it))) {
-        t = (lamb_template_t *)node->val;
-        lamb_debug("template -> id: %d, rexp: %s, name: %s, contents: %s\n",
-                   t->id, t->rexp, t->name, t->contents);
-    }
-
-    lamb_list_iterator_destroy(it);
-
-    lamb_keyword_t *k;
-    it = lamb_list_iterator_new(global->keywords, LIST_HEAD);
-
-    while ((node = lamb_list_iterator_next(it))) {
-        k = (lamb_keyword_t *)node->val;
-        lamb_debug("keyword -> id: %d, val: %s\n", k->id, k->val);
-    }
-
-    lamb_list_iterator_destroy(it);
 
     /* Thread lock initialization */
     pthread_mutex_init(&global->lock, NULL);
@@ -268,7 +246,7 @@ void *lamb_work_loop(void *data) {
     rlen = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
 
     while (true) {
-        if (sleeping) {
+        if (sleeping || arrears) {
             lamb_sleep(1000);
             continue;
         }
@@ -816,6 +794,14 @@ void *lamb_stat_loop(void *data) {
     redisReply *reply = NULL;
 
     while (true) {
+        /* Check the arrears */
+        arrears = lamb_check_arrears(&global->rdb, global->account.company);
+
+        if (arrears) {
+            lamb_log(LOG_WARNING, "company %d arrears, service has been temporarily stopped", global->account.company);
+        }
+
+        /* State of reporting */
         pthread_mutex_lock(&(global->rdb.lock));
         reply = redisCommand(global->rdb.handle, "HMSET server.%d pid %u", aid, getpid());
         pthread_mutex_unlock(&(global->rdb.lock));
@@ -823,6 +809,7 @@ void *lamb_stat_loop(void *data) {
             freeReplyObject(reply);
         }
 
+        /* Debug information */
         lamb_debug("store: %u, bill: %u, toal: %lld, sub: %llu, rep: %llu, delv: %llu, "
                    "fmt: %llu, blk: %llu, tmp: %llu, key: %llu, usb: %llu, limt: %llu, rejt: %llu\n",
                    global->storage->len, global->billing->len, status->toal, status->sub,
@@ -1041,6 +1028,26 @@ bool lamb_check_frequency(lamb_caches_t *cache, int id, char *number) {
     return r;
 }
 
+bool lamb_check_arrears(lamb_cache_t *rdb, int company) {
+    bool arrear = true;
+    redisReply *reply = NULL;
+
+    pthread_mutex_lock(&rdb->lock);
+    reply = redisCommand(rdb->handle, "HGET company.%d money", company);
+    pthread_mutex_unlock(&rdb->lock);
+
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_STRING && reply->len > 0) {
+            if (atoi(reply->str) > 0) {
+                arrear = false;
+            }
+        }
+        freeReplyObject(reply);
+    }
+
+    return arrear;
+}
+
 void lamb_direct_response(int sock, Report *resp, Submit *message, int cause) {
     int len;
     void *pk;
@@ -1068,6 +1075,8 @@ void lamb_direct_response(int sock, Report *resp, Submit *message, int cause) {
 
     return;
 }
+
+
 
 int lamb_component_initialization(lamb_config_t *cfg) {
     int err;
