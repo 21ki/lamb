@@ -367,6 +367,7 @@ void *lamb_deliver_loop(void *data) {
             continue;
         }
 
+        /* Wait for the message to come */
         err = cmpp_recv_timeout(&cmpp.sock, &pack, sizeof(pack), config.recv_timeout);
         
         if (err) {
