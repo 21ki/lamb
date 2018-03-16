@@ -2,7 +2,6 @@
 /* 
  * Lamb Gateway Platform
  * Copyright (C) 2017 typefo <typefo@qq.com>
- * Update: 2017-07-20
  */
 
 #ifndef _LAMB_DB_H

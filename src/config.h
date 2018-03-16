@@ -1,7 +1,6 @@
 /* 
  * Lamb Gateway Platform
  * Copyright (C) 2017 typefo <typefo@qq.com>
- * Update: 2017-07-10
  */
 
 #ifndef _LAMB_CONFIG_H
