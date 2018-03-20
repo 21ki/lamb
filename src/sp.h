@@ -66,6 +66,7 @@ typedef struct {
     unsigned long long acceptd;
     unsigned long long unknown;
     unsigned long long rejectd;
+    pthread_mutex_t lock;
 } lamb_statistical_t;
 
 typedef struct {

@@ -110,6 +110,8 @@ void lamb_event_loop(void) {
         return;
     }
 
+    pthread_mutex_init(&statistics->lock, NULL);
+
     /* Redis initialization */
     rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
     if (!rdb) {
@@ -318,7 +320,9 @@ void *lamb_sender_loop(void *data) {
         /* Submit count statistical  */
         total++;
         status.sub++;
+        pthread_mutex_lock(&statistics->lock);
         statistical->submit++;
+        pthread_mutex_unlock(&statistics->lock);
 
         if (err) {
             status.err++;
@@ -753,14 +757,9 @@ void *lamb_stat_loop(void *data) {
             lamb_log(LOG_ERR, "redis command executes errors");
         }
 
-        current.submit = statistical->submit;
-        current.delivrd = statistical->delivrd;
-        current.expired = statistical->expired;
-        current.deleted = statistical->deleted;
-        current.undeliv = statistical->undeliv;
-        current.acceptd = statistical->acceptd;
-        current.unknown = statistical->unknown;
-        current.rejectd = statistical->rejectd;
+        pthread_mutex_lock(&statistics->lock);
+        memcpy(&current, statistics, sizeof(lamb_statistical_t));
+        pthread_mutex_unlock(&statistics->lock);
 
         result.submit = current.submit - last.submit;
         result.delivrd = current.delivrd - last.delivrd;
@@ -775,21 +774,14 @@ void *lamb_stat_loop(void *data) {
         if (result.submit > 0 || result.delivrd > 0 || result.expired > 0 ||
             result.deleted > 0 || result.undeliv > 0 || result.acceptd > 0 ||
             result.unknown || result.rejectd > 0) {
-            err = lamb_write_statistical(db, &last);
+            err = lamb_write_statistical(db, &result);
             
             if (err) {
                 lamb_log(LOG_ERR, "can't write data statistical to database");
             }
         }
 
-        last.submit = current.submit;
-        last.delivrd = current.delivrd;
-        last.expired = current.expired;
-        last.deleted = current.deleted;
-        last.undeliv = current.undeliv;
-        last.acceptd = current.acceptd;
-        last.unknown = current.unknown;
-        last.rejectd = current.rejectd;
+        memcpy(&last, &current, sizeof(lamb_statistical_t));
 
         lamb_debug("queue: %u, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu"
                    ", err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv,
