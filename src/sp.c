@@ -110,7 +110,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    pthread_mutex_init(&statistics->lock, NULL);
+    pthread_mutex_init(&statistical->lock, NULL);
 
     /* Redis initialization */
     rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
@@ -320,9 +320,9 @@ void *lamb_sender_loop(void *data) {
         /* Submit count statistical  */
         total++;
         status.sub++;
-        pthread_mutex_lock(&statistics->lock);
+        pthread_mutex_lock(&statistical->lock);
         statistical->submit++;
-        pthread_mutex_unlock(&statistics->lock);
+        pthread_mutex_unlock(&statistical->lock);
 
         if (err) {
             status.err++;
@@ -580,7 +580,9 @@ void *lamb_work_loop(void *data) {
             }
 
             /* Gateway state statistics */
+            pthread_mutex_lock(&statistical->lock);
             lamb_check_statistical(r->status, statistical);
+            pthread_mutex_unlock(&statistical->lock);
 
             report.id = msgId;
             report.account = account;
@@ -733,14 +735,11 @@ success:
 
 void *lamb_stat_loop(void *data) {
     int err;
-    redisReply *reply = NULL;
-    lamb_statistical_t last;
-    lamb_statistical_t result;
-    lamb_statistical_t current;
+    lamb_statistical_t curr;
     unsigned long long error;
+    redisReply *reply = NULL;
 
-    memset(&last, 0, sizeof(lamb_statistical_t));
-    last.gid = result.gid = current.gid = config.id;
+    curr.gid = config.id;
 
     while (true) {
         error = status.err + status.timeo;
@@ -757,31 +756,20 @@ void *lamb_stat_loop(void *data) {
             lamb_log(LOG_ERR, "redis command executes errors");
         }
 
-        pthread_mutex_lock(&statistics->lock);
-        memcpy(&current, statistics, sizeof(lamb_statistical_t));
-        pthread_mutex_unlock(&statistics->lock);
-
-        result.submit = current.submit - last.submit;
-        result.delivrd = current.delivrd - last.delivrd;
-        result.expired = current.expired - last.expired;
-        result.deleted = current.deleted - last.deleted;
-        result.undeliv = current.undeliv - last.undeliv;
-        result.acceptd = current.acceptd - last.acceptd;
-        result.unknown = current.unknown - last.unknown;
-        result.rejectd = current.rejectd - last.rejectd;
+        pthread_mutex_lock(&statistical->lock);
+        memcpy(&curr, statistical, sizeof(lamb_statistical_t));
+        lamb_clean_statistical(statistical);
+        pthread_mutex_unlock(&statistical->lock);
 
         /* Write data statistical */
-        if (result.submit > 0 || result.delivrd > 0 || result.expired > 0 ||
-            result.deleted > 0 || result.undeliv > 0 || result.acceptd > 0 ||
-            result.unknown || result.rejectd > 0) {
-            err = lamb_write_statistical(db, &result);
+        if (curr.submit > 0 || curr.delivrd > 0 || curr.expired > 0 || curr.deleted > 0 ||
+            curr.undeliv > 0 || curr.acceptd > 0 || curr.unknown || curr.rejectd > 0) {
+            err = lamb_write_statistical(db, &curr);
             
             if (err) {
                 lamb_log(LOG_ERR, "can't write data statistical to database");
             }
         }
-
-        memcpy(&last, &current, sizeof(lamb_statistical_t));
 
         lamb_debug("queue: %u, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu"
                    ", err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv,
@@ -791,6 +779,21 @@ void *lamb_stat_loop(void *data) {
     }
 
     pthread_exit(NULL);
+}
+
+void lamb_clean_statistical(lamb_statistical_t *stat) {
+    if (stat) {
+        stat->submit = 0;
+        stat->delivrd = 0;
+        stat->expired = 0;
+        stat->deleted = 0;
+        stat->undeliv = 0;
+        stat->acceptd = 0;
+        stat->unknown = 0;
+        stat->rejectd = 0;
+    }
+
+    return;
 }
 
 int lamb_set_cache(lamb_caches_t *caches, unsigned long long msgId, unsigned long long id,
