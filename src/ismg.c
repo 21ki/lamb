@@ -480,6 +480,7 @@ void *lamb_deliver_loop(void *data) {
     int rc, len, err;
     lamb_client_t *client;
     unsigned int sequenceId;
+    char *stat;
     Report *report;
     Deliver *deliver;
 
@@ -513,12 +514,14 @@ void *lamb_deliver_loop(void *data) {
             continue;
         }
 
+        /* No available messages */
         if (CHECK_COMMAND(buf) == LAMB_EMPTY) {
             nn_freemsg(buf);
             lamb_sleep(200);
             continue;
         }
 
+        /* State report message */
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
             report = report__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
@@ -529,15 +532,44 @@ void *lamb_deliver_loop(void *data) {
 
             sequenceId = confirmed.sequenceId = cmpp_sequence();
             confirmed.msgId = report->id;
-            
+
+            /* State report type */
+            switch (report->status) {
+            case 1:
+                stat = "DELIVRD";
+                break;
+            case 2:
+                stat = "EXPIRED";
+                break;
+            case 3:
+                stat = "DELETED";
+                break;
+            case 4:
+                stat = "UNDELIV";
+                break;
+            case 5:
+                stat = "ACCEPTD";
+                break;
+            case 6:
+                stat = "UNKNOWN";
+                break;
+            case 7:
+                stat = "REJECTD";
+                break;
+            default:
+                stat = "UNKNOWN";
+                break;
+            }
+
         report:
-            err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, report->status,
+            err = cmpp_report(client->sock, sequenceId, report->id, report->spcode, stat,
                               report->submittime, report->donetime, report->phone, 0);
             if (err) {
                 status.err++;
                 lamb_log(LOG_WARNING, "sending 'cmpp_report' packet to client %s failed", client->addr);
             }
         } else if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
+            /* User message delivery */
             deliver = deliver__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
 
             if (!deliver) {
@@ -557,7 +589,7 @@ void *lamb_deliver_loop(void *data) {
             }
         }
 
-        /* Waiting for message confirmation */
+        /* Waiting for ACK message confirmation */
         err = lamb_wait_confirmation(&cond, &mutex, config.acknowledge_timeout);
 
         if (err == ETIMEDOUT) {
