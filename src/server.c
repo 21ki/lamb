@@ -448,7 +448,7 @@ void *lamb_work_loop(void *data) {
                 goto done;
             }
 
-            lamb_sleep(1000);
+            lamb_sleep(100);
         }
 
         free(packet);

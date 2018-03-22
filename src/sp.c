@@ -110,6 +110,7 @@ void lamb_event_loop(void) {
         return;
     }
 
+    statistical->gid = config.id;
     pthread_mutex_init(&statistical->lock, NULL);
 
     /* Redis initialization */

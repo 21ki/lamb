@@ -352,7 +352,7 @@ void *lamb_push_loop(void *arg) {
 
                         if (node) {
                             queue = (lamb_queue_t *)node->val;
-                            if (queue->list->len < 1024000) {
+                            if (queue->list->len < 128) {
                                 completed = true;
                                 lamb_queue_push(queue, message);
                                 break;
