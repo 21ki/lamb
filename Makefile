@@ -7,7 +7,7 @@ OBJS += src/db.o src/routing.o src/common.o src/security.o src/message.o
 OBJS += src/list.o src/template.o src/keyword.o src/socket.o src/command.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lpcre -lprotobuf-c
 
-all: sp ismg server mt mo scheduler delivery
+all: sp ismg server mt mo scheduler delivery test
 
 ac: src/ac.c src/ac.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/ac.c $(OBJS) $(LIBS) -lnanomsg -o ac
@@ -36,8 +36,8 @@ delivery: src/delivery.c src/delivery.h $(OBJS) src/queue.o
 lamb: src/lamb.c src/lamb.h
 	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
 
-test: src/test.c src/test.h src/utils.o src/mqueue.o
-	$(CC) $(CFLAGS) $(MACRO) src/test.c src/utils.o src/mqueue.o $(LIBS) -o test
+test: src/test.c src/test.h $(OBJS)
+	$(CC) $(CFLAGS) $(MACRO) src/test.c $(OBJS) $(LIBS) -lnanomsg -o testd
 
 src/account.o: src/account.c src/account.h
 	$(CC) $(CFLAGS) $(MACRO) -c src/account.c -o src/account.o

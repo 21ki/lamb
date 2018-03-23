@@ -108,3 +108,14 @@ CREATE TABLE database (
     total bigint NOT NULL,
     description text NOT NULL
 );
+
+CREATE TABLE message (
+    id bigint UNIQUE NOT NULL,
+    spcode varchar(32),
+    phone varchar(16) NOT NULL,
+    content text NOT NULL,
+    length int NOT NULL,
+    channel int NOT NULL,
+    status int NOT NULL,
+    create_time timestamp without time zone NOT NULL
+);

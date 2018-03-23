@@ -34,3 +34,14 @@ message Deliver {
     int32 length = 8;
     bytes content = 9;
 }
+
+message Message {
+    uint64 id = 1;
+    string spid = 2;
+    string spcode = 3;
+    string phone = 4;
+    int32 msgfmt = 5;
+    int32 length = 6;
+    bytes content = 7;
+    int32 channel = 8;
+}

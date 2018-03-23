@@ -18,6 +18,7 @@ PROTOBUF_C__BEGIN_DECLS
 typedef struct _Submit Submit;
 typedef struct _Report Report;
 typedef struct _Deliver Deliver;
+typedef struct _Message Message;
 
 
 /* --- enums --- */
@@ -78,6 +79,23 @@ struct  _Deliver
     , 0, 0, 0, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, 0, 0, {0,NULL} }
 
 
+struct  _Message
+{
+  ProtobufCMessage base;
+  uint64_t id;
+  char *spid;
+  char *spcode;
+  char *phone;
+  int32_t msgfmt;
+  int32_t length;
+  ProtobufCBinaryData content;
+  int32_t channel;
+};
+#define MESSAGE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&message__descriptor) \
+    , 0, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, 0, 0, {0,NULL}, 0 }
+
+
 /* Submit methods */
 void   submit__init
                      (Submit         *message);
@@ -135,6 +153,25 @@ Deliver *
 void   deliver__free_unpacked
                      (Deliver *message,
                       ProtobufCAllocator *allocator);
+/* Message methods */
+void   message__init
+                     (Message         *message);
+size_t message__get_packed_size
+                     (const Message   *message);
+size_t message__pack
+                     (const Message   *message,
+                      uint8_t             *out);
+size_t message__pack_to_buffer
+                     (const Message   *message,
+                      ProtobufCBuffer     *buffer);
+Message *
+       message__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   message__free_unpacked
+                     (Message *message,
+                      ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
 typedef void (*Submit_Closure)
@@ -146,6 +183,9 @@ typedef void (*Report_Closure)
 typedef void (*Deliver_Closure)
                  (const Deliver *message,
                   void *closure_data);
+typedef void (*Message_Closure)
+                 (const Message *message,
+                  void *closure_data);
 
 /* --- services --- */
 
@@ -155,6 +195,7 @@ typedef void (*Deliver_Closure)
 extern const ProtobufCMessageDescriptor submit__descriptor;
 extern const ProtobufCMessageDescriptor report__descriptor;
 extern const ProtobufCMessageDescriptor deliver__descriptor;
+extern const ProtobufCMessageDescriptor message__descriptor;
 
 PROTOBUF_C__END_DECLS
 

@@ -174,7 +174,9 @@ void lamb_event_loop(void) {
 
         pthread_mutex_lock(&mutex);
 
-        if (req->type == LAMB_PULL) {
+        if (req->type == LAMB_TEST) {
+            lamb_start_thread(lamb_test_loop,  (void *)req, 1);
+        } else if (req->type == LAMB_PULL) {
             lamb_start_thread(lamb_pull_loop,  (void *)req, 1);
         } else if (req->type == LAMB_PUSH) {
             lamb_start_thread(lamb_push_loop,  (void *)req, 1);
@@ -206,6 +208,125 @@ void lamb_event_loop(void) {
     }
 }
 
+void *lamb_test_loop(void *arg) {
+    int fd;
+    int err;
+    int timeout;
+    char host[128];
+    Request *client;
+
+    client = (Request *)arg;
+
+    lamb_debug("new test client from %s connectd\n", client->addr);
+
+    unsigned short port = config.port + 1;
+    err = lamb_child_server(&fd, config.listen, &port, NN_PAIR);
+    if (err) {
+        pthread_cond_signal(&cond);
+        request__free_unpacked(client, NULL);
+        lamb_log(LOG_ERR, "lamb can't find available port");
+        pthread_exit(NULL);
+    }
+
+    pthread_mutex_lock(&mutex);
+
+    memset(host, 0, sizeof(host));
+    resp.id = client->id;
+    snprintf(host, sizeof(host), "tcp://%s:%d", config.listen, port);
+    resp.host = host;
+
+    pthread_mutex_unlock(&mutex);
+    pthread_cond_signal(&cond);
+
+    timeout = config.timeout;
+    nn_setsockopt(fd, NN_SOL_SOCKET, NN_RCVTIMEO, &timeout, sizeof(timeout));
+
+    /* Start event processing */
+    int rc;
+    int len;
+    char *buf;
+    int channel;
+    Message *msg;
+    lamb_node_t *node;
+    lamb_queue_t *queue;
+    lamb_submit_t *message;
+    bool completed = false;
+
+    while (true) {
+        rc = nn_recv(fd, &buf, NN_MSG, 0);
+
+        if (rc < HEAD) {
+            if (rc > 0) {
+                nn_freemsg(buf);
+            }
+
+            if (nn_errno() == ETIMEDOUT) {
+                if (!nn_get_statistic(fd, NN_STAT_CURRENT_CONNECTIONS)) {
+                    break;
+                }
+            }
+            continue;
+        }
+
+        /* Submit message */
+        if (CHECK_COMMAND(buf) == LAMB_MESSAGE) {
+            msg = message__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            nn_freemsg(buf);
+
+            if (!msg) {
+                continue;
+            }
+
+            message = (lamb_submit_t *)calloc(1, sizeof(lamb_submit_t));
+
+            if (!message) {
+                message__free_unpacked(msg, NULL);
+                continue;
+            }
+
+            message->id = msg->id;
+            channel = msg->channel;
+            strncpy(message->spid, msg->spid, 6);
+            strncpy(message->spcode, msg->spcode, 20);
+            strncpy(message->phone, msg->phone, 11);
+            message->msgfmt = msg->msgfmt;
+            message->length = msg->length;
+            memcpy(message->content, msg->content.data, msg->content.len);
+
+            message__free_unpacked(msg, NULL);
+
+            /* Search for gateway channels */
+            node = lamb_list_find(gateway, (void *)(intptr_t)channel);
+            if (node) {
+                queue = (lamb_queue_t *)node->val;
+                lamb_queue_push(queue, message);
+                completed = true;
+            }
+
+            len = lamb_pack_assembly(&buf, completed ? LAMB_OK : LAMB_NOROUTE, NULL, 0);
+            nn_send(fd, buf, len, NN_DONTWAIT);
+            free(buf);
+            continue;
+        }
+
+        /* Close */
+        if (CHECK_COMMAND(buf) == LAMB_BYE) {
+            nn_freemsg(buf);
+            break;
+        }
+
+        lamb_debug("invalid request data packet\n");
+        nn_freemsg(buf);
+    }
+
+    nn_close(fd);
+    lamb_debug("connection closed from %s\n", client->addr);
+    lamb_log(LOG_INFO, "connection closed from %s", client->addr);
+    request__free_unpacked(client, NULL);
+
+    pthread_exit(NULL);
+}
+
 void *lamb_push_loop(void *arg) {
     int fd;
     int err;
@@ -228,6 +349,7 @@ void *lamb_push_loop(void *arg) {
         pthread_exit(NULL);
     }
 
+#ifdef _DEBUG
     if (channels->len > 0) {
         lamb_debug("fetch routing channels successfull\n");
     } else {
@@ -244,6 +366,7 @@ void *lamb_push_loop(void *arg) {
     }
 
     lamb_list_iterator_destroy(it);
+#endif
 
     /* Client channel initialization */
     unsigned short port = config.port + 1;
@@ -282,9 +405,6 @@ void *lamb_push_loop(void *arg) {
     lamb_channel_t *channel;
     lamb_submit_t *message;
 
-    int recv = 0;
-    int total = 0;
-
     while (true) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
 
@@ -303,7 +423,6 @@ void *lamb_push_loop(void *arg) {
 
         /* Submit */
         if (CHECK_COMMAND(buf) == LAMB_SUBMIT) {
-            recv++;
             submit = submit__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
             nn_freemsg(buf);
 
@@ -365,7 +484,6 @@ void *lamb_push_loop(void *arg) {
             lamb_list_iterator_destroy(it);
 
             if (completed) {
-                total++;
                 len = lamb_pack_assembly(&buf, LAMB_OK, NULL, 0);
             } else {
                 if (!available) {

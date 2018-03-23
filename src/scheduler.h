@@ -29,6 +29,7 @@ typedef struct {
 } lamb_config_t;
 
 void lamb_event_loop(void);
+void *lamb_test_loop(void *arg);
 void *lamb_push_loop(void *arg);
 void *lamb_pull_loop(void *arg);
 int lamb_server_init(int *sock, const char *addr, int port);

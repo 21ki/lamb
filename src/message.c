@@ -142,6 +142,51 @@ void   deliver__free_unpacked
   assert(message->base.descriptor == &deliver__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   message__init
+                     (Message         *message)
+{
+  static const Message init_value = MESSAGE__INIT;
+  *message = init_value;
+}
+size_t message__get_packed_size
+                     (const Message *message)
+{
+  assert(message->base.descriptor == &message__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t message__pack
+                     (const Message *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &message__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t message__pack_to_buffer
+                     (const Message *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &message__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+Message *
+       message__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (Message *)
+     protobuf_c_message_unpack (&message__descriptor,
+                                allocator, len, data);
+}
+void   message__free_unpacked
+                     (Message *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &message__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 static const ProtobufCFieldDescriptor submit__field_descriptors[9] =
 {
   {
@@ -553,5 +598,134 @@ const ProtobufCMessageDescriptor deliver__descriptor =
   deliver__field_indices_by_name,
   1,  deliver__number_ranges,
   (ProtobufCMessageInit) deliver__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor message__field_descriptors[8] =
+{
+  {
+    "id",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT64,
+    0,   /* quantifier_offset */
+    offsetof(Message, id),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "spid",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Message, spid),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "spcode",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Message, spcode),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "phone",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Message, phone),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "msgfmt",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(Message, msgfmt),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "length",
+    6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(Message, length),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "content",
+    7,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BYTES,
+    0,   /* quantifier_offset */
+    offsetof(Message, content),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "channel",
+    8,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(Message, channel),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned message__field_indices_by_name[] = {
+  7,   /* field[7] = channel */
+  6,   /* field[6] = content */
+  0,   /* field[0] = id */
+  5,   /* field[5] = length */
+  4,   /* field[4] = msgfmt */
+  3,   /* field[3] = phone */
+  2,   /* field[2] = spcode */
+  1,   /* field[1] = spid */
+};
+static const ProtobufCIntRange message__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 8 }
+};
+const ProtobufCMessageDescriptor message__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "Message",
+  "Message",
+  "Message",
+  "",
+  sizeof(Message),
+  8,
+  message__field_descriptors,
+  message__field_indices_by_name,
+  1,  message__number_ranges,
+  (ProtobufCMessageInit) message__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
