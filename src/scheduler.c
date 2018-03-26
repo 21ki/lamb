@@ -247,10 +247,11 @@ void *lamb_test_loop(void *arg) {
     char *buf;
     int channel;
     Message *msg;
+    bool completed;
     lamb_node_t *node;
     lamb_queue_t *queue;
     lamb_submit_t *message;
-    bool completed = false;
+
 
     while (true) {
         rc = nn_recv(fd, &buf, NN_MSG, 0);
@@ -296,6 +297,7 @@ void *lamb_test_loop(void *arg) {
             message__free_unpacked(msg, NULL);
 
             /* Search for gateway channels */
+            completed = false;
             node = lamb_list_find(gateway, (void *)(intptr_t)channel);
             if (node) {
                 queue = (lamb_queue_t *)node->val;

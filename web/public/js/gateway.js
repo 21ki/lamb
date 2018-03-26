@@ -20,6 +20,29 @@ function startup() {
     xhr.send();
 }
 
+function fetchCheckMessages() {
+    var method = 'GET';
+    var url = '/api/checkmessages';
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            var source = document.getElementById("contents").innerHTML;
+            Handlebars.registerHelper('checkStatus', checkStatus);
+            Handlebars.registerHelper('checkoverflow', checkOverflow);
+            var template = Handlebars.compile(source);
+            var contents = template(xhr.response);
+            $("tbody").append(contents);
+            $("tbody tr").hide();
+            $("tbody tr").each(function(i){
+                $(this).delay(i * 25).fadeIn(200);
+            });
+        }
+    }
+    xhr.open(method, url, true);
+    xhr.send();
+}
+
 function show() {
     var template = document.getElementById("new-page").innerHTML;
     layer.open({
@@ -128,17 +151,45 @@ function deleteGateway(id) {
     });
 }
 
-function checkGateway(id, name) {
-    var source = document.getElementById("check-page").innerHTML;
-    var template = Handlebars.compile(source);
-    var contents = template({id: id});
+function checkGateway() {
+    var method = 'GET';
+    var url = '/api/gateways';
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = 'json';
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            var source = document.getElementById("check-page").innerHTML;
+            var template = Handlebars.compile(source);
+            var contents = template(xhr.response);
 
-    layer.open({
-        type: 1,
-        title: '通道测试 (' + name + ')',
-        area: ['600px', '390px'],
-        content: contents
-    });
+            layer.open({
+                type: 1,
+                title: '通道测试',
+                area: ['620px', '430px'],
+                content: contents
+            });
+        }
+    }
+    xhr.open(method, url, true);
+    xhr.send();
+}
+
+function formCheckMessage() {
+    var method = 'POST';
+    var url = '/gateway/checkChannel';
+    var form = document.getElementById("form");
+    var data = new FormData(form);
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function(){
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            layer.closeAll();
+            $("tbody").empty();
+            fetchCheckMessages();
+        }
+    }
+    xhr.open(method, url, true);
+    xhr.send(data);
 }
 
 function formQuery() {
@@ -186,3 +237,26 @@ function getdateofday(time) {
     return now.getFullYear() + '-' + month + '-' + day + " " + time;
 }
 
+function checkStatus(val) {
+    val = parseInt(val);
+    switch (val) {
+    case 0:
+        return '<span class="label label-default">待发送</span>';
+    case 1:
+        return '<span class="label label-success">已发送</span>';
+    case 2:
+        return '<span class="label label-danger">失 败</span>';
+    default:
+        return '<span class="label label-default">未 知</span>';
+    }
+}
+
+function checkOverflow(val, len) {
+    if (typeof val === "string") {
+        if (val.length > len) {
+            return val.substring(0, len) + '...';
+        }
+    }
+
+    return val;
+}

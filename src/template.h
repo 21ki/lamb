@@ -14,7 +14,7 @@ typedef struct {
     int id;
     char rexp[128];
     char name[64];
-    char contents[512];
+    char content[512];
 } lamb_template_t;
 
 int lamb_get_templates(lamb_db_t *db, lamb_list_t *templates);

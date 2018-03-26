@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.ico">
+    <title>gateway - lamb</title>
+    <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
+    <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
+    <link type="text/css" rel="stylesheet" href="/css/all.css">
+    <link type="text/css" rel="stylesheet" href="/css/flat/blue.css">
+    <link type="text/css" rel="stylesheet" href="/css/gateway.css">
+  </head>
+  <body>
+    <div class="navbar navbar-default">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand">
+            <img alt="Brand" src="/img/logo.png" width="32" height="32" style="margin-top:-6px" />
+          </a>
+          <a class="navbar-brand">lamb</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="/status/inbound">状态监控</a></li>
+            <li><a href="/company">企业管理</a></li>
+            <li><a href="/account">帐号管理</a></li>
+            <li><a href="/template">签名模板</a></li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">路由管理</a>
+              <ul class="dropdown-menu">
+                <li><a href="/routing">上行路由</a></li>
+                <li><a href="/delivery">下行路由</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">通道管理</a>
+              <ul class="dropdown-menu">
+                <li><a href="/gateway">落地通道</a></li>
+                <li><a href="/gateway/report">通道数据统计</a></li>
+                <li><a href="/gateway/check">通道测试</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">数据记录</a>
+              <ul class="dropdown-menu">
+                <li><a href="/message">上行短信</a></li>
+                <li><a href="/message/deliver">下行短信</a></li>
+                <li><a href="/message/statistic">数据统计</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">系统管理</a>
+              <ul class="dropdown-menu">
+                <li><a href="/keyword">关键词库</a></li>
+                <li><a href="/payment/logs">充值记录</a></li>
+                <li><a href="/payment">支付管理</a></li>
+              </ul>
+            </li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="/settings"><span class="glyphicon glyphicon-cog"></span> 系统设置</a></li>
+            <li><a href="/logout"><span class="glyphicon glyphicon-log-out"></span> 退 出</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="row">
+        <ol class="breadcrumb">
+          <li><a href="#">Home</a></li>
+          <li><a href="/gateway">Gateway</a></li>
+          <li class="active">Check</li>
+          <li class="pull-right add"><button type="button" class="btn btn-success btn-xs" onclick="checkGateway()"><span class="glyphicon glyphicon-plus"></span> 创 建</button></li>
+        </ol>
+      </div>
+      <div class="row contents">
+        <table class="table table-hover">
+          <thead>
+            <tr><th>#</th><th>消息ID</th><th>通道名称</th><th>接入码</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th style="width:200px">发送时间</th></tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      </div>
+    </div>
+</div>
+<script id="contents" type="text/template">
+  {{#each data}}
+  <tr>
+    <td><span class="glyphicon glyphicon-envelope"></span></td>
+    <td>{{id}}</td>
+    <td>{{channel}}</td>
+    <td>{{spcode}}</td>
+    <td>{{phone}}</td>
+    <td title="{{content}}">{{checkoverflow content 20}}</td>
+    <td>{{{checkStatus status}}}</td>
+    <td>{{create_time}}</td>
+  </tr>
+  {{/each}}
+</script>
+<script id="check-page" type="text/template">
+  <div class="container" style="width: 580px; height: 350px; padding: 20px">
+    <div class="alert alert-info"><strong>Warning!</strong> 对通道进行测试时，请确保短信内容符合相关法律规定</div>
+    <form id="form" class="form-horizontal">
+      <div class="form-group">
+        <div class="col-xs-6 col-sm-6">
+        <select class="form-control" name="channel" required="required">
+          {{#each data}}
+          <option value="{{id}}">{{name}}</option>
+          {{/each}}
+        </select>
+        </div>
+        <div class="col-xs-6 col-sm-6">
+          <input type="text" class="form-control" name="spcode" placeholder="接入号码" required="required">
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="col-xs-12 col-sm-12">
+          <input type="text" class="form-control" name="phone" placeholder="请输入手机号码" required="required">
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="col-xs-12 col-sm-12">
+          <textarea class="form-control" rows="5" cols="15" name="content" placeholder="请输入短信内容" required="required"></textarea>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="col-xs-12 col-sm-12 text-center">
+          <button type="button" class="btn btn-success" onclick="formCheckMessage()">发 送</button>
+          <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</script>
+<script type="text/javascript" src="/js/jquery.min.js"></script>
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/handlebars.min.js"></script>
+<script type="text/javascript" src="/js/layer.js"></script>
+<script type="text/javascript" src="/js/gateway.js"></script>
+<script type="text/javascript">
+  $(document).ready(function(){
+    $('li.dropdown').mouseover(function() {   
+      $(this).addClass('open');
+    }).mouseout(function() {
+      $(this).removeClass('open');
+    });
+    fetchCheckMessages();
+  });
+</script>
+</body>
+</html>

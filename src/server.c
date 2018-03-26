@@ -898,7 +898,7 @@ bool lamb_check_content(lamb_template_t *template, char *content, int len) {
     char pattern[512];
 
     memset(pattern, 0, sizeof(pattern));
-    snprintf(pattern, sizeof(pattern), "^【%s】%s$", template->name, template->contents);
+    snprintf(pattern, sizeof(pattern), "^【%s】%s$", template->name, template->content);
     if (lamb_pcre_regular(pattern, content, len)) {
         return true;
     }

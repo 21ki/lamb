@@ -263,4 +263,26 @@ class ApiController extends Yaf\Controller_Abstract {
         echo json_encode($response);
         return false;
     }
+
+    public function checkMessagesAction() {
+        $gateway = new GatewayModel();
+        $response['status'] = 200;
+        $response['message'] = 'success';
+
+        $gateways = [];
+        foreach ($gateway->getAll() as $g) {
+            $gateways[$g['id']] = $g;
+        }
+
+        $messages = $gateway->fetchCheckMessages();
+        foreach ($messages as &$m) {
+            $m['channel'] = $gateways[$m['channel']]['name'];
+        }
+
+        $response['data'] = $messages;
+
+        header('Content-type: application/json');
+        echo json_encode($response);
+        return false;
+    }
 }

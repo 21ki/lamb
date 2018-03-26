@@ -101,7 +101,7 @@ class GatewayModel {
 
             foreach ($data as $key => $val) {
                 if ($val !== null) {
-                    $sth->bindParam(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                    $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
                 }
             }
 
@@ -125,8 +125,46 @@ class GatewayModel {
         return false;
     }
 
-    public function test($id = null, $phone = null, $message = null) {
-        return true;
+    public function checkMessage(array $message) {
+        $id = $this->genSeq();
+        $channel = Filter::number($message['channel'], null, 1);
+        $spcode = Filter::string($message['spcode'], null, 1);
+        $phone = Filter::string($message['phone'], null, 11);
+        $content = Filter::string($message['content'], null, 1, 140);
+        $length = strlen($content);
+        $status = 0;
+
+        $sql = 'INSERT INTO message VALUES(:id, :spcode, :phone, :content, :length, :channel, :status,';
+        $sql .= 'now()::timestamp(0) without time zone)';
+        $sth = $this->db->prepare($sql);
+
+        if ($this->isExist($channel) && $spcode !== null && $phone !== null && $content !== null && $length > 0) {
+            $sth->bindValue(':id', $id, PDO::PARAM_INT);
+            $sth->bindValue(':spcode', $spcode, PDO::PARAM_STR);
+            $sth->bindValue(':phone', $phone, PDO::PARAM_STR);
+            $sth->bindValue(':content', $content, PDO::PARAM_STR);
+            $sth->bindValue(':length', $length, PDO::PARAM_INT);
+            $sth->bindValue(':channel', $channel, PDO::PARAM_INT);
+            $sth->bindValue(':status', $status, PDO::PARAM_INT);
+
+            if ($sth->execute()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function fetchCheckMessages() {
+        $result = [];
+        $sql = 'SELECT * FROM message ORDER BY create_time DESC LIMIT 30';
+        $sth = $this->db->query($sql);
+
+        if ($sth) {
+            $result = $sth->fetchAll();
+        }
+
+        return $result;
     }
 
     public function report($begin = null, $end = null) {
@@ -250,5 +288,9 @@ class GatewayModel {
             }
         }
         return $text;
+    }
+
+    public function genSeq(){
+        return (int)(str_replace('.', '', (string)microtime(true)));
     }
 }
