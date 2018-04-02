@@ -6,15 +6,22 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
+use Db\Redis;
 use Tool\Filter;
 
 class DeliveryModel {
     public $db = null;
+    public $redis = null;
+    private $config = null;
     private $table = 'delivery';
     private $column = ['rexp', 'target', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
+        $this->config = Yaf\Registry::get('config');
+        $config = $this->config->redis;
+        $redis = new Redis($config->host, $config->port, $config->password, $config->db);
+        $this->redis = $redis->handle;
     }
 
     public function get($id = null) {
@@ -53,8 +60,11 @@ class DeliveryModel {
                     $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
                 }
             }
-            
-            return $sth->execute();
+
+            if ($sth->execute()) {
+                $this->signalNotification(1);
+                return true;
+            }
         }
         
         return false;
@@ -76,7 +86,10 @@ class DeliveryModel {
                 }
             }
 
-            return $sth->execute();
+            if ($sth->execute()) {
+                $this->signalNotification(1);
+                return true;
+            }
         }
 
         return false;
@@ -85,6 +98,7 @@ class DeliveryModel {
     public function delete($id = null) {
         $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
         if ($this->db->query($sql)) {
+            $this->signalNotification(1);
             return true;
         }
 
@@ -142,53 +156,12 @@ class DeliveryModel {
         return $text;
     }
 
-    public function move($action = null, $id = null) {
-        $sid = 0;
-
-        if ($action == 'up') {
-            $sql = 'SELECT id FROM ' . $this->table . ' WHERE id < :id and id > 0 ORDER BY id DESC LIMIT 1';
-        } else if ($action == 'down') {
-            $sql = 'SELECT id FROM ' . $this->table . ' WHERE id > :id and id > 0 ORDER BY id ASC LIMIT 1';
-        } else {
-            return false;
+    public function signalNotification(int $id) {
+        if ($id > 0) {
+            $this->redis->hSet('delivery.' . $id, 'signal', 1);
+            return true;
         }
 
-        $sth = $this->db->prepare($sql);
-        $sth->bindValue(':id', $id, PDO::PARAM_INT);
-
-        if ($sth->execute()) {
-            $reply = $sth->fetch();
-            $sid = intval($reply['id']);
-        } else {
-            return false;
-        }
-
-        if ($sid < 1) {
-            return false;
-        }
-
-        $this->db->beginTransaction();
-
-        /* update previous to temp */
-        $sql = 'UPDATE ' . $this->table . ' SET id = 0 WHERE id = :sid';
-        $sth = $this->db->prepare($sql);
-        $sth->bindValue(':sid', $sid, PDO::PARAM_INT);
-        $sth->execute();
-
-        /* update current to previous */
-        $sql = 'UPDATE ' . $this->table . ' SET id = :sid WHERE id = :id';
-        $sth = $this->db->prepare($sql);
-        $sth->bindValue(':sid', $sid, PDO::PARAM_INT);
-        $sth->bindValue(':id', $id, PDO::PARAM_INT);
-        $sth->execute();
-
-        /* update temp to current */
-        $sql = 'UPDATE ' . $this->table . ' SET id = :id WHERE id = 0';
-        $sth = $this->db->prepare($sql);
-        $sth->bindValue(':id', $id, PDO::PARAM_INT);
-        $sth->execute();
-
-        $this->db->commit();
-
+        return false;
     }
 }

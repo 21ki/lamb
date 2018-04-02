@@ -144,7 +144,9 @@ class AccountModel {
                 $result = $this->get($id);
                 if ($result != null) {
                     $this->redis->hMSet('account.' . $result['username'], $result);
+                    $this->signalNotification($result['id']);
                 }
+
                 return true;
             }
         }
@@ -231,5 +233,14 @@ class AccountModel {
             }
         }
         return $text;
+    }
+
+    public function signalNotification(int $id) {
+        if ($id > 0) {
+            $this->redis->hSet('server.' . $id, 'signal', 1);
+            return true;
+        }
+
+        return false;
     }
 }
