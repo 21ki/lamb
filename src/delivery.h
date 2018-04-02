@@ -19,6 +19,10 @@ typedef struct {
     int port;
     long long timeout;
     char ac[128];
+    char redis_host[16];
+    int redis_port;
+    char redis_password[64];
+    int redis_db;
     char db_host[16];
     int db_port;
     char db_user[64];
@@ -49,6 +53,8 @@ void *lamb_store_loop(void *data);
 int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys);
 bool lamb_check_delivery(lamb_delivery_t *d, char *spcode, size_t len);
 int lamb_write_deliver(lamb_db_t *db, lamb_deliver_t *message);
+int lamb_check_signal(lamb_cache_t *rdb, int id);
+void lamb_clear_signal(lamb_cache_t *rdb, int id);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

@@ -790,6 +790,7 @@ void *lamb_unsubscribe_loop(void *arg) {
 }
 
 void *lamb_stat_loop(void *data) {
+    int signal;
     redisReply *reply = NULL;
 
     while (true) {
@@ -797,7 +798,8 @@ void *lamb_stat_loop(void *data) {
         arrears = lamb_check_arrears(&global->rdb, global->account.company);
 
         if (arrears) {
-            lamb_log(LOG_WARNING, "company %d arrears, service has been temporarily stopped", global->account.company);
+            lamb_log(LOG_WARNING, "company %d arrears, service has been temporarily stopped",
+                     global->account.company);
         }
 
         /* State of reporting */
@@ -814,6 +816,11 @@ void *lamb_stat_loop(void *data) {
                    global->storage->len, global->billing->len, status->toal, status->sub,
                    status->rep, status->delv, status->fmt, status->blk, status->tmp,
                    status->key, status->usb, status->limt, status->rejt);
+
+        signal = lamb_check_signal(&global->rdb, aid);
+        if (signal == 1) {
+            lamb_reload(SIGHUP);
+        }
 
         sleep(3);
     }
@@ -1281,6 +1288,37 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     lamb_debug("fetch keywords information successfull\n");
 
     return 0;
+}
+
+int lamb_check_signal(lamb_cache_t *rdb, int id) {
+    int signal = 0;
+    redisReply *reply = NULL;
+
+    reply = redisCommand(rdb->handle, "HGET server.%d signal", id);
+
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_STRING && reply->len > 0) {
+            signal = atoi(reply->str);
+        }
+        freeReplyObject(reply);
+    }
+
+    /* Reset signal state */
+    lamb_clear_signal(rdb, id);
+
+    return signal;
+}
+
+void lamb_clear_signal(lamb_cache_t *rdb, int id) {
+    redisReply *reply = NULL;
+
+    reply = redisCommand(rdb->handle, "HSET server.%d signal 0", id);
+
+    if (reply != NULL) {
+        freeReplyObject(reply);
+    }
+
+    return;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

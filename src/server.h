@@ -108,6 +108,8 @@ bool lamb_check_unsubval(char *content, int len);
 bool lamb_check_arrears(lamb_cache_t *rdb, int company);
 void lamb_direct_response(int sock, Report *resp, Submit *message, int cause);
 int lamb_component_initialization(lamb_config_t *cfg);
+int lamb_check_signal(lamb_cache_t *rdb, int id);
+void lamb_clear_signal(lamb_cache_t *rdb, int id);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif
