@@ -27,9 +27,7 @@ class RoutingController extends Yaf\Controller_Abstract {
                 $success = $routing->create($data);
             }
 
-            $status = $success ? 200 : 400;
-            $message = $success ? 'success' : 'failed';
-            lambResponse($status, $message);
+            lambResponse($success ? 200 : 400, $success ? 'success' : 'failed', null);
         }
 
         return false;

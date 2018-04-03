@@ -40,7 +40,10 @@ class TemplateController extends Yaf\Controller_Abstract {
     public function createAction() {
         if ($this->request->isPost()) {
             $template = new TemplateModel();
-            if ($template->create($this->request->getPost())) {
+            $post = $this->request->getPost();
+            if ($template->create($post)) {
+                $account = new AccountModel();
+                $account->signalNotification(intval($post['acc']));
                 lambResponse(200, 'success');
             } else {
                 lambResponse(400, 'failed');
@@ -53,7 +56,13 @@ class TemplateController extends Yaf\Controller_Abstract {
     public function updateAction() {
         if ($this->request->isPost()) {
             $template = new TemplateModel();
-            if ($template->change($this->request->getQuery('id', null), $this->request->getPost())) {
+            $id = $this->request->getQuery('id', 0);
+            $post = $this->request->getPost();
+
+            if ($template->change($id, $post)) {
+                $t = $template->get($id);
+                $account = new AccountModel();
+                $account->signalNotification(intval($t['acc']));
                 lambResponse(200, 'success');
             } else {
                 lambResponse(400, 'failed');
@@ -67,11 +76,20 @@ class TemplateController extends Yaf\Controller_Abstract {
     public function deleteAction() {
         if ($this->request->method == 'DELETE') {
             $template = new TemplateModel();
-            if ($template->delete($this->request->getQuery('id', null))) {
-                lambResponse(200, 'success');
-            } else {
-                lambResponse(400, 'failed');
+            $id = $this->request->getQuery('id', 0);
+
+            if ($template->isExist($id)) {
+                $t = $template->get($id);
+                if ($template->delete($id)) {
+
+                    /* Send reload signal */
+                    $account = new AccountModel();
+                    $account->signalNotification($t['acc']);
+                    lambResponse(200, 'success');
+                    return false;
+                }
             }
+            lambResponse(400, 'failed');
         }
 
         return false;

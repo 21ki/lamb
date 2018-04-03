@@ -216,6 +216,7 @@ void lamb_reload(int signum) {
     
     sleeping = false;
     lamb_log(LOG_NOTICE, "reload the configuration complete");
+    lamb_debug("-> reload the configuration complete\n");
 
     return;
 }
