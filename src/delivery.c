@@ -744,7 +744,7 @@ void *lamb_stat_loop(void *arg) {
 #endif
 
         signal = lamb_check_signal(rdb, config.id);
-        if (signal == 1) {
+        if (!sleeping && signal == 1) {
             lamb_reload(SIGHUP);
         }
 

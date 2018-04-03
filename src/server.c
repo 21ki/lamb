@@ -818,7 +818,7 @@ void *lamb_stat_loop(void *data) {
                    status->key, status->usb, status->limt, status->rejt);
 
         signal = lamb_check_signal(&global->rdb, aid);
-        if (signal == 1) {
+        if (!sleeping && signal == 1) {
             lamb_reload(SIGHUP);
         }
 
