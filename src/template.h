@@ -12,12 +12,12 @@
 
 typedef struct {
     int id;
-    char rexp[128];
+    int acc;
     char name[64];
     char content[512];
 } lamb_template_t;
 
 int lamb_get_templates(lamb_db_t *db, lamb_list_t *templates);
-int lamb_get_template(lamb_db_t *db, const char *rexp, lamb_list_t *templates);
+int lamb_get_template(lamb_db_t *db, int acc, lamb_list_t *templates);
 
 #endif

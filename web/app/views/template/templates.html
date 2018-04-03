@@ -74,14 +74,15 @@
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="/status/inbound">Home</a></li>
-          <li class="active">Template</li>
-          <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
+          <li><a href="/template">Template</a></li>
+          <li class="active"><?php echo $name;?></li>
+          <li class="pull-right add"><button class="btn btn-success btn-xs" onclick="show()"><span class="glyphicon glyphicon-plus"></span> 创 建</button></li>
         </ol>
       </div>
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th style="width:70px">#</th><th>帐号名称</th><th>数 量</th><th>删 除</th><th style="width:190px">创建时间</th></tr>
+            <tr><th style="width:70px">#</th><th>签 名</th><th>模板内容</th><th>编 辑</th><th>删 除</th></tr>
           </thead>
           <tbody id="datalist">
           </tbody>
@@ -93,12 +94,70 @@
   {{#each data}}
   <tr>
     <td><span class="glyphicon glyphicon-credit-card"></span></td>
-    <td><a href="/template/templates?acc={{id}}">{{username}}</a></td>
-    <td>{{total}}</td>
-    <td><button type="button" class="btn btn-default btn-xs disabled" onclick=""><span class="glyphicon glyphicon-trash"></span> 清 空</button></td>
-    <td>{{create_time}}</td>
+    <td>{{name}}</td>
+    <td><a class="text-muted" href="javascript:void(0)" onclick="detailed(this)" content="{{content}}">{{checkoverflow content 20}}</a></td>
+    <td><button type="button" class="btn btn-default btn-xs" onclick="deleteTemplate({{id}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
+    <td><button type="button" class="btn btn-default btn-xs" onclick="changeTemplate({{id}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
   </tr>
   {{/each}}
+</script>
+<script id="new-page" type="text/template">
+  <form id="form" class="form-horizontal">
+    <div class="form-group">
+      <label class="col-sm-3 control-label">签名标题:</label>
+      <div class="col-sm-6">
+        <input type="hidden" class="form-control" name="acc" value="<?php echo $acc;?>">
+        <input type="text" class="form-control" name="name" placeholder="Enter name" minlength="3" required="required">
+      </div>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">短信签名</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label" style="line-height:60px">模板内容:</label>
+      <div class="col-xs-6 col-sm-6">
+        <textarea class="form-control" rows="4" cols="24" name="content" placeholder="Enter Template Content" required="required"></textarea>
+      </div>
+      <div class="col-xs-3 col-sm-3" style="line-height:60px">
+        <span class="help-block">短信内容</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-4 col-sm-6" style="margin-top:15px">
+        <button type="button" onclick="formSubmit()" class="btn btn-success">创 建</button>
+        <button type="button" onclick="layer.closeAll()" class="btn btn-default">取 消</button>
+      </div>
+    </div>
+  </form>
+</script>
+<script id="edit-page" type="text/template">
+  <form id="form" class="form-horizontal">
+    <div class="form-group">
+      <label class="col-sm-3 control-label">签名标题:</label>
+      <div class="col-sm-6">
+        <input type="hidden" class="form-control" name="acc" value="<?php echo $acc;?>" />
+        <input type="text" class="form-control" name="name" value="{{name}}" placeholder="Enter name" minlength="3" required="required">
+      </div>
+      <div class="col-xs-3 col-sm-3">
+        <span class="help-block">短信签名</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-xs-3 col-sm-3 control-label" style="line-height:60px">模板内容:</label>
+      <div class="col-xs-6 col-sm-6">
+        <textarea class="form-control" rows="4" cols="24" name="content" placeholder="Enter Template Content" required="required">{{content}}</textarea>
+      </div>
+      <div class="col-xs-3 col-sm-3" style="line-height:60px">
+        <span class="help-block">短信内容</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-4 col-sm-6" style="margin-top:15px">
+        <button type="button" onclick="formChange({{id}})" class="btn btn-success">保 存</button>
+        <button type="button" onclick="layer.closeAll()" class="btn btn-default">取 消</button>
+      </div>
+    </div>
+  </form>
 </script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
@@ -113,8 +172,9 @@
       $(this).removeClass('open');
   });
 
-  startup();
-  });
+  acc = <?php echo $acc;?>;
+  fetchTemplates(acc);
+  });  
 </script>
 </body>
 </html>

@@ -11,7 +11,7 @@ use Tool\Filter;
 class TemplateModel {
     public $db = null;
     private $table = 'template';
-    private $column = ['rexp', 'name', 'content'];
+    private $column = ['acc', 'name', 'content'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -30,12 +30,16 @@ class TemplateModel {
         return null;
     }
 
-    public function getAll() {
+    public function getAll(int $acc = 0) {
         $result = [];
-        $sql = 'SELECT * FROM ' . $this->table . ' ORDER BY rexp';
-        $sth = $this->db->query($sql);
-        if ($sth) {
-            $result = $sth->fetchAll();
+        if ($acc > 0) {
+            $sql = 'SELECT * FROM ' . $this->table . ' WHERE acc = :acc ORDER BY id';
+            $sth = $this->db->prepare($sql);
+            $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
+
+            if ($sth->execute()) {
+                $result = $sth->fetchAll();
+            }
         }
 
         return $result;
@@ -45,7 +49,7 @@ class TemplateModel {
         $data = $this->checkArgs($data);
 
         if (count($data) == count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(rexp, name, content) VALUES(:rexp, :name, :content)';
+            $sql = 'INSERT INTO ' . $this->table . '(acc, name, content) VALUES(:acc, :name, :content)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -112,8 +116,8 @@ class TemplateModel {
 
         foreach ($data as $key => $val) {
             switch ($key) {
-            case 'rexp':
-                $res['rexp'] = Filter::string($val, null, 1);
+            case 'acc':
+                $res['acc'] = Filter::number($val, null, 1);
                 break;
             case 'name':
                 $res['name'] = Filter::string($val, null, 1, 24);
@@ -142,5 +146,24 @@ class TemplateModel {
             }
         }
         return $text;
+    }
+
+    public function total(int $acc = 0) {
+        $total = 0;
+
+        if ($acc > 0) {
+            $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE acc = :acc';
+            $sth = $this->db->prepare($sql);
+            $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
+
+            if ($sth->execute()) {
+                $result = $sth->fetch();
+                if (isset($result['count'])) {
+                    $total = intval($result['count']);
+                }
+            }
+        }
+
+        return $total;
     }
 }

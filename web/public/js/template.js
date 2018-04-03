@@ -1,6 +1,27 @@
-
 function startup() {
-    var url = '/api/templates';
+    var method = 'GET';
+    var url = '/template/summary';
+
+    var xhr = new XMLHttpRequest();
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            var source = document.getElementById("contents").innerHTML;
+            var template = Handlebars.compile(source);
+            var contents = template(xhr.response);
+            $("tbody").append(contents);
+            $("tbody tr").hide();
+            $("tbody tr").each(function(i){
+                $(this).delay(i * 25).fadeIn(200);
+            });
+        }
+    }
+    xhr.open(method, url, true);
+    xhr.send();
+}
+
+function fetchTemplates(acc) {
+    var url = '/api/templates?acc=' + acc;
     $.get(url, function(resp, stat){
         if (stat == 'success') {
             Handlebars.registerHelper('checkoverflow', checkOverflow);
@@ -21,7 +42,7 @@ function show() {
     layer.open({
         type: 1,
         title: '新建签名模板',
-        area: ['650px', '365px'],
+        area: ['650px', '320px'],
         content: template
     });
 }
@@ -37,7 +58,7 @@ function formSubmit() {
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             layer.closeAll();
             $("#datalist").empty();
-            startup();
+            fetchTemplates(acc);
         }
     }
     xhr.open(method, url, true);
@@ -55,7 +76,7 @@ function formChange(id) {
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             layer.closeAll();
             $("#datalist").empty();
-            startup();
+            fetchTemplates(acc);
         }
     }
     xhr.open(method, url, true);
@@ -75,7 +96,7 @@ function changeTemplate(id) {
             layer.open({
                 type: 1,
                 title: '编辑签名模板',
-                area: ['650px', '365px'],
+                area: ['650px', '320px'],
                 content: contents
             });
         }
@@ -97,7 +118,7 @@ function deleteTemplate(id) {
                 layer.msg('删除成功!', {icon: 1, time: 1000});
                 setTimeout(function() {
                     $("#datalist").empty();
-                    startup();
+                    fetchTemplates(acc);
                 }, 1000);
             }
         }

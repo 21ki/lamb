@@ -176,7 +176,7 @@ void lamb_reload(int signum) {
 
         lamb_list_iterator_destroy(it);
 
-        err = lamb_get_template(&global->db, global->account.username, global->templates);
+        err = lamb_get_template(&global->db, aid, global->templates);
         if (err) {
             lamb_log(LOG_ERR, "can't fetch template information");
         }
@@ -1262,7 +1262,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     }
 
     if (global->account.template) {
-        err = lamb_get_template(&global->db, global->account.username, global->templates);
+        err = lamb_get_template(&global->db, aid, global->templates);
         if (err) {
             lamb_log(LOG_ERR, "Can't fetch template information");
             return -1;

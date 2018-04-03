@@ -161,13 +161,10 @@ class ApiController extends Yaf\Controller_Abstract {
 
     public function templatesAction() {
         if ($this->request->isGet()) {
+            $acc = $this->request->getQuery('acc');
             $template = new TemplateModel();
-            $response['status'] = 200;
-            $response['message'] = 'success';
-            $response['data'] = $template->getAll();
-
-            header('Content-type: application/json');
-            echo json_encode($response);
+            $templates = $template->getAll(intval($acc));
+            lambResponse(200, 'success', $templates);
         }
 
         return false;

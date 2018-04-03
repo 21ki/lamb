@@ -29,7 +29,7 @@ CREATE TABLE account (
 
 CREATE TABLE template (
     id serial PRIMARY KEY NOT NULL,
-    rexp varchar(128) NOT NULL,
+    acc int NOT NULL,
     name varchar(64) NOT NULL,
     content varchar(512) NOT NULL
 );

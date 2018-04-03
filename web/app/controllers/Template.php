@@ -20,6 +20,23 @@ class TemplateController extends Yaf\Controller_Abstract {
         return true;
     }
 
+    public function summaryAction() {
+        if ($this->request->isGet()) {
+            $account = new AccountModel();
+            $accounts = $account->getAll();
+
+            $template = new TemplateModel();
+            foreach ($accounts as &$a) {
+                unset($a['password']);
+                $a['total'] = $template->total($a['id']);
+            }
+
+            lambResponse(200, 'success', $accounts);
+        }
+
+        return false;
+    }
+
     public function createAction() {
         if ($this->request->isPost()) {
             $template = new TemplateModel();
@@ -58,6 +75,16 @@ class TemplateController extends Yaf\Controller_Abstract {
         }
 
         return false;
+    }
+
+    public function templatesAction() {
+        $acc = $this->request->getQuery('acc', 0);
+
+        $account = new AccountModel();
+        $acc = $account->get($acc);
+        $this->getView()->assign('acc', isset($acc['id']) ? $acc['id'] : 0);
+        $this->getView()->assign('name', isset($acc['username']) ? $acc['username'] : 'unknown');
+        return true;
     }
 }
 
