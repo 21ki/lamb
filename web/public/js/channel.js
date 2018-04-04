@@ -1,8 +1,8 @@
 
 function startup() {
     var method = "GET";
-    var gid = getQuery("gid");
-    var url = '/api/channels?gid=' + gid;
+    var id = getQuery("id");
+    var url = '/api/channels?acc=' + id;
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function(){
@@ -51,7 +51,7 @@ function formSubmit() {
     var data = new FormData(form);
 
     var operator = 0;
-    data.append("gid", getQuery("gid"));
+    data.append("acc", getQuery("id"));
 
     if (data.has("cmcc")) {
         operator |= 1;
@@ -88,9 +88,9 @@ function formSubmit() {
     xhr.send(data);
 }
 
-function formChange(id, gid) {
+function formChange(id, acc) {
     var method = "POST";
-    var url = '/channels/update?id=' + id + '&gid=' + gid;
+    var url = '/channels/update?id=' + id + '&acc=' + acc;
     var form = document.getElementById("form");
     var data = new FormData(form);
 
@@ -131,9 +131,9 @@ function formChange(id, gid) {
     xhr.send(data);
 }
 
-function changeChannel(id, gid) {
+function changeChannel(id, acc) {
     var method = "GET";
-    var url = '/api/channel?id=' + id + '&gid=' + gid;
+    var url = '/api/channel?id=' + id + '&acc=' + acc;
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function(){
@@ -154,12 +154,12 @@ function changeChannel(id, gid) {
     xhr.send();
 }
 
-function deleteChannel(id, gid) {
+function deleteChannel(id, acc) {
     layer.confirm('亲，确定要删除？', {
         btn: ['是','否'], icon: 3
     }, function(){
         var method = "DELETE";
-        var url = '/channels/delete?id=' + id + '&gid=' + gid;
+        var url = '/channels/delete?id=' + id + '&acc=' + acc;
         var xhr = new XMLHttpRequest();
         xhr.responseType = "json";
         xhr.onreadystatechange = function(){

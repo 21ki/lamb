@@ -1,5 +1,26 @@
+function  startup() {
+    var method = "GET";
+    var url = "/routing/summary";
+    var xhr = new XMLHttpRequest();
 
-function startup() {
+    xhr.responseType = "json";
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+            var source = document.getElementById("contents").innerHTML;
+            var template = Handlebars.compile(source);
+            var contents = template(xhr.response);
+            $("tbody").append(contents);
+            $("tbody tr").hide();
+            $("tbody tr").each(function(i){
+                $(this).delay(i * 25).fadeIn(200);
+            });
+        }
+    }
+    xhr.open(method, url, true);
+    xhr.send();
+}
+
+function fetchRouting() {
     var method = "GET";
     var url = '/api/routings';
     var xhr = new XMLHttpRequest();

@@ -11,16 +11,21 @@ use Tool\Filter;
 class ChannelModel {
     public $db = null;
     private $table = 'channels';
-    private $column = ['id', 'gid', 'weight', 'operator'];
+    private $column = ['id', 'acc', 'weight', 'operator'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
     }
 
-    public function get($id = null, $gid = null) {
-        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' and gid = ' . intval($gid);
-        $sth = $this->db->query($sql);
-        if ($sth) {
+    public function get($id = null, $acc = null) {
+        $id = intval($id);
+        $acc = intval($acc);
+        $sql = 'SELECT * FROM ' . $this->table . ' WHERE id = :id and acc = :acc';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+        $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
             $result = $sth->fetch();
             if ($result !== false) {
                 return $result;
@@ -30,11 +35,14 @@ class ChannelModel {
         return null;
     }
 
-    public function getAll($gid = null) {
+    public function getAll($acc = null) {
         $result = [];
-        $sql = 'SELECT * FROM ' . $this->table . ' WHERE gid = ' . intval($gid) . ' ORDER BY weight';
-        $sth = $this->db->query($sql);
-        if ($sth) {
+        $acc = intval($acc);
+        $sql = 'SELECT * FROM ' . $this->table . ' WHERE acc = :acc ORDER BY weight';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
             $result = $sth->fetchAll();
         }
 
@@ -48,8 +56,8 @@ class ChannelModel {
             $data['operator'] = 7;
         }
         
-        if ($this->isExist($data['id']) && $this->check($data['id'], $data['gid'])) {
-            $sql = 'INSERT INTO channels VALUES(:id, :gid, :weight, :operator)';
+        if ($this->isExist($data['id']) && $this->check($data['id'], $data['acc'])) {
+            $sql = 'INSERT INTO channels VALUES(:id, :acc, :weight, :operator)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -69,10 +77,10 @@ class ChannelModel {
         return false;
     }
 
-    public function delete($id = null, $gid = null) {
+    public function delete($id = null, $acc = null) {
         $id = intval($id);
-        $gid = intval($gid);
-        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . $id . ' and gid = ' . $gid;
+        $acc = intval($acc);
+        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . $id . ' and acc = ' . $acc;
         if ($this->db->query($sql)) {
             return true;
         }
@@ -80,8 +88,9 @@ class ChannelModel {
         return false;
     }
 
-    public function deleteAll($gid = null) {
-        $sql = 'DELETE FROM ' . $this->table . ' WHERE gid = ' . intval($gid);
+    public function deleteAll($acc = null) {
+        $acc = intval($acc);
+        $sql = 'DELETE FROM ' . $this->table . ' WHERE acc = ' . $acc;
         if ($this->db->query($sql)) {
             return true;
         }
@@ -89,9 +98,9 @@ class ChannelModel {
         return false;
     }
 
-    public function change($id = null, $gid = null, array $data = null) {
+    public function change($id = null, $acc = null, array $data = null) {
         $id = intval($id);
-        $gid = intval($gid);
+        $acc = intval($acc);
         $data = $this->checkArgs($data);
         $column = $this->keyAssembly($data);
 
@@ -99,10 +108,10 @@ class ChannelModel {
             return false;
         }
         
-        $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id and gid = :gid';
+        $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id and acc = :acc';
         $sth = $this->db->prepare($sql);
         $sth->bindValue(':id', $id, PDO::PARAM_INT);
-        $sth->bindValue(':gid', $gid, PDO::PARAM_INT);
+        $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
 
         foreach ($data as $key => $val) {
             if ($val !== null) {
@@ -131,14 +140,14 @@ class ChannelModel {
         return false;
     }
 
-    public function check($id = null, $gid = null) {
+    public function check($id = null, $acc = null) {
         $id = intval($id);
-        $gid = intval($gid);
+        $acc = intval($acc);
 
-        $sql = 'SELECT count(id) AS total FROM channels WHERE id = :id and gid = :gid';
+        $sql = 'SELECT count(id) AS total FROM channels WHERE id = :id and acc = :acc';
         $sth = $this->db->prepare($sql);
         $sth->bindValue(':id', $id, PDO::PARAM_INT);
-        $sth->bindValue(':gid', $gid, PDO::PARAM_INT);
+        $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
 
         if ($sth->execute()) {
             $result = $sth->fetch();
@@ -159,8 +168,8 @@ class ChannelModel {
             case 'id':
                 $res['id'] = Filter::number($val, null);
                 break;
-            case 'gid':
-                $res['gid'] = Filter::number($val, null);
+            case 'acc':
+                $res['acc'] = Filter::number($val, null);
                 break;
             case 'weight':
                 $res['weight'] = Filter::number($val, 1, 1);
@@ -188,5 +197,24 @@ class ChannelModel {
             }
         }
         return $text;
+    }
+
+    public function total(int $acc) {
+        $total = 0;
+
+        if ($acc > 0) {
+            $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE acc = :acc';
+            $sth = $this->db->prepare($sql);
+            $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
+
+            if ($sth->execute()) {
+                $result = $sth->fetch();
+                if (isset($result['count'])) {
+                    $total = intval($result['count']);
+                }
+            }
+        }
+
+        return $total;
     }
 }

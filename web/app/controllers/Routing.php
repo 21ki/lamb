@@ -98,4 +98,21 @@ class RoutingController extends Yaf\Controller_Abstract {
 
         return $id;
     }
+
+    public function summaryAction() {
+        if ($this->request->isGet()) {
+            $account = new AccountModel();
+            $accounts = $account->getAll();
+
+            $channel = new ChannelModel();
+            foreach ($accounts as &$a) {
+                unset($a['password']);
+                $a['total'] = $channel->total($a['id']);
+            }
+
+            lambResponse(200, 'success', $accounts);
+        }
+
+        return false;
+    }
 }

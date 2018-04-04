@@ -12,7 +12,7 @@ class ChannelsController extends Yaf\Controller_Abstract {
     }
     
     public function indexAction() {
-        $this->getView()->assign('gid', $this->request->getQuery('id', null));
+        $this->getView()->assign('acc', $this->request->getQuery('id', null));
         return true;
     }
     
@@ -31,8 +31,8 @@ class ChannelsController extends Yaf\Controller_Abstract {
         if ($this->request->method == 'DELETE') {
             $channel = new ChannelModel();
             $id = $this->request->getQuery('id', null);
-            $gid = $this->request->getQuery('gid', null);
-            $success = $channel->delete($id, $gid);
+            $acc = $this->request->getQuery('acc', null);
+            $success = $channel->delete($id, $acc);
             $status = $success ? 200 : 400;
             $message = $success ? 'success' : 'failed';
             lambResponse($status, $message);
@@ -45,8 +45,8 @@ class ChannelsController extends Yaf\Controller_Abstract {
         if ($this->request->isPost()) {
             $channel = new ChannelModel();
             $id = $this->request->getQuery('id', null);
-            $gid = $this->request->getQuery('gid', null);
-            $success = $channel->change($id, $gid, $this->request->getPost());
+            $acc = $this->request->getQuery('acc', null);
+            $success = $channel->change($id, $acc, $this->request->getPost());
             $status = $success ? 200 : 400;
             $message = $success ? 'success' : 'failed';
             lambResponse($status, $message);

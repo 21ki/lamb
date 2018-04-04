@@ -51,16 +51,9 @@ CREATE TABLE gateway (
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );
 
-CREATE TABLE routing (
-    id serial PRIMARY KEY NOT NULL,
-    rexp varchar(128) NOT NULL,
-    target int UNIQUE NOT NULL,
-    description text NOT NULL
-);
-
 CREATE TABLE channels (
     id int NOT NULL,
-    gid int NOT NULL,
+    acc int NOT NULL,
     weight int NOT NULL,
     operator int NOT NULL
 );

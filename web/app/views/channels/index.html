@@ -96,8 +96,8 @@
     <td>{{name}}</td>
     <td>{{weight}}</td>
     <td>{{checkoperator operator}}</td>
-    <td><button class="btn btn-default btn-xs" onclick="deleteChannel({{id}}, {{gid}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
-    <td><button class="btn btn-default btn-xs" onclick="changeChannel({{id}}, {{gid}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
+    <td><button class="btn btn-default btn-xs" onclick="deleteChannel({{id}}, {{acc}})"><span class="glyphicon glyphicon-trash"></span> 删 除</button></td>
+    <td><button class="btn btn-default btn-xs" onclick="changeChannel({{id}}, {{acc}})"><span class="glyphicon glyphicon-edit"></span> 编 辑</button></td>
   </tr>
   {{/each}}
 </script>
@@ -181,7 +181,7 @@
     </div>
     <div class="form-group">
       <div class="col-sm-offset-3 col-sm-8">
-        <button type="button" class="btn btn-success" onclick="formChange({{id}}, {{gid}})">保 存</button>
+        <button type="button" class="btn btn-success" onclick="formChange({{id}}, {{acc}})">保 存</button>
         <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
       </div>
     </div>

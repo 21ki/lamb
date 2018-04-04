@@ -88,8 +88,8 @@ class ApiController extends Yaf\Controller_Abstract {
         if ($this->request->isGet()) {
             $c = new ChannelModel();
             $id = $this->request->getQuery('id', null);
-            $gid = $this->request->getQuery('gid', null);
-            $channel = $c->get($id, $gid);
+            $acc = $this->request->getQuery('acc', null);
+            $channel = $c->get($id, $acc);
 
             $g = new GatewayModel();
             $gateway = $g->get($channel['id']);
@@ -110,7 +110,7 @@ class ApiController extends Yaf\Controller_Abstract {
             }
 
             $channel = new ChannelModel();
-            $channels = $channel->getAll($this->request->getQuery('gid', null));
+            $channels = $channel->getAll($this->request->getQuery('acc', null));
             foreach ($channels as &$chan) {
                 $chan['name'] = $gateways[$chan['id']]['name'];
             }
