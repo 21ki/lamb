@@ -236,7 +236,7 @@ class AccountModel {
     }
 
     public function signalNotification(int $id) {
-        if ($id > 0) {
+        if ($id > 0 && $this->isExist($id)) {
             $this->redis->hSet('server.' . $id, 'signal', 1);
             return true;
         }

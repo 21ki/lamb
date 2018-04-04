@@ -19,7 +19,15 @@ class ChannelsController extends Yaf\Controller_Abstract {
     public function createAction() {
         if ($this->request->isPost()) {
             $channel = new ChannelModel();
-            $success = $channel->create($this->request->getPost());
+            $post = $this->request->getPost();
+            $success = $channel->create($post);
+
+            if ($success) {
+                $acc = isset($post['acc']) ? $post['acc'] : null;
+                $account = new AccountModel();
+                $account->signalNotification(intval($acc));
+            }
+
             $status = $success ? 200 : 400;
             $message = $success ? 'success' : 'failed';
             lambResponse($status, $message);
@@ -33,6 +41,13 @@ class ChannelsController extends Yaf\Controller_Abstract {
             $id = $this->request->getQuery('id', null);
             $acc = $this->request->getQuery('acc', null);
             $success = $channel->delete($id, $acc);
+
+            if ($success) {
+                $acc = intval($acc);
+                $account = new AccountModel();
+                $account->signalNotification($acc);
+            }
+
             $status = $success ? 200 : 400;
             $message = $success ? 'success' : 'failed';
             lambResponse($status, $message);
@@ -47,6 +62,13 @@ class ChannelsController extends Yaf\Controller_Abstract {
             $id = $this->request->getQuery('id', null);
             $acc = $this->request->getQuery('acc', null);
             $success = $channel->change($id, $acc, $this->request->getPost());
+
+            if ($success) {
+                $acc = intval($acc);
+                $account = new AccountModel();
+                $account->signalNotification($acc);
+            }
+
             $status = $success ? 200 : 400;
             $message = $success ? 'success' : 'failed';
             lambResponse($status, $message);
