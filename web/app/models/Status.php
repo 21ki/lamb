@@ -6,20 +6,13 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
-use Db\Redis;
-
 class StatusModel {
     public $db = null;
-    public $redis = null;
+    public $rdb = null;
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
-        $this->config = Yaf\Registry::get('config');
-        if ($this->config) {
-            $config = $this->config->backup;
-            $redis = new Redis($config->host, $config->port, $config->password, $config->db);
-            $this->redis = $redis->handle;
-        }
+        $this->rdb = Yaf\Registry::get('rdb');
     }
 
     public function inbound() {
@@ -64,7 +57,7 @@ class StatusModel {
     public function getPid($id = null, $type = 'client') {
         $id = intval($id);
         $pid = 0;
-        $reply = $this->redis->hGet($type . '.' . $id, 'pid');
+        $reply = $this->rdb->hGet($type . '.' . $id, 'pid');
         if ($reply !== false) {
             $pid = intval($reply);
         }
@@ -75,7 +68,7 @@ class StatusModel {
     public function getQueue($id = null) {
         $id = intval($id);
         $queue = 0;
-        $reply = $this->redis->hGet('client.' . $id, 'queue');
+        $reply = $this->rdb->hGet('client.' . $id, 'queue');
         if ($reply !== false) {
             $queue = intval($reply);
         }
@@ -86,7 +79,7 @@ class StatusModel {
     public function getSpeed($id = null, $type = 'client') {
         $id = intval($id);
         $speed = 0;
-        $reply = $this->redis->hGet($type . '.' . $id, 'speed');
+        $reply = $this->rdb->hGet($type . '.' . $id, 'speed');
         if ($reply !== false) {
             $speed = intval($reply);
         }
@@ -97,7 +90,7 @@ class StatusModel {
     public function getError($id = null, $type = 'client') {
         $id = intval($id);
         $error = 0;
-        $reply = $this->redis->hGet($type . '.' . $id, 'error');
+        $reply = $this->rdb->hGet($type . '.' . $id, 'error');
         if ($reply !== false) {
             $error = intval($reply);
         }
@@ -108,7 +101,7 @@ class StatusModel {
     public function getDeliver($id = null) {
         $id = intval($id);
         $deliver = 0;
-        $reply = $this->redis->hGet('client.' . $id, 'deliver');
+        $reply = $this->rdb->hGet('client.' . $id, 'deliver');
         if ($reply !== false) {
             $deliver = intval($reply);
         }
@@ -121,7 +114,7 @@ class StatusModel {
 
         $status = -1;
 
-        $reply = $this->redis->hGet($type . '.' . $id, 'status');
+        $reply = $this->rdb->hGet($type . '.' . $id, 'status');
         if ($reply !== false) {
             $status = intval($reply);
         }

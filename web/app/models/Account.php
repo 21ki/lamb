@@ -6,22 +6,19 @@
  * Copyright (C) typefo <typefo@qq.com>
  */
 
-use Db\Redis;
 use Tool\Filter;
 
 class AccountModel {
     public $db = null;
-    public $redis = null;
+    public $rdb = null;
     private $config = null;
     private $table = 'account';
-    private $column = ['username', 'password', 'spcode', 'company', 'address', 'concurrent', 'dbase', 'template', 'keyword', 'description'];
+    private $column = ['username', 'password', 'spcode', 'company', 'address', 'concurrent',
+                       'dbase', 'template', 'keyword', 'description'];
 
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
-        $this->config = Yaf\Registry::get('config');
-        $config = $this->config->redis;
-        $redis = new Redis($config->host, $config->port, $config->password, $config->db);
-        $this->redis = $redis->handle;
+        $this->rdb = Yaf\Registry::get('rdb');
     }
 
     public function get($id = null) {
@@ -96,7 +93,7 @@ class AccountModel {
                 if ($sth->execute()) {
                     $result = $sth->fetch();
                     if ($result !== false) {
-                        $this->redis->hMSet('account.' . $result['username'], $result);
+                        $this->rdb->hMSet('account.' . $result['username'], $result);
                         return true;
                     }
                 }
@@ -143,7 +140,7 @@ class AccountModel {
             if ($sth->execute()) {
                 $result = $this->get($id);
                 if ($result != null) {
-                    $this->redis->hMSet('account.' . $result['username'], $result);
+                    $this->rdb->hMSet('account.' . $result['username'], $result);
                     $this->signalNotification($result['id']);
                 }
 
@@ -237,7 +234,7 @@ class AccountModel {
 
     public function signalNotification(int $id) {
         if ($id > 0 && $this->isExist($id)) {
-            $this->redis->hSet('server.' . $id, 'signal', 1);
+            $this->rdb->hSet('server.' . $id, 'signal', 1);
             return true;
         }
 

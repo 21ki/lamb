@@ -120,7 +120,7 @@ class TemplateModel {
                 $res['acc'] = Filter::number($val, null, 1);
                 break;
             case 'name':
-                $res['name'] = Filter::string($val, null, 1, 24);
+                $res['name'] = Filter::string($val, null, 1, 32);
                 break;
             case 'content':
                 $res['content'] = Filter::string($val, null, 1, 480);

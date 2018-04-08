@@ -11,17 +11,14 @@ use Tool\Filter;
 
 class DeliveryModel {
     public $db = null;
-    public $redis = null;
+    public $rdb = null;
     private $config = null;
     private $table = 'delivery';
     private $column = ['rexp', 'target', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
-        $this->config = Yaf\Registry::get('config');
-        $config = $this->config->redis;
-        $redis = new Redis($config->host, $config->port, $config->password, $config->db);
-        $this->redis = $redis->handle;
+        $this->rdb = Yaf\Registry::get('rdb');
     }
 
     public function get($id = null) {
@@ -158,7 +155,7 @@ class DeliveryModel {
 
     public function signalNotification(int $id) {
         if ($id > 0) {
-            $this->redis->hSet('delivery.' . $id, 'signal', 1);
+            $this->rdb->hSet('delivery.' . $id, 'signal', 1);
             return true;
         }
 

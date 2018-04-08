@@ -26,12 +26,17 @@ class Redis {
     	    $this->port = $port;
     	    $this->password = $password;
     	    $this->database = $database;
+            
+            $this->handle = new \Redis();
 
-    	    $this->handle = new \Redis();
-    	    $this->handle->connect($host, $port);
+            if (!$this->handle->connect($host, $port)) {
+                throw new RedisException("Can't connect to redis $host");
+            }
 
     	    if (!empty($password)) {
-    	    	$this->handle->auth($password);
+    	    	if (!$this->handle->auth($password)) {
+                    throw new RedisException("Incorrect redis password");
+                }
     	    }
 
     	    $this->handle->select($database);

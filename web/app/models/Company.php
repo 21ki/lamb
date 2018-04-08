@@ -11,22 +11,21 @@ use Tool\Filter;
 
 class CompanyModel {
     public $db = null;
-    public $redis = null;
-    public $backup = null;
+    public $rdb = null;
+    public $rdk = null;
     public $config = null;
     private $table = 'company';
     private $column = ['name', 'contacts', 'telephone', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
+        $this->rdb = Yaf\Registry::get('rdb');
         $this->config = Yaf\Registry::get('config');
+
         if ($this->config) {
-            $rcfg = $this->config->redis;
-            $bcfg = $this->config->backup;
-            $redis = new Redis($rcfg->host, $rcfg->port, $rcfg->password, $rcfg->db);
-            $this->redis = $redis->handle;
-            $backup = new Redis($bcfg->host, $bcfg->port, $bcfg->password, $bcfg->db);
-            $this->backup = $backup->handle;
+            $cfg = $this->config->backup;
+            $rdk = new Redis($cfg->host, $cfg->port, $cfg->password, $cfg->db);
+            $this->rdk = $rdk->handle;
         }
     }
 
@@ -160,7 +159,7 @@ class CompanyModel {
             $description = 'no description';
         }
 
-        $this->redis->multi()->hIncrBy('company.' . $id, 'money', $money)->exec();
+        $this->rdb->multi()->hIncrBy('company.' . $id, 'money', $money)->exec();
         $payment = new PaymentModel();
         $company = $this->get($id);
         $event['company'] = $company['name'];
@@ -229,7 +228,7 @@ class CompanyModel {
 
     public function getMoney($id = null) {
         $money = 0;
-        $result = $this->backup->hGet('company.' . intval($id), 'money');
+        $result = $this->rdk->hGet('company.' . intval($id), 'money');
         if ($result !== false) {
             $money = intval($result);
         }
@@ -244,7 +243,7 @@ class CompanyModel {
             $companys = $sth->fetchAll();
             foreach ($companys as $company) {
                 unset($company['money']);
-                $this->redis->hMSet('company.' . $company['id'], $company);
+                $this->rdb->hMSet('company.' . $company['id'], $company);
             }
         }
 
