@@ -152,20 +152,28 @@ class AccountModel {
     }
     
     public function delete($id = null) {
-        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
-        if ($this->db->query($sql)) {
-            return true;
+        $id = intval($id);
+
+        if ($this->checkDepend($id)) {
+            $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . $id;
+            if ($this->db->query($sql)) {
+                return true;
+            }
         }
 
         return false;
     }
 
     public function isExist($id = null) {
-        $result = false;
-        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
-        $sth = $this->db->query($sql);
-        if ($sth && ($result = $sth->fetch()) !== false) {
-            if ($result['count'] > 0) {
+        $id = intval($id);
+
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = :id LIMIT 1';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $result = $sth->fetch();
+            if ($result && $result['count'] > 0) {
                 return true;
             }
         }
@@ -230,6 +238,46 @@ class AccountModel {
             }
         }
         return $text;
+    }
+
+    public function checkDepend(int $id = 0) {
+        if ($this->checkDepTemplet($id)) {
+            if ($this->checkDepRouting($id)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
+    public function checkDepTemplet(int $id = 0) {
+        $sql = 'SELECT count(id) FROM template WHERE acc = :id';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $result = $sth->fetch();
+            if ($result && $result['count'] < 1) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    public function checkDepRouting(int $id = 0) {
+        $sql = 'SELECT count(id) FROM channels WHERE acc = :id';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $result = $sth->fetch();
+            if ($result && $result['count'] < 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function signalNotification(int $id) {

@@ -15,7 +15,7 @@ int lamb_get_templates(lamb_db_t *db, lamb_list_t *templates) {
     char sql[256];
     PGresult *res = NULL;
 
-    column = "id, rexp, name, content";
+    column = "id, acc, name, content";
     snprintf(sql, sizeof(sql), "SELECT %s FROM template ORDER BY id", column);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {

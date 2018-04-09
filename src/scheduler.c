@@ -364,7 +364,7 @@ void *lamb_push_loop(void *arg) {
 
     while ((nd = lamb_list_iterator_next(it))) {
         chan = (lamb_channel_t *)nd->val;
-        lamb_debug("-> id: %d, gid: %d, weight: %d\n", chan->id, chan->gid, chan->weight);
+        lamb_debug("-> id: %d, acc: %d, weight: %d\n", chan->id, chan->acc, chan->weight);
     }
 
     lamb_list_iterator_destroy(it);
@@ -689,16 +689,16 @@ int lamb_child_server(int *sock, const char *host, unsigned short *port, int pro
 }
 
 void lamb_route_channel(lamb_db_t *db, int id, lamb_list_t *channels) {
-    int err, gid;
+    int err, acc;
     lamb_account_t account;
 
     memset(&account, 0, sizeof(account));
     err = lamb_account_fetch(db, id, &account);
 
     if (!err) {
-        gid = lamb_rexp_routing(db, account.username);
-        if (gid > 0) {
-            lamb_get_channels(db, gid, channels);
+        acc = lamb_rexp_routing(db, account.username);
+        if (acc > 0) {
+            lamb_get_channels(db, acc, channels);
         }
     }
 

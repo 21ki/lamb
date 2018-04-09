@@ -147,7 +147,12 @@ function deleteAccount(id) {
         xhr.responseType = "json";
         xhr.onreadystatechange = function(){
             if (xhr.readyState === xhr.DONE && xhr.status === 200) {
-                layer.msg('删除成功!', {icon: 1, time: 1000});
+                if (xhr.response.status === 200) {
+                    layer.msg('删除成功!', {icon: 1, time: 1000});
+                } else {
+                    layer.msg('删除失败!', {icon: 2, time: 1000});
+                }
+
                 setTimeout(function() {
                     $("tbody").empty();
                     startup();
