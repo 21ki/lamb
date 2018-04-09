@@ -60,30 +60,6 @@ class ApiController extends Yaf\Controller_Abstract {
         return false;
     }
     
-    public function routingAction() {
-        if ($this->request->isGet()) {
-            $routing = new RoutingModel();
-            $response['status'] = 200;
-            $response['message'] = 'success';
-            $response['data'] = $routing->get($this->request->getQuery('id', null));
-
-            header('Content-type: application/json');
-            echo json_encode($response);
-        }
-        
-
-        return false;
-    }
-
-    public function routingsAction() {
-        if ($this->request->isGet()) {
-            $routing = new RoutingModel();
-            lambResponse(200, 'success', $routing->getAll());
-        }
-
-        return false;
-    }
-
     public function channelAction() {
         if ($this->request->isGet()) {
             $c = new ChannelModel();
@@ -165,24 +141,6 @@ class ApiController extends Yaf\Controller_Abstract {
             $template = new TemplateModel();
             $templates = $template->getAll(intval($acc));
             lambResponse(200, 'success', $templates);
-        }
-
-        return false;
-    }
-
-    public function groupAction() {
-        if ($this->request->isGet()) {
-            $group = new GroupModel();
-            lambResponse(200, 'success', $group->get($this->request->getQuery('id', null)));
-        }
-        
-        return false;
-    }
-
-    public function groupsAction() {
-        if ($this->request->isGet()) {
-            $group = new GroupModel();
-            lambResponse(200, 'success' ,$group->getAll());
         }
 
         return false;

@@ -88,10 +88,12 @@ class ChannelModel {
         return false;
     }
 
-    public function deleteAll($acc = null) {
-        $acc = intval($acc);
-        $sql = 'DELETE FROM ' . $this->table . ' WHERE acc = ' . $acc;
-        if ($this->db->query($sql)) {
+    public function cleanup(int $acc = 0) {
+        $sql = 'DELETE FROM ' . $this->table . ' WHERE acc = :acc';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
             return true;
         }
 
