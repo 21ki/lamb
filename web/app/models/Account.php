@@ -172,8 +172,8 @@ class AccountModel {
         $sth->bindValue(':id', $id, PDO::PARAM_INT);
 
         if ($sth->execute()) {
-            $result = $sth->fetch();
-            if ($result && $result['count'] > 0) {
+            $count = $sth->fetchColumn();
+            if ($count > 0) {
                 return true;
             }
         }
@@ -256,12 +256,12 @@ class AccountModel {
         $sth->bindValue(':id', $id, PDO::PARAM_INT);
 
         if ($sth->execute()) {
-            $result = $sth->fetch();
-            if ($result && $result['count'] < 1) {
+            $count = $sth->fetchColumn();
+            if ($count < 1) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -271,8 +271,8 @@ class AccountModel {
         $sth->bindValue(':id', $id, PDO::PARAM_INT);
 
         if ($sth->execute()) {
-            $result = $sth->fetch();
-            if ($result && $result['count'] < 1) {
+            $count = $sth->fetchColumn();
+            if ($count < 1) {
                 return true;
             }
         }
@@ -280,7 +280,7 @@ class AccountModel {
         return false;
     }
 
-    public function signalNotification(int $id) {
+    public function signalNotification(int $id = 0) {
         if ($id > 0 && $this->isExist($id)) {
             $this->rdb->hSet('server.' . $id, 'signal', 1);
             return true;

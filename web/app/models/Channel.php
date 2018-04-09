@@ -130,11 +130,14 @@ class ChannelModel {
     }
     
     public function isExist($id = null) {
-        $sql = 'SELECT count(id) AS total FROM gateway WHERE id = ' . intval($id);
-        $sth = $this->db->query($sql);
-        if ($sth) {
-            $result = $sth->fetch();
-            if (intval($result['total']) > 0) {
+        $id = intval($id);
+        $sql = 'SELECT count(id) FROM gateway WHERE id = :id';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $count = $sth->fetchColumn();
+            if ($count > 0) {
                 return true;
             }
         }
@@ -146,14 +149,14 @@ class ChannelModel {
         $id = intval($id);
         $acc = intval($acc);
 
-        $sql = 'SELECT count(id) AS total FROM channels WHERE id = :id and acc = :acc';
+        $sql = 'SELECT count(id) FROM channels WHERE id = :id and acc = :acc';
         $sth = $this->db->prepare($sql);
         $sth->bindValue(':id', $id, PDO::PARAM_INT);
         $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
 
         if ($sth->execute()) {
-            $result = $sth->fetch();
-            if (intval($result['total']) == 0) {
+            $count = $sth->fetchColumn();
+            if ($count == 0) {
                 return true;
             }
         }
@@ -201,20 +204,15 @@ class ChannelModel {
         return $text;
     }
 
-    public function total(int $acc) {
+    public function total(int $acc = 0) {
         $total = 0;
 
-        if ($acc > 0) {
-            $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE acc = :acc';
-            $sth = $this->db->prepare($sql);
-            $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE acc = :acc';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
 
-            if ($sth->execute()) {
-                $result = $sth->fetch();
-                if (isset($result['count'])) {
-                    $total = intval($result['count']);
-                }
-            }
+        if ($sth->execute()) {
+            $total = intval($sth->fetchColumn());
         }
 
         return $total;

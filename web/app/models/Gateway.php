@@ -11,7 +11,8 @@ use Tool\Filter;
 class GatewayModel {
     public $db = null;
     private $table = 'gateway';
-    private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid', 'spcode', 'encoded', 'extended', 'concurrent', 'description'];
+    private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid',
+                       'spcode', 'encoded', 'extended', 'concurrent', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -190,11 +191,15 @@ class GatewayModel {
     }
     
     public function isExist($id = null) {
+        $id = intval($id);
         $result = false;
-        $sql = 'SELECT count(id) AS total FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
-        $sth = $this->db->query($sql);
-        if ($sth && ($result = $sth->fetch()) !== false) {
-            if ($result['total'] > 0) {
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = :id LIMIT 1';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $count = $sth->fetchColumn();
+            if ($count > 0) {
                 return true;
             }
         }
@@ -203,11 +208,14 @@ class GatewayModel {
     }
 
     public function isUsed($id = null) {
-        $sql = 'SELECT count(id) AS total FROM channels WHERE id = ' . intval($id);
-        $sth = $this->db->query($sql);
-        if ($sth) {
-            $result = $sth->fetch();
-            if ($result['total'] > 0) {
+        $id = intval($id);
+        $sql = 'SELECT count(id) FROM channels WHERE id = :id';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $count = $sth->fetchColumn();
+            if ($count > 0) {
                 return true;
             }
         }

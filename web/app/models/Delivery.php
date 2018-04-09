@@ -103,18 +103,22 @@ class DeliveryModel {
     }
 
     public function isExist($id = null) {
+        $id = intval($id);
         $result = false;
-        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
-        $sth = $this->db->query($sql);
-        if ($sth && ($result = $sth->fetch()) !== false) {
-            if ($result['count'] > 0) {
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = :id LIMIT 1';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $count = $sth->fetchColumn();
+            if ($count > 0) {
                 return true;
             }
         }
 
         return false;
     }
-    
+
     public function checkArgs(array $data) {
         $res = array();
         $data = array_intersect_key($data, array_flip($this->column));

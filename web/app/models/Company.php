@@ -118,13 +118,14 @@ class CompanyModel {
 
     public function accountTotal($id = null) {
         $count = 0;
-        $sql = 'SELECT count(id) FROM account WHERE company = ' . intval($id);
-        $sth = $this->db->query($sql);
-        if ($sth) {
-            $result = $sth->fetch();
-            if ($result !== false) {
-                $count = $result['count'];
-            }
+        $id = intval($id);
+
+        $sql = 'SELECT count(id) FROM account WHERE company = :id';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $count = intval($sth->fetchColumn());
         }
 
         return $count;
@@ -132,11 +133,13 @@ class CompanyModel {
 
     public function isUsed($id = null) {
         $id = intval($id);
-        $sql = 'SELECT count(id) AS total FROM account WHERE company = ' . $id;
-        $sth = $this->db->query($sql);
-        if ($sth) {
-            $result = $sth->fetch();
-            if (intval($result['total']) > 0) {
+        $sql = 'SELECT count(id) FROM account WHERE company = :id';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $count = $sth->fetchColumn();
+            if ($count > 0) {
                 return true;
             }
         }
@@ -198,11 +201,13 @@ class CompanyModel {
 
     public function isExist($id = null) {
         $id = intval($id);
-        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . $id . ' LIMIT 1';
-        $sth = $this->db->query($sql);
-        if ($sth) {
-            $result = $sth->fetch();
-            if ($result['count'] > 0) {
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = :id LIMIT 1';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $count = $sth->fetchColumn();
+            if ($count > 0) {
                 return true;
             }
         }
@@ -228,7 +233,8 @@ class CompanyModel {
 
     public function getMoney($id = null) {
         $money = 0;
-        $result = $this->rdk->hGet('company.' . intval($id), 'money');
+        $id = intval($id);
+        $result = $this->rdk->hGet('company.' . $id, 'money');
         if ($result !== false) {
             $money = intval($result);
         }
@@ -239,6 +245,7 @@ class CompanyModel {
     public function upCache() {
         $sql = 'SELECT * FROM company';
         $sth = $this->db->query($sql);
+
         if ($sth) {
             $companys = $sth->fetchAll();
             foreach ($companys as $company) {

@@ -114,11 +114,15 @@ class TemplateModel {
     }
 
     public function isExist($id = null) {
+        $id = intval($id);
         $result = false;
-        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = ' . intval($id) . ' LIMIT 1';
-        $sth = $this->db->query($sql);
-        if ($sth && ($result = $sth->fetch()) !== false) {
-            if ($result['count'] > 0) {
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE id = :id LIMIT 1';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            $count = $sth->fetchColumn();
+            if ($count > 0) {
                 return true;
             }
         }
@@ -167,17 +171,12 @@ class TemplateModel {
     public function total(int $acc = 0) {
         $total = 0;
 
-        if ($acc > 0) {
-            $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE acc = :acc';
-            $sth = $this->db->prepare($sql);
-            $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
+        $sql = 'SELECT count(id) FROM ' . $this->table . ' WHERE acc = :acc';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
 
-            if ($sth->execute()) {
-                $result = $sth->fetch();
-                if (isset($result['count'])) {
-                    $total = intval($result['count']);
-                }
-            }
+        if ($sth->execute()) {
+            $total = intval($sth->fetchColumn());
         }
 
         return $total;
