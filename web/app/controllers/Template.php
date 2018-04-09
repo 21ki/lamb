@@ -95,6 +95,28 @@ class TemplateController extends Yaf\Controller_Abstract {
         return false;
     }
 
+    public function cleanupAction() {
+        if ($this->request->method == 'DELETE') {
+            $success = false;
+            $acc = $this->request->getQuery('id', null);
+
+            if ($acc !== null) {
+                $acc = intval($acc);
+                $template = new TemplateModel();
+                $success = $template->cleanup($acc);
+
+                if ($success) {
+                    $account = new AccountModel();
+                    $account->signalNotification($acc);
+                }
+            }
+
+            lambResponse($success ? 200 : 400, $success ? 'success' : 'failed');
+        }
+
+        return false;
+    }
+
     public function templatesAction() {
         $acc = $this->request->getQuery('acc', 0);
 

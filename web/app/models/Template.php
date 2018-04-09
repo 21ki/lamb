@@ -89,8 +89,24 @@ class TemplateModel {
     }
     
     public function delete($id = null) {
-        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . intval($id);
-        if ($this->db->query($sql)) {
+        $id = intval($id);
+        $sql = 'DELETE FROM ' . $this->table . ' WHERE id = :id';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':id', $id, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function cleanup(int $acc = 0) {
+        $sql = 'DELETE FROM ' . $this->table . ' WHERE acc = :acc';
+        $sth = $this->db->prepare($sql);
+        $sth->bindValue(':acc', $acc, PDO::PARAM_INT);
+
+        if ($sth->execute()) {
             return true;
         }
 

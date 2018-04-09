@@ -35,11 +35,11 @@ class RoutingController extends Yaf\Controller_Abstract {
     public function cleanupAction() {
         if ($this->request->method == 'DELETE') {
             $success = false;
-            $channel = new ChannelModel();
             $acc = $this->request->getQuery('id', null);
 
             if ($acc !== null) {
                 $acc = intval($acc);
+                $channel = new ChannelModel();
                 $success = $channel->cleanup($acc);
 
                 if ($success) {

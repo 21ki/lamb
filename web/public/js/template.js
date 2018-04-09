@@ -153,3 +153,34 @@ function detailed(obj) {
         content: html
     });
 }
+
+
+function cleanup(id) {
+    layer.confirm('亲，确定要清空所有模板？', {
+        btn: ['是','否'], icon: 3
+    }, function(){
+        var method = "DELETE";
+        var url = "/template/cleanup?id=" + id;
+        var xhr = new XMLHttpRequest();
+
+        xhr.responseType = "json";
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+                if (xhr.response.status === 200) {
+                    layer.msg('清空签名模板成功!', {icon: 1, time: 1000});
+                } else {
+                    layer.msg('清空签名模板失败!', {icon: 2, time: 1000});
+                }
+
+                setTimeout(function() {
+                    $("tbody").empty();
+                    startup();
+                }, 1000);
+            }
+        }
+
+        
+        xhr.open(method, url, true);
+        xhr.send();
+    });
+}
