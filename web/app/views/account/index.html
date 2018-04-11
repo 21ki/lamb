@@ -8,8 +8,7 @@
     <title>account - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/all.css">
-    <link type="text/css" rel="stylesheet" href="/css/flat/blue.css">
+    <link type="text/css" rel="stylesheet" href="/css/bootstrap-multiselect.css">
     <link type="text/css" rel="stylesheet" href="/css/account.css">
   </head>
   <body>
@@ -158,35 +157,17 @@
     <div class="form-group">
       <label class="col-xs-4 col-sm-4 control-label">安全选项:</label>
       <div class="col-xs-4 col-sm-4">
-        <div class="checkbox">
-          <label>
-            <a class="text-muted" href="javascript:void(0);" onclick="showExtension()">点击设置安全规则选项<small> (可选项)</small></a>
-          </label>
-          <label class="pull-right"><span class="glyphicon glyphicon-bell"></span></label>
-        </div>
+        <select id="security-options" class="form-control" multiple="multiple">
+          <option value="cheese">Check signature template</option>
+          <option value="tomatoes" selected="selected">Check the key words</option>
+          <option value="mozarella">Enable frequency restriction</option>
+          <option value="mushrooms">Unsubscribe business</option>
+          <option value="pepperoni">Enable global blacklist</option>
+        </select>
       </div>
       <div class="col-xs-4 col-sm-4">
-        <span class="help-block">签名与关键词检测</span>
+        <span class="help-block">账号安全策略规则</span>
       </div>
-    </div>
-    <div id="extension" class="extension-options">
-      <b>安全选项: &nbsp;&nbsp;</b>
-      <label>
-        <input id="check_template" type="checkbox" name="template" value="1" /> 签名校验
-      </label>
-      <label>
-        <input id="check_keyword" type="checkbox" name="keyword" value="1" /> 关键词检测
-      </label>
-      <label>
-        <input id="check_template" type="checkbox" name="template" value="1" /> 限制频率
-      </label>
-      <label>
-        <input id="check_keyword" type="checkbox" name="keyword" value="1" /> 开启退订
-      </label>
-      <label>
-        <input id="check_keyword" type="checkbox" name="keyword" value="1" /> 开启黑名单
-      </label>
-      <a class="text-muted" style="margin-left:3px" href="javascript:void(0)" onclick="hideExtension()"> <span class="glyphicon glyphicon-remove"></span></a>
     </div>
     <div class="form-group">
       <label class="col-xs-4 col-sm-4 control-label">备注信息:</label>
@@ -199,8 +180,8 @@
     </div>
     <div class="form-group">
       <div class="col-sm-offset-4 col-xs-7 col-sm-7">
-        <button type="button" class="btn btn-success" onclick="formSubmit()">创 建</button>
-        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
+        <button type="button" class="btn btn-success btn-submit" onclick="formSubmit()">创 建</button>
+        <button type="button" class="btn btn-default btn-cancel" onclick="layer.closeAll()">取 消</button>
       </div>
     </div>
   </form>
@@ -259,17 +240,16 @@
     <div class="form-group">
       <label class="col-xs-4 col-sm-4 control-label">安全选项:</label>
       <div class="col-xs-4 col-sm-4">
-        <div class="checkbox">
-          <label>
-            <input id="check_template" type="checkbox" name="template" value="1" {{checkchecked account.template}}/> 签名校验
-          </label>
-          <label>
-            <input id="check_keyword" type="checkbox" name="keyword" value="1" {{checkchecked account.keyword}}/> 关键词检测
-          </label>
-        </div>
+        <select id="security-options" class="form-control" multiple="multiple">
+          <option value="cheese">Check signature template</option>
+          <option value="tomatoes" selected="selected">Check the key words</option>
+          <option value="mozarella">Enable frequency restriction</option>
+          <option value="mushrooms">Unsubscribe business</option>
+          <option value="pepperoni">Enable global blacklist</option>
+        </select>
       </div>
       <div class="col-xs-4 col-sm-4">
-        <span class="help-block">签名与关键词检测</span>
+        <span class="help-block">账号安全策略规则</span>
       </div>
     </div>
     <div class="form-group">
@@ -283,16 +263,16 @@
     </div>
     <div class="form-group">
       <div class="col-sm-offset-4 col-xs-7 col-sm-7">
-        <button type="button" class="btn btn-success" onclick="formChange({{account.id}})">保 存</button>
-        <button type="button" class="btn btn-default" onclick="layer.closeAll()">取 消</button>
+        <button type="button" class="btn btn-success btn-submit" onclick="formChange({{account.id}})">保 存</button>
+        <button type="button" class="btn btn-default btn-cancel" onclick="layer.closeAll()">取 消</button>
       </div>
     </div>
   </form>
 </script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/bootstrap-multiselect.js"></script>
 <script type="text/javascript" src="/js/handlebars.min.js"></script>
-<script type="text/javascript" src="/js/icheck.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript" src="/js/account.js"></script>
 <script type="text/javascript">
@@ -304,14 +284,6 @@
     });
     startup();
   });
-
-  function showExtension() {
-    $("#extension").show();
-  }
-
-  function hideExtension() {
-    $("#extension").hide();
-  }
 </script>
 </body>
 </html>

@@ -36,18 +36,12 @@ function show() {
             layer.open({
                 type: 1,
                 title: '创建新帐号',
-                area: ['880px', '550px'],
+                area: ['880px', '520px'],
                 content: contents
             });
 
             $("input[name=password]").val(genPassword(8));
-
-            $('input[type=checkbox]').iCheck({
-                checkboxClass: 'icheckbox_flat-blue',
-                radioClass: 'iradio_flat-blue',
-                increaseArea: '20%'
-            });
-
+            $("#security-options").multiselect({buttonWidth: '260px'});
         }
     }
     xhr.open(method, url, true);
@@ -118,15 +112,11 @@ function editAccount(id) {
                     layer.open({
                         type: 1,
                         title: '编辑帐号信息',
-                        area: ['880px', '550px'],
+                        area: ['880px', '520px'],
                         content: contents
                     });
 
-                    $('input[type=checkbox]').iCheck({
-                        checkboxClass: 'icheckbox_flat-blue',
-                        radioClass: 'iradio_flat-blue',
-                        increaseArea: '20%'
-                    });
+                    $("#security-options").multiselect({buttonWidth: '260px'});
                 }
             }
             xhr.open(method, url, true);
