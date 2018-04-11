@@ -160,16 +160,33 @@
       <div class="col-xs-4 col-sm-4">
         <div class="checkbox">
           <label>
-            <input id="check_template" type="checkbox" name="template" value="1" /> 签名校验
+            <a class="text-muted" href="javascript:void(0);" onclick="showExtension()">点击设置安全规则选项<small> (可选项)</small></a>
           </label>
-          <label>
-            <input id="check_keyword" type="checkbox" name="keyword" value="1" /> 关键词检测
-          </label>
+          <label class="pull-right"><span class="glyphicon glyphicon-bell"></span></label>
         </div>
       </div>
       <div class="col-xs-4 col-sm-4">
         <span class="help-block">签名与关键词检测</span>
       </div>
+    </div>
+    <div id="extension" class="extension-options">
+      <b>安全选项: &nbsp;&nbsp;</b>
+      <label>
+        <input id="check_template" type="checkbox" name="template" value="1" /> 签名校验
+      </label>
+      <label>
+        <input id="check_keyword" type="checkbox" name="keyword" value="1" /> 关键词检测
+      </label>
+      <label>
+        <input id="check_template" type="checkbox" name="template" value="1" /> 限制频率
+      </label>
+      <label>
+        <input id="check_keyword" type="checkbox" name="keyword" value="1" /> 开启退订
+      </label>
+      <label>
+        <input id="check_keyword" type="checkbox" name="keyword" value="1" /> 开启黑名单
+      </label>
+      <a class="text-muted" style="margin-left:3px" href="javascript:void(0)" onclick="hideExtension()"> <span class="glyphicon glyphicon-remove"></span></a>
     </div>
     <div class="form-group">
       <label class="col-xs-4 col-sm-4 control-label">备注信息:</label>
@@ -287,6 +304,14 @@
     });
     startup();
   });
+
+  function showExtension() {
+    $("#extension").show();
+  }
+
+  function hideExtension() {
+    $("#extension").hide();
+  }
 </script>
 </body>
 </html>
