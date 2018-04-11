@@ -84,7 +84,7 @@
       <div class="row contents">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>消息ID</th><th>通道名称</th><th>接入码</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th style="width:200px">发送时间</th></tr>
+            <tr><th>#</th><th>通道名称</th><th>接入码</th><th>手机号码</th><th>短信内容</th><th>状 态</th><th style="width:200px">发送时间</th></tr>
           </thead>
           <tbody>
           </tbody>
@@ -96,30 +96,30 @@
   {{#each data}}
   <tr>
     <td><span class="glyphicon glyphicon-envelope"></span></td>
-    <td>{{id}}</td>
     <td>{{channel}}</td>
     <td>{{spcode}}</td>
     <td>{{phone}}</td>
-    <td title="{{content}}">{{checkoverflow content 20}}</td>
+    <td title="{{content}}">{{checkoverflow content 14}}</td>
     <td>{{{checkStatus status}}}</td>
     <td>{{create_time}}</td>
   </tr>
   {{/each}}
 </script>
 <script id="check-page" type="text/template">
-  <div class="container" style="width: 580px; height: 350px; padding: 20px">
-    <div class="alert alert-info"><strong>Warning!</strong> 对通道进行测试时，请确保短信内容符合相关法律规定</div>
+  <div class="container" style="width:460px;height:300px">
     <form id="form" class="form-horizontal">
       <div class="form-group">
-        <div class="col-xs-6 col-sm-6">
+        <div class="col-xs-12 col-sm-12">
         <select class="form-control" name="channel" required="required">
           {{#each data}}
           <option value="{{id}}">{{name}}</option>
           {{/each}}
         </select>
         </div>
-        <div class="col-xs-6 col-sm-6">
-          <input type="text" class="form-control" name="spcode" placeholder="接入号码" required="required">
+      </div>
+      <div class="form-group">
+        <div class="col-xs-12 col-sm-12">
+          <input type="text" class="form-control" name="spcode" placeholder="请输入接入号码" required="required">
         </div>
       </div>
       <div class="form-group">

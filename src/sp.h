@@ -21,6 +21,7 @@ typedef struct {
     char password[128];
     char spid[8];
     char spcode[16];
+    char serverid[16];
     char encoding[32];
     int retry;
     int interval;

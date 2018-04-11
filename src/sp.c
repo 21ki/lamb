@@ -315,7 +315,7 @@ void *lamb_sender_loop(void *data) {
         /* Send message to gateway */
         sequenceId = confirmed.sequenceId = cmpp_sequence();
         err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, message->phone,
-                          content, length, msgFmt, true);
+                          content, length, msgFmt, config.serverid, true);
         submit__free_unpacked(message, NULL);
 
         /* Submit count statistical  */
@@ -931,169 +931,206 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
+    /* Id */
     if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
         goto error;
     }
 
+    /* Debug */
     if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
         goto error;
     }
 
+    /* Timeout */
     if (lamb_get_int(&cfg, "Timeout", (int *)&conf->timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
         goto error;
     }
 
+    /* Retry */
     if (lamb_get_int(&cfg, "Retry", &conf->retry) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Retry' parameter\n");
         goto error;
     }
 
+    /* Interval */
     if (lamb_get_int(&cfg, "Interval", &conf->interval) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Interval' parameter\n");
         goto error;
     }
 
+    /* SendTimeout */
     if (lamb_get_int(&cfg, "SendTimeout", (int *)&conf->send_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
         goto error;
     }
 
+    /* RecvTimeout */
     if (lamb_get_int(&cfg, "RecvTimeout", (int *)&conf->recv_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
         goto error;
     }
 
+    /* AcknowledgeTimeout */
     if (lamb_get_int(&cfg, "AcknowledgeTimeout", (int *)&conf->acknowledge_timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'AcknowledgeTimeout' parameter\n");
         goto error;
     }
 
+    /* RedisHost */
     if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
         goto error;
     }
 
+    /* RedisPort */
     if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
         goto error;
     }
 
+    /* Check port validity */
     if (conf->redis_port < 1 || conf->redis_port > 65535) {
         fprintf(stderr, "ERROR: Invalid redis port number\n");
         goto error;
     }
 
+    /* RedisPassword */
     if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
         goto error;
     }
 
+    /* RedisDb */
     if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
         goto error;
     }
 
+    /* Host */
     if (lamb_get_string(&cfg, "Host", conf->host, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid host IP address\n");
         goto error;
     }
 
+    /* Port */
     if (lamb_get_int(&cfg, "Port", &conf->port) != 0) {
         fprintf(stderr, "ERROR: Can't read Port parameter\n");
         goto error;
     }
 
+    /* Check port validity */
     if (conf->port < 1 || conf->port > 65535) {
         fprintf(stderr, "ERROR: Invalid host Port number\n");
         goto error;
     }
 
+    /* User */
     if (lamb_get_string(&cfg, "User", conf->user, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'User' parameter\n");
         goto error;
     }
 
+    /* Password */
     if (lamb_get_string(&cfg, "Password", conf->password, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Password' parameter\n");
         goto error;
     }
 
+    /* Spid */
     if (lamb_get_string(&cfg, "Spid", conf->spid, 8) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Spid' parameter\n");
         goto error;
     }
 
+    /* SpCode */
     if (lamb_get_string(&cfg, "SpCode", conf->spcode, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'SpCode' parameter\n");
         goto error;
     }
 
+    /* ServerId */
+    lamb_get_string(&cfg, "ServerId", conf->serverid, 16);
+
+    /* Encoding */
     if (lamb_get_string(&cfg, "Encoding", conf->encoding, 32) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Encoding' parameter\n");
         goto error;
     }
 
+    /* Concurrent */
     if (lamb_get_int(&cfg, "Concurrent", &conf->concurrent) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Concurrent' parameter\n");
     }
 
+    /* Extended */
     if (lamb_get_bool(&cfg, "Extended", &conf->extended) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Extended' parameter\n");
         goto error;
     }
 
+    /* BackFile */
     if (lamb_get_string(&cfg, "BackFile", conf->backfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'BackFile' parameter\n");
         goto error;
     }
-    
+
+    /* LogFile */
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;
     }
 
+    /* Ac */
     if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
     }
 
+    /* Scheduler */
     if (lamb_get_string(&cfg, "Scheduler", conf->scheduler, 128) != 0) {
         fprintf(stderr, "ERROR: Invalid Scheduler server address\n");
         goto error;
     }
 
+    /* Delivery */
     if (lamb_get_string(&cfg, "Delivery", conf->delivery, 128) != 0) {
         fprintf(stderr, "ERROR: Invalid Delivery server address\n");
         goto error;
     }
 
+    /* DbHost */
     if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
         goto error;
     }
 
+    /* DbPort */
     if (lamb_get_int(&cfg, "DbPort", &conf->db_port) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbPort' parameter\n");
         goto error;
     }
 
+    /* Check port validity */
     if (conf->db_port < 1 || conf->db_port > 65535) {
         fprintf(stderr, "ERROR: Invalid DB port number\n");
         goto error;
     }
 
+    /* DbUser */
     if (lamb_get_string(&cfg, "DbUser", conf->db_user, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbUser' parameter\n");
         goto error;
     }
 
+    /* DbPassword */
     if (lamb_get_string(&cfg, "DbPassword", conf->db_password, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbPassword' parameter\n");
         goto error;
     }
-    
+
+    /* DbName */
     if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
         fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
         goto error;
@@ -1102,6 +1139,7 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     char node[32];
     memset(node, 0, sizeof(node));
 
+    /* Cache nodes */
     if (lamb_get_string(&cfg, "node1", node, 32) != 0) {
         fprintf(stderr, "ERROR: Can't read 'node1' parameter\n");
         goto error;

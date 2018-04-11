@@ -165,7 +165,7 @@ function checkGateway() {
             layer.open({
                 type: 1,
                 title: '通道测试',
-                area: ['620px', '430px'],
+                area: ['600px', '420px'],
                 content: contents
             });
         }

@@ -44,12 +44,12 @@ function outbound() {
 
 function checkStatus(val) {
     val = parseInt(val);
-    var text = '<span class="badge badge-danger">超 时</span>';
+    var text = '<span class="label label-danger">超 时</span>';
 
     if (val == 1) {
-        text = '<span class="badge badge-success">正 常</span>';
+        text = '<span class="label label-success">正 常</span>';
     } else if (val == -1) {
-        text = '<span class="badge badge-default">未 知</span>';
+        text = '<span class="label label-default">未 知</span>';
     }
 
     return new Handlebars.SafeString(text);
