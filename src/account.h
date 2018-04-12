@@ -23,9 +23,7 @@ typedef struct {
     int company;
     char address[16];
     int concurrent;
-    int dbase;
-    bool template;
-    bool keyword;
+    int options;
 } lamb_account_t;
 
 typedef struct {

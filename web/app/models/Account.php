@@ -13,8 +13,7 @@ class AccountModel {
     public $rdb = null;
     private $config = null;
     private $table = 'account';
-    private $column = ['username', 'password', 'spcode', 'company', 'address', 'concurrent',
-                       'dbase', 'template', 'keyword', 'description'];
+    private $column = ['username', 'password', 'spcode', 'company', 'address', 'concurrent', 'options', 'description'];
 
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -47,35 +46,25 @@ class AccountModel {
     public function create(array $data = null) {
         $data = $this->checkArgs($data);
 
-        if (isset($data['company'])) {
-            $company = new CompanyModel();
-            if (!$company->isExist($data['company'])) {
-                return false;
-            }
-        } else {
+        if (!isset($data['company'])) {
             return false;
         }
 
-        if (!isset($data['dbase'])) {
-            $data['dbase'] = 0;
+        $company = new CompanyModel();
+        if (!$company->isExist($data['company'])) {
+            return false;
         }
 
-        if (!isset($data['concurrent'])) {
-            $data['concurrent'] = 0;
-        }
-        
-        if (!isset($data['template'])) {
-            $data['template'] = 0;
+        if (!isset($data['options'])) {
+            $data['options'] = 0;
         }
 
-        if (!isset($data['keyword'])) {
-            $data['keyword'] = 0;
-        }
+        $data['concurrent'] = 0;
 
         if (count($data) == count($this->column)) {
             $sql = 'INSERT INTO ' . $this->table;
-            $sql .= '(username, password, spcode, company, address, concurrent, dbase, template, keyword, description) ';
-            $sql .= 'VALUES(:username, :password, :spcode, :company, :address, :concurrent, :dbase, :template, :keyword, :description)';
+            $sql .= '(username, password, spcode, company, address, concurrent, options, description) ';
+            $sql .= 'VALUES(:username, :password, :spcode, :company, :address, :concurrent, :options, :description)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -118,23 +107,15 @@ class AccountModel {
             unset($data['username']);
         }
 
-        if (!isset($data['template'])) {
-            $data['template'] = 0;
-        }
-
-        if (!isset($data['keyword'])) {
-            $data['keyword'] = 0;
-        }
-        
         $column = $this->keyAssembly($data);
 
         if (count($data) > 0) {
             $sql = 'UPDATE ' . $this->table . ' SET ' . $column . ' WHERE id = :id';
             $sth = $this->db->prepare($sql);
-            $sth->bindParam(':id', $id, PDO::PARAM_INT);
+            $sth->bindValue(':id', $id, PDO::PARAM_INT);
 
             foreach ($data as $key => $val) {
-                $sth->bindParam(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+                $sth->bindValue(':' . $key, $data[$key], is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
             }
 
             if ($sth->execute()) {
@@ -205,14 +186,8 @@ class AccountModel {
             case 'concurrent':
                 $res['concurrent'] = Filter::number($val, 30, 1);
                 break;
-            case 'dbase':
-                $res['dbase'] = Filter::number($val, null, 0);
-                break;
-            case 'template':
-                $res['template'] = Filter::number($val, null, 0, 1);
-                break;
-            case 'keyword':
-                $res['keyword'] = Filter::number($val, null, 0, 1);
+            case 'options':
+                $res['options'] = Filter::number($val, 0, 0);
                 break;
             case 'description':
                 $res['description'] = Filter::string($val, 'no description', 1, 64);

@@ -52,7 +52,37 @@ function formSubmit() {
     var method = "POST";
     var url = '/account/create';
     var form = document.getElementById("form");
+    var options = 0;
+    var selected = [];
     var data = new FormData(form);
+
+    /* Get the selected options */
+    $("#security-options option:selected").each(function(){
+        selected.push($(this).val());
+    });
+
+    for (i in selected) {
+        switch (selected[i]) {
+        case 'template':
+            options |= 1;
+            break;
+        case 'keyword':
+            options |= 1 << 1;
+            break;
+        case 'frequency':
+            options |= 1 << 2;
+            break;
+        case 'unsubscribe':
+            options |= 1 << 3;
+            break;
+        case 'blacklist':
+            options |= 1 << 4;
+            break;
+        }
+    }
+
+    data.append("options", options);
+
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function() {
@@ -70,7 +100,37 @@ function formChange(id) {
     var method = "POST";
     var url = '/account/update?id=' + id;
     var form = document.getElementById("form");
+    var options = 0;
+    var selected = [];
     var data = new FormData(form);
+
+    /* Get the selected options */
+    $("#security-options option:selected").each(function(){
+        selected.push($(this).val());
+    });
+
+    for (i in selected) {
+        switch (selected[i]) {
+        case 'template':
+            options |= 1;
+            break;
+        case 'keyword':
+            options |= 1 << 1;
+            break;
+        case 'frequency':
+            options |= 1 << 2;
+            break;
+        case 'unsubscribe':
+            options |= 1 << 3;
+            break;
+        case 'blacklist':
+            options |= 1 << 4;
+            break;
+        }
+    }
+
+    data.append("options", options);
+
     var xhr = new XMLHttpRequest();
     xhr.responseType = "json";
     xhr.onreadystatechange = function(){
@@ -98,15 +158,10 @@ function editAccount(id) {
                 if (xhr.readyState === xhr.DONE && xhr.status === 200) {
                     data.company = xhr.response.data;
                     var source = document.getElementById("edit-page").innerHTML;
-                    Handlebars.registerHelper('checkcompany', function(company) {
+                    Handlebars.registerHelper('checkselected', function(company) {
                         return (company == data.account.company) ? new Handlebars.SafeString('selected="selected"') : '';
                     });
-                    Handlebars.registerHelper('checkcharge', function(charge, type) {
-                        return (charge == type) ? new Handlebars.SafeString('selected="selected"') : '';
-                    });
-                    Handlebars.registerHelper('checkchecked', function(val) {
-                        return (val == 1) ? new Handlebars.SafeString('checked="checked"') : '';
-                    });
+                    Handlebars.registerHelper('checkchecked', checkChecked);
                     var template = Handlebars.compile(source);
                     var contents = template(data);
                     layer.open({
@@ -116,7 +171,9 @@ function editAccount(id) {
                         content: contents
                     });
 
+                    var selected = checkOptions(data.account.options);
                     $("#security-options").multiselect({buttonWidth: '260px'});
+                    $("#security-options").multiselect('select', selected);
                 }
             }
             xhr.open(method, url, true);
@@ -125,6 +182,33 @@ function editAccount(id) {
     }
     xhr.open(method, url, true);
     xhr.send();
+}
+
+function checkOptions(options) {
+    var selected = [];
+    options = parseInt(options);
+
+    if (options & 1) {
+        selected.push("template");
+    }
+
+    if (options & (1 << 1)) {
+        selected.push("keyword");
+    }
+
+    if (options & (1 << 2)) {
+        selected.push("frequency");
+    }
+
+    if (options & (1 << 3)) {
+        selected.push("unsubscribe");
+    }
+
+    if (options & (1 << 4)) {
+        selected.push("blacklist");
+    }
+
+    return selected;
 }
 
 function deleteAccount(id) {
@@ -170,3 +254,11 @@ function genPassword(length, chars) {
     
     return password;
 } 
+
+function checkSelected(val1, val2){
+    return (val1 == val2) ? new Handlebars.SafeString('selected="selected"') : '';
+}
+
+function checkChecked(val) {
+    return (val == 1) ? new Handlebars.SafeString('checked="checked"') : '';
+}

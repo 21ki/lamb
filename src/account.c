@@ -14,7 +14,7 @@ int lamb_account_get(lamb_cache_t *cache, char *username, lamb_account_t *accoun
     const char *cmd;
     redisReply *reply = NULL;
 
-    cmd = "HMGET account.%s id username password spcode company address concurrent dbase template keyword";
+    cmd = "HMGET account.%s id username password spcode company address concurrent options";
     reply = redisCommand(cache->handle, cmd, username);
 
     if (reply == NULL ) {
@@ -77,19 +77,9 @@ int lamb_account_get(lamb_cache_t *cache, char *username, lamb_account_t *accoun
         account->concurrent = atoi(reply->element[6]->str);
     }
 
-    /* Database */
+    /* Options */
     if (reply->element[7]->len > 0) {
-        account->dbase = atoi(reply->element[7]->str);
-    }
-
-    /* Template */
-    if (reply->element[8]->len > 0) {
-        account->template = (atoi(reply->element[8]->str) == 0) ? false : true;
-    }
-
-    /* Keyword */
-    if (reply->element[9]->len > 0) {
-        account->keyword = (atoi(reply->element[9]->str) == 0) ? false : true;
+        account->options = atoi(reply->element[7]->str);
     }
 
     freeReplyObject(reply);
@@ -102,7 +92,7 @@ int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account) {
     char *column = NULL;
     PGresult *res = NULL;
 
-    column = "id, username, spcode, company, address, concurrent, dbase, template, keyword";
+    column = "id, username, spcode, company, address, concurrent, options";
     snprintf(sql, sizeof(sql), "SELECT %s FROM account WHERE id = %d", column, id);
     res = PQexec(db->conn, sql);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -120,9 +110,7 @@ int lamb_account_fetch(lamb_db_t *db, int id, lamb_account_t *account) {
     account->company = atoi(PQgetvalue(res, 0, 3));
     strncpy(account->address, PQgetvalue(res, 0, 4), 15);
     account->concurrent = atoi(PQgetvalue(res, 0, 5));
-    account->dbase = atoi(PQgetvalue(res, 0, 6));
-    account->template = atoi(PQgetvalue(res, 0, 7)) == 0 ? false : true;
-    account->keyword = atoi(PQgetvalue(res, 0, 8)) == 0 ? false : true;
+    account->options = atoi(PQgetvalue(res, 0, 6));
 
     PQclear(res);
     return 0;
@@ -155,9 +143,7 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
             a->company = atoi(PQgetvalue(res, i, 3));
             strncpy(a->address, PQgetvalue(res, i, 4), 15);
             a->concurrent = atoi(PQgetvalue(res, i, 5));
-            a->dbase = atoi(PQgetvalue(res, i, 6));
-            a->template = atoi(PQgetvalue(res, i, 7)) == 0 ? false : true;
-            a->keyword = atoi(PQgetvalue(res, i, 8)) == 0 ? false : true;
+            a->options = atoi(PQgetvalue(res, i, 6));
             accounts->list[j] = a;
             accounts->len++;
         } else {

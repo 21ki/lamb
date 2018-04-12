@@ -20,9 +20,7 @@ CREATE TABLE account (
     company int NOT NULL,
     address varchar(32) NOT NULL,
     concurrent int NOT NULL,
-    dbase int NOT NULL,
-    template int NOT NULL,
-    keyword int NOT NULL,
+    options int NOT NULL,
     description text NOT NULL,
     create_time timestamp without time zone NOT NULL default now()::timestamp(0) without time zone
 );

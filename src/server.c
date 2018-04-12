@@ -167,7 +167,7 @@ void lamb_reload(int signum) {
     }
 
     /* fetch template information */
-    if (global->account.template) {
+    if (global->account.options & 1) {
         global->templates->free = free;
         it = lamb_list_iterator_new(global->templates, LIST_TAIL);
         while ((node = lamb_list_iterator_next(it))) {
@@ -183,7 +183,7 @@ void lamb_reload(int signum) {
     }
 
     /* fetch keyword information */
-    if (global->account.keyword) {
+    if (global->account.options & (1 << 1)) {
         global->keywords->free = free;
         it = lamb_list_iterator_new(global->keywords, LIST_TAIL);
         while ((node = lamb_list_iterator_next(it))) {
@@ -309,25 +309,30 @@ void *lamb_work_loop(void *data) {
             goto done;
         }
 
-        /* Check phone blacklist */
-        if (lamb_check_blacklist(blacklist, message->phone)) {
-            status->blk++;
-            lamb_direct_response(mo, &resp, message, 7);
-            goto done;
+        /* Check global blacklist */
+        if (global->account.options & (1 << 4)) {
+            if (lamb_check_blacklist(blacklist, message->phone)) {
+                status->blk++;
+                lamb_direct_response(mo, &resp, message, 7);
+                goto done;
+            }
         }
-
         /* Check user unsubscribe */
-        if (lamb_check_unsubscribe(unsubscribe, aid, message->phone)) {
-            status->usb++;
-            lamb_direct_response(mo, &resp, message, 7);
-            goto done;
+        if (global->account.options & (1 << 3)) {
+            if (lamb_check_unsubscribe(unsubscribe, aid, message->phone)) {
+                status->usb++;
+                lamb_direct_response(mo, &resp, message, 7);
+                goto done;
+            }
         }
 
         /* Check limit frequency */
-        if (lamb_check_frequency(frequency, aid, message->phone)) {
-            status->limt++;
-            lamb_direct_response(mo, &resp, message, 7);
-            goto done;
+        if (global->account.options & (1 << 2)) {
+            if (lamb_check_frequency(frequency, aid, message->phone)) {
+                status->limt++;
+                lamb_direct_response(mo, &resp, message, 7);
+                goto done;
+            }
         }
 
         if (fromcode != NULL) {
@@ -355,7 +360,7 @@ void *lamb_work_loop(void *data) {
         }
 
         /* Template Processing */
-        if (global->account.template) {
+        if (global->account.options & 1) {
             success = false;
             lamb_list_iterator_t *ts;
             ts = lamb_list_iterator_new(global->templates, LIST_HEAD);
@@ -376,7 +381,7 @@ void *lamb_work_loop(void *data) {
         }
 
         /* Keywords Filtration */
-        if (global->account.keyword) {
+        if (global->account.options & (1 << 1)) {
             success = true;
             lamb_list_iterator_t *ks;
             ks = lamb_list_iterator_new(global->keywords, LIST_HEAD);
@@ -707,10 +712,11 @@ void *lamb_store_loop(void *data) {
                 }
 
                 /* check unsubscribe content */
-                if (lamb_check_unsubval(d->content, d->length)) {
-                    lamb_list_rpush(global->unsubscribe, lamb_node_new(lamb_strdup(d->phone)));
+                if (global->account.options & (1 << 3)) {
+                    if (lamb_check_unsubval(d->content, d->length)) {
+                        lamb_list_rpush(global->unsubscribe, lamb_node_new(lamb_strdup(d->phone)));
+                    }
                 }
-
                 /* save to message database */
                 lamb_write_deliver(&global->mdb, d);
             }
@@ -1262,7 +1268,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
         return -1;
     }
 
-    if (global->account.template) {
+    if (global->account.options & 1) {
         err = lamb_get_template(&global->db, aid, global->templates);
         if (err) {
             lamb_log(LOG_ERR, "Can't fetch template information");
@@ -1278,7 +1284,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
         return -1;
     }
 
-    if (global->account.keyword) {
+    if (global->account.options & (1 << 1)) {
         err = lamb_keyword_get_all(&global->db, global->keywords);
         if (err) {
             lamb_log(LOG_ERR, "Can't fetch keyword information");
