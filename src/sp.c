@@ -243,10 +243,15 @@ void *lamb_sender_loop(void *data) {
     Submit *message;
     int length;
     char content[256];
+    char *serverid = NULL;
 
     memset(spcode, 0, sizeof(spcode));
     len = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
-    
+
+    if (strlen(config.serverid) > 0) {
+        serverid = config.serverid;
+    }
+
     while (true) {
         if (!cmpp.ok) {
             lamb_sleep(1000);
@@ -315,7 +320,7 @@ void *lamb_sender_loop(void *data) {
         /* Send message to gateway */
         sequenceId = confirmed.sequenceId = cmpp_sequence();
         err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, message->phone,
-                          content, length, msgFmt, config.serverid, true);
+                          content, length, msgFmt, serverid, true);
         submit__free_unpacked(message, NULL);
 
         /* Submit count statistical  */
