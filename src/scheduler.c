@@ -344,7 +344,7 @@ void *lamb_push_loop(void *arg) {
     channels = lamb_list_new();
 
     if (channels) {
-        lamb_route_channel(&db, client->id, channels);
+        lamb_get_channels(&db, client->id, channels);
     } else {
         lamb_log(LOG_ERR, "create %d routing object failed", client->id);
         request__free_unpacked(client, NULL);
@@ -686,23 +686,6 @@ int lamb_child_server(int *sock, const char *host, unsigned short *port, int pro
     }
 
     return 0;
-}
-
-void lamb_route_channel(lamb_db_t *db, int id, lamb_list_t *channels) {
-    int err, acc;
-    lamb_account_t account;
-
-    memset(&account, 0, sizeof(account));
-    err = lamb_account_fetch(db, id, &account);
-
-    if (!err) {
-        acc = lamb_rexp_routing(db, account.username);
-        if (acc > 0) {
-            lamb_get_channels(db, acc, channels);
-        }
-    }
-
-    return;
 }
 
 bool lamb_check_operator(lamb_channel_t *channel, char *phone) {
