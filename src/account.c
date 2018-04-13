@@ -21,7 +21,7 @@ int lamb_account_get(lamb_cache_t *cache, char *username, lamb_account_t *accoun
         return -1;
     }
 
-    if ((reply->type != REDIS_REPLY_ARRAY) || (reply->elements != 10)) {
+    if ((reply->type != REDIS_REPLY_ARRAY) || (reply->elements != 8)) {
         freeReplyObject(reply);
         return -1;
     }

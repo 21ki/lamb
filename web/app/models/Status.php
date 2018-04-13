@@ -20,10 +20,10 @@ class StatusModel {
         $account = new AccountModel();
 
         foreach ($account->getAll() as $a) {
-            $pid = $this->getPid($a['id'], 'client');
-            if ($pid > 0 && is_dir('/proc/' . $pid)) {
+            if ($this->is_online('client', $a['id'], 5)) {
                 $result[$a['id']]['username'] = $a['username'];
                 $result[$a['id']]['company'] = $a['company'];
+                $result[$a['id']]['address'] = $a['address'];
                 $result[$a['id']]['queue'] = $this->getQueue($a['id']);
                 $result[$a['id']]['deliver'] = $this->getDeliver($a['id']);
                 $result[$a['id']]['speed'] = $this->getSpeed($a['id'], 'client');
@@ -44,7 +44,7 @@ class StatusModel {
             $result[$g['id']]['host'] = $g['host'];
             $result[$g['id']]['speed'] = $this->getSpeed($g['id'], 'gateway');
             $result[$g['id']]['error'] = $this->getError($g['id'], 'gateway');
-            if (is_dir('/proc/' . $this->getPid($g['id'], 'gateway'))) {
+            if ($this->is_online('gateway', $g['id'], 5)) {
                 $result[$g['id']]['status'] = $this->getStatus($g['id'], 'gateway');
             } else {
                 $result[$g['id']]['status'] = -1;
@@ -120,5 +120,22 @@ class StatusModel {
         }
 
         return $status;
+    }
+
+    public function is_online($type = null, $id = 0, $interval = 0) {
+        $id = intval($id);
+
+        if ($type === null) {
+            return false;
+        }
+        
+        $current = time();
+        $reply = $this->rdb->hGet($type . '.' . $id, 'online');
+
+        if (($current - intval($reply)) < $interval) {
+            return true;
+        }
+
+        return false;
     }
 }

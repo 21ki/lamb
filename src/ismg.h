@@ -9,6 +9,7 @@
 
 #include <stdbool.h>
 #include <cmpp.h>
+#include "cache.h"
 #include "account.h"
 
 #define LAMB_SUBMIT 1
@@ -61,6 +62,8 @@ void lamb_work_loop(lamb_client_t *client);
 void *lamb_deliver_loop(void *data);
 int lamb_mt_connect(int *sock, lamb_client_t *client, lamb_config_t *cfg);
 void *lamb_stat_loop(void *data);
+void *lamb_online_loop(void *arg);
+int lamb_state_renewal(lamb_cache_t *cache, int id);
 bool lamb_is_login(lamb_cache_t *cache, int account);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 

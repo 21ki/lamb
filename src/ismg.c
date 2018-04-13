@@ -28,7 +28,6 @@
 #include <cmpp.h>
 #include "ismg.h"
 #include "common.h"
-#include "cache.h"
 #include "socket.h"
 #include "config.h"
 #include "message.h"
@@ -329,6 +328,9 @@ void lamb_work_loop(lamb_client_t *client) {
     /* Client Message Deliver */
     lamb_start_thread(lamb_deliver_loop, client, 1);
 
+    /* On line signal state synchronization */
+    lamb_start_thread(lamb_online_loop, client, 1);
+
     int len;
     char *pk, *buf;
     char phone[21] = {0};
@@ -616,17 +618,22 @@ void *lamb_deliver_loop(void *data) {
 
 void *lamb_stat_loop(void *data) {
     lamb_client_t *client;
-    redisReply *reply = NULL;
+    unsigned long long speed;
     unsigned long long last, error;
 
     last = 0;
     client = (lamb_client_t *)data;
+    redisReply *reply = NULL;
 
     while (true) {
+        speed = (total - last) / 5;
         error = status.timeo + status.fmt + status.len + status.err;
+
+        pthread_mutex_lock(&rdb.lock);
         reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu error %llu",
-                             client->account->id, getpid(),
-                             (unsigned long long)((total - last) / 5), error);
+                             client->account->id, getpid(), speed, error);
+        pthread_mutex_unlock(&rdb.lock);
+
         if (reply != NULL) {
             freeReplyObject(reply);
             reply = NULL;
@@ -634,37 +641,66 @@ void *lamb_stat_loop(void *data) {
             lamb_log(LOG_ERR, "lamb exec redis command error");
         }
 
+#ifdef _DEBUG
         printf("-[ %s ]-> recv: %llu, store: %llu, rep: %llu, delv: %llu, ack: %llu, "
                "timeo: %llu, fmt: %llu, len: %llu, err: %llu\n",
                client->account->username, status.recv, status.store, status.rep,
                status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
+#endif
 
         total = 0;
-        sleep(5);
+        lamb_sleep(5000);
     }
 
     pthread_exit(NULL);
 }
 
-bool lamb_is_login(lamb_cache_t *cache, int account) {
-    int pid = 0;
+void *lamb_online_loop(void *arg) {
+    lamb_client_t *client;
+
+    client = (lamb_client_t *)arg;
+
+    while (true) {
+        pthread_mutex_lock(&rdb.lock);
+        lamb_state_renewal(&rdb, client->account->id);
+        pthread_mutex_unlock(&rdb.lock);
+        lamb_sleep(3000);
+    }
+
+    pthread_exit(NULL);
+}
+
+int lamb_state_renewal(lamb_cache_t *cache, int id) {
     redisReply *reply = NULL;
 
-    reply = redisCommand(cache->handle, "HGET client.%d pid", account);
+    reply = redisCommand(cache->handle, "HSET client.%d online %ld", id, time(NULL));
+
+    if (reply != NULL) {
+        freeReplyObject(reply);
+        return 0;
+    }
+
+    return -1;
+}
+
+bool lamb_is_login(lamb_cache_t *cache, int account) {
+    int last = 0;
+    bool online = false;
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HGET client.%d online", account);
     if (reply != NULL) {
         if (reply->type == REDIS_REPLY_STRING) {
-            pid = (reply->len > 0) ? atoi(reply->str) : 0;
-            if (pid > 0) {
-                if (kill(pid, 0) == 0) {
-                    return true;
-                }
+            last = (reply->len > 0) ? atoi(reply->str) : 0;
+            if ((time(NULL) - last) < 7) {
+                online = true;
             }
         }
 
         freeReplyObject(reply);
     }
 
-    return false;
+    return online;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
