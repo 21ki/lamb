@@ -23,7 +23,7 @@ class StatusModel {
             if ($this->is_online('client', $a['id'], 5)) {
                 $result[$a['id']]['username'] = $a['username'];
                 $result[$a['id']]['company'] = $a['company'];
-                $result[$a['id']]['address'] = $a['address'];
+                $result[$a['id']]['address'] = $this->getAddress($a['id']);
                 $result[$a['id']]['queue'] = $this->getQueue($a['id']);
                 $result[$a['id']]['deliver'] = $this->getDeliver($a['id']);
                 $result[$a['id']]['speed'] = $this->getSpeed($a['id'], 'client');
@@ -122,6 +122,18 @@ class StatusModel {
         return $status;
     }
 
+    public function getAddress($id = null) {
+        $id = intval($id);
+        $addr = 'unknown';
+
+        $reply = $this->rdb->hGet('client.' . $id, 'addr');
+        if ($reply !== false) {
+            $addr = $reply;
+        }
+
+        return $addr;
+    }
+    
     public function is_online($type = null, $id = 0, $interval = 0) {
         $id = intval($id);
 

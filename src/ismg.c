@@ -638,8 +638,8 @@ void *lamb_stat_loop(void *data) {
         error = status.timeo + status.fmt + status.len + status.err;
 
         pthread_mutex_lock(&rdb->lock);
-        reply = redisCommand(rdb->handle, "HMSET client.%d pid %u speed %llu error %llu",
-                             client->account->id, getpid(), speed, error);
+        reply = redisCommand(rdb->handle, "HMSET client.%d pid %u addr %s speed %llu error %llu",
+                             client->account->id, getpid(), client->addr, speed, error);
         pthread_mutex_unlock(&rdb->lock);
 
         if (reply != NULL) {
