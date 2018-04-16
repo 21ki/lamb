@@ -219,3 +219,19 @@ size_t lamb_pack_assembly(char **buf, int method, void *pk, size_t len) {
 
     return 0;
 }
+
+void lamb_nn_close(int sock) {
+    int len;
+    char *bye;
+
+    len = lamb_pack_assembly(&bye, LAMB_BYE, NULL, 0);
+
+    if (len > 0) {
+        nn_send(sock, bye, len, NN_DONTWAIT);
+        free(bye);
+    }
+
+    nn_close(sock);
+
+    return;
+}

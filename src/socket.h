@@ -58,5 +58,6 @@ int lamb_nn_access(const char *host, int id, int type, int timeout);
 Response *lamb_nn_request(const char *host, Request *req, int timeout);
 int lamb_nn_server(int *sock, const char *listen, unsigned short port, int protocol);
 size_t lamb_pack_assembly(char **buf, int method, void *pk, size_t len);
+void lamb_nn_close(int sock);
 
 #endif

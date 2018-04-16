@@ -65,6 +65,8 @@ void *lamb_stat_loop(void *data);
 void *lamb_online_loop(void *arg);
 int lamb_state_renewal(lamb_cache_t *cache, int id);
 bool lamb_is_login(lamb_cache_t *cache, int account);
+int lamb_check_signal(lamb_cache_t *cache, int id);
+void lamb_clear_signal(lamb_cache_t *cache, int id);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

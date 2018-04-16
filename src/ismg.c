@@ -34,7 +34,7 @@
 
 static int mt, mo;
 static cmpp_ismg_t cmpp;
-static lamb_cache_t rdb;
+static lamb_cache_t *rdb;
 static lamb_config_t config;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
@@ -82,8 +82,14 @@ int main(int argc, char *argv[]) {
 
     int err;
 
-    /* Redis Cache */
-    err = lamb_cache_connect(&rdb, "127.0.0.1", 6379, NULL, 0);
+    /* Redis database */
+    rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
+    if (!rdb) {
+        lamb_log(LOG_ERR, "the kernel can't allocate memory");
+        return -1;
+    }
+
+    err = lamb_cache_connect(rdb, "127.0.0.1", 6379, NULL, 0);
     if (err) {
         lamb_log(LOG_ERR, "can't connect to redis server");
         return -1;
@@ -212,7 +218,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                                          sizeof(username), 6);
                     snprintf(key, sizeof(key), "account.%s", username);
                     
-                    if (!lamb_cache_has(&rdb, key)) {
+                    if (!lamb_cache_has(rdb, key)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
                         lamb_log(LOG_WARNING, "Incorrect source address from client %s",
                                  inet_ntoa(clientaddr.sin_addr));
@@ -220,13 +226,13 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     }
 
                     memset(password, 0, sizeof(password));
-                    lamb_cache_hget(&rdb, key, "password", password, sizeof(password));
+                    lamb_cache_hget(rdb, key, "password", password, sizeof(password));
 
                     /* Check AuthenticatorSource */
                     if (cmpp_check_authentication(&pack, sizeof(cmpp_pack_t), username, password)) {
                         lamb_account_t account;
                         memset(&account, 0, sizeof(account));
-                        err = lamb_account_get(&rdb, username, &account);
+                        err = lamb_account_get(rdb, username, &account);
                         if (err) {
                             cmpp_connect_resp(&sock, sequenceId, 9);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
@@ -236,7 +242,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         }
 
                         /* Check Duplicate Logon */
-                        if (lamb_is_login(&rdb, account.id)) {
+                        if (lamb_is_login(rdb, account.id)) {
                             cmpp_connect_resp(&sock, sequenceId, 10);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                             close(sockfd);
@@ -258,7 +264,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         } else if (pid == 0) {
                             close(epfd);
                             cmpp_ismg_close(cmpp);
-                            lamb_cache_close(&rdb);
+                            lamb_cache_close(rdb);
                             
                             lamb_client_t client;
                             client.sock = &sock;
@@ -300,7 +306,7 @@ void lamb_work_loop(lamb_client_t *client) {
     memset(&status, 0, sizeof(lamb_status_t));
 
     /* Redis Cache */
-    err = lamb_cache_connect(&rdb, "127.0.0.1", 6379, NULL, 0);
+    err = lamb_cache_connect(rdb, "127.0.0.1", 6379, NULL, 0);
     if (err) {
         lamb_log(LOG_ERR, "can't connect to redis %s server", "127.0.0.1");
         return;
@@ -460,17 +466,8 @@ void lamb_work_loop(lamb_client_t *client) {
 
 exit:
     close(epfd);
+    lamb_nn_close(mt);
     cmpp_sock_close(client->sock);
-
-    char *bye;
-    len = lamb_pack_assembly(&bye, LAMB_BYE, NULL, 0);
-
-    if (len > 0) {
-        nn_send(mt, bye, len, NN_DONTWAIT);
-        free(bye);
-    }
-
-    nn_close(mt);
     pthread_cond_destroy(&cond);
     pthread_mutex_destroy(&mutex);
     
@@ -617,22 +614,33 @@ void *lamb_deliver_loop(void *data) {
 }
 
 void *lamb_stat_loop(void *data) {
+    int signal;
     lamb_client_t *client;
     unsigned long long speed;
-    unsigned long long last, error;
+    unsigned long long error;
+    time_t last_time;
+    int interval;
 
-    last = 0;
     client = (lamb_client_t *)data;
     redisReply *reply = NULL;
+    last_time = time(NULL);
 
     while (true) {
-        speed = (total - last) / 5;
+        interval = time(NULL) - last_time;
+
+        if (interval > 0) {
+            speed = total / interval;
+        }
+
+        total = 0;
+        last_time = time(NULL);
+
         error = status.timeo + status.fmt + status.len + status.err;
 
-        pthread_mutex_lock(&rdb.lock);
-        reply = redisCommand(rdb.handle, "HMSET client.%d pid %u speed %llu error %llu",
+        pthread_mutex_lock(&rdb->lock);
+        reply = redisCommand(rdb->handle, "HMSET client.%d pid %u speed %llu error %llu",
                              client->account->id, getpid(), speed, error);
-        pthread_mutex_unlock(&rdb.lock);
+        pthread_mutex_unlock(&rdb->lock);
 
         if (reply != NULL) {
             freeReplyObject(reply);
@@ -648,7 +656,17 @@ void *lamb_stat_loop(void *data) {
                status.delv, status.ack, status.timeo, status.fmt, status.len, status.err);
 #endif
 
-        total = 0;
+        pthread_mutex_lock(&rdb->lock);
+        signal = lamb_check_signal(rdb, client->account->id);
+        pthread_mutex_unlock(&rdb->lock);
+        printf("-> signal: %d\n", signal);
+        if (signal == 9) {
+            lamb_nn_close(mt);
+            lamb_nn_close(mo);
+            lamb_sleep(1000);
+            exit(EXIT_SUCCESS);
+        }
+        
         lamb_sleep(5000);
     }
 
@@ -661,13 +679,17 @@ void *lamb_online_loop(void *arg) {
     client = (lamb_client_t *)arg;
 
     while (true) {
-        pthread_mutex_lock(&rdb.lock);
-        lamb_state_renewal(&rdb, client->account->id);
-        pthread_mutex_unlock(&rdb.lock);
+        pthread_mutex_lock(&rdb->lock);
+        lamb_state_renewal(rdb, client->account->id);
+        pthread_mutex_unlock(&rdb->lock);
         lamb_sleep(3000);
     }
 
     pthread_exit(NULL);
+}
+
+void lamb_mt_close(int sock) {
+
 }
 
 int lamb_state_renewal(lamb_cache_t *cache, int id) {
@@ -701,6 +723,37 @@ bool lamb_is_login(lamb_cache_t *cache, int account) {
     }
 
     return online;
+}
+
+int lamb_check_signal(lamb_cache_t *cache, int id) {
+    int signal = 0;
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HGET client.%d signal", id);
+
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_STRING && reply->len > 0) {
+            signal = atoi(reply->str);
+        }
+        freeReplyObject(reply);
+    }
+
+    /* Reset signal state */
+    lamb_clear_signal(cache, id);
+
+    return signal;
+}
+
+void lamb_clear_signal(lamb_cache_t *cache, int id) {
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HSET client.%d signal 0", id);
+
+    if (reply != NULL) {
+        freeReplyObject(reply);
+    }
+
+    return;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {

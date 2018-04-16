@@ -824,7 +824,9 @@ void *lamb_stat_loop(void *data) {
                    status->rep, status->delv, status->fmt, status->blk, status->tmp,
                    status->key, status->usb, status->limt, status->rejt);
 
+        pthread_mutex_lock(&global->rdb->lock);
         signal = lamb_check_signal(&global->rdb, aid);
+        pthread_mutex_unlock(&global->rdb->lock);
         if (!sleeping && signal == 1) {
             lamb_reload(SIGHUP);
         }
@@ -1297,11 +1299,11 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     return 0;
 }
 
-int lamb_check_signal(lamb_cache_t *rdb, int id) {
+int lamb_check_signal(lamb_cache_t *cache, int id) {
     int signal = 0;
     redisReply *reply = NULL;
 
-    reply = redisCommand(rdb->handle, "HGET server.%d signal", id);
+    reply = redisCommand(cache->handle, "HGET server.%d signal", id);
 
     if (reply != NULL) {
         if (reply->type == REDIS_REPLY_STRING && reply->len > 0) {
@@ -1311,15 +1313,15 @@ int lamb_check_signal(lamb_cache_t *rdb, int id) {
     }
 
     /* Reset signal state */
-    lamb_clear_signal(rdb, id);
+    lamb_clear_signal(cache, id);
 
     return signal;
 }
 
-void lamb_clear_signal(lamb_cache_t *rdb, int id) {
+void lamb_clear_signal(lamb_cache_t *cache, int id) {
     redisReply *reply = NULL;
 
-    reply = redisCommand(rdb->handle, "HSET server.%d signal 0", id);
+    reply = redisCommand(cache->handle, "HSET server.%d signal 0", id);
 
     if (reply != NULL) {
         freeReplyObject(reply);
