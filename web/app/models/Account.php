@@ -136,8 +136,13 @@ class AccountModel {
         $id = intval($id);
 
         if ($this->checkDepend($id)) {
+            $account = $this->get($id);
             $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . $id;
             if ($this->db->query($sql)) {
+                $this->rdb->hSet('client.' . $id, 'signal', 9);
+                if (isset($account['username'])) {
+                    $this->rdb->del('account.' . $account['username']);
+                }
                 return true;
             }
         }
