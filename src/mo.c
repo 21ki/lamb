@@ -30,7 +30,7 @@
 #include "message.h"
 #include "mo.h"
 
-
+static lamb_cache_t *rdb;
 static lamb_list_t *pool;
 static lamb_config_t config;
 static pthread_cond_t cond;
@@ -98,6 +98,22 @@ void lamb_event_loop(void) {
     }
 
     pool->match = lamb_queue_compare;
+
+    /* Redis Initialization */
+    rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
+
+    if (!rdb) {
+        lamb_log(LOG_ERR, "The kernel can't allocate memory");
+        return;
+    }
+
+    err = lamb_cache_connect(rdb, config.redis_host, config.redis_port,
+                             NULL, config.redis_db);
+
+    if (err) {
+        lamb_log(LOG_ERR, "can't connect to redis database");
+        return;
+    }
 
     /* Server Initialization */
     fd = nn_socket(AF_SP, NN_REP);
@@ -273,9 +289,9 @@ void *lamb_push_loop(void *arg) {
 
         if (CHECK_COMMAND(buf) == LAMB_REPORT) {
             rpack = report__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            nn_freemsg(buf);
 
             if (!rpack) {
-                nn_freemsg(buf);
                 continue;
             }
 
@@ -295,15 +311,14 @@ void *lamb_push_loop(void *arg) {
             }
 
             report__free_unpacked(rpack, NULL);
-            nn_freemsg(buf);
             continue;
         }
 
         if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
             dpack = deliver__unpack(NULL, rc - HEAD, (uint8_t *)(buf + HEAD));
+            nn_freemsg(buf);
 
             if (!dpack) {
-                nn_freemsg(buf);
                 continue;
             }
 
@@ -324,7 +339,6 @@ void *lamb_push_loop(void *arg) {
             }
 
             deliver__free_unpacked(dpack, NULL);
-            nn_freemsg(buf);
             continue;
         }
 
@@ -559,7 +573,7 @@ void *lamb_stat_loop(void *arg) {
         
         while ((node = lamb_list_iterator_next(it))) {
             queue = (lamb_queue_t *)node->val;
-            lamb_debug("queue: %d, len: %u\n", queue->id, queue->list->len);
+            lamb_sync_update(rdb, queue->id, queue->list->len);
         }
 
         lamb_list_iterator_destroy(it);
@@ -567,6 +581,23 @@ void *lamb_stat_loop(void *arg) {
     }
 
     pthread_exit(NULL);
+}
+
+int lamb_sync_update(lamb_cache_t *cache, int id, unsigned int num) {
+    redisReply *reply = NULL;
+
+    if (!cache) {
+        return -1;
+    }
+
+    reply = redisCommand(cache->handle, "HSET mo.queue %d %u", id, num);
+
+    if (reply != NULL) {
+        freeReplyObject(reply);
+        return 0;
+    }
+
+    return -1;
 }
 
 int lamb_read_config(lamb_config_t *conf, const char *file) {
@@ -580,36 +611,73 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
         goto error;
     }
 
+    /* Id */
     if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
         goto error;
     }
 
+    /* Debug */
     if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
         goto error;
     }
 
+    /* Listen Address */
     if (lamb_get_string(&cfg, "Listen", conf->listen, 16) != 0) {
         fprintf(stderr, "ERROR: Invalid Listen IP address\n");
         goto error;
     }
 
+    /* Listen Port */
     if (lamb_get_int(&cfg, "Port", &conf->port) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Port' parameter\n");
         goto error;
     }
 
+    /* Timeout */
     if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
         goto error;
     }
 
+    /* Log file */
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
         goto error;
     }
 
+    /* Redis Host */
+    if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+        goto error;
+    }
+
+    /* Redis Port */
+    if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+        goto error;
+    }
+
+    /* Check redis port */
+    if (conf->redis_port < 1 || conf->redis_port > 65535) {
+        fprintf(stderr, "ERROR: Invalid redis port number\n");
+        goto error;
+    }
+
+    /* Redis Password */
+    if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
+        goto error;
+    }
+
+    /* Redis database number */
+    if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
+        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+        goto error;
+    }
+
+    /* Ac */
     if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
         fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
     }

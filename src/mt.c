@@ -309,7 +309,6 @@ void *lamb_push_loop(void *arg) {
             }
 
             submit__free_unpacked(packet, NULL);
-            
             continue;
         }
 
