@@ -817,21 +817,31 @@ void *lamb_stat_loop(void *data) {
             freeReplyObject(reply);
         }
 
+#ifdef _DEBUG
         /* Debug information */
-        lamb_debug("store: %u, bill: %u, toal: %lld, sub: %llu, rep: %llu, delv: %llu, "
-                   "fmt: %llu, blk: %llu, tmp: %llu, key: %llu, usb: %llu, limt: %llu, rejt: %llu\n",
-                   global->storage->len, global->billing->len, status->toal, status->sub,
-                   status->rep, status->delv, status->fmt, status->blk, status->tmp,
-                   status->key, status->usb, status->limt, status->rejt);
+        printf("store: %u, bill: %u, toal: %lld, sub: %llu, rep: %llu, delv: %llu, "
+               "fmt: %llu, blk: %llu, tmp: %llu, key: %llu, usb: %llu, limt: %llu, rejt: %llu\n",
+               global->storage->len, global->billing->len, status->toal, status->sub,
+               status->rep, status->delv, status->fmt, status->blk, status->tmp,
+               status->key, status->usb, status->limt, status->rejt);
+#endif
 
-        pthread_mutex_lock(&global->rdb->lock);
+        pthread_mutex_lock(&global->rdb.lock);
         signal = lamb_check_signal(&global->rdb, aid);
-        pthread_mutex_unlock(&global->rdb->lock);
-        if (!sleeping && signal == 1) {
-            lamb_reload(SIGHUP);
+        pthread_mutex_unlock(&global->rdb.lock);
+        if (!sleeping) {
+            switch (signal) {
+            case 1:
+                lamb_reload(SIGHUP);
+                break;
+            case 9:
+                lamb_exit_cleanup();
+                break;
+            }
+
         }
 
-        sleep(3);
+        lamb_sleep(3000);
     }
 
     
@@ -960,19 +970,21 @@ bool lamb_check_blacklist(lamb_caches_t *cache, char *number) {
         i = (phone % cache->len);
     }
 
-    if (i > -1) {
-        pthread_mutex_lock(&cache->nodes[i]->lock);
-        reply = redisCommand(cache->nodes[i]->handle, "EXISTS %lu", phone);
-        pthread_mutex_unlock(&cache->nodes[i]->lock);
+    if (i < 0) {
+        return r;
+    }
 
-        if (reply != NULL) {
-            if (reply->type == REDIS_REPLY_INTEGER) {
-                if (reply->integer == 1) {
-                    r = true;
-                }
+    pthread_mutex_lock(&cache->nodes[i]->lock);
+    reply = redisCommand(cache->nodes[i]->handle, "EXISTS %lu", phone);
+    pthread_mutex_unlock(&cache->nodes[i]->lock);
+
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_INTEGER) {
+            if (reply->integer == 1) {
+                r = true;
             }
-            freeReplyObject(reply);
         }
+        freeReplyObject(reply);
     }
 
     return r;
@@ -990,19 +1002,21 @@ bool lamb_check_unsubscribe(lamb_caches_t *cache, int id, char *number) {
         i = (phone % cache->len);
     }
 
-    if (i > -1) {
-        pthread_mutex_lock(&cache->nodes[i]->lock);
-        reply = redisCommand(cache->nodes[i]->handle, "EXISTS %d.%lu", id, phone);
-        pthread_mutex_unlock(&cache->nodes[i]->lock);
+    if (i < 0) {
+        return r;
+    }
 
-        if (reply != NULL) {
-            if (reply->type == REDIS_REPLY_INTEGER) {
-                if (reply->integer == 1) {
-                    r = true;
-                }
+    pthread_mutex_lock(&cache->nodes[i]->lock);
+    reply = redisCommand(cache->nodes[i]->handle, "EXISTS %d.%lu", id, phone);
+    pthread_mutex_unlock(&cache->nodes[i]->lock);
+
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_INTEGER) {
+            if (reply->integer == 1) {
+                r = true;
             }
-            freeReplyObject(reply);
         }
+        freeReplyObject(reply);
     }
 
     return r;
@@ -1020,24 +1034,26 @@ bool lamb_check_frequency(lamb_caches_t *cache, int id, char *number) {
         i = (phone % cache->len);
     }
 
-    if (i > -1) {
-        pthread_mutex_lock(&cache->nodes[i]->lock);
-        reply = redisCommand(cache->nodes[i]->handle, "INCRBY %d.%lu 1", id, phone);
-        pthread_mutex_unlock(&cache->nodes[i]->lock);
+    if (i < 0) {
+        return r;
+    }
 
-        if (reply != NULL) {
-            if (reply->type == REDIS_REPLY_INTEGER) {
-                if (reply->integer == 1) {
-                    freeReplyObject(reply);
-                    pthread_mutex_lock(&cache->nodes[i]->lock);
-                    reply = redisCommand(cache->nodes[i]->handle, "EXPIRE %d.%lu %d", id, phone, MAX_LIFETIME);
-                    pthread_mutex_unlock(&cache->nodes[i]->lock);
-                } else if (reply->integer > LAMB_LIMIT) {
-                    r = true;
-                }
+    pthread_mutex_lock(&cache->nodes[i]->lock);
+    reply = redisCommand(cache->nodes[i]->handle, "INCRBY %d.%lu 1", id, phone);
+    pthread_mutex_unlock(&cache->nodes[i]->lock);
+
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_INTEGER) {
+            if (reply->integer == 1) {
+                freeReplyObject(reply);
+                pthread_mutex_lock(&cache->nodes[i]->lock);
+                reply = redisCommand(cache->nodes[i]->handle, "EXPIRE %d.%lu %d", id, phone, MAX_LIFETIME);
+                pthread_mutex_unlock(&cache->nodes[i]->lock);
+            } else if (reply->integer > LAMB_LIMIT) {
+                r = true;
             }
-            freeReplyObject(reply);
         }
+        freeReplyObject(reply);
     }
 
     return r;
@@ -1091,7 +1107,17 @@ void lamb_direct_response(int sock, Report *resp, Submit *message, int cause) {
     return;
 }
 
+void lamb_exit_cleanup(void) {
+    lamb_nn_close(mt);
+    lamb_nn_close(mo);
+    lamb_nn_close(scheduler);
+    lamb_nn_close(deliverd);
+    lamb_db_close(&global->db);
+    lamb_cache_close(&global->rdb);
+    exit(EXIT_SUCCESS);
 
+    return;
+}
 
 int lamb_component_initialization(lamb_config_t *cfg) {
     int err;

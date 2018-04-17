@@ -140,6 +140,9 @@ class AccountModel {
             $sql = 'DELETE FROM ' . $this->table . ' WHERE id = ' . $id;
             if ($this->db->query($sql)) {
                 $this->rdb->hSet('client.' . $id, 'signal', 9);
+                $this->rdb->expire('client.' . $id, 30);
+                $this->rdb->hSet('server.' . $id, 'signal', 9);
+                $this->rdb->expire('server.' . $id, 30);
                 if (isset($account['username'])) {
                     $this->rdb->del('account.' . $account['username']);
                 }
