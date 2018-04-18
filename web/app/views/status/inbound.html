@@ -61,7 +61,7 @@
               <ul class="dropdown-menu">
                 <li><a href="/keyword">关键词库</a></li>
                 <li><a href="/payment/logs">充值记录</a></li>
-                <li><a href="/payment">支付管理</a></li>
+                <li><a href="/service/core">服务状态</a></li>
               </ul>
             </li>
           </ul>
@@ -94,7 +94,7 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>接入帐号</th><th>公司名称</th><th>客户端地址</th><th>推送队列</th><th>流量速度</th><th>错误统计</th></tr>
+            <tr><th>#</th><th>接入帐号</th><th>公司名称</th><th>客户端地址</th><th>服务状态</th><th>流量速度</th><th>错误统计</th></tr>
           </thead>
           <tbody>
           </tbody>
@@ -108,7 +108,7 @@
         <td>{{username}}</td>
         <td>{{company}}</td>
         <td>{{address}}</td>
-        <td>{{deliver}}</td>
+        <td><span class="label label-success">OK</span></td>
         <td>{{speed}}/s</td>
         <td>{{error}}</td>
       </tr>

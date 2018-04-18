@@ -5,11 +5,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.ico">
-    <title>gateway report - lamb</title>
+    <title>Service - lamb</title>
     <link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css">
     <link type="text/css" rel="stylesheet" href="/css/bootstrap-theme.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/bootstrap-datetimepicker.min.css">
-    <link type="text/css" rel="stylesheet" href="/css/gateway.css">
+    <link type="text/css" rel="stylesheet" href="/css/service.css">
   </head>
   <body>
     <div class="navbar navbar-default">
@@ -75,87 +74,62 @@
       <div class="row">
         <ol class="breadcrumb">
           <li><a href="#">Home</a></li>
-          <li><a href="/gateway">Gateway</a></li>
-          <li class="active">Report</li>
+          <li><a href="#">Service</a></li>
+          <li class="active">Server</li>
           <li class="pull-right help"><span class="glyphicon glyphicon-question-sign"></span> <a href="#">帮助信息</a></li>
         </ol>
       </div>
-      <div class="row statistics">
-        <form id="where" class="form-inline">
-          <div class="form-group">
-            <label>时间范围 : </label>
-            <input type="text" id="begin" class="form-control" style="width:165px" name="begin" />
-          </div>
-          -
-          <div class="form-group">
-            <input type="text" id="end" class="form-control" style="width:165px" name="end" />
-          </div>
-          <div class="form-group">
-            <p class="text-muted help"><span class="glyphicon glyphicon-info-sign"></span> 网关数据统计最小查询时间为一天，无数据通道将不被显示</p>
-          </div>
-          <button type="button" class="btn btn-success btn-sm pull-right" onclick="formQuery()">查 询</button>
-        </form>
+      <div class="row">
+        <ul class="nav nav-tabs">
+          <li role="presentation"><a href="/service/core">Core</a></li>
+          <li role="presentation"><a href="/service/server">Server</a></li>
+          <li role="presentation"><a href="/service/gateway">Gateway</a></li>
+          <li role="presentation" class="active"><a href="#">MT队列</a></li>
+          <li role="presentation"><a href="/service/mo">MO队列</a></li>
+          <li class="pull-right"><button class="btn btn-xs btn-success" onclick="location.reload()"><span class="glyphicon glyphicon-repeat"></span> 刷 新</button></li>
+        </ul>
       </div>
-      <hr />
-      <div class="row contents">
+      <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>通道名称</th><th>发送数量</th><th>DELIVRD</th><th>EXPIRED</th><th>DELETED</th><th>UNDELIV</th><th>ACCEPTD</th><th>UNKNOWN</th><th>REJECTD</th></tr>
+            <tr><th>#</th><th>ID</th><th>队列数量</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td><span class="glyphicon glyphicon-asterisk"></span></td>
+              <td>1</td>
+              <td>120880</td>
+            </tr>
+            <tr>
+              <td><span class="glyphicon glyphicon-asterisk"></span></td>
+              <td>2</td>
+              <td>120880</td>
+            </tr>
+            <tr>
+              <td><span class="glyphicon glyphicon-asterisk"></span></td>
+              <td>4</td>
+              <td>120880</td>
+            </tr>
+            <tr>
+              <td><span class="glyphicon glyphicon-asterisk"></span></td>
+              <td>6</td>
+              <td>120880</td>
+            </tr>
           </tbody>
         </table>
       </div>
     </div>
 </div>
-<script id="contents" type="text/template">
-  {{#each data}}
-  <tr>
-    <td><span class="glyphicon glyphicon-globe"></span></td>
-    <td>{{gid}}</td>
-    <td>{{submit}}</td>
-    <td>{{delivrd}}</td>
-    <td>{{expired}}</td>
-    <td>{{deleted}}</td>
-    <td>{{undeliv}}</td>
-    <td>{{acceptd}}</td>
-    <td>{{unknown}}</td>
-    <td>{{rejectd}}</td>
-  </tr>
-  {{/each}}
-</script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="/js/bootstrap-datetimepicker.min.js"></script>
-<script type="text/javascript" src="/js/locales/bootstrap-datetimepicker.zh-CN.js" charset="UTF-8"></script>
-<script type="text/javascript" src="/js/handlebars.min.js"></script>
 <script type="text/javascript" src="/js/layer.js"></script>
-<script type="text/javascript" src="/js/gateway.js"></script>
 <script type="text/javascript">
-  /* Startup initialization */
-  $(document).ready(function(){
-    $('li.dropdown').mouseover(function() {   
-        $(this).addClass('open');
-    }).mouseout(function() {
-        $(this).removeClass('open');
-    });
-
-    $("#begin").val(getdateofday("08:00:00"));
-    $("#end").val(getdateofday("23:00:00"));
-  
-    // datetimepicker
-    $('#begin').datetimepicker({
-        format: 'yyyy-mm-dd hh:ii:ss',
-        language: 'zh-CN',
-        autoclose: true
-    });
-
-    $('#end').datetimepicker({
-        format: 'yyyy-mm-dd hh:ii:ss',
-        language: 'zh-CN',
-        autoclose: true
-    });
+  $('li.dropdown').mouseover(function() {   
+    $(this).addClass('open');
+  }).mouseout(function() {
+    $(this).removeClass('open');
   });
+
 </script>
 </body>
 </html>
