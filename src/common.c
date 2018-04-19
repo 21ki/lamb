@@ -387,29 +387,23 @@ void lamb_vlog(int level, const char *fmt, ...) {
     return;
 }
 
-int lamb_lock_protection(lamb_lock_t *lock, const char *file) {
-    lock->fp = fopen(file, "w+");
+int lamb_lock_protection(int *lock, const char *file) {
+    *lock = open(file, O_RDWR | O_CREAT | S_IROTH | S_IWOTH);
 
-    if (lock->fp) {
-        lock->fd = fileno(lock->fp);
-        if (flock(lock->fd, LOCK_EX | LOCK_NB) == 0) {
+    if (*lock != -1) {
+        if (flock(*lock, LOCK_EX | LOCK_NB) == 0) {
             return 0;
         }
-        fclose(lock->fp);
-        lock->fd = -1;
+        close(*lock);
     }
 
     return -1;
 }
 
-void lamb_lock_release(lamb_lock_t *lock) {
-    if (lock->fp) {
-        flock(lock->fd, LOCK_UN);
-        fclose(lock->fp);
-        lock->fp = NULL;
-    }
-
-    lock->fd = -1;
+void lamb_lock_release(int *lock) {
+    flock(*lock, LOCK_UN);
+    close(*lock);
+    *lock = -1;
 
     return;
 }

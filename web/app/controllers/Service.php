@@ -7,6 +7,10 @@
  */
 
 class ServiceController extends Yaf\Controller_Abstract {
+    public function init() {
+        $this->request = $this->getRequest();
+    }
+
     public function coreAction() {
         return true;
     }
@@ -25,6 +29,15 @@ class ServiceController extends Yaf\Controller_Abstract {
 
     public function moAction() {
         return true;
+    }
+
+    public function getcoreAction() {
+        if ($this->request->isGet()) {
+            $service = new ServiceModel();
+            lambResponse(200, 'success', $service->core());
+        }
+
+        return false;
     }
 }
 
