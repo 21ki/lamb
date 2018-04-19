@@ -31,7 +31,7 @@ class ServiceModel {
         $ismg['pid'] = 100;
         $ismg['name'] = 'ismg';
         $ismg['status'] = $this->checkRuning('/tmp/ismg.lock');
-        $ismg['time'] = '00:00:00';
+        $ismg['description'] = '客户端 CMPP 接入网关';
 
         return $ismg;
     }
@@ -41,7 +41,7 @@ class ServiceModel {
         $mt['pid'] = 100;
         $mt['name'] = 'mt';
         $mt['status'] = $this->checkRuning('/tmp/mt.lock');
-        $mt['time'] = '00:00:00';
+        $mt['description'] = '核心上行消息队列服务';
 
         return $mt;
     }
@@ -51,7 +51,7 @@ class ServiceModel {
         $mo['pid'] = 100;
         $mo['name'] = 'mo';
         $mo['status'] = $this->checkRuning('/tmp/mo.lock');
-        $mo['time'] = '00:00:00';
+        $mo['description'] = '核心下行消息队列服务';
 
         return $mo;
     }
@@ -61,7 +61,7 @@ class ServiceModel {
         $scheduler['pid'] = 100;
         $scheduler['name'] = 'scheduler';
         $scheduler['status'] = $this->checkRuning('/tmp/scheduler.lock');
-        $scheduler['time'] = '00:00:00';
+        $scheduler['description'] = '核心上行路由调度器服务';
 
         return $scheduler;
     }
@@ -71,7 +71,7 @@ class ServiceModel {
         $delivery['pid'] = 100;
         $delivery['name'] = 'delivery';
         $delivery['status'] = $this->checkRuning('/tmp/delivery.lock');
-        $delivery['time'] = '00:00:00';
+        $delivery['description'] = '核心下行路由调度器服务';
 
         return $delivery;
     }    
@@ -81,7 +81,7 @@ class ServiceModel {
         $testd['pid'] = 100;
         $testd['name'] = 'testd';
         $testd['status'] = $this->checkRuning('/tmp/testd.lock');
-        $testd['time'] = '00:00:00';
+        $testd['description'] = '运营商网关通道测试服务';
 
         return $testd;
     }

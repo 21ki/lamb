@@ -33,7 +33,12 @@ tr th:first-child {
 }
 
 tr th:last-child {
-    width: 110px;
+    width: 250px;
+}
+
+tr td:last-child {
+    color: #666666;
+    text-align: left;
 }
 
 .row .checkbox {

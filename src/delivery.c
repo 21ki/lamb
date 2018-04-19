@@ -181,7 +181,7 @@ void lamb_event_loop(void) {
         return;
     }
 
-    lamb_debug("fetch delivery routing successfull\n");
+#ifdef _DEBUG
 
     lamb_node_t *node;
     lamb_delivery_t *dd;
@@ -193,6 +193,8 @@ void lamb_event_loop(void) {
     }
 
     lamb_list_iterator_destroy(it);
+
+#endif
 
     /* delivery server Initialization */
     fd = nn_socket(AF_SP, NN_REP);
