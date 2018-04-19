@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Check lock protection */
-    lamb_lock_t lock;
+    int lock;
 
     if (lamb_lock_protection(&lock, "/tmp/testd.lock")) {
         fprintf(stderr, "Already started, please do not repeat the start!\n");
@@ -87,8 +87,6 @@ int main(int argc, char *argv[]) {
 
 void lamb_event_loop(void) {
     int err;
-
-    lamb_set_process("lamb-testd");
 
     err = lamb_component_initialization(config);
     if (err) {

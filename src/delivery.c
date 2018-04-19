@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Check lock protection */
-    lamb_lock_t lock;
+    int lock;
 
     if (lamb_lock_protection(&lock, "/tmp/delivery.lock")) {
         fprintf(stderr, "Already started, please do not repeat the start!\n");
