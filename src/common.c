@@ -13,6 +13,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <pcre.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/prctl.h>
@@ -386,3 +387,29 @@ void lamb_vlog(int level, const char *fmt, ...) {
     return;
 }
 
+int lamb_lock_protection(lamb_lock_t *lock, const char *file) {
+    lock->fp = fopen(file, "w+");
+
+    if (lock->fp) {
+        lock->fd = fileno(lock->fp);
+        if (flock(lock->fd, LOCK_EX | LOCK_NB) == 0) {
+            return 0;
+        }
+        fclose(lock->fp);
+        lock->fd = -1;
+    }
+
+    return -1;
+}
+
+void lamb_lock_release(lamb_lock_t *lock) {
+    if (lock->fp) {
+        flock(lock->fd, LOCK_UN);
+        fclose(lock->fp);
+        lock->fp = NULL;
+    }
+
+    lock->fd = -1;
+
+    return;
+}

@@ -28,8 +28,12 @@ body {
     border-bottom: 1px solid #fafafa;
 }
 
-tr:first-child, tr:last-child {
-    width: 100px;
+tr th:first-child {
+    width: 80px;
+}
+
+tr th:last-child {
+    width: 110px;
 }
 
 .row .checkbox {

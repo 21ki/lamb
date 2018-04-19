@@ -67,6 +67,14 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    /* Check lock protection */
+    lamb_lock_t lock;
+
+    if (lamb_lock_protection(&lock, "/tmp/ismg.lock")) {
+        fprintf(stderr, "Already started, please do not repeat the start!\n");
+        return -1;
+    }
+
     /* Daemon mode */
     if (background) {
         lamb_daemon();
@@ -119,9 +127,14 @@ int main(int argc, char *argv[]) {
                 config.listen, config.port);
     }
 
-    /* Start Main Event Thread */
+    /* Setting process information */
     lamb_set_process("lamb-ismgd");
+
+    /* Start Main Event Thread */
     lamb_event_loop(&cmpp);
+
+    /* Release lock protection */
+    lamb_lock_release(&lock);
 
     return 0;
 }

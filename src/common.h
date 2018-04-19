@@ -105,6 +105,11 @@ typedef struct {
 
 #pragma pack()
 
+typedef struct {
+    int fd;
+    FILE *fp;
+} lamb_lock_t;
+
 int lamb_signal(int sig, void (*handler)(int));
 void lamb_signal_processing(void);
 void lamb_daemon(void);
@@ -128,5 +133,7 @@ int lamb_cpu_affinity(pthread_t thread);
 int lamb_hp_parse(char *str, char *host, int *port);
 int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, long millisecond);
 void lamb_vlog(int level, const char *fmt, ...);
+int lamb_lock_protection(lamb_lock_t *lock, const char *file);
+void lamb_lock_release(lamb_lock_t *lock);
 
 #endif

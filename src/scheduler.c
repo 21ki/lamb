@@ -72,6 +72,14 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    /* Check lock protection */
+    lamb_lock_t lock;
+
+    if (lamb_lock_protection(&lock, "/tmp/scheduler.lock")) {
+        fprintf(stderr, "Already started, please do not repeat the start!\n");
+        return -1;
+    }
+
     /* Daemon mode */
     if (background) {
         lamb_daemon();
@@ -85,9 +93,14 @@ int main(int argc, char *argv[]) {
     /* Signal event processing */
     lamb_signal_processing();
 
-    /* Start Main Event Thread */
+    /* Setting process information */
     lamb_set_process("lamb-scheduler");
+
+    /* Start Main Event Thread */
     lamb_event_loop();
+
+    /* Release lock protection */
+    lamb_lock_release(&lock);
 
     return 0;
 }
