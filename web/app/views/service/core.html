@@ -91,7 +91,7 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>ID</th><th>PID</th><th>服务名称</th><th>服务状态</th><th>服务说明</th></tr>
+            <tr><th>#</th><th>PID</th><th>服务名称</th><th>服务状态</th><th>服务说明</th></tr>
           </thead>
           <tbody>
           </tbody>
@@ -103,7 +103,6 @@
   {{#each data}}
   <tr>
     <td><span class="glyphicon glyphicon-asterisk"></span></td>
-    <td>{{id}}</td>
     <td>{{pid}}</td>
     <td>{{name}}</td>
     <td>{{checkstatus status}}</td>
@@ -114,7 +113,6 @@
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/handlebars.min.js"></script>
-<script type="text/javascript" src="/js/layer.js"></script>
 <script type="text/javascript" src="/js/service.js"></script>
 <script type="text/javascript">
   $(document).ready(function(){
@@ -123,7 +121,7 @@
     }).mouseout(function() {
       $(this).removeClass('open');
     });
-    startup();
+    getCore();
   });
 </script>
 </body>

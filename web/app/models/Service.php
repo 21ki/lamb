@@ -90,6 +90,26 @@ class ServiceModel {
         return null;
     }
 
+    public function queue(string $type = 'mt') {
+        $result = [];
+
+        if (!in_array($type, ['mt', 'mo'], true)) {
+            return $result;
+        }
+
+        $reply = $this->rdb->hGetAll($type . '.queue');
+
+        if ($reply !== false) {
+            foreach ($reply as $k => $v) {
+                $result[$k]['id'] = $k;
+                $result[$k]['total'] = $v;
+                $result[$k]['description'] = 'no description';
+            }
+        }
+
+        return $result;
+    }
+
     public function checkRuning(string $file) {
         $online = false;
         $fp = fopen($file, 'r+');

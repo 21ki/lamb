@@ -39,6 +39,18 @@ class ServiceController extends Yaf\Controller_Abstract {
 
         return false;
     }
+
+    public function getqueueAction() {
+        if ($this->request->isGet()) {
+            $type = $this->request->getQuery('type', null);
+            if ($type !== null) {
+                $service = new ServiceModel();
+                lambResponse(200, 'success', $service->queue($type));
+            }
+        }
+
+        return false;
+    }
 }
 
 
