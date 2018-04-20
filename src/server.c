@@ -80,6 +80,17 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    /* Read lamb configuration file */
+    int lock;
+    char lockfile[128];
+
+    snprintf(lockfile, sizeof(lockfile), "/tmp/serv-%d.lock", aid);
+
+    if (lamb_lock_protection(&lock, lockfile)) {
+        fprintf(stderr, "Already started, please do not repeat the start!\n");
+        return -1;
+    }
+
     /* Daemon mode */
     if (background) {
         lamb_daemon();
@@ -90,6 +101,9 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    /* Save pid to file */
+    lamb_pid_file(lock, getpid());
+
     /* Signal event processing */
     lamb_signal_processing();
 
@@ -98,6 +112,9 @@ int main(int argc, char *argv[]) {
 
     /* Start main event thread */
     lamb_event_loop();
+
+    /* Release lock protection */
+    lamb_lock_release(&lock);
 
     return 0;
 }

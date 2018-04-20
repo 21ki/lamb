@@ -93,7 +93,18 @@ class ServiceModel {
     }
     
     public function server() {
-        return null;
+        $account = new AccountModel();
+        $servers = [];
+
+        foreach ($account->getAll() as $a) {
+            $lock = '/tmp/serv-' . intval($a['id']) . '.lock';
+            $servers[$a['id']]['id'] = $a['id'];
+            $servers[$a['id']]['pid'] = $this->getPid($lock);
+            $servers[$a['id']]['status'] = $this->checkRuning($lock);
+            $servers[$a['id']]['description'] = 'no description';
+        }
+
+        return $servers;
     }
 
     public function queue(string $type = 'mt') {
@@ -118,15 +129,17 @@ class ServiceModel {
 
     public function checkRuning(string $file) {
         $online = false;
-        $fp = fopen($file, 'r+');
 
-        if ($fp) {
-            if (flock($fp, LOCK_EX | LOCK_NB)) {
-                flock($fp, LOCK_UN);
-            } else {
-                $online = true;
+        if (file_exists($file)) {
+            $fp = fopen($file, 'r+');
+            if ($fp) {
+                if (flock($fp, LOCK_EX | LOCK_NB)) {
+                    flock($fp, LOCK_UN);
+                } else {
+                    $online = true;
+                }
+                fclose($fp);
             }
-            fclose($fp);
         }
 
         return $online;
@@ -134,13 +147,16 @@ class ServiceModel {
 
     public function getPid(string $file) {
         $pid = 0;
-        $fp = fopen($file, "r");
-        if ($fp) {
-            $line = fgets($fp);
-            if ($line !== false) {
-                $pid = intval($line);
+
+        if (file_exists($file)) {
+            $fp = fopen($file, "r");
+            if ($fp) {
+                $line = fgets($fp);
+                if ($line !== false) {
+                    $pid = intval($line);
+                }
+                fclose($fp);
             }
-            fclose($fp);
         }
 
         return $pid;
