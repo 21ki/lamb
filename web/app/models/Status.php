@@ -20,7 +20,7 @@ class StatusModel {
         $account = new AccountModel();
 
         foreach ($account->getAll() as $a) {
-            if ($this->is_online('client', $a['id'], 5)) {
+            if ($this->isOnline($a['id'], 5)) {
                 $result[$a['id']]['username'] = $a['username'];
                 $result[$a['id']]['company'] = $a['company'];
                 $result[$a['id']]['address'] = $this->getAddress($a['id']);
@@ -37,14 +37,14 @@ class StatusModel {
     public function outbound() {
         $result = array();
         $gateway = new GatewayModel();
-
+        
         foreach ($gateway->getAll() as $g) {
             $result[$g['id']]['name'] = $g['name'];
             $result[$g['id']]['type'] = $g['type'];
             $result[$g['id']]['host'] = $g['host'];
             $result[$g['id']]['speed'] = $this->getSpeed($g['id'], 'gateway');
             $result[$g['id']]['error'] = $this->getError($g['id'], 'gateway');
-            if ($this->is_online('gateway', $g['id'], 5)) {
+            if ($this->checkRuning($g['id'])) {
                 $result[$g['id']]['status'] = $this->getStatus($g['id'], 'gateway');
             } else {
                 $result[$g['id']]['status'] = -1;
@@ -134,20 +134,35 @@ class StatusModel {
         return $addr;
     }
     
-    public function is_online($type = null, $id = 0, $interval = 0) {
+    public function isOnline($id = 0, $interval = 0) {
         $id = intval($id);
 
-        if ($type === null) {
-            return false;
-        }
-        
         $current = time();
-        $reply = $this->rdb->hGet($type . '.' . $id, 'online');
+        $reply = $this->rdb->hGet('client.' . $id, 'online');
 
         if (($current - intval($reply)) < $interval) {
             return true;
         }
 
         return false;
+    }
+
+    public function checkRuning(int $id = 0) {
+        $online = false;
+        $file = '/tmp/gtw-' . $id . '.lock';
+
+        if (file_exists($file)) {
+            $fp = fopen($file, 'r+');
+            if ($fp) {
+                if (flock($fp, LOCK_EX | LOCK_NB)) {
+                    flock($fp, LOCK_UN);
+                } else {
+                    $online = true;
+                }
+                fclose($fp);
+            }
+        }
+
+        return $online;
     }
 }

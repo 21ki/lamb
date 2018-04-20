@@ -47,7 +47,7 @@ function checkStatus(val) {
     var text = '<span class="label label-danger">超 时</span>';
 
     if (val == 1) {
-        text = '<span class="label label-success">正 常</span>';
+        text = '<span class="label label-success">OK</span>';
     } else if (val == -1) {
         text = '<span class="label label-default">未 知</span>';
     }

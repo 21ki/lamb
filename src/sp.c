@@ -232,9 +232,6 @@ void lamb_event_loop(void) {
     /* Start Status Update Thread */
     lamb_start_thread(lamb_stat_loop, NULL, 1);
 
-    /* On line signal state synchronization */
-    lamb_start_thread(lamb_online_loop, NULL, 1);
-
     while (true) {
         lamb_sleep(3000);
     }
@@ -778,8 +775,7 @@ void *lamb_stat_loop(void *data) {
         reply = redisCommand(rdb->handle, "HMSET gateway.%d pid %u "
                              "status %d speed %llu error %llu",
                              config.id, getpid(), cmpp.ok ? 1 : 0,
-                             (unsigned long long)(total / 5),
-                             error);
+                             (unsigned long long)(total / 5), error);
         total = 0;
 
         if (reply != NULL) {
@@ -811,30 +807,6 @@ void *lamb_stat_loop(void *data) {
     }
 
     pthread_exit(NULL);
-}
-
-void *lamb_online_loop(void *arg) {
-    while (true) {
-        pthread_mutex_lock(&rdb->lock);
-        lamb_state_renewal(rdb, config.id);
-        pthread_mutex_unlock(&rdb->lock);
-        lamb_sleep(3000);
-    }
-
-    pthread_exit(NULL);
-}
-
-int lamb_state_renewal(lamb_cache_t *cache, int id) {
-    redisReply *reply = NULL;
-
-    reply = redisCommand(cache->handle, "HSET client.%d online %ld", id, time(NULL));
-
-    if (reply != NULL) {
-        freeReplyObject(reply);
-        return 0;
-    }
-
-    return -1;
 }
 
 void lamb_clean_statistical(lamb_statistical_t *stat) {
