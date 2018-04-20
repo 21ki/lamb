@@ -7,6 +7,7 @@ function inbound() {
     xhr.onreadystatechange = function(){
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             var source = document.getElementById("contents").innerHTML;
+            Handlebars.registerHelper('checkstatus', checkStatus);
             var template = Handlebars.compile(source);
             var contents = template(xhr.response);
             $("tbody").append(contents);
@@ -28,7 +29,7 @@ function outbound() {
     xhr.onreadystatechange = function(){
         if (xhr.readyState === xhr.DONE && xhr.status === 200) {
             var source = document.getElementById("contents").innerHTML;
-            Handlebars.registerHelper('checkStatus', checkStatus);
+            Handlebars.registerHelper('checkstatus', checkStatus);
             var template = Handlebars.compile(source);
             var contents = template(xhr.response);
             $("tbody").append(contents);

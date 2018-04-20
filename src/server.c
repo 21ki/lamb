@@ -827,12 +827,7 @@ void *lamb_stat_loop(void *data) {
         }
 
         /* State of reporting */
-        pthread_mutex_lock(&(global->rdb.lock));
-        reply = redisCommand(global->rdb.handle, "HMSET server.%d pid %u", aid, getpid());
-        pthread_mutex_unlock(&(global->rdb.lock));
-        if (reply != NULL) {
-            freeReplyObject(reply);
-        }
+
 
 #ifdef _DEBUG
         /* Debug information */

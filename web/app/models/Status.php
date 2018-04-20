@@ -24,8 +24,7 @@ class StatusModel {
                 $result[$a['id']]['username'] = $a['username'];
                 $result[$a['id']]['company'] = $a['company'];
                 $result[$a['id']]['address'] = $this->getAddress($a['id']);
-                $result[$a['id']]['queue'] = $this->getQueue($a['id']);
-                $result[$a['id']]['deliver'] = $this->getDeliver($a['id']);
+                $result[$a['id']]['status'] = 1;
                 $result[$a['id']]['speed'] = $this->getSpeed($a['id'], 'client');
                 $result[$a['id']]['error'] = $this->getError($a['id'], 'client');
             }
