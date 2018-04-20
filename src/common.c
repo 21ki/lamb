@@ -408,3 +408,10 @@ void lamb_lock_release(int *lock) {
 
     return;
 }
+
+void lamb_pid_file(int fd, pid_t pid) {
+    char val[16];
+    snprintf(val, sizeof(val), "%d", pid);
+    write(fd, val, strlen(val));
+    return;
+}

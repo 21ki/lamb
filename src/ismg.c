@@ -127,6 +127,9 @@ int main(int argc, char *argv[]) {
                 config.listen, config.port);
     }
 
+    /* Save pid to file */
+    lamb_pid_file(lock, getpid());
+
     /* Setting process information */
     lamb_set_process("lamb-ismgd");
 

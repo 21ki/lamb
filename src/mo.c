@@ -79,7 +79,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "setenv error: %s", strerror(errno));
         return -1;
     }
-        
+
+    /* Save pid to file */
+    lamb_pid_file(lock, getpid());
+
     /* Signal event processing */
     lamb_signal_processing();
 

@@ -67,6 +67,9 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
+    /* Save pid to file */
+    lamb_pid_file(lock, getpid());
+
     /* Signal event processing */
     lamb_signal_processing();
 

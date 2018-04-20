@@ -27,60 +27,66 @@ class ServiceModel {
     }
 
     public function ismg() {
+        $lock = '/tmp/ismg.lock';
         $ismg['id'] = 1;
-        $ismg['pid'] = 100;
+        $ismg['pid'] = $this->getPid($lock);
         $ismg['name'] = 'ismg';
-        $ismg['status'] = $this->checkRuning('/tmp/ismg.lock');
+        $ismg['status'] = $this->checkRuning($lock);
         $ismg['description'] = '客户端 CMPP 接入网关';
 
         return $ismg;
     }
 
     public function mt() {
+        $lock = '/tmp/mt.lock';
         $mt['id'] = 1;
-        $mt['pid'] = 100;
+        $mt['pid'] = $this->getPid($lock);
         $mt['name'] = 'mt';
-        $mt['status'] = $this->checkRuning('/tmp/mt.lock');
+        $mt['status'] = $this->checkRuning($lock);
         $mt['description'] = '核心上行消息队列服务';
 
         return $mt;
     }
 
     public function mo() {
+        $lock = '/tmp/mo.lock';
         $mo['id'] = 1;
-        $mo['pid'] = 100;
+        $mo['pid'] = $this->getPid($lock);
         $mo['name'] = 'mo';
-        $mo['status'] = $this->checkRuning('/tmp/mo.lock');
+        $mo['status'] = $this->checkRuning($lock);
         $mo['description'] = '核心下行消息队列服务';
 
         return $mo;
     }
 
     public function scheduler() {
+        $lock = '/tmp/scheduler.lock';
         $scheduler['id'] = 1;
-        $scheduler['pid'] = 100;
+        $scheduler['pid'] = $this->getPid($lock);
         $scheduler['name'] = 'scheduler';
-        $scheduler['status'] = $this->checkRuning('/tmp/scheduler.lock');
+        $scheduler['status'] = $this->checkRuning($lock);
         $scheduler['description'] = '核心上行路由调度器服务';
 
         return $scheduler;
     }
 
     public function delivery() {
+        $lock = '/tmp/delivery.lock';
         $delivery['id'] = 1;
-        $delivery['pid'] = 100;
+        $delivery['pid'] = $this->getPid($lock);
         $delivery['name'] = 'delivery';
-        $delivery['status'] = $this->checkRuning('/tmp/delivery.lock');
+        $delivery['status'] = $this->checkRuning($lock);
         $delivery['description'] = '核心下行路由调度器服务';
 
         return $delivery;
     }    
 
     public function testd() {
+        $lock = '/tmp/testd.lock';
         $testd['id'] = 1;
-        $testd['pid'] = 100;
+        $testd['pid'] = $this->getPid($lock);
         $testd['name'] = 'testd';
-        $testd['status'] = $this->checkRuning('/tmp/testd.lock');
+        $testd['status'] = $this->checkRuning($lock);
         $testd['description'] = '运营商网关通道测试服务';
 
         return $testd;
@@ -124,5 +130,19 @@ class ServiceModel {
         }
 
         return $online;
+    }
+
+    public function getPid(string $file) {
+        $pid = 0;
+        $fp = fopen($file, "r");
+        if ($fp) {
+            $line = fgets($fp);
+            if ($line !== false) {
+                $pid = intval($line);
+            }
+            fclose($fp);
+        }
+
+        return $pid;
     }
 }

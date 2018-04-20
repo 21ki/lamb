@@ -134,5 +134,6 @@ int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restr
 void lamb_vlog(int level, const char *fmt, ...);
 int lamb_lock_protection(int *lock, const char *file);
 void lamb_lock_release(int *lock);
+void lamb_pid_file(int fd, pid_t pid);
 
 #endif
