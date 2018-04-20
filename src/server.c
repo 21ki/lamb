@@ -815,7 +815,6 @@ void *lamb_unsubscribe_loop(void *arg) {
 
 void *lamb_stat_loop(void *data) {
     int signal;
-    redisReply *reply = NULL;
 
     while (true) {
         /* Check the arrears */
@@ -825,9 +824,6 @@ void *lamb_stat_loop(void *data) {
             lamb_log(LOG_WARNING, "company %d arrears, service has been temporarily stopped",
                      global->account.company);
         }
-
-        /* State of reporting */
-
 
 #ifdef _DEBUG
         /* Debug information */
