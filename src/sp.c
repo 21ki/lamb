@@ -23,6 +23,7 @@
 #include "message.h"
 #include "sp.h"
 
+static int gid;
 static int scheduler;
 static int delivery;
 static lamb_db_t *db;
@@ -65,10 +66,20 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    gid = config.id;
+
+    if (gid < 1) {
+        fprintf(stderr, "Invalid gateway id number\n");
+        return -1;
+    }
+
     /* Check lock protection */
     int lock;
+    char lockfile[128];
 
-    if (lamb_lock_protection(&lock, "/tmp/mt.lock")) {
+    snprintf(lockfile, sizeof(lockfile), "/tmp/gtw-%d.lock", gid);
+
+    if (lamb_lock_protection(&lock, lockfile)) {
         fprintf(stderr, "Already started, please do not repeat the start!\n");
         return -1;
     }

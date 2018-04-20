@@ -107,6 +107,21 @@ class ServiceModel {
         return $servers;
     }
 
+    public function gateway() {
+        $gateway = new GatewayModel();
+        $gateways = [];
+
+        foreach ($gateway->getAll() as $g) {
+            $lock = '/tmp/gtw-' . intval($g['id']) . '.lock';
+            $gateways[$g['id']]['id'] = $g['id'];
+            $gateways[$g['id']]['pid'] = $this->getPid($lock);
+            $gateways[$g['id']]['status'] = $this->checkRuning($lock);
+            $gateways[$g['id']]['description'] = 'no description';
+        }
+
+        return $gateways;
+    }
+
     public function queue(string $type = 'mt') {
         $result = [];
 

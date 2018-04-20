@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (aid < 1) {
-        fprintf(stderr, "Invalid account number\n");
+        fprintf(stderr, "Invalid account id number\n");
         return -1;
     }
     

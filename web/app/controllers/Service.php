@@ -60,6 +60,15 @@ class ServiceController extends Yaf\Controller_Abstract {
 
         return false;
     }
+
+    public function getgatewayAction() {
+        if ($this->request->isGet()) {
+            $service = new ServiceModel();
+            lambResponse(200, 'success', $service->gateway());
+        }
+
+        return false;
+    }
 }
 
 

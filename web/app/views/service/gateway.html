@@ -91,46 +91,38 @@
       <div class="row">
         <table class="table table-hover">
           <thead>
-            <tr><th>#</th><th>ID</th><th>PID</th><th>服务名称</th><th>服务状态</th><th>运行时间</th></tr>
+            <tr><th>#</th><th>ID</th><th>PID</th><th>服务名称</th><th>服务状态</th><th>服务说明</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td><span class="glyphicon glyphicon-asterisk"></span></td>
-              <td>1</td>
-              <td>1288</td>
-              <td>gateway</td>
-              <td><span class="label label-success">正 常</span></td>
-              <td>10:28:00</td>
-            </tr>
-            <tr>
-              <td><span class="glyphicon glyphicon-asterisk"></span></td>
-              <td>1</td>
-              <td>1701</td>
-              <td>gateway</td>
-              <td><span class="label label-success">正 常</span></td>
-              <td>10:28:00</td>
-            </tr>
-            <tr>
-              <td><span class="glyphicon glyphicon-asterisk"></span></td>
-              <td>1</td>
-              <td>1981</td>
-              <td>gateway</td>
-              <td><span class="label label-success">正 常</span></td>
-              <td>10:28:00</td>
-            </tr>
           </tbody>
         </table>
       </div>
     </div>
 </div>
+<script id="contents" type="text/template">
+  {{#each data}}
+  <tr>
+    <td><span class="glyphicon glyphicon-asterisk"></span></td>
+    <td>{{id}}</td>
+    <td>{{pid}}</td>
+    <td>gateway</td>
+    <td>{{checkstatus status}}</td>
+    <td>{{description}}</td>
+  </tr>
+  {{/each}}
+</script>
 <script type="text/javascript" src="/js/jquery.min.js"></script>
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="/js/layer.js"></script>
+<script type="text/javascript" src="/js/handlebars.min.js"></script>
+<script type="text/javascript" src="/js/service.js"></script>
 <script type="text/javascript">
-  $('li.dropdown').mouseover(function() {   
-    $(this).addClass('open');
-  }).mouseout(function() {
-    $(this).removeClass('open');
+  $(document).ready(function(){
+    $('li.dropdown').mouseover(function() {   
+      $(this).addClass('open');
+    }).mouseout(function() {
+      $(this).removeClass('open');
+    });
+    getGateway();
   });
 </script>
 </body>
