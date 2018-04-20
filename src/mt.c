@@ -59,6 +59,16 @@ int main(int argc, char *argv[]) {
 
     /* Read lamb configuration file */
     if (lamb_read_config(&config, file) != 0) {
+        fprintf(stderr, "can't read config file %s\n", file);
+        return -1;
+    }
+
+    /* Daemon mode */
+    if (background) {
+        lamb_daemon();
+    }
+
+    if (setenv("logfile", config.logfile, 1) == -1) {
         return -1;
     }
 
@@ -66,17 +76,7 @@ int main(int argc, char *argv[]) {
     int lock;
 
     if (lamb_lock_protection(&lock, "/tmp/mt.lock")) {
-        fprintf(stderr, "Already started, please do not repeat the start!\n");
-        return -1;
-    }
-    
-    /* Daemon mode */
-    if (background) {
-        lamb_daemon();
-    }
-
-    if (setenv("logfile", config.logfile, 1) == -1) {
-        fprintf(stderr, "setenv error: %s", strerror(errno));
+        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
         return -1;
     }
 

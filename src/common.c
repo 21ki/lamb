@@ -364,7 +364,7 @@ void lamb_vlog(int level, const char *fmt, ...) {
     struct tm *t;
     time_t rawtime;
     char buff[512];
-
+    
     time(&rawtime);
     t = localtime(&rawtime);
     snprintf(buff, sizeof(buff), "[%4d-%02d-%02d %02d:%02d:%02d] %s\n",

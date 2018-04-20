@@ -73,6 +73,15 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    /* Daemon mode */
+    if (background) {
+        lamb_daemon();
+    }
+
+    if (setenv("logfile", config.logfile, 1) == -1) {
+        return -1;
+    }
+
     /* Check lock protection */
     int lock;
     char lockfile[128];
@@ -80,17 +89,7 @@ int main(int argc, char *argv[]) {
     snprintf(lockfile, sizeof(lockfile), "/tmp/gtw-%d.lock", gid);
 
     if (lamb_lock_protection(&lock, lockfile)) {
-        fprintf(stderr, "Already started, please do not repeat the start!\n");
-        return -1;
-    }
-
-    /* Daemon mode */
-    if (background) {
-        lamb_daemon();
-    }
-
-    if (setenv("logfile", config.logfile, 1) == -1) {
-        fprintf(stderr, "setenv error: %s\n", strerror(errno));
+        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
         return -1;
     }
 

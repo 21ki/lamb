@@ -26,8 +26,8 @@
 #include <nanomsg/pair.h>
 #include <nanomsg/reqrep.h>
 #include <cmpp.h>
-#include "ismg.h"
 #include "common.h"
+#include "ismg.h"
 #include "socket.h"
 #include "config.h"
 #include "message.h"
@@ -67,24 +67,23 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    /* Check lock protection */
-    int lock;
-
-    if (lamb_lock_protection(&lock, "/tmp/ismg.lock")) {
-        fprintf(stderr, "Already started, please do not repeat the start!\n");
-        return -1;
-    }
-
     /* Daemon mode */
     if (background) {
         lamb_daemon();
     }
 
     if (setenv("logfile", config.logfile, 1) == -1) {
-        fprintf(stderr, "setenv error: %s\n", strerror(errno));
         return -1;
     }
-    
+        
+    /* Check lock protection */
+    int lock;
+
+    if (lamb_lock_protection(&lock, "/tmp/ismg.lock")) {
+        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
+        return -1;
+    }
+
     /* Signal event processing */
     lamb_signal_processing();
 
@@ -289,7 +288,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
 
                             cmpp_connect_resp(&sock, sequenceId, 0);
                             lamb_work_loop(&client);
-                            return;
+                            exit(EXIT_SUCCESS);
                         }
 
                         cmpp_sock_close(&sock);

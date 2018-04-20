@@ -73,21 +73,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Invalid account id number\n");
         return -1;
     }
-    
+
     /* Read lamb configuration file */
     config = (lamb_config_t *)calloc(1, sizeof(lamb_config_t));
     if (lamb_read_config(config, file) != 0) {
-        return -1;
-    }
-
-    /* Read lamb configuration file */
-    int lock;
-    char lockfile[128];
-
-    snprintf(lockfile, sizeof(lockfile), "/tmp/serv-%d.lock", aid);
-
-    if (lamb_lock_protection(&lock, lockfile)) {
-        fprintf(stderr, "Already started, please do not repeat the start!\n");
         return -1;
     }
 
@@ -97,7 +86,17 @@ int main(int argc, char *argv[]) {
     }
 
     if (setenv("logfile", config->logfile, 1) == -1) {
-        lamb_vlog(LOG_ERR, "setenv error: %s", strerror(errno));
+        return -1;
+    }
+
+    /* Check lock protection */
+    int lock;
+    char lockfile[128];
+
+    snprintf(lockfile, sizeof(lockfile), "/tmp/serv-%d.lock", aid);
+
+    if (lamb_lock_protection(&lock, lockfile)) {
+        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
         return -1;
     }
 

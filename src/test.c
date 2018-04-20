@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     char *file = "test.conf";
     
     int opt = 0;
-    char *optstring = "a:c:d";
+    char *optstring = "c:d";
     opt = getopt(argc, argv, optstring);
 
     while (opt != -1) {
@@ -54,17 +54,21 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    /* Daemon mode */
+    if (background) {
+        lamb_daemon();
+    }
+
+    if (setenv("logfile", config->logfile, 1) == -1) {
+        return -1;
+    }
+
     /* Check lock protection */
     int lock;
 
     if (lamb_lock_protection(&lock, "/tmp/testd.lock")) {
-        fprintf(stderr, "Already started, please do not repeat the start!\n");
+        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
         return -1;
-    }
-
-    /* Daemon mode */
-    if (background) {
-        lamb_daemon();
     }
 
     /* Save pid to file */
