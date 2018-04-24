@@ -1,6 +1,6 @@
 
 CC = gcc
-MACRO = -D_GNU_SOURCE -D_DEBUG
+MACRO = -D_GNU_SOURCE
 CFLAGS = -std=c99 -Wall -pedantic
 OBJS = src/account.o src/cache.o src/channel.o src/company.o src/config.o
 OBJS += src/db.o src/routing.o src/common.o src/security.o src/message.o
@@ -8,9 +8,6 @@ OBJS += src/list.o src/template.o src/keyword.o src/socket.o src/command.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lpcre -lprotobuf-c
 
 all: sp ismg server mt mo scheduler delivery test
-
-ac: src/ac.c src/ac.h $(OBJS)
-	$(CC) $(CFLAGS) $(MACRO) src/ac.c $(OBJS) $(LIBS) -lnanomsg -o ac
 
 sp: src/sp.c src/sp.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/sp.c $(OBJS) $(LIBS) -lnanomsg -o sp
@@ -99,16 +96,23 @@ install:
 	/usr/bin/mkdir -p /usr/local/lamb/bin
 	/usr/bin/mkdir -p /etc/lamb
 	/usr/bin/install -m 750 ismg /usr/local/lamb/bin
+	/usr/bin/install -m 750 mt /usr/local/lamb/bin
+	/usr/bin/install -m 750 mo /usr/local/lamb/bin
 	/usr/bin/install -m 750 server /usr/local/lamb/bin
-	/usr/bin/install -m 750 deliver /usr/local/lamb/bin
+	/usr/bin/install -m 750 scheduler /usr/local/lamb/bin
+	/usr/bin/install -m 750 delivery /usr/local/lamb/bin
 	/usr/bin/install -m 750 sp /usr/local/lamb/bin
-	/usr/bin/install -m 750 test /usr/local/lamb/bin
+	/usr/bin/install -m 750 testd /usr/local/lamb/bin
 	/usr/bin/install -m 750 config/ismg.conf /etc/lamb
+	/usr/bin/install -m 750 config/mt.conf /etc/lamb
+	/usr/bin/install -m 750 config/mo.conf /etc/lamb
 	/usr/bin/install -m 750 config/server.conf /etc/lamb
+	/usr/bin/install -m 750 config/scheduler.conf /etc/lamb
 	/usr/bin/install -m 750 config/deliver.conf /etc/lamb
 	/usr/bin/install -m 750 config/sp.conf /etc/lamb
+	/usr/bin/install -m 750 config/test.conf /etc/lamb
 
 clean:
 	rm -f src/*.o
-	rm -f ismg mt mo server scheduler delivery sp test
+	rm -f ismg mt mo server scheduler delivery sp testd
 
