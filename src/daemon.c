@@ -168,9 +168,9 @@ void lamb_start_program(lamb_task_t *task) {
     snprintf(cfg, sizeof(cfg), "%s/%s", config->config, task->config);
 
     if (strlen(task->argv) > 0) {
-        snprintf(cmd, sizeof(cmd), "%s -c %s %s", prog, cfg, task->argv);
+        snprintf(cmd, sizeof(cmd), "%s -a %d -c %s %s", prog, task->eid, cfg, task->argv);
     } else {
-        snprintf(cmd, sizeof(cmd), "%s -c %s", prog, cfg);
+        snprintf(cmd, sizeof(cmd), "%s -a %d -c %s", prog, task->eid, cfg);
     }
 
     //system(cmd);
