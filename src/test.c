@@ -177,6 +177,7 @@ int lamb_fetch_message(lamb_db_t *db, int *channel, lamb_submit_t *message) {
     }
 
     if (PQntuples(res) < 1) {
+        PQclear(res);
         return -1;
     }
 
