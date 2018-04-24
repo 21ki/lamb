@@ -52,17 +52,6 @@ class StatusModel {
 
         return $result;
     }
-    
-    public function getPid($id = null, $type = 'client') {
-        $id = intval($id);
-        $pid = 0;
-        $reply = $this->rdb->hGet($type . '.' . $id, 'pid');
-        if ($reply !== false) {
-            $pid = intval($reply);
-        }
-
-        return $pid;
-    }
 
     public function getQueue($id = null) {
         $id = intval($id);
@@ -149,6 +138,7 @@ class StatusModel {
     public function checkRuning(int $id = 0) {
         $online = false;
         $file = '/tmp/gtw-' . $id . '.lock';
+        $pid = 0;
 
         if (file_exists($file)) {
             $fp = fopen($file, 'r+');

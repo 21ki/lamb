@@ -143,6 +143,7 @@ class ServiceModel {
     }
 
     public function checkRuning(string $file) {
+        $pid = 0;
         $online = false;
 
         if (file_exists($file)) {
@@ -151,7 +152,10 @@ class ServiceModel {
                 if (flock($fp, LOCK_EX | LOCK_NB)) {
                     flock($fp, LOCK_UN);
                 } else {
-                    $online = true;
+                    $pid = $this->getPid($file);
+                    if (is_dir('/proc/' . $pid)) {
+                        $online = true;    
+                    }
                 }
                 fclose($fp);
             }
@@ -163,7 +167,7 @@ class ServiceModel {
     public function getPid(string $file) {
         $pid = 0;
 
-        if (file_exists($file)) {
+        if (file_exists($file) && is_file($file) && is_readable($file)) {
             $fp = fopen($file, "r");
             if ($fp) {
                 $line = fgets($fp);
