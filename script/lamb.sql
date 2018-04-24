@@ -110,3 +110,12 @@ CREATE TABLE message (
     status int NOT NULL,
     create_time timestamp without time zone NOT NULL
 );
+
+CREATE TABLE taskqueue (
+    id serial PRIMARY KEY NOT NULL,
+    eid int NOT NULL,
+    mod varchar(255) NOT NULL,
+    config varchar(255) NOT NULL,
+    argv varchar(255) NOT NULL,
+    create_time timestamp without time zone NOT NULL
+);

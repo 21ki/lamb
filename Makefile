@@ -7,7 +7,7 @@ OBJS += src/db.o src/routing.o src/common.o src/security.o src/message.o
 OBJS += src/list.o src/template.o src/keyword.o src/socket.o src/command.o
 LIBS = -pthread -lssl -lcrypto -liconv -lcmpp -lconfig -lpq -lhiredis -lpcre -lprotobuf-c
 
-all: sp ismg server mt mo scheduler delivery test
+all: sp ismg server mt mo scheduler delivery daemon test
 
 sp: src/sp.c src/sp.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/sp.c $(OBJS) $(LIBS) -lnanomsg -o sp
@@ -30,8 +30,8 @@ scheduler: src/scheduler.c src/scheduler.h $(OBJS) src/queue.o
 delivery: src/delivery.c src/delivery.h $(OBJS) src/queue.o
 	$(CC) $(CFLAGS) $(MACRO) src/delivery.c $(OBJS) src/queue.o $(LIBS) -lnanomsg -o delivery
 
-lamb: src/lamb.c src/lamb.h
-	$(CC) $(CFLAGS) $(MACRO) src/lamb.c -o lamb
+daemon: src/daemon.c src/daemon.h $(OBJS)
+	$(CC) $(CFLAGS) $(MACRO) src/daemon.c $(OBJS) $(LIBS) -lnanomsg -o daemon
 
 test: src/test.c src/test.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/test.c $(OBJS) $(LIBS) -lnanomsg -o testd
@@ -103,14 +103,14 @@ install:
 	/usr/bin/install -m 750 delivery /usr/local/lamb/bin
 	/usr/bin/install -m 750 sp /usr/local/lamb/bin
 	/usr/bin/install -m 750 testd /usr/local/lamb/bin
-	/usr/bin/install -m 750 config/ismg.conf /etc/lamb
-	/usr/bin/install -m 750 config/mt.conf /etc/lamb
-	/usr/bin/install -m 750 config/mo.conf /etc/lamb
-	/usr/bin/install -m 750 config/server.conf /etc/lamb
-	/usr/bin/install -m 750 config/scheduler.conf /etc/lamb
-	/usr/bin/install -m 750 config/deliver.conf /etc/lamb
-	/usr/bin/install -m 750 config/sp.conf /etc/lamb
-	/usr/bin/install -m 750 config/test.conf /etc/lamb
+	/usr/bin/install -m 640 config/ismg.conf /etc/lamb
+	/usr/bin/install -m 640 config/mt.conf /etc/lamb
+	/usr/bin/install -m 640 config/mo.conf /etc/lamb
+	/usr/bin/install -m 640 config/server.conf /etc/lamb
+	/usr/bin/install -m 640 config/scheduler.conf /etc/lamb
+	/usr/bin/install -m 640 config/deliver.conf /etc/lamb
+	/usr/bin/install -m 640 config/sp.conf /etc/lamb
+	/usr/bin/install -m 640 config/test.conf /etc/lamb
 
 clean:
 	rm -f src/*.o
