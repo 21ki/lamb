@@ -22,6 +22,7 @@ class ServiceModel {
         $core[] = $this->scheduler();
         $core[] = $this->delivery();
         $core[] = $this->testd();
+        $core[] = $this->daemon();
 
         return $core;
     }
@@ -120,6 +121,17 @@ class ServiceModel {
         }
 
         return $gateways;
+    }
+
+    public function daemon() {
+        $lock = '/tmp/daemon.lock';
+        $daemon['id'] = 1;
+        $daemon['pid'] = $this->getPid($lock);
+        $daemon['name'] = 'daemon';
+        $daemon['status'] = $this->checkRuning($lock);
+        $daemon['description'] = '业务处理进程管理服务';
+
+        return $daemon;
     }
 
     public function queue(string $type = 'mt') {
