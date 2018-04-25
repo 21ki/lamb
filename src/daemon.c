@@ -110,6 +110,7 @@ void lamb_event_loop(void) {
         if (!err) {
             lamb_start_program(task);
             lamb_del_taskqueue(db, task->id);
+            lamb_log(LOG_INFO, "Start new id %d in %s service process");
         }
 
         lamb_sleep(5000);

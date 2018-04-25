@@ -388,13 +388,20 @@ void lamb_vlog(int level, const char *fmt, ...) {
 }
 
 int lamb_lock_protection(int *lock, const char *file) {
+    int flags;
+
     umask(0);
     *lock = open(file, O_RDWR | O_CREAT, 0666);
 
     if (*lock != -1) {
+        flags = fcntl(*lock, F_GETFD);
+        flags |= FD_CLOEXEC;
+        fcntl(*lock, F_SETFD, flags);
+
         if (flock(*lock, LOCK_EX | LOCK_NB) == 0) {
             return 0;
         }
+
         close(*lock);
     }
 
