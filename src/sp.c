@@ -45,11 +45,14 @@ int main(int argc, char *argv[]) {
     bool background = false;
 
     int opt = 0;
-    char *optstring = "c:d";
+    char *optstring = "a:c:d";
     opt = getopt(argc, argv, optstring);
 
     while (opt != -1) {
         switch (opt) {
+        case 'a':
+            gid = atoi(optarg);
+            break;
         case 'c':
             file = optarg;
             break;
@@ -60,16 +63,14 @@ int main(int argc, char *argv[]) {
         opt = getopt(argc, argv, optstring);
     }
 
-    /* Read lamb configuration file */
-    memset(&config, 0, sizeof(config));
-    if (lamb_read_config(&config, file) != 0) {
+    if (gid < 1) {
+        fprintf(stderr, "Invalid gateway id number\n");
         return -1;
     }
 
-    gid = config.id;
-
-    if (gid < 1) {
-        fprintf(stderr, "Invalid gateway id number\n");
+    /* Read lamb configuration file */
+    memset(&config, 0, sizeof(config));
+    if (lamb_read_config(&config, file) != 0) {
         return -1;
     }
 

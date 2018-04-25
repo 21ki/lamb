@@ -173,8 +173,7 @@ void lamb_start_program(lamb_task_t *task) {
         snprintf(cmd, sizeof(cmd), "%s -a %d -c %s", prog, task->eid, cfg);
     }
 
-    //system(cmd);
-    printf("%s\n", cmd);
+    system(cmd);
 
     return;
 }
