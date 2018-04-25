@@ -636,9 +636,9 @@ void *lamb_stat_loop(void *data) {
     time_t last_time;
     int interval;
 
-    client = (lamb_client_t *)data;
     redisReply *reply = NULL;
     last_time = time(NULL);
+    client = (lamb_client_t *)data;
 
     while (true) {
         interval = time(NULL) - last_time;
@@ -674,7 +674,7 @@ void *lamb_stat_loop(void *data) {
         pthread_mutex_lock(&rdb->lock);
         signal = lamb_check_signal(rdb, client->account->id);
         pthread_mutex_unlock(&rdb->lock);
-        printf("-> signal: %d\n", signal);
+
         if (signal == 9) {
             lamb_nn_close(mt);
             lamb_nn_close(mo);
@@ -701,10 +701,6 @@ void *lamb_online_loop(void *arg) {
     }
 
     pthread_exit(NULL);
-}
-
-void lamb_mt_close(int sock) {
-
 }
 
 int lamb_state_renewal(lamb_cache_t *cache, int id) {
