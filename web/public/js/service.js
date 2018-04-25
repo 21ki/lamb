@@ -90,7 +90,7 @@ function checkStatus(val) {
     var text;
 
     if (val) {
-        text = '<span class="label label-success">正 常</span>';
+        text = '<span class="label label-success">OK</span>';
     } else {
         text = '<span class="label label-default">未 知</span>';
     }
