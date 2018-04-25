@@ -80,12 +80,15 @@ class AccountModel {
                 $sth = $this->db->prepare($sql);
                 $sth->bindValue(':username', $data['username'], PDO::PARAM_STR);
                 if ($sth->execute()) {
-                    $result = $sth->fetch();
-                    if ($result !== false) {
-                        $this->rdb->hMSet('account.' . $result['username'], $result);
+                    $account = $sth->fetch();
+                    if ($account !== false) {
+                        $this->taskNotice($account['id']);
+                        $this->rdb->hMSet('account.' . $account['username'], $account);
                         return true;
                     }
                 }
+
+
             }
         }
 
@@ -267,6 +270,23 @@ class AccountModel {
         if ($id > 0 && $this->isExist($id)) {
             $this->rdb->hSet('server.' . $id, 'signal', 1);
             return true;
+        }
+
+        return false;
+    }
+
+    public function taskNotice(int $id = 0) {
+        if ($id > 0 && $this->isExist($id)) {
+            $sql = 'INSERT INTO taskqueue (eid,mod,config,argv,create_time) VALUES (:eid, :mod, :config, :argv, now())';
+            $sth = $this->db->prepare($sql);
+            $sth->bindValue(':eid', $id, PDO::PARAM_INT);
+            $sth->bindValue(':mod', 'server', PDO::PARAM_STR);
+            $sth->bindValue(':config', 'server.conf', PDO::PARAM_STR);
+            $sth->bindValue(':argv', '-d', PDO::PARAM_STR);
+
+            if ($sth->execute()) {
+                return true;
+            }
         }
 
         return false;
