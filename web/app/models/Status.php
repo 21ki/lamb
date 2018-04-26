@@ -135,6 +135,23 @@ class StatusModel {
         return false;
     }
 
+    public function getPid(string $file) {
+        $pid = 0;
+
+        if (file_exists($file) && is_file($file) && is_readable($file)) {
+            $fp = fopen($file, "r");
+            if ($fp) {
+                $line = fgets($fp);
+                if ($line !== false) {
+                    $pid = intval($line);
+                }
+                fclose($fp);
+            }
+        }
+
+        return $pid;
+    }
+    
     public function checkRuning(int $id = 0) {
         $online = false;
         $file = '/tmp/gtw-' . $id . '.lock';
@@ -143,10 +160,9 @@ class StatusModel {
         if (file_exists($file)) {
             $fp = fopen($file, 'r+');
             if ($fp) {
-                if (flock($fp, LOCK_EX | LOCK_NB)) {
-                    flock($fp, LOCK_UN);
-                } else {
-                    $online = true;
+                $pid = $this->getPid($file);
+                if (is_dir('/proc/' . $pid)) {
+                    $online = true;    
                 }
                 fclose($fp);
             }

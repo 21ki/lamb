@@ -161,13 +161,9 @@ class ServiceModel {
         if (file_exists($file)) {
             $fp = fopen($file, 'r+');
             if ($fp) {
-                if (flock($fp, LOCK_EX | LOCK_NB)) {
-                    flock($fp, LOCK_UN);
-                } else {
-                    $pid = $this->getPid($file);
-                    if (is_dir('/proc/' . $pid)) {
-                        $online = true;    
-                    }
+                $pid = $this->getPid($file);
+                if (is_dir('/proc/' . $pid)) {
+                    $online = true;    
                 }
                 fclose($fp);
             }
