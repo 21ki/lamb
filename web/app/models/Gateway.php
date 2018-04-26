@@ -1,7 +1,7 @@
 <?php
 
 /*
- * The Channel Model
+ * The Gateway Model
  * Link http://github.com/typefo/lamb
  * Copyright (C) typefo <typefo@qq.com>
  */
@@ -68,6 +68,13 @@ class GatewayModel {
             }
 
             if ($sth->execute()) {
+                $sql = 'SELECT id FROM gateway WHERE name = :name LIMIT 1';
+                $sth = $this->db->prepare($sql);
+                $sth->bindValue(':name', $data['name'], PDO::PARAM_STR);
+                if ($sth->execute()) {
+                    $id = $sth->fetchColumn();
+                    $this->taskNotice(intval($id));
+                }
                 return true;
             }
         }
@@ -300,5 +307,22 @@ class GatewayModel {
 
     public function genSeq(){
         return (int)(str_replace('.', '', (string)microtime(true)));
+    }
+
+    public function taskNotice(int $id = 0) {
+        if ($id > 0 && $this->isExist($id)) {
+            $sql = 'INSERT INTO taskqueue (eid,mod,config,argv,create_time) VALUES (:eid, :mod, :config, :argv, now())';
+            $sth = $this->db->prepare($sql);
+            $sth->bindValue(':eid', $id, PDO::PARAM_INT);
+            $sth->bindValue(':mod', 'sp', PDO::PARAM_STR);
+            $sth->bindValue(':config', 'sp.conf', PDO::PARAM_STR);
+            $sth->bindValue(':argv', '-d', PDO::PARAM_STR);
+
+            if ($sth->execute()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
