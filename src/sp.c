@@ -21,6 +21,7 @@
 #include "queue.h"
 #include "socket.h"
 #include "message.h"
+#include "gateway.h"
 #include "sp.h"
 
 static int gid;
@@ -32,6 +33,7 @@ static lamb_cache_t *rdb;
 static lamb_caches_t cache;
 static lamb_list_t *storage;
 static lamb_config_t config;
+static lamb_gateway_t *gateway;
 static pthread_cond_t cond;
 static pthread_mutex_t mutex;
 static lamb_heartbeat_t heartbeat;
@@ -122,7 +124,7 @@ void lamb_event_loop(void) {
     heartbeat.count = 0;
 
     memset(&status, 0, sizeof(status));
-    
+
     /* Storage Initialization */
     storage = lamb_list_new();
     if (!storage) {
@@ -130,15 +132,13 @@ void lamb_event_loop(void) {
         return;
     }
 
-    lamb_debug("storage initialization successfull\n");
-
     statistical = (lamb_statistical_t *)calloc(1, sizeof(lamb_statistical_t));
     if (!statistical) {
         lamb_log(LOG_ERR, "the kernel can't allocate memory");
         return;
     }
 
-    statistical->gid = config.id;
+    statistical->gid = gid;
     pthread_mutex_init(&statistical->lock, NULL);
 
     /* Redis initialization */
@@ -178,6 +178,19 @@ void lamb_event_loop(void) {
 
     lamb_debug("connect to database successfull\n");
 
+    /* fetch gateway information */
+    gateway = (lamb_gateway_t *)calloc(1, sizeof(lamb_gateway_t));
+    if (!gateway) {
+        lamb_log(LOG_ERR, "the kernel can't allocate memory");
+        return;
+    }
+
+    err = lamb_get_gateway(db, gid, gateway);
+    if (err) {
+        lamb_log(LOG_ERR, "fetch %d gateway information failure", gid);
+        return;
+    }
+    
     /* Cache cluster initialization */
     memset(&cache, 0, sizeof(cache));
     lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 4);
@@ -189,7 +202,7 @@ void lamb_event_loop(void) {
     lamb_debug("connect to cache cluster successfull\n");
 
     /* Connect to scheduler server */
-    scheduler = lamb_nn_reqrep(config.scheduler, config.id, config.timeout);
+    scheduler = lamb_nn_reqrep(config.scheduler, gid, config.timeout);
     if (scheduler < 0) {
         lamb_log(LOG_ERR, "can't connect to scheduler %s", config.scheduler);
         return;
@@ -198,7 +211,7 @@ void lamb_event_loop(void) {
     lamb_debug("connect to scheduler server successfull\n");
 
     /* Connect to delivery server */
-    delivery = lamb_nn_pair(config.delivery, config.id, config.timeout);
+    delivery = lamb_nn_pair(config.delivery, gid, config.timeout);
     if (delivery < 0) {
         lamb_log(LOG_ERR, "can't connect to delivery %s", config.delivery);
         return;
@@ -247,14 +260,13 @@ void *lamb_sender_loop(void *data) {
     char *tocode;
 
     /* Convert the coded name to the number */
-    if (strcasecmp(config.encoding, "ASCII") == 0) {
-        msgFmt = 0;
+    msgFmt = gateway->encoding;
+
+    if (msgFmt == 0) {
         tocode = "ASCII";
-    } else if (strcasecmp(config.encoding, "UCS-2") == 0) {
-        msgFmt = 8;
+    } else if (msgFmt == 8) {
         tocode = "UCS-2BE";
-    } else if (strcasecmp(config.encoding, "UTF-8") == 0) {
-        msgFmt = 11;
+    } else if (msgFmt == 11) {
         tocode = "UTF-8";
     } else {
         msgFmt = 15;
@@ -266,14 +278,9 @@ void *lamb_sender_loop(void *data) {
     Submit *message;
     int length;
     char content[256];
-    char *serverid = NULL;
 
     memset(spcode, 0, sizeof(spcode));
     len = lamb_pack_assembly(&req, LAMB_REQ, NULL, 0);
-
-    if (strlen(config.serverid) > 0) {
-        serverid = config.serverid;
-    }
 
     while (true) {
         if (!cmpp.ok) {
@@ -325,10 +332,10 @@ void *lamb_sender_loop(void *data) {
         confirmed.company = message->company;
 
         /* Spcode processing */
-        if (config.extended) {
-            snprintf(spcode, sizeof(spcode), "%s%s", config.spcode, message->spcode);
+        if (gateway->extended) {
+            snprintf(spcode, sizeof(spcode), "%s%s", gateway->spcode, message->spcode);
         } else {
-            strcpy(spcode, config.spcode);
+            strcpy(spcode, gateway->spcode);
         }
 
         /* Message encode convert */
@@ -342,8 +349,8 @@ void *lamb_sender_loop(void *data) {
 
         /* Send message to gateway */
         sequenceId = confirmed.sequenceId = cmpp_sequence();
-        err = cmpp_submit(&cmpp.sock, sequenceId, config.spid, spcode, message->phone,
-                          content, length, msgFmt, serverid, true);
+        err = cmpp_submit(&cmpp.sock, sequenceId, gateway->spid, spcode, message->phone,
+                          content, length, msgFmt, NULL, true);
         submit__free_unpacked(message, NULL);
 
         /* Submit count statistical  */
@@ -368,10 +375,10 @@ void *lamb_sender_loop(void *data) {
         }
 
         /* Flow control */
-        if (config.concurrent > 1000) {
+        if (gateway->concurrent > 1000) {
             delayed = 1000;
         } else {
-            delayed = 1000 / config.concurrent;
+            delayed = 1000 / gateway->concurrent;
         }
 
         lamb_msleep(delayed);
@@ -551,7 +558,7 @@ void *lamb_cmpp_keepalive(void *data) {
         sequenceId = heartbeat.sequenceId = cmpp_sequence();
         err = cmpp_active_test(&cmpp.sock, sequenceId);
         if (err) {
-            lamb_log(LOG_ERR, "sending keepalive packet to %s gateway failed", config.host);
+            lamb_log(LOG_ERR, "sending keepalive packet to %s gateway failed", gateway->host);
         }
 
         heartbeat.count++;
@@ -582,7 +589,7 @@ void *lamb_work_loop(void *data) {
     int account;
     int company;
 
-    int slen = strlen(config.spcode);
+    int slen = strlen(gateway->spcode);
     Report report = REPORT__INIT;
     Deliver deliver = DELIVER__INIT;
 
@@ -684,11 +691,11 @@ void *lamb_work_loop(void *data) {
 }
 
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
-    lamb_log(LOG_ERR, "reconnecting to gateway %s ...", config->host);
+    lamb_log(LOG_ERR, "reconnecting to gateway %s ...", gateway->host);
     while (lamb_cmpp_init(cmpp, config) != 0) {
         lamb_sleep(config->interval * 1000);
     }
-    lamb_log(LOG_ERR, "connect to gateway %s successfull", config->host);
+    lamb_log(LOG_ERR, "connect to gateway %s successfull", gateway->host);
     return;
 }
 
@@ -705,23 +712,23 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     cmpp_sock_setting(&cmpp->sock, CMPP_SOCK_RECVTIMEOUT, config->recv_timeout);
 
     /* Initialization cmpp connection */
-    err = cmpp_init_sp(cmpp, config->host, config->port);
+    err = cmpp_init_sp(cmpp, gateway->host, gateway->port);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to gateway %s server", config->host);
+        lamb_log(LOG_ERR, "can't connect to gateway %s server", gateway->host);
         return 1;
     }
 
     /* login to cmpp gateway */
     sequenceId = cmpp_sequence();
-    err = cmpp_connect(&cmpp->sock, sequenceId, config->user, config->password);
+    err = cmpp_connect(&cmpp->sock, sequenceId, gateway->username, gateway->password);
     if (err) {
-        lamb_log(LOG_ERR, "sending connection request to %s failed", config->host);
+        lamb_log(LOG_ERR, "sending connection request to %s failed", gateway->host);
         return 2;
     }
 
     err = cmpp_recv_timeout(&cmpp->sock, &pack, sizeof(pack), config->recv_timeout);
     if (err) {
-        lamb_log(LOG_ERR, "receive gateway response packet from %s failed", config->host);
+        lamb_log(LOG_ERR, "receive gateway response packet from %s failed", gateway->host);
         return 3;
     }
 
@@ -754,7 +761,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
 
         return 4;
     } else {
-        lamb_log(LOG_ERR, "incorrect response packet from %s gateway", config->host);
+        lamb_log(LOG_ERR, "incorrect response packet from %s gateway", gateway->host);
         return 5;
     }
     
@@ -768,14 +775,12 @@ void *lamb_stat_loop(void *data) {
     unsigned long long error;
     redisReply *reply = NULL;
 
-    curr.gid = config.id;
+    curr.gid = gid;
 
     while (true) {
         error = status.err + status.timeo;
-        reply = redisCommand(rdb->handle, "HMSET gateway.%d pid %u "
-                             "status %d speed %llu error %llu",
-                             config.id, getpid(), cmpp.ok ? 1 : 0,
-                             (unsigned long long)(total / 5), error);
+        reply = redisCommand(rdb->handle, "HMSET gateway.%d pid %u status %d speed %llu error %llu",
+                             gid, getpid(), cmpp.ok ? 1 : 0, (unsigned long long)(total / 5), error);
         total = 0;
 
         if (reply != NULL) {
@@ -799,9 +804,10 @@ void *lamb_stat_loop(void *data) {
             }
         }
 
-        lamb_debug("queue: %u, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu"
-                   ", err: %llu\n", storage->len, status.sub, status.ack, status.rep, status.delv,
-                   status.timeo, status.err);
+#ifdef _DEBUG
+        printf("queue: %u, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu, err: %llu\n",
+               storage->len, status.sub, status.ack, status.rep, status.delv, status.timeo, status.err);
+#endif
 
         sleep(5);
     }
@@ -1033,74 +1039,6 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     /* RedisDb */
     if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
         fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
-        goto error;
-    }
-
-    /* Host */
-    if (lamb_get_string(&cfg, "Host", conf->host, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid host IP address\n");
-        goto error;
-    }
-
-    /* Port */
-    if (lamb_get_int(&cfg, "Port", &conf->port) != 0) {
-        fprintf(stderr, "ERROR: Can't read Port parameter\n");
-        goto error;
-    }
-
-    /* Check port validity */
-    if (conf->port < 1 || conf->port > 65535) {
-        fprintf(stderr, "ERROR: Invalid host Port number\n");
-        goto error;
-    }
-
-    /* User */
-    if (lamb_get_string(&cfg, "User", conf->user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'User' parameter\n");
-        goto error;
-    }
-
-    /* Password */
-    if (lamb_get_string(&cfg, "Password", conf->password, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Password' parameter\n");
-        goto error;
-    }
-
-    /* Spid */
-    if (lamb_get_string(&cfg, "Spid", conf->spid, 8) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Spid' parameter\n");
-        goto error;
-    }
-
-    /* SpCode */
-    if (lamb_get_string(&cfg, "SpCode", conf->spcode, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'SpCode' parameter\n");
-        goto error;
-    }
-
-    /* ServerId */
-    lamb_get_string(&cfg, "ServerId", conf->serverid, 16);
-
-    /* Encoding */
-    if (lamb_get_string(&cfg, "Encoding", conf->encoding, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Encoding' parameter\n");
-        goto error;
-    }
-
-    /* Concurrent */
-    if (lamb_get_int(&cfg, "Concurrent", &conf->concurrent) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Concurrent' parameter\n");
-    }
-
-    /* Extended */
-    if (lamb_get_bool(&cfg, "Extended", &conf->extended) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Extended' parameter\n");
-        goto error;
-    }
-
-    /* BackFile */
-    if (lamb_get_string(&cfg, "BackFile", conf->backfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'BackFile' parameter\n");
         goto error;
     }
 

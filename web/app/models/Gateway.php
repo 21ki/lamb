@@ -12,7 +12,7 @@ class GatewayModel {
     public $db = null;
     private $table = 'gateway';
     private $column = ['name', 'type', 'host', 'port', 'username', 'password', 'spid',
-                       'spcode', 'encoded', 'extended', 'concurrent', 'description'];
+                       'spcode', 'encoding', 'extended', 'concurrent', 'description'];
     
     public function __construct() {
         $this->db = Yaf\Registry::get('db');
@@ -46,8 +46,8 @@ class GatewayModel {
         $data = $this->checkArgs($data);
         $data['type'] = 1;
 
-        if (isset($data['encoded'])) {
-            if (!in_array($data['encoded'], [0, 8, 15], true)) {
+        if (isset($data['encoding'])) {
+            if (!in_array($data['encoding'], [0, 8, 11, 15], true)) {
                 return false;
             }
         }
@@ -59,8 +59,8 @@ class GatewayModel {
         }
 
         if (count($data) == count($this->column)) {
-            $sql = 'INSERT INTO ' . $this->table . '(name, type, host, port, username, password, spid, spcode, encoded, extended, concurrent, description) ';
-            $sql .= 'VALUES(:name, :type, :host, :port, :username, :password, :spid, :spcode, :encoded, :extended, :concurrent, :description)';
+            $sql = 'INSERT INTO ' . $this->table . '(name, type, host, port, username, password, spid, spcode, encoding, extended, concurrent, description) ';
+            $sql .= 'VALUES(:name, :type, :host, :port, :username, :password, :spid, :spcode, :encoding, :extended, :concurrent, :description)';
             $sth = $this->db->prepare($sql);
 
             foreach ($data as $key => $val) {
@@ -83,9 +83,9 @@ class GatewayModel {
             $data['type'] = 1;
         }
         
-        if (isset($data['encoded'])) {
-            if (!in_array($data['encoded'], [0, 8, 15], true)) {
-                unset($data['encoded']);
+        if (isset($data['encoding'])) {
+            if (!in_array($data['encoding'], [0, 8, 11, 15], true)) {
+                unset($data['encoding']);
             }
         }
 
@@ -263,8 +263,8 @@ class GatewayModel {
             case 'spcode':
                 $res['spcode'] = Filter::alpha($val, null, 1, 32);
                 break;
-            case 'encoded':
-                $res['encoded'] = Filter::number($val, null);
+            case 'encoding':
+                $res['encoding'] = Filter::number($val, null);
                 break;
             case 'extended':
                 $res['extended'] = Filter::number($val, 0, 0, 1);

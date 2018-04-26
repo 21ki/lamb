@@ -42,7 +42,7 @@ CREATE TABLE gateway (
     password varchar(64) NOT NULL,
     spid varchar(32) NOT NULL,
     spcode varchar(32) NOT NULL,
-    encoded int NOT NULL,
+    encoding int NOT NULL,
     extended int NOT NULL,
     concurrent int NOT NULL,
     description text NOT NULL,

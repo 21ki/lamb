@@ -15,14 +15,6 @@
 typedef struct {
     int id;
     bool debug;
-    char host[16];
-    int port;
-    char user[64];
-    char password[128];
-    char spid[8];
-    char spcode[16];
-    char serverid[16];
-    char encoding[32];
     int retry;
     int interval;
     long timeout;

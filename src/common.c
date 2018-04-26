@@ -391,7 +391,7 @@ int lamb_lock_protection(int *lock, const char *file) {
     int flags;
 
     umask(0);
-    *lock = open(file, O_RDWR | O_CREAT, 0666);
+    *lock = open(file, O_RDWR | O_CREAT | O_TRUNC, 0666);
 
     if (*lock != -1) {
         flags = fcntl(*lock, F_GETFD);
