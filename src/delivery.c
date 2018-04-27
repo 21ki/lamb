@@ -22,12 +22,14 @@
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
 #include <nanomsg/reqrep.h>
+#include <syslog.h>
 #include "common.h"
 #include "config.h"
 #include "cache.h"
 #include "socket.h"
 #include "message.h"
 #include "delivery.h"
+#include "log.h"
 
 //static int ac;
 static lamb_db_t db;
@@ -72,15 +74,14 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
-    if (setenv("logfile", config.logfile, 1) == -1) {
-        return -1;
-    }
+    /* Logger initialization*/
+    lamb_log_init("lamb-delivery");
 
     /* Check lock protection */
     int lock;
 
     if (lamb_lock_protection(&lock, "/tmp/delivery.lock")) {
-        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
+        syslog(LOG_ERR, "Already started, please do not repeat the start!\n");
         return -1;
     }
 
@@ -116,7 +117,7 @@ void lamb_event_loop(void) {
     /* Client Queue Pools Initialization */
     pool = lamb_list_new();
     if (!pool) {
-        lamb_log(LOG_ERR, "queue pool initialization failed");
+        syslog(LOG_ERR, "queue pool initialization failed");
         return;
     }
 
@@ -125,14 +126,14 @@ void lamb_event_loop(void) {
     /* Storage queue initialization */
     storage = lamb_list_new();
     if (!storage) {
-        lamb_log(LOG_ERR, "storage queue initialization failed");
+        syslog(LOG_ERR, "storage queue initialization failed");
         return;
     }
 
     /* delivery queue initialization */
     delivery = lamb_list_new();
     if (!delivery) {
-        lamb_log(LOG_ERR, "delivery routing table initialization failed");
+        syslog(LOG_ERR, "delivery routing table initialization failed");
         return;
     }
 
@@ -143,7 +144,7 @@ void lamb_event_loop(void) {
         err = lamb_cache_connect(rdb, config.redis_host, config.redis_port, NULL,
                                  config.redis_db);
         if (err) {
-            lamb_log(LOG_ERR, "can't connect to redis %s", config.redis_host);
+            syslog(LOG_ERR, "can't connect to redis %s", config.redis_host);
             return;
         }
     }
@@ -151,35 +152,35 @@ void lamb_event_loop(void) {
     /* Core database initialization */
     err = lamb_db_init(&db);
     if (err) {
-        lamb_log(LOG_ERR, "postgresql database initialization failed");
+        syslog(LOG_ERR, "postgresql database initialization failed");
         return;
     }
 
     err = lamb_db_connect(&db, config.db_host, config.db_port, config.db_user,
                           config.db_password, config.db_name);
     if (err) {
-        lamb_log(LOG_ERR, "Can't connect to postgresql database");
+        syslog(LOG_ERR, "Can't connect to postgresql database");
         return;
     }
 
     /* Message database initialization */
     err = lamb_db_init(&mdb);
     if (err) {
-        lamb_log(LOG_ERR, "postgresql database initialization failed");
+        syslog(LOG_ERR, "postgresql database initialization failed");
         return;
     }
 
     err = lamb_db_connect(&mdb, config.msg_host, config.msg_port, config.msg_user,
                           config.msg_password, config.msg_name);
     if (err) {
-        lamb_log(LOG_ERR, "Can't connect to postgresql database");
+        syslog(LOG_ERR, "Can't connect to postgresql database");
         return;
     }
 
     /* fetch delivery routing */
     err = lamb_get_delivery(&db, delivery);
     if (err) {
-        lamb_log(LOG_ERR, "get delivery routing failed");
+        syslog(LOG_ERR, "get delivery routing failed");
         return;
     }
 
@@ -201,7 +202,7 @@ void lamb_event_loop(void) {
     /* delivery server Initialization */
     fd = nn_socket(AF_SP, NN_REP);
     if (fd < 0) {
-        lamb_log(LOG_ERR, "socket %s", nn_strerror(nn_errno()));
+        syslog(LOG_ERR, "socket %s", nn_strerror(nn_errno()));
         return;
     }
 
@@ -209,7 +210,7 @@ void lamb_event_loop(void) {
         
     if (nn_bind(fd, addr) < 0) {
         nn_close(fd);
-        lamb_log(LOG_ERR, "bind %s", nn_strerror(nn_errno()));
+        syslog(LOG_ERR, "bind %s", nn_strerror(nn_errno()));
         return;
     }
 
@@ -235,7 +236,7 @@ void lamb_event_loop(void) {
 
         if (CHECK_COMMAND(buf) != LAMB_REQUEST) {
             nn_freemsg(buf);
-            lamb_log(LOG_WARNING, "invalid request from client");
+            syslog(LOG_WARNING, "invalid request from client");
             continue;
         }
 
@@ -243,12 +244,12 @@ void lamb_event_loop(void) {
         nn_freemsg(buf);
 
         if (!req) {
-            lamb_log(LOG_ERR, "can't parse protocol packets");
+            syslog(LOG_ERR, "can't parse protocol packets");
             continue;
         }
 
         if (req->id < 1) {
-            lamb_log(LOG_WARNING, "can't recognition client identity");
+            syslog(LOG_WARNING, "can't recognition client identity");
             continue;
         }
 
@@ -320,13 +321,13 @@ void lamb_reload(int signum) {
     err = lamb_get_delivery(&db, delivery);
 
     if (err) {
-        lamb_log(LOG_ERR, "fetch delivery information failed");
+        syslog(LOG_ERR, "fetch delivery information failed");
     } else {
-        lamb_log(LOG_ERR, "fetch delivery information successfull\n");
+        syslog(LOG_ERR, "fetch delivery information successfull\n");
     }
 
     sleeping = false;
-    lamb_log(LOG_INFO, "reload configuration successfull");
+    syslog(LOG_INFO, "reload configuration successfull");
     lamb_debug("-> reload configuration successfull\n");
 
     return;
@@ -349,7 +350,7 @@ void *lamb_push_loop(void *arg) {
     if (err) {
         pthread_cond_signal(&cond);
         request__free_unpacked(client, NULL);
-        lamb_log(LOG_ERR, "lamb can't find available port");
+        syslog(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
 
@@ -513,7 +514,7 @@ void *lamb_push_loop(void *arg) {
 
     nn_close(fd);
     lamb_debug("connection closed from %s\n", client->addr);
-    lamb_log(LOG_INFO, "connection closed from %s", client->addr);
+    syslog(LOG_INFO, "connection closed from %s", client->addr);
     request__free_unpacked(client, NULL);
 
     pthread_exit(NULL);
@@ -547,7 +548,7 @@ void *lamb_pull_loop(void *arg) {
     node = NULL;
 
     if (!queue) {
-        lamb_log(LOG_ERR, "can't create queue for client %s", client->addr);
+        syslog(LOG_ERR, "can't create queue for client %s", client->addr);
         request__free_unpacked(client, NULL);
         pthread_exit(NULL);
     }
@@ -558,7 +559,7 @@ void *lamb_pull_loop(void *arg) {
     if (err) {
         pthread_cond_signal(&cond);
         request__free_unpacked(client, NULL);
-        lamb_log(LOG_ERR, "lamb can't find available port");
+        syslog(LOG_ERR, "lamb can't find available port");
         pthread_exit(NULL);
     }
 
@@ -681,7 +682,7 @@ void *lamb_pull_loop(void *arg) {
 
     nn_close(fd);
     lamb_debug("connection closed from %s\n", client->addr);
-    lamb_log(LOG_ERR, "connection closed from %s", client->addr);
+    syslog(LOG_ERR, "connection closed from %s", client->addr);
     request__free_unpacked(client, NULL);
 
     pthread_exit(NULL);
@@ -693,7 +694,7 @@ int lamb_child_server(int *sock, const char *listen, unsigned short *port, int p
     
     fd = nn_socket(AF_SP, protocol);
     if (fd < 0) {
-        lamb_log(LOG_ERR, "socket %s", nn_strerror(nn_errno()));
+        syslog(LOG_ERR, "socket %s", nn_strerror(nn_errno()));
         return -1;
     }
 

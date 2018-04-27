@@ -17,8 +17,10 @@
 #include <sched.h>
 #include <signal.h>
 #include <errno.h>
+#include <syslog.h>
 #include "daemon.h"
 #include "common.h"
+#include "log.h"
 
 static lamb_db_t *db;
 static lamb_config_t *config;
@@ -54,15 +56,14 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
-    if (setenv("logfile", config->logfile, 1) == -1) {
-        return -1;
-    }
+    /* Logger initialization*/
+    lamb_log_init("lamb-daemon");
 
     /* Check lock protection */
     int lock;
 
     if (lamb_lock_protection(&lock, "/tmp/daemon.lock")) {
-        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
+        syslog(LOG_ERR, "Already started, please do not repeat the start!\n");
         return -1;
     }
 
@@ -93,7 +94,7 @@ void lamb_event_loop(void) {
 
     task = (lamb_task_t *)calloc(1, sizeof(lamb_task_t));
     if (!task) {
-        lamb_log(LOG_ERR, "The kernel can't allocate memory");
+        syslog(LOG_ERR, "The kernel can't allocate memory");
         return;
     }
 
@@ -110,7 +111,7 @@ void lamb_event_loop(void) {
         if (!err) {
             lamb_start_program(task);
             lamb_del_taskqueue(db, task->id);
-            lamb_log(LOG_INFO, "Start new id %d in %s service process");
+            syslog(LOG_INFO, "Start new id %d in %s service process");
         }
 
         lamb_sleep(5000);
@@ -185,20 +186,20 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Postgresql Database  */
     db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
     if (!db) {
-        lamb_log(LOG_ERR, "the kernel can't allocate memory");
+        syslog(LOG_ERR, "the kernel can't allocate memory");
         return -1;
     }
 
     err = lamb_db_init(db);
     if (err) {
-        lamb_log(LOG_ERR, "postgresql database initialization failed");
+        syslog(LOG_ERR, "postgresql database initialization failed");
         return -1;
     }
 
     err = lamb_db_connect(db, cfg->db_host, cfg->db_port,
                           cfg->db_user, cfg->db_password, cfg->db_name);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to postgresql database");
+        syslog(LOG_ERR, "can't connect to postgresql database");
         return -1;
     }
 

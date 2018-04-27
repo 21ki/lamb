@@ -21,7 +21,9 @@
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
 #include <nanomsg/reqrep.h>
+#include <syslog.h>
 #include "socket.h"
+#include "log.h"
 #include "test.h"
 
 static int scheduler;
@@ -59,15 +61,14 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
-    if (setenv("logfile", config->logfile, 1) == -1) {
-        return -1;
-    }
+    /* Logger initialization*/
+    lamb_log_init("lamb-testd");
 
     /* Check lock protection */
     int lock;
 
     if (lamb_lock_protection(&lock, "/tmp/testd.lock")) {
-        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
+        syslog(LOG_ERR, "Already started, please do not repeat the start!\n");
         return -1;
     }
 
@@ -131,7 +132,7 @@ void lamb_event_loop(void) {
         pk = malloc(len);
 
         if (!pk) {
-            lamb_log(LOG_ERR, "the kernel can't allocate memory");
+            syslog(LOG_ERR, "the kernel can't allocate memory");
             continue;
         }
 
@@ -146,13 +147,13 @@ void lamb_event_loop(void) {
 
             switch (status) {
             case 1:
-                lamb_log(LOG_NOTICE, "message %llu response state successfull", message.id);
+                syslog(LOG_NOTICE, "message %"PRId64" response state successfull", message.id);
                 break;
             case 2:
-                lamb_log(LOG_NOTICE, "message %llu response state no channel", message.id);
+                syslog(LOG_NOTICE, "message %"PRId64" response state no channel", message.id);
                 break;
             default:
-                lamb_log(LOG_NOTICE, "message %llu response state unknown error", message.id);
+                syslog(LOG_NOTICE, "message %"PRId64" response state unknown error", message.id);
                 break;
             }
 
@@ -266,20 +267,20 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Postgresql Database  */
     db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
     if (!db) {
-        lamb_log(LOG_ERR, "the kernel can't allocate memory");
+        syslog(LOG_ERR, "the kernel can't allocate memory");
         return -1;
     }
 
     err = lamb_db_init(db);
     if (err) {
-        lamb_log(LOG_ERR, "postgresql database initialization failed");
+        syslog(LOG_ERR, "postgresql database initialization failed");
         return -1;
     }
 
     err = lamb_db_connect(db, cfg->db_host, cfg->db_port,
                           cfg->db_user, cfg->db_password, cfg->db_name);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to postgresql database");
+        syslog(LOG_ERR, "can't connect to postgresql database");
         return -1;
     }
 
@@ -289,7 +290,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     scheduler = lamb_nn_testsched(cfg->scheduler, cfg->id, cfg->timeout);
 
     if (scheduler < 0) {
-        lamb_log(LOG_ERR, "can't connect to scheduler %s", cfg->scheduler);
+        syslog(LOG_ERR, "can't connect to scheduler %s", cfg->scheduler);
         return -1;
     }
 

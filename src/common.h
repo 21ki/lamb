@@ -11,17 +11,6 @@
 #include <stdbool.h>
 #include <pthread.h>
 
-#define	LOG_EMERG	0	/* system is unusable */
-#define	LOG_ALERT	1	/* action must be taken immediately */
-#define	LOG_CRIT	2	/* critical conditions */
-#define	LOG_ERR		3	/* error conditions */
-#define	LOG_WARNING	4	/* warning conditions */
-#define	LOG_NOTICE	5	/* normal but significant condition */
-#define	LOG_INFO	6	/* informational */
-#define	LOG_DEBUG	7	/* debug-level messages */
-
-#define lamb_log(...) lamb_vlog(__VA_ARGS__)
-
 #ifdef _DEBUG
 
 #define lamb_debug(...) fprintf(stderr, "%s:%d ", __FILE__, __LINE__);fprintf(stderr, __VA_ARGS__)
@@ -131,7 +120,6 @@ long lamb_get_cpu(void);
 int lamb_cpu_affinity(pthread_t thread);
 int lamb_hp_parse(char *str, char *host, int *port);
 int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, long millisecond);
-void lamb_vlog(int level, const char *fmt, ...);
 int lamb_lock_protection(int *lock, const char *file);
 void lamb_lock_release(int *lock);
 void lamb_pid_file(int fd, pid_t pid);

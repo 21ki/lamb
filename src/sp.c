@@ -16,12 +16,14 @@
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
 #include <nanomsg/reqrep.h>
+#include <syslog.h>
 #include <cmpp.h>
 #include "config.h"
 #include "queue.h"
 #include "socket.h"
 #include "message.h"
 #include "gateway.h"
+#include "log.h"
 #include "sp.h"
 
 static int gid;
@@ -81,9 +83,8 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
-    if (setenv("logfile", config.logfile, 1) == -1) {
-        return -1;
-    }
+    /* Logger initialization*/
+    lamb_log_init("lamb-gateway");
 
     /* Check lock protection */
     int lock;
@@ -92,7 +93,7 @@ int main(int argc, char *argv[]) {
     snprintf(lockfile, sizeof(lockfile), "/tmp/gtw-%d.lock", gid);
 
     if (lamb_lock_protection(&lock, lockfile)) {
-        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
+        syslog(LOG_ERR, "Already started, please do not repeat the start");
         return -1;
     }
 
@@ -128,13 +129,13 @@ void lamb_event_loop(void) {
     /* Storage Initialization */
     storage = lamb_list_new();
     if (!storage) {
-        lamb_log(LOG_ERR, "storage queue initialization failed");
+        syslog(LOG_ERR, "storage queue initialization failed");
         return;
     }
 
     statistical = (lamb_statistical_t *)calloc(1, sizeof(lamb_statistical_t));
     if (!statistical) {
-        lamb_log(LOG_ERR, "the kernel can't allocate memory");
+        syslog(LOG_ERR, "the kernel can't allocate memory");
         return;
     }
 
@@ -144,27 +145,27 @@ void lamb_event_loop(void) {
     /* Redis initialization */
     rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
     if (!rdb) {
-        lamb_log(LOG_ERR, "redis database initialize failed");
+        syslog(LOG_ERR, "redis database initialize failed");
         return;
     }
 
     err = lamb_cache_connect(rdb, config.redis_host, config.redis_port, NULL,
                              config.redis_db);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to redis %s", config.redis_host);
+        syslog(LOG_ERR, "can't connect to redis %s", config.redis_host);
         return;
     }
 
     /* Database initialization */
     db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
     if (!db) {
-        lamb_log(LOG_ERR, "the kernel can't allocate memory");
+        syslog(LOG_ERR, "the kernel can't allocate memory");
         return;
     }
 
     err = lamb_db_init(db);
     if (err) {
-        lamb_log(LOG_ERR, "database handle initialize failed");
+        syslog(LOG_ERR, "database handle initialize failed");
         return;
     }
 
@@ -172,7 +173,7 @@ void lamb_event_loop(void) {
     err = lamb_db_connect(db, config.db_host, config.db_port, config.db_user,
                           config.db_password, config.db_name);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to database %s", config.db_host);
+        syslog(LOG_ERR, "can't connect to database %s", config.db_host);
         return;
     }
 
@@ -181,13 +182,13 @@ void lamb_event_loop(void) {
     /* fetch gateway information */
     gateway = (lamb_gateway_t *)calloc(1, sizeof(lamb_gateway_t));
     if (!gateway) {
-        lamb_log(LOG_ERR, "the kernel can't allocate memory");
+        syslog(LOG_ERR, "the kernel can't allocate memory");
         return;
     }
 
     err = lamb_get_gateway(db, gid, gateway);
     if (err) {
-        lamb_log(LOG_ERR, "fetch %d gateway information failure", gid);
+        syslog(LOG_ERR, "fetch %d gateway information failure", gid);
         return;
     }
     
@@ -195,7 +196,7 @@ void lamb_event_loop(void) {
     memset(&cache, 0, sizeof(cache));
     lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 4);
     if (cache.len != 7) {
-        lamb_log(LOG_ERR, "connect to cache cluster failed");
+        syslog(LOG_ERR, "connect to cache cluster failed");
         return;
     }
 
@@ -204,7 +205,7 @@ void lamb_event_loop(void) {
     /* Connect to scheduler server */
     scheduler = lamb_nn_reqrep(config.scheduler, gid, config.timeout);
     if (scheduler < 0) {
-        lamb_log(LOG_ERR, "can't connect to scheduler %s", config.scheduler);
+        syslog(LOG_ERR, "can't connect to scheduler %s", config.scheduler);
         return;
     }
 
@@ -213,7 +214,7 @@ void lamb_event_loop(void) {
     /* Connect to delivery server */
     delivery = lamb_nn_pair(config.delivery, gid, config.timeout);
     if (delivery < 0) {
-        lamb_log(LOG_ERR, "can't connect to delivery %s", config.delivery);
+        syslog(LOG_ERR, "can't connect to delivery %s", config.delivery);
         return;
     }
 
@@ -313,7 +314,7 @@ void *lamb_sender_loop(void *data) {
 
         if (CHECK_COMMAND(buf) != LAMB_SUBMIT) {
             nn_freemsg(buf);
-            lamb_log(LOG_ERR, "only submit packets are allowed");
+            syslog(LOG_ERR, "only submit packets are allowed");
             continue;
         }
 
@@ -321,7 +322,7 @@ void *lamb_sender_loop(void *data) {
         nn_freemsg(buf);
 
         if (!message) {
-            lamb_log(LOG_ERR, "can't unpack for submit message packets");
+            syslog(LOG_ERR, "can't unpack for submit message packets");
             continue;
         }
 
@@ -558,7 +559,7 @@ void *lamb_cmpp_keepalive(void *data) {
         sequenceId = heartbeat.sequenceId = cmpp_sequence();
         err = cmpp_active_test(&cmpp.sock, sequenceId);
         if (err) {
-            lamb_log(LOG_ERR, "sending keepalive packet to %s gateway failed", gateway->host);
+            syslog(LOG_ERR, "sending keepalive packet to %s gateway failed", gateway->host);
         }
 
         heartbeat.count++;
@@ -691,11 +692,11 @@ void *lamb_work_loop(void *data) {
 }
 
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
-    lamb_log(LOG_ERR, "reconnecting to gateway %s ...", gateway->host);
+    syslog(LOG_ERR, "reconnecting to gateway %s ...", gateway->host);
     while (lamb_cmpp_init(cmpp, config) != 0) {
         lamb_sleep(config->interval * 1000);
     }
-    lamb_log(LOG_ERR, "connect to gateway %s successfull", gateway->host);
+    syslog(LOG_ERR, "connect to gateway %s successfull", gateway->host);
     return;
 }
 
@@ -714,7 +715,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     /* Initialization cmpp connection */
     err = cmpp_init_sp(cmpp, gateway->host, gateway->port);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to gateway %s server", gateway->host);
+        syslog(LOG_ERR, "can't connect to gateway %s server", gateway->host);
         return 1;
     }
 
@@ -722,13 +723,13 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     sequenceId = cmpp_sequence();
     err = cmpp_connect(&cmpp->sock, sequenceId, gateway->username, gateway->password);
     if (err) {
-        lamb_log(LOG_ERR, "sending connection request to %s failed", gateway->host);
+        syslog(LOG_ERR, "sending connection request to %s failed", gateway->host);
         return 2;
     }
 
     err = cmpp_recv_timeout(&cmpp->sock, &pack, sizeof(pack), config->recv_timeout);
     if (err) {
-        lamb_log(LOG_ERR, "receive gateway response packet from %s failed", gateway->host);
+        syslog(LOG_ERR, "receive gateway response packet from %s failed", gateway->host);
         return 3;
     }
 
@@ -743,25 +744,25 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
             cmpp->ok = true;
             goto success;
         case 1:
-            lamb_log(LOG_ERR, "incorrect protocol packets");
+            syslog(LOG_ERR, "incorrect protocol packets");
             break;
         case 2:
-            lamb_log(LOG_ERR, "illegal source address");
+            syslog(LOG_ERR, "illegal source address");
             break;
         case 3:
-            lamb_log(LOG_ERR, "authenticator failed");
+            syslog(LOG_ERR, "authenticator failed");
             break;
         case 4:
-            lamb_log(LOG_ERR, "protocol version is too high");
+            syslog(LOG_ERR, "protocol version is too high");
             break;
         default:
-            lamb_log(LOG_ERR, "cmpp unknown error, code: %d", status);
+            syslog(LOG_ERR, "cmpp unknown error, code: %d", status);
             break;
         }
 
         return 4;
     } else {
-        lamb_log(LOG_ERR, "incorrect response packet from %s gateway", gateway->host);
+        syslog(LOG_ERR, "incorrect response packet from %s gateway", gateway->host);
         return 5;
     }
     
@@ -786,7 +787,7 @@ void *lamb_stat_loop(void *data) {
         if (reply != NULL) {
             freeReplyObject(reply);
         } else {
-            lamb_log(LOG_ERR, "redis command executes errors");
+            syslog(LOG_ERR, "redis command executes errors");
         }
 
         pthread_mutex_lock(&statistical->lock);
@@ -800,7 +801,7 @@ void *lamb_stat_loop(void *data) {
             err = lamb_write_statistical(db, &curr);
             
             if (err) {
-                lamb_log(LOG_ERR, "can't write data statistical to database");
+                syslog(LOG_ERR, "can't write data statistical to database");
             }
         }
 

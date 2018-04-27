@@ -7,8 +7,21 @@
 #ifndef _LAMB_MT_H
 #define _LAMB_MT_H
 
+#include <errno.h>
+#include <time.h>
+#include <sys/time.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <sys/signal.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <nanomsg/nn.h>
+#include <nanomsg/pair.h>
+#include <nanomsg/reqrep.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <syslog.h>
 
 typedef struct {
     int id;

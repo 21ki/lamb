@@ -22,13 +22,15 @@
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
 #include <nanomsg/reqrep.h>
+#include <syslog.h>
 #include <pcre.h>
 #include <cmpp.h>
-#include "server.h"
 #include "socket.h"
 #include "keyword.h"
 #include "security.h"
 #include "channel.h"
+#include "log.h"
+#include "server.h"
 
 #define LAMB_LIMIT   3
 #define MAX_LIFETIME 60
@@ -85,9 +87,8 @@ int main(int argc, char *argv[]) {
         lamb_daemon();
     }
 
-    if (setenv("logfile", config->logfile, 1) == -1) {
-        return -1;
-    }
+    /* Logger initialization*/
+    lamb_log_init("lamb-server");
 
     /* Check lock protection */
     int lock;
@@ -96,7 +97,7 @@ int main(int argc, char *argv[]) {
     snprintf(lockfile, sizeof(lockfile), "/tmp/serv-%d.lock", aid);
 
     if (lamb_lock_protection(&lock, lockfile)) {
-        lamb_log(LOG_ERR, "Already started, please do not repeat the start!\n");
+        syslog(LOG_ERR, "Already started, please do not repeat the start!\n");
         return -1;
     }
 
@@ -164,7 +165,7 @@ void lamb_reload(int signum) {
     lamb_list_iterator_t *it;
 
     if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
-        lamb_log(LOG_ERR, "signal setting process failed\n");
+        syslog(LOG_ERR, "signal setting process failed\n");
     }
 
     sleeping = true;
@@ -173,13 +174,13 @@ void lamb_reload(int signum) {
     /* fetch account information */
     err = lamb_account_fetch(&global->db, aid, &global->account);
     if (err) {
-        lamb_log(LOG_ERR, "can't fetch account '%d' information", aid);
+        syslog(LOG_ERR, "can't fetch account '%d' information", aid);
     }
 
     /* fetch company information */
     err = lamb_company_get(&global->db, global->account.company, &global->company);
     if (err) {
-        lamb_log(LOG_ERR, "can't fetch id %d company information", global->account.company);
+        syslog(LOG_ERR, "can't fetch id %d company information", global->account.company);
     }
 
     /* fetch template information */
@@ -194,7 +195,7 @@ void lamb_reload(int signum) {
 
         err = lamb_get_template(&global->db, aid, global->templates);
         if (err) {
-            lamb_log(LOG_ERR, "can't fetch template information");
+            syslog(LOG_ERR, "can't fetch template information");
         }
     }
 
@@ -207,7 +208,7 @@ void lamb_reload(int signum) {
         }
         err = lamb_keyword_get_all(&global->db, global->keywords);
         if (err) {
-            lamb_log(LOG_ERR, "can't fetch keyword information");
+            syslog(LOG_ERR, "can't fetch keyword information");
         }
     }
 
@@ -223,7 +224,7 @@ void lamb_reload(int signum) {
         scheduler = lamb_nn_pair(config->scheduler, aid, config->timeout);
 
         if (scheduler < 0) {
-            lamb_log(LOG_ERR, "can't connect to scheduler %s", config->scheduler);
+            syslog(LOG_ERR, "can't connect to scheduler %s", config->scheduler);
             goto recont;
         }
 
@@ -231,7 +232,7 @@ void lamb_reload(int signum) {
     }
     
     sleeping = false;
-    lamb_log(LOG_NOTICE, "reload the configuration complete");
+    syslog(LOG_NOTICE, "reload the configuration complete");
     lamb_debug("-> reload the configuration complete\n");
 
     return;
@@ -764,7 +765,7 @@ void *lamb_billing_loop(void *data) {
         err = lamb_company_billing(&global->rdb, bill->id, bill->money);
         pthread_mutex_unlock(&(global->rdb.lock));
         if (err) {
-            lamb_log(LOG_ERR, "Account %d billing money %d failure", bill->id, bill->money);
+            syslog(LOG_ERR, "Account %d billing money %d failure", bill->id, bill->money);
         }
 
         free(bill);
@@ -820,7 +821,7 @@ void *lamb_stat_loop(void *data) {
         arrears = lamb_check_arrears(&global->rdb, global->account.company);
 
         if (arrears) {
-            lamb_log(LOG_WARNING, "company %d arrears, service has been temporarily stopped",
+            syslog(LOG_WARNING, "company %d arrears, service has been temporarily stopped",
                      global->account.company);
         }
 
@@ -1149,7 +1150,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Storage Queue Initialization */
     global->storage = lamb_list_new();
     if (!global->storage) {
-        lamb_log(LOG_ERR, "storage queue initialization failed");
+        syslog(LOG_ERR, "storage queue initialization failed");
         return -1;
     }
 
@@ -1158,7 +1159,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Billing Queue Initialization */
     global->billing = lamb_list_new();
     if (!global->billing) {
-        lamb_log(LOG_ERR, "billing queue initialization failed");
+        syslog(LOG_ERR, "billing queue initialization failed");
         return -1;
     }
 
@@ -1167,7 +1168,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Unsubscribe queue initialization */
     global->unsubscribe = lamb_list_new();
     if (!global->unsubscribe) {
-        lamb_log(LOG_ERR, "unsubscribe queue initialization failed");
+        syslog(LOG_ERR, "unsubscribe queue initialization failed");
         return -1;
     }
 
@@ -1177,7 +1178,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     err = lamb_cache_connect(&global->rdb, cfg->redis_host, cfg->redis_port,
                              NULL, cfg->redis_db);
     if (err) {
-        lamb_log(LOG_ERR, "Can't connect to redis server");
+        syslog(LOG_ERR, "Can't connect to redis server");
         return -1;
     }
 
@@ -1186,7 +1187,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Blacklist database initialization */
     lamb_nodes_connect(blacklist, LAMB_MAX_CACHE, cfg->nodes, 7, 1);
     if (blacklist->len != 7) {
-        lamb_log(LOG_ERR, "connect to blacklist database failed");
+        syslog(LOG_ERR, "connect to blacklist database failed");
         return -1;
     }
 
@@ -1194,7 +1195,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
 
     lamb_nodes_connect(unsubscribe, LAMB_MAX_CACHE, cfg->nodes, 7, 2);
     if (unsubscribe->len != 7) {
-        lamb_log(LOG_ERR, "connect to unsubscribe database failed");
+        syslog(LOG_ERR, "connect to unsubscribe database failed");
         return -1;
     }
 
@@ -1202,7 +1203,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
 
     lamb_nodes_connect(frequency, LAMB_MAX_CACHE, cfg->nodes, 7, 3);
     if (frequency->len != 7) {
-        lamb_log(LOG_ERR, "connect to frequency database failed %d", frequency->len);
+        syslog(LOG_ERR, "connect to frequency database failed %d", frequency->len);
         return -1;
     }
 
@@ -1211,14 +1212,14 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Postgresql Database  */
     err = lamb_db_init(&global->db);
     if (err) {
-        lamb_log(LOG_ERR, "postgresql database initialization failed");
+        syslog(LOG_ERR, "postgresql database initialization failed");
         return -1;
     }
 
     err = lamb_db_connect(&global->db, cfg->db_host, cfg->db_port,
                           cfg->db_user, cfg->db_password, cfg->db_name);
     if (err) {
-        lamb_log(LOG_ERR, "Can't connect to postgresql database");
+        syslog(LOG_ERR, "Can't connect to postgresql database");
         return -1;
     }
 
@@ -1227,21 +1228,21 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Postgresql Database  */
     err = lamb_db_init(&global->mdb);
     if (err) {
-        lamb_log(LOG_ERR, "postgresql database initialization failed");
+        syslog(LOG_ERR, "postgresql database initialization failed");
         return -1;
     }
 
     err = lamb_db_connect(&global->mdb, cfg->msg_host, cfg->msg_port,
                           cfg->msg_user, cfg->msg_password, cfg->msg_name);
     if (err) {
-        lamb_log(LOG_ERR, "can't connect to message database");
+        syslog(LOG_ERR, "can't connect to message database");
         return -1;
     }
 
     /* fetch  account */
     err = lamb_account_fetch(&global->db, aid, &global->account);
     if (err) {
-        lamb_log(LOG_ERR, "can't fetch account '%d' information", aid);
+        syslog(LOG_ERR, "can't fetch account '%d' information", aid);
         return -1;
     }
 
@@ -1251,7 +1252,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     mt = lamb_nn_reqrep(config->mt, aid, cfg->timeout);
 
     if (mt < 0) {
-        lamb_log(LOG_ERR, "can't connect to MT %s", cfg->mt);
+        syslog(LOG_ERR, "can't connect to MT %s", cfg->mt);
         return -1;
     }
     
@@ -1261,7 +1262,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     mo = lamb_nn_pair(cfg->mo, aid, cfg->timeout);
 
     if (mo < 0) {
-        lamb_log(LOG_ERR, "can't connect to MO %s", cfg->mo);
+        syslog(LOG_ERR, "can't connect to MO %s", cfg->mo);
         return -1;
     }
 
@@ -1271,7 +1272,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     scheduler = lamb_nn_pair(cfg->scheduler, aid, cfg->timeout);
 
     if (scheduler < 0) {
-        lamb_log(LOG_ERR, "can't connect to scheduler %s", cfg->scheduler);
+        syslog(LOG_ERR, "can't connect to scheduler %s", cfg->scheduler);
         return -1;
     }
 
@@ -1281,7 +1282,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     deliverd = lamb_nn_reqrep(cfg->deliver, aid, cfg->timeout);
 
     if (deliverd < 0) {
-        lamb_log(LOG_ERR, "can't connect to deliver %s", cfg->deliver);
+        syslog(LOG_ERR, "can't connect to deliver %s", cfg->deliver);
         return -1;
     }
 
@@ -1290,7 +1291,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Fetch company information */
     err = lamb_company_get(&global->db, global->account.company, &global->company);
     if (err) {
-        lamb_log(LOG_ERR, "Can't fetch id %d company information", global->account.company);
+        syslog(LOG_ERR, "Can't fetch id %d company information", global->account.company);
         return -1;
     }
 
@@ -1299,14 +1300,14 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Template information Initialization */
     global->templates = lamb_list_new();
     if (!global->templates) {
-        lamb_log(LOG_ERR, "template queue initialization failed");
+        syslog(LOG_ERR, "template queue initialization failed");
         return -1;
     }
 
     if (global->account.options & 1) {
         err = lamb_get_template(&global->db, aid, global->templates);
         if (err) {
-            lamb_log(LOG_ERR, "Can't fetch template information");
+            syslog(LOG_ERR, "Can't fetch template information");
             return -1;
         }
         lamb_debug("fetch template information successfull\n");
@@ -1315,14 +1316,14 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Keyword information Initialization */
     global->keywords = lamb_list_new();
     if (!global->keywords) {
-        lamb_log(LOG_ERR, "keyword queue initialization failed");
+        syslog(LOG_ERR, "keyword queue initialization failed");
         return -1;
     }
 
     if (global->account.options & (1 << 1)) {
         err = lamb_keyword_get_all(&global->db, global->keywords);
         if (err) {
-            lamb_log(LOG_ERR, "Can't fetch keyword information");
+            syslog(LOG_ERR, "Can't fetch keyword information");
             return -1;
         }
     }

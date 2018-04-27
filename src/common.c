@@ -360,33 +360,6 @@ int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restr
     return err;
 }
 
-void lamb_vlog(int level, const char *fmt, ...) {
-    struct tm *t;
-    time_t rawtime;
-    char buff[512];
-    
-    time(&rawtime);
-    t = localtime(&rawtime);
-    snprintf(buff, sizeof(buff), "[%4d-%02d-%02d %02d:%02d:%02d] %s\n",
-             t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour,
-             t->tm_min, t->tm_sec, fmt);
-
-    static FILE *fp = NULL;
-
-    if (!fp) {
-        fp = fopen(getenv("logfile"), "a");
-    }
-
-    if (fp != NULL) {
-        va_list ap;
-        va_start(ap, fmt);
-        vfprintf(fp, buff, ap);
-        va_end(ap);
-    }
-
-    return;
-}
-
 int lamb_lock_protection(int *lock, const char *file) {
     int flags;
 
