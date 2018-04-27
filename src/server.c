@@ -165,11 +165,12 @@ void lamb_reload(int signum) {
     lamb_list_iterator_t *it;
 
     if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
-        syslog(LOG_ERR, "signal setting process failed\n");
+        syslog(LOG_ERR, "signal setting process failed");
     }
 
     sleeping = true;
     lamb_sleep(3000);
+    syslog(LOG_INFO, "Start heavy load configuration ...");
 
     /* fetch account information */
     err = lamb_account_fetch(&global->db, aid, &global->account);
@@ -232,8 +233,8 @@ void lamb_reload(int signum) {
     }
     
     sleeping = false;
-    syslog(LOG_NOTICE, "reload the configuration complete");
-    lamb_debug("-> reload the configuration complete\n");
+    syslog(LOG_NOTICE, "the reload configuration complete");
+    lamb_debug("the reload configuration complete\n");
 
     return;
 }
@@ -1145,7 +1146,9 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     }
 
     err = lamb_signal(SIGHUP, lamb_reload);
-    lamb_debug("lamb signal initialization %s\n", err ? "failed" : "successfull");
+    if (err) {
+        syslog(LOG_WARNING, "signal initialization failed");
+    }
 
     /* Storage Queue Initialization */
     global->storage = lamb_list_new();
@@ -1371,142 +1374,142 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     config_t cfg;
     if (lamb_read_file(&cfg, file) != 0) {
-        fprintf(stderr, "ERROR: Can't open the %s configuration file\n", file);
+        fprintf(stderr, "Can't open the %s configuration file\n", file);
         goto error;
     }
 
     if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
+        fprintf(stderr, "Can't read config 'Id' parameter\n");
         goto error;
     }
     
     if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
+        fprintf(stderr, "Can't read config 'Debug' parameter\n");
         goto error;
     }
 
     if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
+        fprintf(stderr, "Can't read config 'Timeout' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "WorkThreads", &conf->work_threads) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'WorkThreads' parameter\n");
+        fprintf(stderr, "Can't read config 'WorkThreads' parameter\n");
         goto error;
     }
     
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
+        fprintf(stderr, "Can't read config 'LogFile' parameter\n");
         goto error;
     }
     
     if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisHost' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisPort' parameter\n");
         goto error;
     }
 
     if (conf->redis_port < 1 || conf->redis_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid redis port number\n");
+        fprintf(stderr, "Invalid redis port number\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisPassword' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisDb' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid AC server address\n");
+        fprintf(stderr, "Invalid AC server address\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Mt", conf->mt, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid MT server address\n");
+        fprintf(stderr, "Invalid read MT server address\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Mo", conf->mo, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid MO server address\n");
+        fprintf(stderr, "Invalid MO server address\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Scheduler", conf->scheduler, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid scheduler server address\n");
+        fprintf(stderr, "Invalid scheduler server address\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Deliver", conf->deliver, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid deliver server address\n");
+        fprintf(stderr, "Invalid deliver server address\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
+        fprintf(stderr, "Can't read config 'DbHost' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "DbPort", &conf->db_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbPort' parameter\n");
+        fprintf(stderr, "Can't read config 'DbPort' parameter\n");
         goto error;
     }
 
     if (conf->db_port < 1 || conf->db_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid DB port number\n");
+        fprintf(stderr, "Invalid database port number\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "DbUser", conf->db_user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbUser' parameter\n");
+        fprintf(stderr, "Can't read config 'DbUser' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "DbPassword", conf->db_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'DbPassword' parameter\n");
         goto error;
     }
     
     if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
+        fprintf(stderr, "Can't read config 'DbName' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "MsgHost", conf->msg_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgHost' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgHost' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "MsgPort", &conf->msg_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgPort' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgPort' parameter\n");
         goto error;
     }
 
     if (conf->msg_port < 1 || conf->msg_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid MsgPort number\n");
+        fprintf(stderr, "Invalid 'MsgPort' port number\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "MsgUser", conf->msg_user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgUser' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgUser' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "MsgPassword", conf->msg_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgPassword' parameter\n");
         goto error;
     }
     
     if (lamb_get_string(&cfg, "MsgName", conf->msg_name, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgName' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgName' parameter\n");
         goto error;
     }
 
@@ -1514,43 +1517,43 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
     memset(node, 0, sizeof(node));
 
     if (lamb_get_string(&cfg, "node1", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node1' parameter\n");
+        fprintf(stderr, "Can't read config 'node1' parameter\n");
         goto error;
     }
     conf->nodes[0] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node2", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node2' parameter\n");
+        fprintf(stderr, "Can't read config 'node2' parameter\n");
         goto error;
     }
     conf->nodes[1] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node3", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node3' parameter\n");
+        fprintf(stderr, "Can't read config 'node3' parameter\n");
         goto error;
     }
     conf->nodes[2] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node4", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node4' parameter\n");
+        fprintf(stderr, "Can't read config 'node4' parameter\n");
         goto error;
     }
     conf->nodes[3] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node5", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node5' parameter\n");
+        fprintf(stderr, "Can't read config 'node5' parameter\n");
         goto error;
     }
     conf->nodes[4] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node6", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node1' parameter\n");
+        fprintf(stderr, "Can't read config 'node1' parameter\n");
         goto error;
     }
     conf->nodes[5] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node7", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node7' parameter\n");
+        fprintf(stderr, "Can't read config 'node7' parameter\n");
         goto error;
     }
     conf->nodes[6] = lamb_strdup(node);

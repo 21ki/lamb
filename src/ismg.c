@@ -103,29 +103,23 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    /* Cmpp ISMG Gateway Initialization */
+    /* Cmpp gateway initialization */
     err = cmpp_init_ismg(&cmpp, config.listen, config.port);
     if (err) {
         syslog(LOG_ERR, "Cmpp server initialization failed");
         return -1;
     }
 
-    syslog(LOG_INFO, "ismgd listen on %s port %d",
-             config.listen, config.port);
+    syslog(LOG_INFO, "ismgd listen on %s port %d", config.listen, config.port);
     
-    fprintf(stdout, "Cmpp server initialization successfull\n");
+    lamb_debug(stdout, "Cmpp gateway initialization successfull\n");
 
     /* Setting Cmpp Socket Parameter */
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_SENDTIMEOUT, config.send_timeout);
     cmpp_sock_setting(&cmpp.sock, CMPP_SOCK_RECVTIMEOUT, config.recv_timeout);
 
-    if (config.daemon) {
-        syslog(LOG_ERR, "lamb server listen %s port %d",
-                 config.listen, config.port);
-    } else {
-        fprintf(stderr, "lamb server listen %s port %d\n",
-                config.listen, config.port);
-    }
+    syslog(LOG_ERR, "lamb server listen %s port %d", config.listen, config.port);
+    lamb_debug(stdout, "lamb server listen %s port %d\n", config.listen, config.port);
 
     /* Save pid to file */
     lamb_pid_file(lock, getpid());
@@ -164,7 +158,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 /* new client connection */
                 confd = accept(cmpp->sock.fd, (struct sockaddr *)&clientaddr, &clilen);
                 if (confd < 0) {
-                    syslog(LOG_ERR, "Lamb server accept client connect error");
+                    syslog(LOG_ERR, "cmpp server accept client connect error");
                     continue;
                 }
 
@@ -178,8 +172,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 ev.events = EPOLLIN;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, confd, &ev);
                 getpeername(confd, (struct sockaddr *)&clientaddr, &clilen);
-                syslog(LOG_INFO, "New client connection form %s",
-                         inet_ntoa(clientaddr.sin_addr));
+                syslog(LOG_INFO, "new client connection form %s", inet_ntoa(clientaddr.sin_addr));
             } else if (events[i].events & EPOLLIN) {
                 /* receive from client data */
                 if ((sockfd = events[i].data.fd) < 0) {
@@ -196,15 +189,13 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                 err = cmpp_recv(&sock, &pack, sizeof(cmpp_pack_t));
                 if (err) {
                     if (err == -1) {
-                        syslog(LOG_INFO, "Client closed the connection from %s",
-                                 inet_ntoa(clientaddr.sin_addr));
+                        syslog(LOG_INFO, "client closed the connection from %s", inet_ntoa(clientaddr.sin_addr));
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                         close(sockfd);
                         continue;
                     }
 
-                    syslog(LOG_WARNING, "Incorrect packet format from client %s",
-                             inet_ntoa(clientaddr.sin_addr));
+                    syslog(LOG_WARNING, "incorrect packet format from client %s", inet_ntoa(clientaddr.sin_addr));
                     continue;
                 }
 
@@ -219,8 +210,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     /* Check Cmpp Version */
                     if (version != CMPP_VERSION) {
                         cmpp_connect_resp(&sock, sequenceId, 4);
-                        syslog(LOG_WARNING, "Version not supported from client %s",
-                                 inet_ntoa(clientaddr.sin_addr));
+                        syslog(LOG_WARNING, "version not supported from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
                     
@@ -236,8 +226,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                     
                     if (!lamb_cache_has(rdb, key)) {
                         cmpp_connect_resp(&sock, sequenceId, 2);
-                        syslog(LOG_WARNING, "Incorrect source address from client %s",
-                                 inet_ntoa(clientaddr.sin_addr));
+                        syslog(LOG_WARNING, "incorrect source address from client %s", inet_ntoa(clientaddr.sin_addr));
                         continue;
                     }
 
@@ -253,7 +242,7 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             cmpp_connect_resp(&sock, sequenceId, 9);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                             close(sockfd);
-                            syslog(LOG_ERR, "Can't fetch account information");
+                            syslog(LOG_ERR, "can't fetch account %s information", username);
                             continue;
                         }
 
@@ -262,21 +251,19 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                             cmpp_connect_resp(&sock, sequenceId, 10);
                             epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
                             close(sockfd);
-                            syslog(LOG_WARNING, "Duplicate login from client %s",
-                                     inet_ntoa(clientaddr.sin_addr));
+                            syslog(LOG_WARNING, "client repeated login by %s", inet_ntoa(clientaddr.sin_addr));
                             continue;
                         }
 
                         epoll_ctl(epfd, EPOLL_CTL_DEL, sockfd, NULL);
 
                         /* Login Successfull */
-                        syslog(LOG_INFO, "Login successfull from client %s",
-                                 inet_ntoa(clientaddr.sin_addr));
+                        syslog(LOG_INFO, "login successfull from client %s", inet_ntoa(clientaddr.sin_addr));
 
                         /* Create Work Process */
                         pid_t pid = fork();
                         if (pid < 0) {
-                            syslog(LOG_ERR, "Unable to fork child process");
+                            syslog(LOG_ERR, "unable to fork child process");
                         } else if (pid == 0) {
                             close(epfd);
                             cmpp_ismg_close(cmpp);
@@ -295,12 +282,10 @@ void lamb_event_loop(cmpp_ismg_t *cmpp) {
                         cmpp_sock_close(&sock);
                     } else {
                         cmpp_connect_resp(&sock, sequenceId, 3);
-                        syslog(LOG_WARNING, "Login failed form client %s",
-                                 inet_ntoa(clientaddr.sin_addr));
+                        syslog(LOG_WARNING, "login failed form client %s", inet_ntoa(clientaddr.sin_addr));
                     }
                 } else {
-                    syslog(LOG_WARNING, "Unable to resolve packets from client %s",
-                             inet_ntoa(clientaddr.sin_addr));
+                    syslog(LOG_WARNING, "unable to resolve packets from client %s", inet_ntoa(clientaddr.sin_addr));
                 }
             }
         }
@@ -324,7 +309,7 @@ void lamb_work_loop(lamb_client_t *client) {
     /* Redis Cache */
     err = lamb_cache_connect(rdb, "127.0.0.1", 6379, NULL, 0);
     if (err) {
-        syslog(LOG_ERR, "can't connect to redis %s server", "127.0.0.1");
+        syslog(LOG_ERR, "can't connect to redis %s", "127.0.0.1");
         return;
     }
 
@@ -581,7 +566,7 @@ void *lamb_deliver_loop(void *data) {
                               report->submittime, report->donetime, report->phone, 0);
             if (err) {
                 status.err++;
-                syslog(LOG_WARNING, "sending 'cmpp_report' packet to client %s failed", client->addr);
+                syslog(LOG_WARNING, "sending report packet to client %s failed", client->addr);
             }
         } else if (CHECK_COMMAND(buf) == LAMB_DELIVER) {
             /* User message delivery */
@@ -600,7 +585,7 @@ void *lamb_deliver_loop(void *data) {
                                (char *)deliver->content.data, deliver->content.len, deliver->msgfmt);
             if (err) {
                 status.err++;
-                syslog(LOG_WARNING, "sending 'cmpp_deliver' packet to client %s failed", client->addr);
+                syslog(LOG_WARNING, "sending deliver packet to client %s failed", client->addr);
             }
         }
 
@@ -680,6 +665,7 @@ void *lamb_stat_loop(void *data) {
             lamb_nn_close(mt);
             lamb_nn_close(mo);
             lamb_sleep(1000);
+            syslog(LOG_ERR, "receiving the shutdown signal, the service process exitd");
             exit(EXIT_SUCCESS);
         }
         
@@ -775,76 +761,76 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     config_t cfg;
     if (lamb_read_file(&cfg, file) != 0) {
-        fprintf(stderr, "ERROR: Can't open the %s configuration file\n", file);
+        fprintf(stderr, "Can't open the %s configuration file\n", file);
         goto error;
     }
 
     if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
+        fprintf(stderr, "Can't read config 'Id' parameter\n");
         goto error;
     }
     
     if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
+        fprintf(stderr, "Can't read config 'Debug' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Listen", conf->listen, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid Listen IP address\n");
+        fprintf(stderr, "Invalid Listen IP address\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "Port", &conf->port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Port' parameter\n");
+        fprintf(stderr, "Can't read config 'Port' parameter\n");
         goto error;
     }
 
     if (conf->port < 1 || conf->port > 65535) {
-        fprintf(stderr, "ERROR: Invalid listen port number\n");
+        fprintf(stderr, "Invalid listen port number\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "Connections", &conf->connections) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Connections' parameter\n");
+        fprintf(stderr, "Can't read config 'Connections' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "Timeout", (int *)&conf->timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
+        fprintf(stderr, "Can't read config 'Timeout' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "RecvTimeout", (int *)&conf->recv_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
+        fprintf(stderr, "Can't read config 'RecvTimeout' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "SendTimeout", (int *)&conf->send_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
+        fprintf(stderr, "Can't read config 'SendTimeout' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "AcknowledgeTimeout", (int *)&conf->acknowledge_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'AcknowledgeTimeout' parameter\n");
+        fprintf(stderr, "Can't read config 'AcknowledgeTimeout' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
+        fprintf(stderr, "Can't read config 'Ac' parameter\n");
     }
 
     if (lamb_get_string(&cfg, "Mt", conf->mt, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid MT server address\n");
+        fprintf(stderr, "Invalid MT server address\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Mo", conf->mo, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid MO server address\n");
+        fprintf(stderr, "Invalid MO server address\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
+        fprintf(stderr, "Can't read config 'LogFile' parameter\n");
         goto error;
     }
 

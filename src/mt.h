@@ -43,6 +43,7 @@ void *lamb_pull_loop(void *arg);
 int lamb_child_server(int *sock, const char *listen, unsigned short *port, int protocol);
 void *lamb_stat_loop(void *arg);
 int lamb_sync_update(lamb_cache_t *cache, int id, unsigned int num);
+void lamb_reset_queues(lamb_cache_t *cache);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
 #endif

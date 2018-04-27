@@ -135,7 +135,7 @@ void lamb_event_loop(void) {
 
     statistical = (lamb_statistical_t *)calloc(1, sizeof(lamb_statistical_t));
     if (!statistical) {
-        syslog(LOG_ERR, "the kernel can't allocate memory");
+        syslog(LOG_ERR, "The kernel can't allocate memory");
         return;
     }
 
@@ -159,7 +159,7 @@ void lamb_event_loop(void) {
     /* Database initialization */
     db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
     if (!db) {
-        syslog(LOG_ERR, "the kernel can't allocate memory");
+        syslog(LOG_ERR, "The kernel can't allocate memory");
         return;
     }
 
@@ -182,7 +182,7 @@ void lamb_event_loop(void) {
     /* fetch gateway information */
     gateway = (lamb_gateway_t *)calloc(1, sizeof(lamb_gateway_t));
     if (!gateway) {
-        syslog(LOG_ERR, "the kernel can't allocate memory");
+        syslog(LOG_ERR, "The kernel can't allocate memory");
         return;
     }
 
@@ -559,7 +559,7 @@ void *lamb_cmpp_keepalive(void *data) {
         sequenceId = heartbeat.sequenceId = cmpp_sequence();
         err = cmpp_active_test(&cmpp.sock, sequenceId);
         if (err) {
-            syslog(LOG_ERR, "sending keepalive packet to %s gateway failed", gateway->host);
+            syslog(LOG_ERR, "sending keepalive packet to gateway %s failed", gateway->host);
         }
 
         heartbeat.count++;
@@ -692,7 +692,7 @@ void *lamb_work_loop(void *data) {
 }
 
 void lamb_cmpp_reconnect(cmpp_sp_t *cmpp, lamb_config_t *config) {
-    syslog(LOG_ERR, "reconnecting to gateway %s ...", gateway->host);
+    syslog(LOG_ERR, "the connecting to gateway %s ...", gateway->host);
     while (lamb_cmpp_init(cmpp, config) != 0) {
         lamb_sleep(config->interval * 1000);
     }
@@ -715,7 +715,7 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     /* Initialization cmpp connection */
     err = cmpp_init_sp(cmpp, gateway->host, gateway->port);
     if (err) {
-        syslog(LOG_ERR, "can't connect to gateway %s server", gateway->host);
+        syslog(LOG_ERR, "can't connect to server %s", gateway->host);
         return 1;
     }
 
@@ -723,13 +723,13 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
     sequenceId = cmpp_sequence();
     err = cmpp_connect(&cmpp->sock, sequenceId, gateway->username, gateway->password);
     if (err) {
-        syslog(LOG_ERR, "sending connection request to %s failed", gateway->host);
+        syslog(LOG_ERR, "can't connect to gateway %s", gateway->host);
         return 2;
     }
 
     err = cmpp_recv_timeout(&cmpp->sock, &pack, sizeof(pack), config->recv_timeout);
     if (err) {
-        syslog(LOG_ERR, "receive gateway response packet from %s failed", gateway->host);
+        syslog(LOG_ERR, "receive gateway response timeout from %s", gateway->host);
         return 3;
     }
 
@@ -744,25 +744,25 @@ int lamb_cmpp_init(cmpp_sp_t *cmpp, lamb_config_t *config) {
             cmpp->ok = true;
             goto success;
         case 1:
-            syslog(LOG_ERR, "incorrect protocol packets");
+            syslog(LOG_ERR, "Incorrect protocol packets");
             break;
         case 2:
-            syslog(LOG_ERR, "illegal source address");
+            syslog(LOG_ERR, "Illegal source address");
             break;
         case 3:
-            syslog(LOG_ERR, "authenticator failed");
+            syslog(LOG_ERR, "Authenticator failed");
             break;
         case 4:
-            syslog(LOG_ERR, "protocol version is too high");
+            syslog(LOG_ERR, "Protocol version is too high");
             break;
         default:
-            syslog(LOG_ERR, "cmpp unknown error, code: %d", status);
+            syslog(LOG_ERR, "Unknown error, code: %d", status);
             break;
         }
 
         return 4;
     } else {
-        syslog(LOG_ERR, "incorrect response packet from %s gateway", gateway->host);
+        syslog(LOG_ERR, "Incorrect response packet from %s", gateway->host);
         return 5;
     }
     
@@ -961,144 +961,144 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     config_t cfg;
     if (lamb_read_file(&cfg, file) != 0) {
-        fprintf(stderr, "ERROR: Can't open the %s configuration file\n", file);
+        fprintf(stderr, "Can't open the %s configuration file\n", file);
         goto error;
     }
 
     /* Id */
     if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
+        fprintf(stderr, "Can't read config 'Id' parameter\n");
         goto error;
     }
 
     /* Debug */
     if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
+        fprintf(stderr, "Can't read config 'Debug' parameter\n");
         goto error;
     }
 
     /* Timeout */
     if (lamb_get_int(&cfg, "Timeout", (int *)&conf->timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
+        fprintf(stderr, "Can't read config 'Timeout' parameter\n");
         goto error;
     }
 
     /* Retry */
     if (lamb_get_int(&cfg, "Retry", &conf->retry) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Retry' parameter\n");
+        fprintf(stderr, "Can't read config 'Retry' parameter\n");
         goto error;
     }
 
     /* Interval */
     if (lamb_get_int(&cfg, "Interval", &conf->interval) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Interval' parameter\n");
+        fprintf(stderr, "Can't read config 'Interval' parameter\n");
         goto error;
     }
 
     /* SendTimeout */
     if (lamb_get_int(&cfg, "SendTimeout", (int *)&conf->send_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'SendTimeout' parameter\n");
+        fprintf(stderr, "Can't read config 'SendTimeout' parameter\n");
         goto error;
     }
 
     /* RecvTimeout */
     if (lamb_get_int(&cfg, "RecvTimeout", (int *)&conf->recv_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RecvTimeout' parameter\n");
+        fprintf(stderr, "Can't read config 'RecvTimeout' parameter\n");
         goto error;
     }
 
     /* AcknowledgeTimeout */
     if (lamb_get_int(&cfg, "AcknowledgeTimeout", (int *)&conf->acknowledge_timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'AcknowledgeTimeout' parameter\n");
+        fprintf(stderr, "Can't read config 'AcknowledgeTimeout' parameter\n");
         goto error;
     }
 
     /* RedisHost */
     if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisHost' parameter\n");
         goto error;
     }
 
     /* RedisPort */
     if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisPort' parameter\n");
         goto error;
     }
 
     /* Check port validity */
     if (conf->redis_port < 1 || conf->redis_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid redis port number\n");
+        fprintf(stderr, "Invalid redis port number\n");
         goto error;
     }
 
     /* RedisPassword */
     if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisPassword' parameter\n");
         goto error;
     }
 
     /* RedisDb */
     if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisDb' parameter\n");
         goto error;
     }
 
     /* LogFile */
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
+        fprintf(stderr, "Can't read config 'LogFile' parameter\n");
         goto error;
     }
 
     /* Ac */
     if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
+        fprintf(stderr, "Can't read config 'Ac' parameter\n");
     }
 
     /* Scheduler */
     if (lamb_get_string(&cfg, "Scheduler", conf->scheduler, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid Scheduler server address\n");
+        fprintf(stderr, "Invalid Scheduler server address\n");
         goto error;
     }
 
     /* Delivery */
     if (lamb_get_string(&cfg, "Delivery", conf->delivery, 128) != 0) {
-        fprintf(stderr, "ERROR: Invalid Delivery server address\n");
+        fprintf(stderr, "Invalid Delivery server address\n");
         goto error;
     }
 
     /* DbHost */
     if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
+        fprintf(stderr, "Can't read config 'DbHost' parameter\n");
         goto error;
     }
 
     /* DbPort */
     if (lamb_get_int(&cfg, "DbPort", &conf->db_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbPort' parameter\n");
+        fprintf(stderr, "Can't read config 'DbPort' parameter\n");
         goto error;
     }
 
     /* Check port validity */
     if (conf->db_port < 1 || conf->db_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid DB port number\n");
+        fprintf(stderr, "Invalid database port number\n");
         goto error;
     }
 
     /* DbUser */
     if (lamb_get_string(&cfg, "DbUser", conf->db_user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbUser' parameter\n");
+        fprintf(stderr, "Can't read config 'DbUser' parameter\n");
         goto error;
     }
 
     /* DbPassword */
     if (lamb_get_string(&cfg, "DbPassword", conf->db_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'DbPassword' parameter\n");
         goto error;
     }
 
     /* DbName */
     if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
+        fprintf(stderr, "Can't read config 'DbName' parameter\n");
         goto error;
     }
 
@@ -1107,43 +1107,43 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     /* Cache nodes */
     if (lamb_get_string(&cfg, "node1", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node1' parameter\n");
+        fprintf(stderr, "Can't read config 'node1' parameter\n");
         goto error;
     }
     conf->nodes[0] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node2", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node2' parameter\n");
+        fprintf(stderr, "Can't read config 'node2' parameter\n");
         goto error;
     }
     conf->nodes[1] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node3", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node3' parameter\n");
+        fprintf(stderr, "Can't read config 'node3' parameter\n");
         goto error;
     }
     conf->nodes[2] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node4", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node4' parameter\n");
+        fprintf(stderr, "Can't read config 'node4' parameter\n");
         goto error;
     }
     conf->nodes[3] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node5", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node5' parameter\n");
+        fprintf(stderr, "Can't read config 'node5' parameter\n");
         goto error;
     }
     conf->nodes[4] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node6", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node1' parameter\n");
+        fprintf(stderr, "Can't read config 'node1' parameter\n");
         goto error;
     }
     conf->nodes[5] = lamb_strdup(node);
 
     if (lamb_get_string(&cfg, "node7", node, 32) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'node7' parameter\n");
+        fprintf(stderr, "Can't read config 'node7' parameter\n");
         goto error;
     }
     conf->nodes[6] = lamb_strdup(node);

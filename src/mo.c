@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     int lock;
 
     if (lamb_lock_protection(&lock, "/tmp/mo.lock")) {
-        syslog(LOG_ERR, "Already started, please do not repeat the start!\n");
+        syslog(LOG_ERR, "Already started, please do not repeat the start");
         return -1;
     }
 
@@ -129,7 +129,7 @@ void lamb_event_loop(void) {
                              NULL, config.redis_db);
 
     if (err) {
-        syslog(LOG_ERR, "can't connect to redis database");
+        syslog(LOG_ERR, "can't connect to redis database %s", config.redis_host);
         return;
     }
 
@@ -166,7 +166,7 @@ void lamb_event_loop(void) {
 
         if (CHECK_COMMAND(buf) != LAMB_REQUEST) {
             nn_freemsg(buf);
-            syslog(LOG_ERR, "Invalid request from client");
+            syslog(LOG_ERR, "Invalid command request from client");
             continue;
         }
 
@@ -175,13 +175,13 @@ void lamb_event_loop(void) {
         nn_freemsg(buf);
 
         if (!req) {
-            syslog(LOG_ERR, "can't parse protocol buffer packets");
+            syslog(LOG_ERR, "can't parse protobuff protocol packets");
             continue;
         }
 
         if (req->id < 1) {
             request__free_unpacked(req, NULL);
-            syslog(LOG_ERR, "Invalid ID from client");
+            syslog(LOG_ERR, "Invalid client identity id number");
             continue;
         }
 
@@ -237,7 +237,7 @@ void *lamb_push_loop(void *arg) {
     
     client = (Request *)arg;
 
-    lamb_debug("new client from %s connectd\n", client->addr);
+    syslog(LOG_INFO, "new client from %s connectd\n", client->addr);
 
     /* Client queue initialization */
     node = lamb_list_find(pool, (void *)(intptr_t)client->id);
@@ -263,7 +263,7 @@ void *lamb_push_loop(void *arg) {
     if (err) {
         pthread_cond_signal(&cond);
         request__free_unpacked(client, NULL);
-        syslog(LOG_ERR, "lamb can't find available port");
+        syslog(LOG_ERR, "There are no ports available for the operating system");
         pthread_exit(NULL);
     }
 
@@ -369,8 +369,8 @@ void *lamb_push_loop(void *arg) {
     }
 
     nn_close(fd);
-    lamb_debug("connection closed from %s\n", client->addr);
     syslog(LOG_INFO, "connection closed from %s", client->addr);
+    lamb_debug("connection closed from %s\n", client->addr);
     request__free_unpacked(client, NULL);
 
     pthread_exit(NULL);
@@ -413,7 +413,7 @@ void *lamb_pull_loop(void *arg) {
     if (err) {
         pthread_cond_signal(&cond);
         request__free_unpacked(client, NULL);
-        syslog(LOG_ERR, "lamb can't find available port");
+        syslog(LOG_ERR, "There are no ports available for the operating system");
         pthread_exit(NULL);
     }
 
@@ -584,6 +584,9 @@ int lamb_child_server(int *sock, const char *host, unsigned short *port, int pro
 void *lamb_stat_loop(void *arg) {
     lamb_node_t *node;
     lamb_queue_t *queue;
+
+    /* Reset mt queue */
+    lamb_reset_queues(rdb);
     
     while (true) {
         lamb_list_iterator_t *it;
@@ -618,6 +621,17 @@ int lamb_sync_update(lamb_cache_t *cache, int id, unsigned int num) {
     return -1;
 }
 
+void lamb_reset_queues(lamb_cache_t *cache) {
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "DEL mo.queue");
+    if (reply != NULL) {
+        freeReplyObject(reply);
+    }
+
+    return;
+}
+
 int lamb_read_config(lamb_config_t *conf, const char *file) {
     if (!conf) {
         return -1;
@@ -625,79 +639,79 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     config_t cfg;
     if (lamb_read_file(&cfg, file) != 0) {
-        fprintf(stderr, "ERROR: Can't open the %s configuration file\n", file);
+        fprintf(stderr, "Can't open the %s configuration file\n", file);
         goto error;
     }
 
     /* Id */
     if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
+        fprintf(stderr, "Can't read config 'Id' parameter\n");
         goto error;
     }
 
     /* Debug */
     if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
+        fprintf(stderr, "Can't read config 'Debug' parameter\n");
         goto error;
     }
 
     /* Listen Address */
     if (lamb_get_string(&cfg, "Listen", conf->listen, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid Listen IP address\n");
+        fprintf(stderr, "Invalid Listen IP address\n");
         goto error;
     }
 
     /* Listen Port */
     if (lamb_get_int(&cfg, "Port", &conf->port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Port' parameter\n");
+        fprintf(stderr, "Can't read config 'Port' parameter\n");
         goto error;
     }
 
     /* Timeout */
     if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
+        fprintf(stderr, "Can't read config 'Timeout' parameter\n");
         goto error;
     }
 
     /* Log file */
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
+        fprintf(stderr, "Can't read config 'LogFile' parameter\n");
         goto error;
     }
 
     /* Redis Host */
     if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisHost' parameter\n");
         goto error;
     }
 
     /* Redis Port */
     if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisPort' parameter\n");
         goto error;
     }
 
     /* Check redis port */
     if (conf->redis_port < 1 || conf->redis_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid redis port number\n");
+        fprintf(stderr, "Invalid redis port number\n");
         goto error;
     }
 
     /* Redis Password */
     if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisPassword' parameter\n");
         goto error;
     }
 
     /* Redis database number */
     if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisDb' parameter\n");
         goto error;
     }
 
     /* Ac */
     if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
+        fprintf(stderr, "Can't read config 'Ac' parameter\n");
     }
 
     lamb_config_destroy(&cfg);

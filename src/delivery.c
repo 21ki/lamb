@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     lamb_signal_processing();
 
     /* Setting process information */
-    lamb_set_process("lamb-deliver");
+    lamb_set_process("lamb-delivery");
 
     /* Start Main Event Thread */
     lamb_event_loop();
@@ -159,7 +159,7 @@ void lamb_event_loop(void) {
     err = lamb_db_connect(&db, config.db_host, config.db_port, config.db_user,
                           config.db_password, config.db_name);
     if (err) {
-        syslog(LOG_ERR, "Can't connect to postgresql database");
+        syslog(LOG_ERR, "can't connect to postgresql database");
         return;
     }
 
@@ -173,14 +173,14 @@ void lamb_event_loop(void) {
     err = lamb_db_connect(&mdb, config.msg_host, config.msg_port, config.msg_user,
                           config.msg_password, config.msg_name);
     if (err) {
-        syslog(LOG_ERR, "Can't connect to postgresql database");
+        syslog(LOG_ERR, "can't connect to postgresql database %s", config.db_host);
         return;
     }
 
     /* fetch delivery routing */
     err = lamb_get_delivery(&db, delivery);
     if (err) {
-        syslog(LOG_ERR, "get delivery routing failed");
+        syslog(LOG_ERR, "fetch delivery routing failed");
         return;
     }
 
@@ -236,7 +236,7 @@ void lamb_event_loop(void) {
 
         if (CHECK_COMMAND(buf) != LAMB_REQUEST) {
             nn_freemsg(buf);
-            syslog(LOG_WARNING, "invalid request from client");
+            syslog(LOG_WARNING, "invalid command %#x request from client", CHECK_COMMAND(buf));
             continue;
         }
 
@@ -244,12 +244,12 @@ void lamb_event_loop(void) {
         nn_freemsg(buf);
 
         if (!req) {
-            syslog(LOG_ERR, "can't parse protocol packets");
+            syslog(LOG_ERR, "can't parse protobuff protocol packets");
             continue;
         }
 
         if (req->id < 1) {
-            syslog(LOG_WARNING, "can't recognition client identity");
+            syslog(LOG_WARNING, "Incorrect client identity id number");
             continue;
         }
 
@@ -301,11 +301,13 @@ void lamb_reload(int signum) {
     lamb_list_iterator_t *it;
 
     if (signal(SIGHUP, lamb_reload) == SIG_ERR) {
-        lamb_debug("signal setting process failed\n");
+        syslog(LOG_WARNING, "signal setting process failed");
     }
 
     sleeping = true;
     lamb_sleep(3000);
+
+    syslog(LOG_INFO, "Start heavy load configuration ...");
 
     delivery->free = free;
     it = lamb_list_iterator_new(delivery, LIST_TAIL);
@@ -323,12 +325,12 @@ void lamb_reload(int signum) {
     if (err) {
         syslog(LOG_ERR, "fetch delivery information failed");
     } else {
-        syslog(LOG_ERR, "fetch delivery information successfull\n");
+        syslog(LOG_ERR, "fetch delivery information successfull");
     }
 
     sleeping = false;
-    syslog(LOG_INFO, "reload configuration successfull");
-    lamb_debug("-> reload configuration successfull\n");
+    syslog(LOG_INFO, "The reload configuration completion");
+    lamb_debug("The reload configuration completion");
 
     return;
 }
@@ -342,7 +344,7 @@ void *lamb_push_loop(void *arg) {
     
     client = (Request *)arg;
 
-    lamb_debug("new client from %s connectd\n", client->addr);
+    syslog(LOG_INFO, "new client from %s connectd\n", client->addr);
 
     /* Client channel initialization */
     unsigned short port = config.port + 1;
@@ -350,7 +352,7 @@ void *lamb_push_loop(void *arg) {
     if (err) {
         pthread_cond_signal(&cond);
         request__free_unpacked(client, NULL);
-        syslog(LOG_ERR, "lamb can't find available port");
+        syslog(LOG_ERR, "There are no ports available for the operating system");
         pthread_exit(NULL);
     }
 
@@ -531,7 +533,7 @@ void *lamb_pull_loop(void *arg) {
     
     client = (Request *)arg;
 
-    lamb_debug("new client from %s connectd\n", client->addr);
+    syslog(LOG_INFO, "new client from %s connectd\n", client->addr);
 
     /* client queue initialization */
     node = lamb_list_find(pool, (void *)(intptr_t)client->id);
@@ -559,7 +561,7 @@ void *lamb_pull_loop(void *arg) {
     if (err) {
         pthread_cond_signal(&cond);
         request__free_unpacked(client, NULL);
-        syslog(LOG_ERR, "lamb can't find available port");
+        syslog(LOG_ERR, "There are no ports available for the operating system");
         pthread_exit(NULL);
     }
 
@@ -906,126 +908,126 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     config_t cfg;
     if (lamb_read_file(&cfg, file) != 0) {
-        fprintf(stderr, "ERROR: Can't open the %s configuration file\n", file);
+        fprintf(stderr, "Can't open the %s configuration file\n", file);
         goto error;
     }
 
     if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
+        fprintf(stderr, "Can't read config 'Id' parameter\n");
         goto error;
     }
 
     if (lamb_get_bool(&cfg, "Debug", &conf->debug) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Debug' parameter\n");
+        fprintf(stderr, "Can't read config 'Debug' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Listen", conf->listen, 16) != 0) {
-        fprintf(stderr, "ERROR: Invalid Listen IP address\n");
+        fprintf(stderr, "Invalid Listen IP address\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "Port", &conf->port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Port' parameter\n");
+        fprintf(stderr, "Can't read config 'Port' parameter\n");
         goto error;
     }
 
     if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
+        fprintf(stderr, "Can't read config 'Timeout' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Ac", conf->ac, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Ac' parameter\n");
+        fprintf(stderr, "Can't read config 'Ac' parameter\n");
     }
 
     if (lamb_get_string(&cfg, "RedisHost", conf->redis_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisHost' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisHost' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "RedisPort", &conf->redis_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPort' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisPort' parameter\n");
         goto error;
     }
 
     if (conf->redis_port < 1 || conf->redis_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid redis port number\n");
+        fprintf(stderr, "Invalid redis port number\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "RedisPassword", conf->redis_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisPassword' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "RedisDb", &conf->redis_db) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'RedisDb' parameter\n");
+        fprintf(stderr, "Can't read config 'RedisDb' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
+        fprintf(stderr, "Can't read config 'DbHost' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "DbPort", &conf->db_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbPort' parameter\n");
+        fprintf(stderr, "Can't read config 'DbPort' parameter\n");
         goto error;
     }
 
     if (conf->db_port < 1 || conf->db_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid DB port number\n");
+        fprintf(stderr, "Invalid database port number\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "DbUser", conf->db_user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbUser' parameter\n");
+        fprintf(stderr, "Can't read config 'DbUser' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "DbPassword", conf->db_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'DbPassword' parameter\n");
         goto error;
     }
     
     if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
+        fprintf(stderr, "Can't read config 'DbName' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "MsgHost", conf->msg_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgHost' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgHost' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "MsgPort", &conf->msg_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgPort' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgPort' parameter\n");
         goto error;
     }
 
     if (conf->msg_port < 1 || conf->msg_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid MsgPort number\n");
+        fprintf(stderr, "Invalid 'MsgPort' port number\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "MsgUser", conf->msg_user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgUser' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgUser' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "MsgPassword", conf->msg_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgPassword' parameter\n");
         goto error;
     }
     
     if (lamb_get_string(&cfg, "MsgName", conf->msg_name, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'MsgName' parameter\n");
+        fprintf(stderr, "Can't read config 'MsgName' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
+        fprintf(stderr, "Can't read config 'LogFile' parameter\n");
         goto error;
     }
 

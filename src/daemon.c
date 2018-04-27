@@ -111,7 +111,7 @@ void lamb_event_loop(void) {
         if (!err) {
             lamb_start_program(task);
             lamb_del_taskqueue(db, task->id);
-            syslog(LOG_INFO, "Start new id %d in %s service process");
+            syslog(LOG_INFO, "Start new id %d in %s service process", task->eid, task->mod);
         }
 
         lamb_sleep(5000);
@@ -186,7 +186,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     /* Postgresql Database  */
     db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
     if (!db) {
-        syslog(LOG_ERR, "the kernel can't allocate memory");
+        syslog(LOG_ERR, "The kernel can't allocate memory");
         return -1;
     }
 
@@ -199,7 +199,7 @@ int lamb_component_initialization(lamb_config_t *cfg) {
     err = lamb_db_connect(db, cfg->db_host, cfg->db_port,
                           cfg->db_user, cfg->db_password, cfg->db_name);
     if (err) {
-        syslog(LOG_ERR, "can't connect to postgresql database");
+        syslog(LOG_ERR, "can't connect to postgresql database %s", cfg->db_host);
         return -1;
     }
 
@@ -215,62 +215,62 @@ int lamb_read_config(lamb_config_t *conf, const char *file) {
 
     config_t cfg;
     if (lamb_read_file(&cfg, file) != 0) {
-        fprintf(stderr, "ERROR: Can't open the %s configuration file\n", file);
+        fprintf(stderr, "Can't open %s configuration file\n", file);
         goto error;
     }
 
     if (lamb_get_int(&cfg, "Id", &conf->id) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Id' parameter\n");
+        fprintf(stderr, "Can't read config 'Id' parameter\n");
         goto error;
     }
 
     if (lamb_get_int64(&cfg, "Timeout", &conf->timeout) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Timeout' parameter\n");
+        fprintf(stderr, "Can't read config 'Timeout' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "LogFile", conf->logfile, 128) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'LogFile' parameter\n");
+        fprintf(stderr, "Can't read config 'LogFile' parameter\n");
         goto error;
     }
     
     if (lamb_get_string(&cfg, "DbHost", conf->db_host, 16) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbHost' parameter\n");
+        fprintf(stderr, "Can't read config 'DbHost' parameter\n");
         goto error;
     }
 
     if (lamb_get_int(&cfg, "DbPort", &conf->db_port) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbPort' parameter\n");
+        fprintf(stderr, "Can't read config 'DbPort' parameter\n");
         goto error;
     }
 
     if (conf->db_port < 1 || conf->db_port > 65535) {
-        fprintf(stderr, "ERROR: Invalid DB port number\n");
+        fprintf(stderr, "Invalid DB port number\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "DbUser", conf->db_user, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbUser' parameter\n");
+        fprintf(stderr, "Can't read config 'DbUser' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "DbPassword", conf->db_password, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbPassword' parameter\n");
+        fprintf(stderr, "Can't read config 'DbPassword' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "DbName", conf->db_name, 64) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'DbName' parameter\n");
+        fprintf(stderr, "Can't read config 'DbName' parameter\n");
         goto error;
     }
         
     if (lamb_get_string(&cfg, "Module", conf->module, 254) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Module' parameter\n");
+        fprintf(stderr, "Can't read config 'Module' parameter\n");
         goto error;
     }
 
     if (lamb_get_string(&cfg, "Config", conf->config, 254) != 0) {
-        fprintf(stderr, "ERROR: Can't read 'Config' parameter\n");
+        fprintf(stderr, "ERROR: Can't read config 'Config' parameter\n");
         goto error;
     }
 
