@@ -76,7 +76,7 @@ int lamb_get_gateways(lamb_db_t *db, lamb_gateway_t **gateways, size_t size) {
             strncpy(g->spcode, PQgetvalue(res, i, 8), 20);
             g->encoding = atoi(PQgetvalue(res, i, 9));
             g->extended = atoi(PQgetvalue(res, i, 10)) ?  true : false;
-            g->concurrent = atoi(PQgetvalue(res, i, 11)) ?  true : false;
+            g->concurrent = atoi(PQgetvalue(res, i, 11));
             gateways[i] = g;
         }
     }

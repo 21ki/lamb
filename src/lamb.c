@@ -123,8 +123,8 @@ void lamb_show_gateway(void) {
             } else {
                 printf(" %-8.8s", "unkno");
             }
-            printf(" %-11.11s", gateways[i]->extended ? "true" : "false");
-            printf(" %d\n", gateways[i]->concurrent);
+            printf(" %-8.8s", gateways[i]->extended ? "true" : "false");
+            printf(" %-10d\n", gateways[i]->concurrent);
             free(gateways[i]);
         }
     }
