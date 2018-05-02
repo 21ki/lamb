@@ -12,6 +12,7 @@
 typedef struct {
     int id;
     int type;
+    char name[12];
     char host[32];
     int port;
     char username[32];
@@ -24,5 +25,6 @@ typedef struct {
 } lamb_gateway_t;
 
 int lamb_get_gateway(lamb_db_t *db, int id, lamb_gateway_t *gateway);
+int lamb_get_gateways(lamb_db_t *db, lamb_gateway_t **gateways, size_t size);
 
 #endif

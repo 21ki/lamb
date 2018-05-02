@@ -33,6 +33,9 @@ delivery: src/delivery.c src/delivery.h $(OBJS) src/queue.o
 daemon: src/daemon.c src/daemon.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/daemon.c $(OBJS) $(LIBS) -lnanomsg -o daemon
 
+lamb: src/lamb.c src/lamb.h src/linenoise.c src/linenoise.h $(OBJS)
+	$(CC) $(CFLAGS) $(MACRO) src/lamb.c src/linenoise.c $(OBJS) $(LIBS) -lnanomsg -o lamb
+
 test: src/test.c src/test.h $(OBJS)
 	$(CC) $(CFLAGS) $(MACRO) src/test.c $(OBJS) $(LIBS) -lnanomsg -o testd
 

@@ -177,23 +177,7 @@ int linenoiseHistoryAdd(const char *line);
 static void refreshLine(struct linenoiseState *l);
 
 /* Debugging macro. */
-#if 0
-FILE *lndebug_fp = NULL;
-#define lndebug(...) \
-    do { \
-        if (lndebug_fp == NULL) { \
-            lndebug_fp = fopen("/tmp/lndebug.txt","a"); \
-            fprintf(lndebug_fp, \
-            "[%d %d %d] p: %d, rows: %d, rpos: %d, max: %d, oldmax: %d\n", \
-            (int)l->len,(int)l->pos,(int)l->oldpos,plen,rows,rpos, \
-            (int)l->maxrows,old_rows); \
-        } \
-        fprintf(lndebug_fp, ", " __VA_ARGS__); \
-        fflush(lndebug_fp); \
-    } while (0)
-#else
-#define lndebug(fmt, ...)
-#endif
+#define lndebug(...)
 
 /* ======================= Low level terminal handling ====================== */
 

@@ -43,3 +43,44 @@ int lamb_get_gateway(lamb_db_t *db, int id, lamb_gateway_t *gateway) {
 
     return 0;
 }
+
+int lamb_get_gateways(lamb_db_t *db, lamb_gateway_t **gateways, size_t size) {
+    int rows;
+    char *column;
+    char sql[256];
+    PGresult *res = NULL;
+
+    column = "id,type,name,host,port,username,password,spid,spcode,encoding,extended,concurrent";
+    snprintf(sql, sizeof(sql), "SELECT %s FROM gateway ORDER BY id", column);
+
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    rows = PQntuples(res);
+
+    for (int i = 0; (i < rows) && (i < size); i++) {
+        lamb_gateway_t *g = (lamb_gateway_t *)calloc(1, sizeof(lamb_gateway_t));
+
+        if (g != NULL) {
+            g->id = atoi(PQgetvalue(res, i, 0));
+            g->type = atoi(PQgetvalue(res, i, 1));
+            strncpy(g->name, PQgetvalue(res, i, 2), 11);
+            strncpy(g->host, PQgetvalue(res, i, 3), 31);
+            g->port = atoi(PQgetvalue(res, i, 4));
+            strncpy(g->username, PQgetvalue(res, i, 5), 31);
+            strncpy(g->password, PQgetvalue(res, i, 6), 63);
+            strncpy(g->spid, PQgetvalue(res, i, 7), 7);
+            strncpy(g->spcode, PQgetvalue(res, i, 8), 20);
+            g->encoding = atoi(PQgetvalue(res, i, 9));
+            g->extended = atoi(PQgetvalue(res, i, 10)) ?  true : false;
+            g->concurrent = atoi(PQgetvalue(res, i, 11)) ?  true : false;
+            gateways[i] = g;
+        }
+    }
+
+    PQclear(res);
+    return rows;
+}
