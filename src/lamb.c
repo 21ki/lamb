@@ -98,7 +98,7 @@ void lamb_show_gateway(void) {
     if (len > 0) {
         printf("\n");
         printf("%4s %-12s%-16s%-6s%-7s%-9s%-22s%-9s%-9s%-11s\n",
-               "Id","name","Host","Port","User","Password","Spcode","Encoding","Extended","Concurrent");
+               "Id","Name","Host","Port","User","Password","Spcode","Encoding","Extended","Concurrent");
         printf("---------------------------------------------------------------------------------------------------------\n");
         printf("\033[37m");
     }
