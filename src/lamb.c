@@ -211,7 +211,7 @@ void lamb_show_gateway(const char *line) {
             printf(" %3d", gateways[i]->id);
             printf(" %-11.11s", gateways[i]->name);
             printf(" %-15.15s", gateways[i]->host);
-            printf(" %-5.5d", gateways[i]->port);
+            printf(" %-5d", gateways[i]->port);
             printf(" %-6.6s", gateways[i]->username);
             printf(" %-8.8s", gateways[i]->password);
             printf(" %-21.21s", gateways[i]->spcode);
