@@ -36,26 +36,40 @@ int main(int argc, char **argv) {
 
             if (CHECK(command, "exit")) {
                 exit(EXIT_SUCCESS);
+            } else if (CHECK(command, "help")) {
+                lamb_help(command);
             } else if (CHECK(command, "show version")) {
-                lamb_show_version();
+                lamb_show_version(command);
             } else if (CHECK(command, "show core")) {
-                lamb_show_core();
+                lamb_show_core(command);
             } else if (CHECK(command, "show client")) {
-                lamb_show_client();
+                lamb_show_client(command);
             } else if (CHECK(command, "show server")) {
-                lamb_show_server();
+                lamb_show_server(command);
             } else if (CHECK(command, "show account")) {
-                lamb_show_account();
+                lamb_show_account(command);
             } else if (CHECK(command, "show gateway")) {
-                lamb_show_gateway();
+                lamb_show_gateway(command);
             } else if (CHECK(command, "show routing")) {
                 lamb_show_routing(command);
             } else if (CHECK(command, "show delivery")) {
-                lamb_show_delivery();
+                lamb_show_delivery(command);
+            } else if (CHECK(command, "show inbound")) {
+                lamb_show_inbound(command);
+            } else if (CHECK(command, "show outbound")) {
+                lamb_show_outbound(command);
             } else if (CHECK(command, "show log")) {
                 lamb_show_log(command);
+            } else if (CHECK(command, "start server")){
+                lamb_start_server(command);
             } else if (CHECK(command, "start gateway")){
                 lamb_start_gateway(command);
+            } else if (CHECK(command, "kill client")){
+                lamb_kill_client(command);
+            } else if (CHECK(command, "kill server")){
+                lamb_kill_server(command);
+            } else if (CHECK(command, "kill gateway")){
+                lamb_kill_gateway(command);
             } else if (CHECK(command, "change password")) {
                 lamb_change_password(command);
             } else {
@@ -69,14 +83,31 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void completion(const char *buf, linenoiseCompletions *lc) {
-    if (buf[0] == 'h') {
-        linenoiseAddCompletion(lc,"hello");
-        linenoiseAddCompletion(lc,"hello there");
-    }
+void lamb_help(const char *line) {
+    printf("\n");
+    printf(" help                        Display help information\n");
+    printf(" show core                   Display core module status information\n");
+    printf(" show client                 Display client connection information\n");
+    printf(" show server                 Display service module status information\n");
+    printf(" show account                Display account information\n");
+    printf(" show gateway                Display carrier gateway information\n");
+    printf(" show routing                Display uplink routing information\n");
+    printf(" show delivery               Display downlink routing information\n");
+    printf(" show log [type]             Display module log information\n");
+    printf(" kill client [id]            Kill the client disconnected\n");
+    printf(" kill server [id]            Stop a service processing module\n");
+    printf(" kill gateway [id]           Kill the gateway disconnected\n");
+    printf(" start server [id]           Start a service processing module\n");
+    printf(" start gateway [id]          Start a gateway service module\n");
+    printf(" change password [password]  Change user login password\n");
+    printf(" show version                Display software version information\n");
+    printf(" exit                        Exit system login\n");
+    printf("\n");
+
+    return;
 }
 
-void lamb_show_version(void) {
+void lamb_show_version(const char *line) {
     printf("\033[37m");
     printf("lamb gateway version %s\n", LAMB_VERSION);
     printf("Copyright (C) 2018 typefo <typefo@qq.com>");
@@ -84,26 +115,26 @@ void lamb_show_version(void) {
     return;
 }
 
-void lamb_show_core(void) {
+void lamb_show_core(const char *line) {
     return;
 }
 
-void lamb_show_client(void) {
+void lamb_show_client(const char *line) {
     return;
 }
 
-void lamb_show_server(void) {
+void lamb_show_server(const char *line) {
     return;
 }
 
-void lamb_show_account(void) {
+void lamb_show_account(const char *line) {
     int len;
     lamb_account_t *accounts[128] = {NULL};
 
     len = lamb_get_accounts(db, accounts, 128);
 
     if (0 > len) {
-        printf("There is no available data\n");
+        printf(" There is no available data\n");
         return;
     }
 
@@ -132,14 +163,14 @@ void lamb_show_account(void) {
     return;
 }
 
-void lamb_show_gateway(void) {
+void lamb_show_gateway(const char *line) {
     int len;
     lamb_gateway_t *gateways[128] = {NULL};
 
     len = lamb_get_gateways(db, gateways, 128);
 
     if (0 > len) {
-        printf("There is no available data\n");
+        printf(" There is no available data\n");
         return;
     }
 
@@ -215,7 +246,7 @@ void lamb_show_routing(const char *line) {
     err = lamb_get_channels(db, id, channels);
     if (channels->len <= 0) {
         lamb_opt_free(&opt);
-        printf("There is no available data\n");
+        printf(" There is no available data\n");
         return;
     }
 
@@ -247,7 +278,7 @@ void lamb_show_routing(const char *line) {
     return;
 }
 
-void lamb_show_delivery(void) {
+void lamb_show_delivery(const char *line) {
     int err;
     lamb_list_t *deliverys;
 
@@ -267,7 +298,7 @@ void lamb_show_delivery(void) {
 
     if (deliverys->len <= 0) {
         lamb_list_destroy(deliverys);
-        printf("There is no available data\n");
+        printf(" There is no available data\n");
         return;
     }
 
@@ -298,6 +329,14 @@ void lamb_show_delivery(void) {
     return;
 }
 
+void lamb_show_inbound(const char *line) {
+
+}
+
+void lamb_show_outbound(const char *line) {
+
+}
+
 void lamb_show_log(const char *line) {
     int err;
     lamb_opt_t opt;
@@ -314,9 +353,11 @@ void lamb_show_log(const char *line) {
     type = opt.val[0];
 
     if (type) {
-        if (strcasecmp(type, "cli") == 0) {
+        if (strcasecmp(type, "client") == 0) {
             system("tail -n 100 /var/log/lamb-ismg.log");
-        } else if (strcasecmp(type, "gw") == 0) {
+        } else if (strcasecmp(type, "server") == 0) {
+            system("tail -n 100 /var/log/lamb-server.log");
+        } else if (strcasecmp(type, "gateway") == 0) {
             system("tail -n 100 /var/log/lamb-gateway.log");
         } else {
             printf("\033[31m%s\033[0m\n", "Error: Incorrect command parameters");
@@ -328,15 +369,78 @@ void lamb_show_log(const char *line) {
     return;
 }
 
-void lamb_change_password(const char *line) {
-    printf("change password successfull\n");
+void lamb_start_server(const char *line) {
+    int id, err;
+    lamb_opt_t opt;
+
+    memset(&opt, 0, sizeof(lamb_opt_t));
+    err = lamb_opt_parsing(line, "start server", &opt);
+
+    if (err || !opt.val[0]) {
+        printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
+    }
+
+    id = atoi(opt.val[0]);
+
+    err = lamb_add_taskqueue(db, id, "server", "server.conf", "-d");
+
+    if (err) {
+        printf(" \033[31m%s\033[0m\n", "Start server service failed");
+    } else {
+        printf(" \033[32m%s\033[0m\n", "Start server service successfull");
+    }
+
+    lamb_opt_free(&opt);
     return;
 }
 
 void lamb_start_gateway(const char *line) {
-    printf("start gateway successfull\n");
+    int id, err;
+    lamb_opt_t opt;
+
+    memset(&opt, 0, sizeof(lamb_opt_t));
+    err = lamb_opt_parsing(line, "start gateway", &opt);
+
+    if (err || !opt.val[0]) {
+        printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
+    }
+
+    id = atoi(opt.val[0]);
+
+    err = lamb_add_taskqueue(db, id, "sp", "sp.conf", "-d");
+
+    if (err) {
+        printf(" \033[31m%s\033[0m\n", "Start gateway service failed");
+    } else {
+        printf(" \033[32m%s\033[0m\n", "Start gateway service successfull");
+    }
+
+    lamb_opt_free(&opt);
+    return;
 }
 
+
+void lamb_kill_client(const char *line) {
+    printf(" kill client successfull\n");
+    return;
+}
+
+void lamb_kill_server(const char *line) {
+    printf(" kill server successfull\n");
+    return;
+}
+
+void lamb_kill_gateway(const char *line) {
+    printf(" kill gateway successfull\n");
+    return;
+}
+
+void lamb_change_password(const char *line) {
+    printf(" change password successfull\n");
+    return;
+}
 
 int lamb_opt_parsing(const char *cmd, const char *prefix, lamb_opt_t *opt) {
     char *src;
@@ -379,6 +483,13 @@ void lamb_opt_free(lamb_opt_t *opt) {
     }
 
     return;
+}
+
+void completion(const char *buf, linenoiseCompletions *lc) {
+    if (buf[0] == 'h') {
+        linenoiseAddCompletion(lc,"hello");
+        linenoiseAddCompletion(lc,"hello there");
+    }
 }
 
 void lamb_component_initialization(lamb_config_t *cfg) {
@@ -438,5 +549,24 @@ int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys) {
 
     PQclear(res);
 
+    return 0;
+}
+
+int lamb_add_taskqueue(lamb_db_t *db, int eid, char *mod, char *config, char *argv) {
+    char sql[128];
+    char *column = NULL;
+    PGresult *res = NULL;
+
+    column = "eid, mod, config, argv, create_time";
+    snprintf(sql, sizeof(sql), "INSERT INTO taskqueue(%s) VALUES(%d, '%s', '%s', '%s', now())",
+             column, eid, mod, config, argv);
+
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    PQclear(res);
     return 0;
 }

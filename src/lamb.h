@@ -26,21 +26,29 @@ typedef struct {
     int target;
 } lamb_delivery_t;
 
-void lamb_show_version(void);
-void lamb_show_core(void);
-void lamb_show_client(void);
-void lamb_show_server(void);
-void lamb_show_account(void);
-void lamb_show_gateway(void);
+void lamb_help(const char *line);
+void lamb_show_version(const char *line);
+void lamb_show_core(const char *line);
+void lamb_show_client(const char *line);
+void lamb_show_server(const char *line);
+void lamb_show_account(const char *line);
+void lamb_show_gateway(const char *line);
 void lamb_show_log(const char *line);
 void lamb_show_routing(const char *line);
-void lamb_show_delivery(void);
+void lamb_show_delivery(const char *line);
+void lamb_show_inbound(const char *line);
+void lamb_show_outbound(const char *line);
+void lamb_start_server(const char *line);
 void lamb_start_gateway(const char *line);
+void lamb_kill_client(const char *line);
+void lamb_kill_server(const char *line);
+void lamb_kill_gateway(const char *line);
 void lamb_change_password(const char *line);
 int lamb_opt_parsing(const char *cmd, const char *prefix, lamb_opt_t *opt);
 void lamb_opt_free(lamb_opt_t *opt);
 int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys);
 void completion(const char *buf, linenoiseCompletions *lc);
 void lamb_component_initialization(lamb_config_t *cfg);
+int lamb_add_taskqueue(lamb_db_t *db, int eid, char *mod, char *config, char *argv);
 
 #endif
