@@ -27,6 +27,7 @@ void lamb_show_server(void);
 void lamb_show_account(void);
 void lamb_show_gateway(void);
 void lamb_show_log(const char *line);
+void lamb_show_routing(const char *line);
 void lamb_start_gateway(const char *line);
 void lamb_change_password(const char *line);
 int lamb_opt_parsing(const char *cmd, const char *prefix, lamb_opt_t *opt);

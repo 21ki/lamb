@@ -10,8 +10,10 @@
 #include <unistd.h>
 #include "lamb.h"
 #include "db.h"
+#include "list.h"
 #include "account.h"
 #include "gateway.h"
+#include "channel.h"
 
 #define LAMB_VERSION "1.2"
 #define CHECK(cmd,val) !strncmp(cmd, val, strlen((val)))
@@ -48,6 +50,8 @@ int main(int argc, char **argv) {
                 lamb_show_account();
             } else if (CHECK(command, "show gateway")) {
                 lamb_show_gateway();
+            } else if (CHECK(command, "show routing")) {
+                lamb_show_routing(command);
             } else if (CHECK(command, "show log")) {
                 lamb_show_log(command);
             } else if (CHECK(command, "start gateway")){
@@ -176,11 +180,79 @@ void lamb_show_gateway(void) {
     return;
 }
 
+void lamb_show_routing(const char *line) {
+    int id, err;
+    lamb_opt_t opt;
+    lamb_list_t *channels;
+
+    memset(&opt, 0, sizeof(lamb_opt_t));
+    err = lamb_opt_parsing(line, "show routing", &opt);
+
+    if (err) {
+        printf("\033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
+    }
+
+    if (!opt.val[0]) {
+        printf("\033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
+    }
+
+    id = atoi(opt.val[0]);
+    channels = lamb_list_new();
+    channels->free = free;
+
+    if (!channels) {
+        lamb_opt_free(&opt);
+        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory\n");
+        return;
+    }
+
+    lamb_node_t *node;
+    lamb_channel_t *channel;
+    lamb_list_iterator_t *it;
+
+    err = lamb_get_channels(db, id, channels);
+    if (channels->len <= 0) {
+        lamb_opt_free(&opt);
+        printf("There is no available data\n");
+        return;
+    }
+
+    it = lamb_list_iterator_new(channels, LIST_HEAD);
+
+    printf("\n");
+    printf("%4s %-8s%-7s%-6s%-6s%-6s%-6s\n",
+           "Id","Account","Weight","Cmcc","Ctcc","Cucc","Other");
+    printf("---------------------------------------------------\n");
+    printf("\033[37m");
+
+    while ((node = lamb_list_iterator_next(it))) {
+        channel = (lamb_channel_t *)node->val;
+        printf(" %3d", channel->id);
+        printf(" %-7d", channel->acc);
+        printf(" %-6d", channel->weight);
+        printf(" %-5.5s", (channel->operator & 1) ? "true" : "false");
+        printf(" %-5.5s", (channel->operator & (1 << 1)) ? "true" : "false");
+        printf(" %-5.5s", (channel->operator & (1 << 2)) ? "true" : "false");
+        printf(" %-5.5s", (channel->operator & (1 << 3)) ? "true" : "false");
+        printf("\n");
+        lamb_list_remove(channels, node);
+    }
+
+    printf("\033[0m\n");
+    lamb_opt_free(&opt);
+    lamb_list_destroy(channels);
+    lamb_list_iterator_destroy(it);
+    return;
+}
+
 void lamb_show_log(const char *line) {
     int err;
     lamb_opt_t opt;
     const char *type;
 
+    memset(&opt, 0, sizeof(lamb_opt_t));
     err = lamb_opt_parsing(line, "show log", &opt);
 
     if (err) {
@@ -200,7 +272,7 @@ void lamb_show_log(const char *line) {
         }
     }
 
-    //lamb_opt_free(&opt);
+    lamb_opt_free(&opt);
 
     return;
 }
