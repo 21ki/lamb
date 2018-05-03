@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include "lamb.h"
 #include "db.h"
+#include "account.h"
 #include "gateway.h"
 
 #define LAMB_VERSION "1.2"
@@ -43,6 +44,8 @@ int main(int argc, char **argv) {
                 lamb_show_client();
             } else if (CHECK(command, "show server")) {
                 lamb_show_server();
+            } else if (CHECK(command, "show account")) {
+                lamb_show_account();
             } else if (CHECK(command, "show gateway")) {
                 lamb_show_gateway();
             } else if (CHECK(command, "show log")) {
@@ -89,19 +92,59 @@ void lamb_show_server(void) {
     return;
 }
 
+void lamb_show_account(void) {
+    int len;
+    lamb_account_t *accounts[128] = {NULL};
+
+    len = lamb_get_accounts(db, accounts, 128);
+
+    if (0 > len) {
+        printf("There is no available data\n");
+        return;
+    }
+
+    printf("\n");
+    printf("%4s %-8s%-9s%-20s%-8s%-16s%-11s%-7s\n",
+           "Id","User","Password","Spcode","company","address","concurrent","options");
+    printf("------------------------------------------------------------------------------------\n");
+    printf("\033[37m");
+
+    for (int i = 0; i < len; i++) {
+        if (accounts[i]) {
+            printf(" %3d", accounts[i]->id);
+            printf(" %-7.7s", accounts[i]->username);
+            printf(" %-8.8s", accounts[i]->password);
+            printf(" %-19.19s", accounts[i]->spcode);
+            printf(" %-7d", accounts[i]->company);
+            printf(" %-15.15s", accounts[i]->address);
+            printf(" %-10d", accounts[i]->concurrent);
+            printf(" %-6d", accounts[i]->options);
+            printf("\n");
+            free(accounts[i]);
+        }
+    }
+
+    printf("\033[0m\n");
+    return;
+}
+
 void lamb_show_gateway(void) {
     int len;
     lamb_gateway_t *gateways[128] = {NULL};
 
     len = lamb_get_gateways(db, gateways, 128);
 
-    if (len > 0) {
-        printf("\n");
-        printf("%4s %-12s%-16s%-6s%-7s%-9s%-22s%-9s%-9s%-11s\n",
-               "Id","Name","Host","Port","User","Password","Spcode","Encoding","Extended","Concurrent");
-        printf("---------------------------------------------------------------------------------------------------------\n");
-        printf("\033[37m");
+    if (0 > len) {
+        printf("There is no available data\n");
+        return;
     }
+
+    printf("\n");
+    printf("%4s %-12s%-16s%-6s%-7s%-9s%-22s%-9s%-9s%-11s\n",
+           "Id","Name","Host","Port","User","Password","Spcode","Encoding","Extended","Concurrent");
+    printf("---------------------------------------------------------------------------------------------------------\n");
+    printf("\033[37m");
+
 
     for (int i = 0; i < len; i++) {
         if (gateways[i]) {
@@ -129,10 +172,7 @@ void lamb_show_gateway(void) {
         }
     }
 
-    if (len > 0) {
-        printf("\033[0m\n");
-    }
-
+    printf("\033[0m\n");
     return;
 }
 

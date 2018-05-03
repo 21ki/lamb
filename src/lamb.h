@@ -24,6 +24,7 @@ void lamb_show_version(void);
 void lamb_show_core(void);
 void lamb_show_client(void);
 void lamb_show_server(void);
+void lamb_show_account(void);
 void lamb_show_gateway(void);
 void lamb_show_log(const char *line);
 void lamb_start_gateway(const char *line);

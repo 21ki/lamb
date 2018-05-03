@@ -156,3 +156,38 @@ int lamb_account_get_all(lamb_db_t *db, lamb_accounts_t *accounts, int size) {
     PQclear(res);
     return 0;
 }
+
+int lamb_get_accounts(lamb_db_t *db, lamb_account_t **accounts, size_t size) {
+    int rows;
+    char *column;
+    char sql[512];
+    PGresult *res = NULL;
+
+    column = "id,username,password,spcode,company,address,concurrent,options";
+    snprintf(sql, sizeof(sql), "SELECT %s FROM account ORDER BY id", column);
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    rows = PQntuples(res);
+
+    for (int i = 0; (i < rows) && (i < size); i++) {
+        lamb_account_t *a = (lamb_account_t *)calloc(1, sizeof(lamb_account_t));
+        if (a) {
+            a->id = atoi(PQgetvalue(res, i, 0));
+            strncpy(a->username, PQgetvalue(res, i, 1), 7);
+            strncpy(a->password, PQgetvalue(res, i, 2), 63);
+            strncpy(a->spcode, PQgetvalue(res, i, 3), 20);
+            a->company = atoi(PQgetvalue(res, i, 4));
+            strncpy(a->address, PQgetvalue(res, i, 5), 15);
+            a->concurrent = atoi(PQgetvalue(res, i, 6));
+            a->options = atoi(PQgetvalue(res, i, 7));
+            accounts[i] = a;
+        }
+    }
+
+    PQclear(res);
+    return rows;
+}
