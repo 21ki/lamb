@@ -8,6 +8,7 @@
 #define _LAMB_LAMB_H
 
 #include "db.h"
+#include "cache.h"
 #include "list.h"
 #include "linenoise.h"
 
@@ -27,7 +28,8 @@ typedef struct {
 } lamb_delivery_t;
 
 void lamb_help(const char *line);
-void lamb_show_version(const char *line);
+void lamb_show_mt(const char *line);
+void lamb_show_mo(const char *line);
 void lamb_show_core(const char *line);
 void lamb_show_client(const char *line);
 void lamb_show_server(const char *line);
@@ -44,11 +46,13 @@ void lamb_kill_client(const char *line);
 void lamb_kill_server(const char *line);
 void lamb_kill_gateway(const char *line);
 void lamb_change_password(const char *line);
+void lamb_show_version(const char *line);
 int lamb_opt_parsing(const char *cmd, const char *prefix, lamb_opt_t *opt);
 void lamb_opt_free(lamb_opt_t *opt);
 int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys);
 void completion(const char *buf, linenoiseCompletions *lc);
 void lamb_component_initialization(lamb_config_t *cfg);
 int lamb_add_taskqueue(lamb_db_t *db, int eid, char *mod, char *config, char *argv);
+int lamb_get_queue(lamb_cache_t *cache, const char *type);
 
 #endif

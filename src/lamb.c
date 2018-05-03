@@ -17,6 +17,7 @@
 #define CHECK(cmd,val) !strncmp(cmd, val, strlen((val)))
 
 static lamb_db_t *db;
+static lamb_cache_t *rdb;
 
 int main(int argc, char **argv) {
     char *command;
@@ -35,11 +36,17 @@ int main(int argc, char **argv) {
             linenoiseHistorySave(history);
 
             if (CHECK(command, "exit")) {
+                if (db) {lamb_db_close(db);}
+                if (rdb) {lamb_cache_close(rdb);}
                 exit(EXIT_SUCCESS);
             } else if (CHECK(command, "help")) {
                 lamb_help(command);
             } else if (CHECK(command, "show version")) {
                 lamb_show_version(command);
+            } else if (CHECK(command, "show mt")) {
+                lamb_show_mt(command);
+            } else if (CHECK(command, "show mo")) {
+                lamb_show_mo(command);
             } else if (CHECK(command, "show core")) {
                 lamb_show_core(command);
             } else if (CHECK(command, "show client")) {
@@ -86,6 +93,8 @@ int main(int argc, char **argv) {
 void lamb_help(const char *line) {
     printf("\n");
     printf(" help                        Display help information\n");
+    printf(" show mt                     Display mt queue information\n");
+    printf(" show mo                     Display mo queue information\n");
     printf(" show core                   Display core module status information\n");
     printf(" show client                 Display client connection information\n");
     printf(" show server                 Display service module status information\n");
@@ -113,6 +122,22 @@ void lamb_show_version(const char *line) {
     printf("Copyright (C) 2018 typefo <typefo@qq.com>");
     printf("\033[0m\n");
     return;
+}
+
+void lamb_show_mt(const char *line) {
+    int err;
+
+    err = lamb_get_queue(rdb, "mt");
+
+    if (err) {
+        printf("\033[31m%s\033[0m\n", "Error getting mt queue information");
+    }
+
+    return;
+}
+
+void lamb_show_mo(const char *line) {
+
 }
 
 void lamb_show_core(const char *line) {
@@ -514,6 +539,19 @@ void lamb_component_initialization(lamb_config_t *cfg) {
         return;
     }
 
+    /* Redis Initialization */
+    rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
+    if (!rdb) {
+        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory\n");
+        return;
+    }
+
+    err = lamb_cache_connect(rdb, "127.0.0.1", 6379, NULL, 0);
+    if (err) {
+        printf("\033[31m%s\033[0m\n", "Error: Can't connect to redis database\n");
+        return;
+    }
+
     return;
 }
 
@@ -568,5 +606,17 @@ int lamb_add_taskqueue(lamb_db_t *db, int eid, char *mod, char *config, char *ar
     }
 
     PQclear(res);
+    return 0;
+}
+
+int lamb_get_queue(lamb_cache_t *cache, const char *type) {
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HGETALL %s.queue", type);
+
+    if (reply != NULL) {
+        freeReplyObject(reply);
+    }
+
     return 0;
 }
