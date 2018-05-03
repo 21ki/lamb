@@ -9,8 +9,6 @@
 #include <string.h>
 #include <unistd.h>
 #include "lamb.h"
-#include "db.h"
-#include "list.h"
 #include "account.h"
 #include "gateway.h"
 #include "channel.h"
@@ -52,6 +50,8 @@ int main(int argc, char **argv) {
                 lamb_show_gateway();
             } else if (CHECK(command, "show routing")) {
                 lamb_show_routing(command);
+            } else if (CHECK(command, "show delivery")) {
+                lamb_show_delivery();
             } else if (CHECK(command, "show log")) {
                 lamb_show_log(command);
             } else if (CHECK(command, "start gateway")){
@@ -247,6 +247,57 @@ void lamb_show_routing(const char *line) {
     return;
 }
 
+void lamb_show_delivery(void) {
+    int err;
+    lamb_list_t *deliverys;
+
+    deliverys = lamb_list_new();
+
+    if (!deliverys) {
+        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory\n");
+        return;
+    }
+
+    err = lamb_get_delivery(db, deliverys);
+    if (err) {
+        lamb_list_destroy(deliverys);
+        printf("\033[31m%s\033[0m\n", "Error: reading database error\n");
+        return;
+    }
+
+    if (deliverys->len <= 0) {
+        lamb_list_destroy(deliverys);
+        printf("There is no available data\n");
+        return;
+    }
+
+    lamb_node_t *node;
+    lamb_delivery_t *delivery;
+    lamb_list_iterator_t *it;
+
+    it = lamb_list_iterator_new(deliverys, LIST_HEAD);
+
+    printf("\n");
+    printf("%4s %-25s%-8s\n", "Id", "Rexp", "Account");
+    printf("---------------------------------------------------\n");
+    printf("\033[37m");
+
+    while ((node = lamb_list_iterator_next(it))) {
+        delivery = (lamb_delivery_t *)node->val;
+        printf(" %3d", delivery->id);
+        printf(" %-24s", delivery->rexp);
+        printf(" %-7d", delivery->target);
+        printf("\n");
+        lamb_list_remove(deliverys, node);
+    }
+
+    printf("\033[0m\n");
+
+    lamb_list_destroy(deliverys);
+    lamb_list_iterator_destroy(it);
+    return;
+}
+
 void lamb_show_log(const char *line) {
     int err;
     lamb_opt_t opt;
@@ -353,4 +404,39 @@ void lamb_component_initialization(lamb_config_t *cfg) {
     }
 
     return;
+}
+
+int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys) {
+    int rows;
+    char sql[128];
+    PGresult *res = NULL;
+
+    deliverys->len = 0;
+    snprintf(sql, sizeof(sql), "SELECT id, rexp, target FROM delivery");
+    res = PQexec(db->conn, sql);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+        return -1;
+    }
+
+    if (PQntuples(res) < 1) {
+        return -1;
+    }
+
+    rows = PQntuples(res);
+    
+    for (int i = 0; i < rows; i++) {
+        lamb_delivery_t *delivery;
+        delivery = (lamb_delivery_t *)calloc(1, sizeof(lamb_delivery_t));
+        if (delivery) {
+            delivery->id = atoi(PQgetvalue(res, i, 0));
+            strncpy(delivery->rexp, PQgetvalue(res, i, 1), 127);
+            delivery->target = atoi(PQgetvalue(res, i, 2));
+            lamb_list_rpush(deliverys, lamb_node_new(delivery));
+        }
+    }
+
+    PQclear(res);
+
+    return 0;
 }
