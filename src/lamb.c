@@ -142,7 +142,16 @@ void lamb_show_mt(const char *line) {
     err = lamb_get_queue(rdb, "mt", queues);
 
     if (err) {
+        lamb_list_destroy(queues);
         printf("\033[31m%s\033[0m\n", "Error getting mt queue information");
+        return;
+    }
+
+    
+    if (queues->len < 1) {
+        lamb_list_destroy(queues);
+        printf(" There is no available data\n");
+        return;
     }
 
     printf("\n");
@@ -170,7 +179,56 @@ void lamb_show_mt(const char *line) {
 }
 
 void lamb_show_mo(const char *line) {
+    int err;
+    lamb_kv_t *q;
+    lamb_node_t *node;
+    lamb_list_t *queues;
+    lamb_list_iterator_t *it;
 
+    queues = lamb_list_new();
+    queues->free = free;
+
+    if (!queues) {
+        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory\n");
+        return;
+    }
+
+    err = lamb_get_queue(rdb, "mo", queues);
+
+    if (err) {
+        lamb_list_destroy(queues);
+        printf("\033[31m%s\033[0m\n", "Error getting mo queue information");
+        return;
+    }
+
+    if (queues->len < 1) {
+        lamb_list_destroy(queues);
+        printf(" There is no available data\n");
+        return;
+    }
+
+    printf("\n");
+    printf("%4s %-8s%-7s%-16s\n", "Id","Account","Total","Description");
+    printf("---------------------------------------------------\n");
+    printf("\033[37m");
+
+    it = lamb_list_iterator_new(queues, LIST_HEAD);
+
+    while ((node = lamb_list_iterator_next(it))) {
+        q = (lamb_kv_t *)node->val;
+        printf(" %3d", q->id);
+        printf(" %-7.7s", q->acc);
+        printf(" %-6ld", q->total);
+        printf(" %-15.15s", q->desc);
+        printf("\n");
+        lamb_list_remove(queues, node);
+    }
+
+    printf("\033[0m\n");
+    lamb_list_destroy(queues);
+    lamb_list_iterator_destroy(it);
+
+    return;
 }
 
 void lamb_show_core(const char *line) {
