@@ -234,6 +234,51 @@ void lamb_show_mo(const char *line) {
 }
 
 void lamb_show_core(const char *line) {
+    int pid;
+    int status;
+    
+    printf("\n");
+    printf("%6s %-10s%-7s%-16s\n", "Pid","Module","Status","Description");
+    printf("-----------------------------------------------------------\n");
+    printf("\033[37m");
+
+    /* ismg */
+    lamb_check_status("/tmp/ismg.lock", &pid, &status);
+    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "ismg",
+           status ? "\033[32mok\033[37m" : "\033[31mno\033[37m","client cmpp access gateway");
+
+    /* mt */
+    lamb_check_status("/tmp/mt.lock", &pid, &status);
+    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "mt",
+           status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "core uplink message queue service");
+
+    /* mo */
+    lamb_check_status("/tmp/mo.lock", &pid, &status);
+    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "mo",
+           status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "core downlink message queue service");
+
+    /* scheduler */
+    lamb_check_status("/tmp/scheduler.lock", &pid, &status);
+    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "scheduler",
+           status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "core routing scheduler service");
+
+    /* delivery */
+    lamb_check_status("/tmp/delivery.lock", &pid, &status);
+    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "delivery",
+           status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "core delivery scheduler service");
+
+    /* testd */
+    lamb_check_status("/tmp/testd.lock", &pid, &status);
+    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "testd",
+           status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "carrier gateway test service");
+
+    /* daemon */
+    lamb_check_status("/tmp/daemon.lock", &pid, &status);
+    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "daemon",
+           status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "daemon management service");
+
+    printf("\033[0m\n");
+
     return;
 }
 
@@ -802,4 +847,25 @@ int lamb_set_password(lamb_cache_t *cache, const char *password) {
     freeReplyObject(reply);
     
     return 0;
+}
+
+void lamb_check_status(const char *lock, int *pid, int *status) {
+    char buf[16];
+    char path[64];
+    FILE *fp = NULL;
+
+    *pid = *status = 0;
+    fp = fopen(lock, "r");
+
+    if (!fp) {
+        return;
+    }
+
+    if (fgets(buf, sizeof(buf) - 1, fp) != NULL) {
+        *pid = atoi(buf);
+        snprintf(path, sizeof(path), "/proc/%d", *pid);
+        *status = (access(path, F_OK) == 0) ? 1 : 0;
+    }
+
+    return;
 }

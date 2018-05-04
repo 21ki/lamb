@@ -65,5 +65,6 @@ void lamb_md5(const void *data, unsigned long len, char *string);
 void lamb_sha1(const void *data, size_t len, char *string);
 void lamb_hex_string(unsigned char* digest, size_t len, char* string);
 int lamb_set_password(lamb_cache_t *cache, const char *password);
+void lamb_check_status(const char *lock, int *pid, int *status);
 
 #endif
