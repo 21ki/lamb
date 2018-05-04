@@ -244,37 +244,37 @@ void lamb_show_core(const char *line) {
 
     /* ismg */
     lamb_check_status("/tmp/ismg.lock", &pid, &status);
-    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "ismg",
+    printf(" %5d %-9.9s   %-6s   %-35s\n", pid, "ismg",
            status ? "\033[32mok\033[37m" : "\033[31mno\033[37m","client cmpp access gateway");
 
     /* mt */
     lamb_check_status("/tmp/mt.lock", &pid, &status);
-    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "mt",
+    printf(" %5d %-9.9s   %-6s   %-35s\n", pid, "mt",
            status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "core uplink message queue service");
 
     /* mo */
     lamb_check_status("/tmp/mo.lock", &pid, &status);
-    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "mo",
+    printf(" %5d %-9.9s   %-6s   %-35s\n", pid, "mo",
            status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "core downlink message queue service");
 
     /* scheduler */
     lamb_check_status("/tmp/scheduler.lock", &pid, &status);
-    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "scheduler",
+    printf(" %5d %-9.9s   %-6s   %-35s\n", pid, "scheduler",
            status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "core routing scheduler service");
 
     /* delivery */
     lamb_check_status("/tmp/delivery.lock", &pid, &status);
-    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "delivery",
+    printf(" %5d %-9.9s   %-6s   %-35s\n", pid, "delivery",
            status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "core delivery scheduler service");
 
     /* testd */
     lamb_check_status("/tmp/testd.lock", &pid, &status);
-    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "testd",
+    printf(" %5d %-9.9s   %-6s   %-35s\n", pid, "testd",
            status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "carrier gateway test service");
 
     /* daemon */
     lamb_check_status("/tmp/daemon.lock", &pid, &status);
-    printf(" %5d %-9.9s   %-6s     %-35s\n", pid, "daemon",
+    printf(" %5d %-9.9s   %-6s   %-35s\n", pid, "daemon",
            status ? "\033[32mok\033[37m" : "\033[31mno\033[37m", "daemon management service");
 
     printf("\033[0m\n");
