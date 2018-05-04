@@ -543,12 +543,39 @@ void lamb_show_log(const char *line) {
     type = opt.val[0];
 
     if (type) {
-        if (strcasecmp(type, "client") == 0) {
+        if (strcasecmp(type, "?") == 0) {
+            printf("\n");
+            printf(" client       Client log information\n");
+            printf(" server       Server log information\n");
+            printf(" gateway      Gateway log information\n");
+            printf(" mt           MT module log information\n");
+            printf(" mo           MO module log information\n");
+            printf(" scheduler    Scheduler log information\n");
+            printf(" delivery     Delivery log information\n");
+            printf(" testd        Test module log information\n");
+            printf(" daemon       Daemon module log information\n");
+            printf(" database     Database log information\n");
+            printf("\n");
+        } else if (strcasecmp(type, "client") == 0) {
             system("tail -n 100 /var/log/lamb-ismg.log");
         } else if (strcasecmp(type, "server") == 0) {
             system("tail -n 100 /var/log/lamb-server.log");
         } else if (strcasecmp(type, "gateway") == 0) {
             system("tail -n 100 /var/log/lamb-gateway.log");
+        } else if (strcasecmp(type, "mt") == 0) {
+            system("tail -n 100 /var/log/lamb-mt.log");
+        } else if (strcasecmp(type, "mo") == 0) {
+            system("tail -n 100 /var/log/lamb-mo.log");
+        } else if (strcasecmp(type, "scheduler") == 0) {
+            system("tail -n 100 /var/log/lamb-scheduler.log");
+        } else if (strcasecmp(type, "delivery") == 0) {
+            system("tail -n 100 /var/log/lamb-delivery.log");
+        } else if (strcasecmp(type, "testd") == 0) {
+            system("tail -n 100 /var/log/lamb-testd.log");
+        } else if (strcasecmp(type, "daemon") == 0) {
+            system("tail -n 100 /var/log/lamb-daemon.log");
+        } else if (strcasecmp(type, "database") == 0) {
+            system("tail -n 100 /var/log/postgresql.log");
         } else {
             printf("\033[31m%s\033[0m\n", "Error: Incorrect command parameters");
         }
