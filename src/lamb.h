@@ -42,11 +42,10 @@ void lamb_show_client(const char *line);
 void lamb_show_server(const char *line);
 void lamb_show_account(const char *line);
 void lamb_show_gateway(const char *line);
+void lamb_show_channel(const char *line);
 void lamb_show_log(const char *line);
 void lamb_show_routing(const char *line);
 void lamb_show_delivery(const char *line);
-void lamb_show_inbound(const char *line);
-void lamb_show_outbound(const char *line);
 void lamb_start_server(const char *line);
 void lamb_start_gateway(const char *line);
 void lamb_kill_client(const char *line);
@@ -66,5 +65,6 @@ void lamb_sha1(const void *data, size_t len, char *string);
 void lamb_hex_string(unsigned char* digest, size_t len, char* string);
 int lamb_set_password(lamb_cache_t *cache, const char *password);
 void lamb_check_status(const char *lock, int *pid, int *status);
+void lamb_check_channel(lamb_cache_t *cache, int id, int *status, int *speed, int *error);
 
 #endif

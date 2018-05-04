@@ -63,10 +63,8 @@ int main(int argc, char **argv) {
                 lamb_show_routing(command);
             } else if (CHECK(command, "show delivery")) {
                 lamb_show_delivery(command);
-            } else if (CHECK(command, "show inbound")) {
-                lamb_show_inbound(command);
-            } else if (CHECK(command, "show outbound")) {
-                lamb_show_outbound(command);
+            } else if (CHECK(command, "show channel")) {
+                lamb_show_channel(command);
             } else if (CHECK(command, "show log")) {
                 lamb_show_log(command);
             } else if (CHECK(command, "start server")){
@@ -104,6 +102,7 @@ void lamb_help(const char *line) {
     printf(" show gateway                Display carrier gateway information\n");
     printf(" show routing                Display uplink routing information\n");
     printf(" show delivery               Display downlink routing information\n");
+    printf(" show channel                Display carrier gateway status information\n");
     printf(" show log [type]             Display module log information\n");
     printf(" kill client [id]            Kill the client disconnected\n");
     printf(" kill server [id]            Stop a service processing module\n");
@@ -338,9 +337,9 @@ void lamb_show_gateway(const char *line) {
     }
 
     printf("\n");
-    printf("%4s %-12s%-16s%-7s%-22s%-9s%-9s%-11s\n",
-           "Id","Name","Host","Status","Spcode","Encoding","Extended","Concurrent");
-    printf("------------------------------------------------------------------------------------------\n");
+    printf("%4s %-12s%-16s%-6s%-7s%-9s%-22s%-9s%-9s%-11s\n",
+           "Id","Name","Host","Port","User","Password","Spcode","Encoding","Extended","Concurrent");
+    printf("---------------------------------------------------------------------------------------------------------\n");
     printf("\033[37m");
 
 
@@ -349,12 +348,9 @@ void lamb_show_gateway(const char *line) {
             printf(" %3d", gateways[i]->id);
             printf(" %-11.11s", gateways[i]->name);
             printf(" %-15.15s", gateways[i]->host);
-            /* 
-               printf(" %-5d", gateways[i]->port);
-               printf(" %-6.6s", gateways[i]->username);
-               printf(" %-8.8s", gateways[i]->password);
-            */
-            printf(" %-6s  ", "\033[32m ok \033[37m");
+            printf(" %-5d", gateways[i]->port);
+            printf(" %-6.6s", gateways[i]->username);
+            printf(" %-8.8s", gateways[i]->password);
             printf(" %-21.21s", gateways[i]->spcode);
             if (gateways[i]->encoding == 0) {
                 printf(" %-8.8s", "ascii");
@@ -495,12 +491,40 @@ void lamb_show_delivery(const char *line) {
     return;
 }
 
-void lamb_show_inbound(const char *line) {
+void lamb_show_channel(const char *line) {
+    int len, status, speed, error;
+    lamb_gateway_t *gateways[128] = {NULL};
 
-}
+    len = lamb_get_gateways(db, gateways, 128);
 
-void lamb_show_outbound(const char *line) {
+    if (0 > len) {
+        printf(" There is no available data\n");
+        return;
+    }
 
+    printf("\n");
+    printf("%4s %-12s%-5s%-16s%-7s%-6s%-6s\n",
+           "Id","Name", "Type", "Host","Status","Speed","Error");
+    printf("----------------------------------------------------------\n");
+    printf("\033[37m");
+
+    for (int i = 0; i < len; i++) {
+        if (gateways[i]) {
+            lamb_check_channel(rdb, gateways[i]->id, &status, &speed, &error);
+            printf(" %3d", gateways[i]->id);
+            printf(" %-11.11s", gateways[i]->name);
+            printf(" %-4.4s", "cmpp");
+            printf(" %-15.15s", gateways[i]->host);
+            printf("   %-6s  ", status ? "\033[32mok\033[37m" : "\033[31mno\033[37m");
+            printf(" %-5d", speed);
+            printf(" %-5d", error);
+            printf("\n");
+            free(gateways[i]);
+        }
+    }
+
+    printf("\033[0m\n");
+    return;
 }
 
 void lamb_show_log(const char *line) {
@@ -785,7 +809,7 @@ int lamb_get_queue(lamb_cache_t *cache, const char *type, lamb_list_t *queues) {
 
     reply = redisCommand(cache->handle, "HGETALL %s.queue", type);
 
-    if (reply != NULL) {
+    if (reply != NULL && reply->type == REDIS_REPLY_ARRAY) {
         for (int i = 0; i < reply->elements; i += 2) {
             q = (lamb_kv_t *)malloc(sizeof(lamb_kv_t));
             if (q) {
@@ -868,6 +892,30 @@ void lamb_check_status(const char *lock, int *pid, int *status) {
         *pid = atoi(buf);
         snprintf(path, sizeof(path), "/proc/%d", *pid);
         *status = (access(path, F_OK) == 0) ? 1 : 0;
+    }
+
+    return;
+}
+
+void lamb_check_channel(lamb_cache_t *cache, int id, int *status, int *speed, int *error) {
+    char lock[128];
+    int pid, stat;
+    redisReply *reply = NULL;
+
+    *status = *speed = *error = 0;
+    snprintf(lock, sizeof(lock), "/tmp/gtw-%d.lock", id);
+    lamb_check_status(lock, &pid, &stat);
+
+    if (stat == 1) {
+        reply = redisCommand(cache->handle, "HMGET gateway.%d status speed error", id);
+        if (reply && (reply->type == REDIS_REPLY_ARRAY)) {
+            if (reply->elements == 3) {
+                *status = (reply->element[0]->str != NULL) ? atoi(reply->element[0]->str) : 0;
+                *speed = (reply->element[1]->str != NULL) ? atoi(reply->element[1]->str) : 0;
+                *error = (reply->element[2]->str != NULL) ? atoi(reply->element[2]->str) : 0;
+            }
+            freeReplyObject(reply);
+        }
     }
 
     return;
