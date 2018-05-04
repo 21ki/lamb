@@ -126,12 +126,45 @@ void lamb_show_version(const char *line) {
 
 void lamb_show_mt(const char *line) {
     int err;
+    lamb_kv_t *q;
+    lamb_node_t *node;
+    lamb_list_t *queues;
+    lamb_list_iterator_t *it;
 
-    err = lamb_get_queue(rdb, "mt");
+    queues = lamb_list_new();
+    queues->free = free;
+
+    if (!queues) {
+        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory\n");
+        return;
+    }
+
+    err = lamb_get_queue(rdb, "mt", queues);
 
     if (err) {
         printf("\033[31m%s\033[0m\n", "Error getting mt queue information");
     }
+
+    printf("\n");
+    printf("%4s %-8s%-7s%-16s\n", "Id","Account","Total","Description");
+    printf("---------------------------------------------------\n");
+    printf("\033[37m");
+
+    it = lamb_list_iterator_new(queues, LIST_HEAD);
+
+    while ((node = lamb_list_iterator_next(it))) {
+        q = (lamb_kv_t *)node->val;
+        printf(" %3d", q->id);
+        printf(" %-7.7s", q->acc);
+        printf(" %-6ld", q->total);
+        printf(" %-15.15s", q->desc);
+        printf("\n");
+        lamb_list_remove(queues, node);
+    }
+
+    printf("\033[0m\n");
+    lamb_list_destroy(queues);
+    lamb_list_iterator_destroy(it);
 
     return;
 }
@@ -609,12 +642,24 @@ int lamb_add_taskqueue(lamb_db_t *db, int eid, char *mod, char *config, char *ar
     return 0;
 }
 
-int lamb_get_queue(lamb_cache_t *cache, const char *type) {
+int lamb_get_queue(lamb_cache_t *cache, const char *type, lamb_list_t *queues) {
+    lamb_kv_t *q;
     redisReply *reply = NULL;
 
     reply = redisCommand(cache->handle, "HGETALL %s.queue", type);
 
     if (reply != NULL) {
+        for (int i = 0; i < reply->elements; i += 2) {
+            q = (lamb_kv_t *)malloc(sizeof(lamb_kv_t));
+            if (q) {
+                q->id = reply->element[i]->str ? atoi(reply->element[i]->str) : 0;
+                q->acc = "null";
+                q->total = reply->element[i + 1]->str ? atoi(reply->element[i + 1]->str) : 0;
+                q->desc = "no description";
+                lamb_list_rpush(queues, lamb_node_new(q));
+            }
+        }
+
         freeReplyObject(reply);
     }
 

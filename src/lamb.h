@@ -27,6 +27,13 @@ typedef struct {
     int target;
 } lamb_delivery_t;
 
+typedef struct {
+    int id;
+    char *acc;
+    long total;
+    char *desc;
+} lamb_kv_t;
+
 void lamb_help(const char *line);
 void lamb_show_mt(const char *line);
 void lamb_show_mo(const char *line);
@@ -53,6 +60,6 @@ int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys);
 void completion(const char *buf, linenoiseCompletions *lc);
 void lamb_component_initialization(lamb_config_t *cfg);
 int lamb_add_taskqueue(lamb_db_t *db, int eid, char *mod, char *config, char *argv);
-int lamb_get_queue(lamb_cache_t *cache, const char *type);
+int lamb_get_queue(lamb_cache_t *cache, const char *type, lamb_list_t *queues);
 
 #endif
