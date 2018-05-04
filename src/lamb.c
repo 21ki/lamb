@@ -338,9 +338,9 @@ void lamb_show_gateway(const char *line) {
     }
 
     printf("\n");
-    printf("%4s %-12s%-16s%-6s%-7s%-9s%-22s%-9s%-9s%-11s\n",
-           "Id","Name","Host","Port","User","Password","Spcode","Encoding","Extended","Concurrent");
-    printf("---------------------------------------------------------------------------------------------------------\n");
+    printf("%4s %-12s%-16s%-7s%-22s%-9s%-9s%-11s\n",
+           "Id","Name","Host","Status","Spcode","Encoding","Extended","Concurrent");
+    printf("------------------------------------------------------------------------------------------\n");
     printf("\033[37m");
 
 
@@ -349,9 +349,12 @@ void lamb_show_gateway(const char *line) {
             printf(" %3d", gateways[i]->id);
             printf(" %-11.11s", gateways[i]->name);
             printf(" %-15.15s", gateways[i]->host);
-            printf(" %-5d", gateways[i]->port);
-            printf(" %-6.6s", gateways[i]->username);
-            printf(" %-8.8s", gateways[i]->password);
+            /* 
+               printf(" %-5d", gateways[i]->port);
+               printf(" %-6.6s", gateways[i]->username);
+               printf(" %-8.8s", gateways[i]->password);
+            */
+            printf(" %-6s  ", "\033[32m ok \033[37m");
             printf(" %-21.21s", gateways[i]->spcode);
             if (gateways[i]->encoding == 0) {
                 printf(" %-8.8s", "ascii");
