@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <openssl/md5.h>
+#include <openssl/sha.h>
 #include "lamb.h"
 #include "account.h"
 #include "gateway.h"
@@ -553,8 +555,37 @@ void lamb_kill_gateway(const char *line) {
     return;
 }
 
+//    int cmpp_md5(unsigned char *md, unsigned char *src, unsigned int len) ;
 void lamb_change_password(const char *line) {
-    printf(" change password successfull\n");
+    int err;
+    char md5[33];
+    char string[41];
+    char *password;
+    lamb_opt_t opt;
+
+    memset(&opt, 0, sizeof(lamb_opt_t));
+    err = lamb_opt_parsing(line, "change password", &opt);
+
+    if (err || opt.len < 1) {
+        printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+    }
+
+    password = opt.val[0];
+
+    /* MD5 algorithm processing */
+    lamb_md5(password, strlen(password), md5);
+
+    /* SHA1 algorithm processing */
+    lamb_sha1(md5, strlen(md5), string);
+
+    err = lamb_set_password(rdb, string);
+
+    if (err) {
+        printf(" \033[31m%s\033[0m\n", "Error: change password failed\n");
+    } else {
+        printf(" \033[32m%s\033[0m\n", "change password successfull");
+    }
+
     return;
 }
 
@@ -721,5 +752,54 @@ int lamb_get_queue(lamb_cache_t *cache, const char *type, lamb_list_t *queues) {
         freeReplyObject(reply);
     }
 
+    return 0;
+}
+
+void lamb_md5(const void *data, unsigned long len, char *string) {
+    MD5_CTX ctx;
+    unsigned char digest[MD5_DIGEST_LENGTH];
+
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, data, len);
+    MD5_Final(digest, &ctx);
+
+    lamb_hex_string(digest, sizeof(digest), string);
+
+    return;
+}
+
+void lamb_sha1(const void *data, size_t len, char *string) {
+    SHA_CTX ctx;
+    unsigned char digest[SHA_DIGEST_LENGTH];
+
+    SHA1_Init(&ctx);
+    SHA1_Update(&ctx, data, len);
+    SHA1_Final(digest, &ctx);
+
+    lamb_hex_string(digest, sizeof(digest), string);
+
+    return;
+}
+
+void lamb_hex_string(unsigned char* digest, size_t len, char* string) {
+    for (int i = 0; i < len; ++i) {
+        sprintf(string + (i * 2), "%.2x", digest[i]);
+    }
+    string[len * 2] = '\0';
+
+    return;
+}
+
+int lamb_set_password(lamb_cache_t *cache, const char *password) {
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HSET admin password %s", password);
+
+    if (!reply) {
+        return -1;
+    }
+
+    freeReplyObject(reply);
+    
     return 0;
 }

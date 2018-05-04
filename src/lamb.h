@@ -61,5 +61,9 @@ void completion(const char *buf, linenoiseCompletions *lc);
 void lamb_component_initialization(lamb_config_t *cfg);
 int lamb_add_taskqueue(lamb_db_t *db, int eid, char *mod, char *config, char *argv);
 int lamb_get_queue(lamb_cache_t *cache, const char *type, lamb_list_t *queues);
+void lamb_md5(const void *data, unsigned long len, char *string);
+void lamb_sha1(const void *data, size_t len, char *string);
+void lamb_hex_string(unsigned char* digest, size_t len, char* string);
+int lamb_set_password(lamb_cache_t *cache, const char *password);
 
 #endif
