@@ -363,6 +363,7 @@ void *lamb_sender_loop(void *data) {
 
         if (err) {
             status.err++;
+            syslog(LOG_ERR, "Submit message to gateway error");
             lamb_sleep(config.interval * 1000);
             continue;
         }
@@ -372,6 +373,7 @@ void *lamb_sender_loop(void *data) {
 
         if (err == ETIMEDOUT) {
             status.timeo++;
+            syslog(LOG_ERR, "Wait for gateway Ack confirmation timeout");
             lamb_sleep(config.interval * 1000);
         }
 
@@ -430,9 +432,15 @@ void *lamb_deliver_loop(void *data) {
 
             //lamb_debug("message response id: %llu, msgId: %llu, result: %u\n", id, msgId, result);
             
-            if ((confirmed.sequenceId != sequenceId) || (result != 0)) {
+            if (confirmed.sequenceId != sequenceId) {
                 status.err++;
-                lamb_debug("receive sending message error, result: %u\n", result);
+                syslog(LOG_ERR, "Ack sequenceId %u confirmed is incorrect", sequenceId);
+                break;
+            }
+
+            if (result != 0) {
+                status.err++;
+                syslog(LOG_ERR, "Submit message to gateway error, result: %u", result);
                 break;
             }
 
