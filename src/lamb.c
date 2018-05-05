@@ -282,6 +282,42 @@ void lamb_show_core(const char *line) {
 }
 
 void lamb_show_client(const char *line) {
+    char host[16];
+    int len, status, speed, error;
+    lamb_account_t *accounts[128] = {NULL};
+
+    len = lamb_get_accounts(db, accounts, 128);
+
+    if (len < 1) {
+        printf(" There is no available data\n");
+        return;
+    }
+
+    printf("\n");
+    printf("%4s %-7s%-8s  %-16s%-7s%-6s%-6s\n",
+           "Id", "User", "company", "Host", "Status", "Speed", "Error");
+    printf("----------------------------------------------------------\n");
+    printf("\033[37m");
+
+    for (int i = 0; i < len; i++) {
+        if (accounts[i]) {
+            memset(host, 0, sizeof(host));
+            lamb_check_client(rdb, accounts[i]->id, host, &status, &speed, &error);
+            if (status) {
+                printf(" %3d", accounts[i]->id);
+                printf(" %-6.6s", accounts[i]->username);
+                printf(" %-9d", accounts[i]->company);
+                printf(" %-15.15s", host);
+                printf("   %-6s  ", "\033[32mok\033[37m");
+                printf(" %-5d", speed);
+                printf(" %-5d", error);
+                printf("\n");
+            }
+            free(accounts[i]);
+        }
+    }
+
+    printf("\033[0m\n");
     return;
 }
 
@@ -921,6 +957,8 @@ void lamb_check_status(const char *lock, int *pid, int *status) {
         *status = (access(path, F_OK) == 0) ? 1 : 0;
     }
 
+    fclose(fp);
+
     return;
 }
 
@@ -933,16 +971,47 @@ void lamb_check_channel(lamb_cache_t *cache, int id, int *status, int *speed, in
     snprintf(lock, sizeof(lock), "/tmp/gtw-%d.lock", id);
     lamb_check_status(lock, &pid, &stat);
 
-    if (stat == 1) {
-        reply = redisCommand(cache->handle, "HMGET gateway.%d status speed error", id);
-        if (reply && (reply->type == REDIS_REPLY_ARRAY)) {
-            if (reply->elements == 3) {
-                *status = (reply->element[0]->str != NULL) ? atoi(reply->element[0]->str) : 0;
-                *speed = (reply->element[1]->str != NULL) ? atoi(reply->element[1]->str) : 0;
-                *error = (reply->element[2]->str != NULL) ? atoi(reply->element[2]->str) : 0;
-            }
-            freeReplyObject(reply);
+    if (stat != 1) {
+        return;
+    }
+    
+    reply = redisCommand(cache->handle, "HMGET gateway.%d status speed error", id);
+    
+    if (reply) {
+        if ((reply->type == REDIS_REPLY_ARRAY) && (reply->elements == 3)) {
+            *status = (reply->element[0]->str != NULL) ? atoi(reply->element[0]->str) : 0;
+            *speed = (reply->element[1]->str != NULL) ? atoi(reply->element[1]->str) : 0;
+            *error = (reply->element[2]->str != NULL) ? atoi(reply->element[2]->str) : 0;
         }
+        freeReplyObject(reply);
+    }
+    
+
+    return;
+}
+
+void lamb_check_client(lamb_cache_t *cache, int id, char *host, int *status, int *speed, int *error) {
+    long online = 0;
+    redisReply *reply = NULL;
+
+    *status = *speed = *error = 0;
+    reply = redisCommand(cache->handle, "HMGET client.%d online addr speed error", id);
+    if (reply) {
+        if ((reply->type == REDIS_REPLY_ARRAY) && (reply->elements == 4)) {
+            online = (reply->element[0]->str != NULL) ? atol(reply->element[0]->str) : 0;
+            if ((time(NULL) - online) < 7) {
+                *status = 1;
+            }
+            if (reply->element[1]->len > 15) {
+                strncpy(host, reply->element[1]->str, 15);
+            } else {
+                strncpy(host, reply->element[1]->str, reply->element[1]->len);
+            }
+            
+            *speed = (reply->element[2]->str != NULL) ? atoi(reply->element[2]->str) : 0;
+            *error = (reply->element[3]->str != NULL) ? atoi(reply->element[3]->str) : 0;
+        }
+        freeReplyObject(reply);
     }
 
     return;

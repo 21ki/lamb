@@ -66,5 +66,6 @@ void lamb_hex_string(unsigned char* digest, size_t len, char* string);
 int lamb_set_password(lamb_cache_t *cache, const char *password);
 void lamb_check_status(const char *lock, int *pid, int *status);
 void lamb_check_channel(lamb_cache_t *cache, int id, int *status, int *speed, int *error);
+void lamb_check_client(lamb_cache_t *cache, int id, char *host, int *status, int *speed, int *error);
 
 #endif
