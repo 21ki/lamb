@@ -331,7 +331,7 @@ void lamb_show_account(const char *line) {
 
     len = lamb_get_accounts(db, accounts, 128);
 
-    if (0 > len) {
+    if (len < 1) {
         printf(" There is no available data\n");
         return;
     }
@@ -367,7 +367,7 @@ void lamb_show_gateway(const char *line) {
 
     len = lamb_get_gateways(db, gateways, 128);
 
-    if (0 > len) {
+    if (len < 1) {
         printf(" There is no available data\n");
         return;
     }
@@ -442,7 +442,7 @@ void lamb_show_routing(const char *line) {
     lamb_list_iterator_t *it;
 
     err = lamb_get_channels(db, id, channels);
-    if (channels->len <= 0) {
+    if (channels->len < 1) {
         lamb_opt_free(&opt);
         printf(" There is no available data\n");
         return;
@@ -494,7 +494,7 @@ void lamb_show_delivery(const char *line) {
         return;
     }
 
-    if (deliverys->len <= 0) {
+    if (deliverys->len < 1) {
         lamb_list_destroy(deliverys);
         printf(" There is no available data\n");
         return;
@@ -533,7 +533,7 @@ void lamb_show_channel(const char *line) {
 
     len = lamb_get_gateways(db, gateways, 128);
 
-    if (0 > len) {
+    if (len < 1) {
         printf(" There is no available data\n");
         return;
     }
