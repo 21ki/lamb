@@ -79,3 +79,10 @@ This a Open Source SMS Gateway Platform, Support the CMPP 2.0 protocol
     $ make
     $ make install
 
+### lamb 核心模块安装
+
+    $ make install
+
+### lamb 命令行工具文档
+
+[lamb命令手册](doc/lamb.md)
