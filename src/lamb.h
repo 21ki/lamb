@@ -34,6 +34,17 @@ typedef struct {
     char *desc;
 } lamb_kv_t;
 
+typedef struct {
+    long store;
+    long bill;
+    long blk;
+    long usb;
+    long limt;
+    long rejt;
+    long tmp;
+    long key;
+} lamb_server_statistics_t;
+
 void lamb_help(const char *line);
 void lamb_show_mt(const char *line);
 void lamb_show_mo(const char *line);
@@ -47,10 +58,10 @@ void lamb_show_log(const char *line);
 void lamb_show_routing(const char *line);
 void lamb_show_delivery(const char *line);
 void lamb_start_server(const char *line);
-void lamb_start_gateway(const char *line);
+void lamb_start_channel(const char *line);
 void lamb_kill_client(const char *line);
 void lamb_kill_server(const char *line);
-void lamb_kill_gateway(const char *line);
+void lamb_kill_channel(const char *line);
 void lamb_change_password(const char *line);
 void lamb_show_version(const char *line);
 int lamb_opt_parsing(const char *cmd, const char *prefix, lamb_opt_t *opt);
@@ -67,5 +78,9 @@ int lamb_set_password(lamb_cache_t *cache, const char *password);
 void lamb_check_status(const char *lock, int *pid, int *status);
 void lamb_check_channel(lamb_cache_t *cache, int id, int *status, int *speed, int *error);
 void lamb_check_client(lamb_cache_t *cache, int id, char *host, int *status, int *speed, int *error);
+void lamb_check_server(int id, int *pid, int *status);
+void lamb_set_signal(lamb_cache_t *cache, const char *type, int id, int signal);
+bool lamb_is_valid(lamb_cache_t *cache, const char *type, int id);
+void lamb_server_statistics(lamb_cache_t *cache, int id, lamb_server_statistics_t *stat);
 
 #endif

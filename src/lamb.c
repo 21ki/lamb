@@ -69,14 +69,14 @@ int main(int argc, char **argv) {
                 lamb_show_log(command);
             } else if (CHECK(command, "start server")){
                 lamb_start_server(command);
-            } else if (CHECK(command, "start gateway")){
-                lamb_start_gateway(command);
+            } else if (CHECK(command, "start channel")){
+                lamb_start_channel(command);
             } else if (CHECK(command, "kill client")){
                 lamb_kill_client(command);
             } else if (CHECK(command, "kill server")){
                 lamb_kill_server(command);
-            } else if (CHECK(command, "kill gateway")){
-                lamb_kill_gateway(command);
+            } else if (CHECK(command, "kill channel")){
+                lamb_kill_channel(command);
             } else if (CHECK(command, "change password")) {
                 lamb_change_password(command);
             } else {
@@ -99,17 +99,17 @@ void lamb_help(const char *line) {
     printf(" show client                 Display client connection information\n");
     printf(" show server                 Display service module status information\n");
     printf(" show account                Display account information\n");
+    printf(" show channel                Display carrier channel status information\n");
     printf(" show gateway                Display carrier gateway information\n");
-    printf(" show routing                Display uplink routing information\n");
     printf(" show delivery               Display downlink routing information\n");
-    printf(" show channel                Display carrier gateway status information\n");
-    printf(" show log [type]             Display module log information\n");
-    printf(" kill client [id]            Kill the client disconnected\n");
-    printf(" kill server [id]            Stop a service processing module\n");
-    printf(" kill gateway [id]           Kill the gateway disconnected\n");
-    printf(" start server [id]           Start a service processing module\n");
-    printf(" start gateway [id]          Start a gateway service module\n");
-    printf(" change password [password]  Change user login password\n");
+    printf(" show routing <id>           Display uplink routing information\n");
+    printf(" show log <type>             Display module log information\n");
+    printf(" kill client <id>            Kill a client disconnected\n");
+    printf(" kill server <id>            Kill a service processing module\n");
+    printf(" kill channel <id>           Kill a gateway disconnected\n");
+    printf(" start server <id>           Start a service processing module\n");
+    printf(" start channel <id>          Start a gateway channel service\n");
+    printf(" change password <password>  Change user login password\n");
     printf(" show version                Display software version information\n");
     printf(" exit                        Exit system login\n");
     printf("\n");
@@ -322,6 +322,43 @@ void lamb_show_client(const char *line) {
 }
 
 void lamb_show_server(const char *line) {
+    int len, pid, status;
+    lamb_server_statistics_t stat;
+    lamb_account_t *accounts[128] = {NULL};
+
+    len = lamb_get_accounts(db, accounts, 128);
+
+    if (len < 1) {
+        printf(" There is no available data\n");
+        return;
+    }
+
+    printf("\n");
+    printf("%4s %-6s%-7s%-6s%-6s%-6s%-6s%-6s%-6s%-6s%-6s\n",
+           "Id", "Pid", "Status", "store", "bill", "blk", "usb", "limt", "rejt", "tmp", "key");
+    printf("-----------------------------------------------------------------\n");
+    printf("\033[37m");
+
+    for (int i = 0; i < len; i++) {
+        lamb_check_server(accounts[i]->id, &pid, &status);
+        memset(&stat, 0, sizeof(lamb_server_statistics_t));
+        lamb_server_statistics(rdb, accounts[i]->id, &stat);
+        printf(" %3d", accounts[i]->id);
+        printf(" %-5d", pid);
+        printf("   %-6s  ", status ? "\033[32mok\033[37m" : "\033[31mno\033[37m");
+        printf(" %-5ld", stat.store);
+        printf(" %-5ld", stat.bill);
+        printf(" %-5ld", stat.blk);
+        printf(" %-5ld", stat.usb);
+        printf(" %-5ld", stat.limt);
+        printf(" %-5ld", stat.rejt);
+        printf(" %-5ld", stat.tmp);
+        printf(" %-5ld", stat.key);
+        printf("\n");
+        free(accounts[i]);
+    }
+
+    printf("\033[0m\n");
     return;
 }
 
@@ -583,7 +620,7 @@ void lamb_show_log(const char *line) {
             printf("\n");
             printf(" client       Client log information\n");
             printf(" server       Server log information\n");
-            printf(" gateway      Gateway log information\n");
+            printf(" channel      Channel log information\n");
             printf(" mt           MT module log information\n");
             printf(" mo           MO module log information\n");
             printf(" scheduler    Scheduler log information\n");
@@ -596,7 +633,7 @@ void lamb_show_log(const char *line) {
             system("tail -n 100 /var/log/lamb-ismg.log");
         } else if (strcasecmp(type, "server") == 0) {
             system("tail -n 100 /var/log/lamb-server.log");
-        } else if (strcasecmp(type, "gateway") == 0) {
+        } else if (strcasecmp(type, "channel") == 0) {
             system("tail -n 100 /var/log/lamb-gateway.log");
         } else if (strcasecmp(type, "mt") == 0) {
             system("tail -n 100 /var/log/lamb-mt.log");
@@ -648,12 +685,12 @@ void lamb_start_server(const char *line) {
     return;
 }
 
-void lamb_start_gateway(const char *line) {
+void lamb_start_channel(const char *line) {
     int id, err;
     lamb_opt_t opt;
 
     memset(&opt, 0, sizeof(lamb_opt_t));
-    err = lamb_opt_parsing(line, "start gateway", &opt);
+    err = lamb_opt_parsing(line, "start channel", &opt);
 
     if (err || !opt.val[0]) {
         printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
@@ -665,9 +702,7 @@ void lamb_start_gateway(const char *line) {
     err = lamb_add_taskqueue(db, id, "sp", "sp.conf", "-d");
 
     if (err) {
-        printf(" \033[31m%s\033[0m\n", "Start gateway service failed");
-    } else {
-        printf(" \033[32m%s\033[0m\n", "Start gateway service successfull");
+        printf(" \033[31m%s\033[0m\n", "Start channel service failed");
     }
 
     lamb_opt_free(&opt);
@@ -676,17 +711,71 @@ void lamb_start_gateway(const char *line) {
 
 
 void lamb_kill_client(const char *line) {
-    printf(" kill client successfull\n");
+    int id, err;
+    lamb_opt_t opt;
+
+    memset(&opt, 0, sizeof(lamb_opt_t));
+    err = lamb_opt_parsing(line, "kill client", &opt);
+    if (err || opt.len < 1) {
+        printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
+    }
+
+    id = atoi(opt.val[0]);
+
+    if (lamb_is_valid(rdb, "client", id)) {
+        lamb_set_signal(rdb, "client", id, 9);
+    } else {
+        printf(" \033[31m%s\033[0m\n", "Sorry, the client does not exist");
+    }
+    
+    lamb_opt_free(&opt);
     return;
 }
 
 void lamb_kill_server(const char *line) {
-    printf(" kill server successfull\n");
+    int id, err;
+    lamb_opt_t opt;
+
+    memset(&opt, 0, sizeof(lamb_opt_t));
+    err = lamb_opt_parsing(line, "kill server", &opt);
+    if (err || opt.len < 1) {
+        printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
+    }
+
+    id = atoi(opt.val[0]);
+
+    if (lamb_is_valid(rdb, "server", id)) {
+        lamb_set_signal(rdb, "server", id, 9);
+    } else {
+        printf(" \033[31m%s\033[0m\n", "Sorry, the server does not exist");
+    }
+    
+    lamb_opt_free(&opt);
     return;
 }
 
-void lamb_kill_gateway(const char *line) {
-    printf(" kill gateway successfull\n");
+void lamb_kill_channel(const char *line) {
+    int id, err;
+    lamb_opt_t opt;
+
+    memset(&opt, 0, sizeof(lamb_opt_t));
+    err = lamb_opt_parsing(line, "kill channel", &opt);
+    if (err || opt.len < 1) {
+        printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
+    }
+
+    id = atoi(opt.val[0]);
+
+    if (lamb_is_valid(rdb, "gateway", id)) {
+        lamb_set_signal(rdb, "gateway", id, 9);
+    } else {
+        printf(" \033[31m%s\033[0m\n", "Sorry, the channel does not exist");
+    }
+    
+    lamb_opt_free(&opt);
     return;
 }
 
@@ -703,6 +792,7 @@ void lamb_change_password(const char *line) {
 
     if (err || opt.len < 1) {
         printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
     }
 
     password = opt.val[0];
@@ -721,6 +811,7 @@ void lamb_change_password(const char *line) {
         printf(" \033[32m%s\033[0m\n", "change password successfull");
     }
 
+    lamb_opt_free(&opt);
     return;
 }
 
@@ -962,6 +1053,42 @@ void lamb_check_status(const char *lock, int *pid, int *status) {
     return;
 }
 
+void lamb_check_server(int id, int *pid, int *status) {
+    char lock[128];
+
+    snprintf(lock, sizeof(lock), "/tmp/serv-%d.lock", id);
+    lamb_check_status(lock, pid, status);
+    return;
+}
+
+void lamb_server_statistics(lamb_cache_t *cache, int id, lamb_server_statistics_t *stat) {
+    redisReply *reply = NULL;
+
+    if (!cache || id < 1) {
+        return;
+    }
+
+    reply = redisCommand(cache->handle, "HMGET server.%d store bill blk usb limt rejt tmp key", id);
+
+    if (reply) {
+        if (reply->type == REDIS_REPLY_ARRAY) {
+            if (reply->elements == 8) {
+                stat->store = reply->element[0]->str ? atol(reply->element[0]->str) : 0;
+                stat->bill = reply->element[1]->str ? atol(reply->element[1]->str) : 0;
+                stat->blk = reply->element[2]->str ? atol(reply->element[2]->str) : 0;
+                stat->usb = reply->element[3]->str ? atol(reply->element[3]->str) : 0;
+                stat->limt = reply->element[4]->str ? atol(reply->element[4]->str) : 0;
+                stat->rejt = reply->element[5]->str ? atol(reply->element[5]->str) : 0;
+                stat->tmp = reply->element[6]->str ? atol(reply->element[6]->str) : 0;
+                stat->blk = reply->element[7]->str ? atol(reply->element[7]->str) : 0;
+            }
+        }
+        freeReplyObject(reply);
+    }
+
+    return;
+}
+
 void lamb_check_channel(lamb_cache_t *cache, int id, int *status, int *speed, int *error) {
     char lock[128];
     int pid, stat;
@@ -1015,4 +1142,41 @@ void lamb_check_client(lamb_cache_t *cache, int id, char *host, int *status, int
     }
 
     return;
+}
+
+void lamb_set_signal(lamb_cache_t *cache, const char *type, int id, int signal) {
+    redisReply *reply = NULL;
+
+    if (!cache || id < 1) {
+        return;
+    }
+
+    reply = redisCommand(cache->handle, "HSET %s.%d signal %d", type, id, signal);
+
+    if (reply) {
+        freeReplyObject(reply);
+    }
+
+    return;
+}
+
+bool lamb_is_valid(lamb_cache_t *cache, const char *type, int id) {
+    bool exist = false;
+    redisReply *reply = NULL;
+
+    if (!cache || id < 1) {
+        return false;
+    }
+
+    reply = redisCommand(cache->handle, "EXISTS %s.%d", type, id);
+    if (reply) {
+        if (reply->type == REDIS_REPLY_INTEGER) {
+            if (reply->integer == 1) {
+                exist = true;
+            }
+        }
+        freeReplyObject(reply);
+    }
+
+    return exist;
 }

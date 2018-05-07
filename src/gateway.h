@@ -8,6 +8,7 @@
 #define _LAMB_GATEWAY_H
 
 #include "db.h"
+#include "cache.h"
 
 typedef struct {
     int id;

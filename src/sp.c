@@ -43,6 +43,8 @@ static lamb_confirmed_t confirmed;
 static unsigned long long total;
 static lamb_status_t status;
 static lamb_statistical_t *statistical;
+static int lock;
+static char lockfile[128];
 
 int main(int argc, char *argv[]) {
     char *file = "sp.conf";
@@ -87,9 +89,6 @@ int main(int argc, char *argv[]) {
     lamb_log_init("lamb-gateway");
 
     /* Check lock protection */
-    int lock;
-    char lockfile[128];
-
     snprintf(lockfile, sizeof(lockfile), "/tmp/gtw-%d.lock", gid);
 
     if (lamb_lock_protection(&lock, lockfile)) {
@@ -779,18 +778,28 @@ success:
 }
 
 void *lamb_stat_loop(void *data) {
-    int err;
+    time_t last_time;
     lamb_statistical_t curr;
+    int err, signal, interval;
+    unsigned long long speed;
     unsigned long long error;
     redisReply *reply = NULL;
 
     curr.gid = gid;
+    last_time = time(NULL);
 
     while (true) {
+        interval = time(NULL) - last_time;
+        if (interval > 0) {
+            speed = total / interval;
+        }
+
+        total = 0;
+        last_time = time(NULL);
+
         error = status.err + status.timeo;
         reply = redisCommand(rdb->handle, "HMSET gateway.%d pid %u status %d speed %llu error %llu",
-                             gid, getpid(), cmpp.ok ? 1 : 0, (unsigned long long)(total / 5), error);
-        total = 0;
+                             gid, getpid(), cmpp.ok ? 1 : 0, speed, error);
 
         if (reply != NULL) {
             freeReplyObject(reply);
@@ -817,6 +826,16 @@ void *lamb_stat_loop(void *data) {
         printf("queue: %u, sub: %llu, ack: %llu, rep: %llu, delv: %llu, timeo: %llu, err: %llu\n",
                storage->len, status.sub, status.ack, status.rep, status.delv, status.timeo, status.err);
 #endif
+
+        pthread_mutex_lock(&rdb->lock);
+        signal = lamb_check_signal(rdb, gid);
+        pthread_mutex_unlock(&rdb->lock);
+
+        if (signal == 9) {
+            lamb_exit_cleanup();
+            syslog(LOG_ERR, "receiving the shutdown signal, the service process exitd");
+            exit(EXIT_SUCCESS);
+        }
 
         sleep(5);
     }
@@ -958,6 +977,50 @@ void lamb_check_statistical(int status, lamb_statistical_t *stat) {
         stat->rejectd++;
         break;
     }
+
+    return;
+}
+
+int lamb_check_signal(lamb_cache_t *cache, int id) {
+    int signal = 0;
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HGET gateway.%d signal", id);
+
+    if (reply != NULL) {
+        if (reply->type == REDIS_REPLY_STRING) {
+            signal = (reply->len > 0) ? atoi(reply->str) : 0;
+        }
+        freeReplyObject(reply);
+    }
+
+    /* Reset signal state */
+    lamb_clear_signal(cache, id);
+
+    return signal;
+}
+
+void lamb_clear_signal(lamb_cache_t *cache, int id) {
+    redisReply *reply = NULL;
+
+    reply = redisCommand(cache->handle, "HSET gateway.%d signal 0", id);
+
+    if (reply != NULL) {
+        freeReplyObject(reply);
+    }
+
+    return;
+}
+
+void lamb_exit_cleanup(void) {
+    cmpp_terminate(&cmpp.sock, cmpp_sequence());
+    lamb_sleep(3000);
+    lamb_nn_close(scheduler);
+    lamb_nn_close(delivery);
+    lamb_db_close(db);
+    lamb_cache_close(rdb);
+    lamb_lock_release(&lock);
+    remove(lockfile);
 
     return;
 }

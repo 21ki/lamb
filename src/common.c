@@ -377,9 +377,10 @@ int lamb_lock_protection(int *lock, const char *file) {
 }
 
 void lamb_lock_release(int *lock) {
-    flock(*lock, LOCK_UN);
-    close(*lock);
-    *lock = -1;
+    if (*lock >= 0) {
+        close(*lock);
+        *lock = -1;
+    }
 
     return;
 }

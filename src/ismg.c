@@ -626,6 +626,10 @@ void *lamb_stat_loop(void *data) {
     last_time = time(NULL);
     client = (lamb_client_t *)data;
 
+    pthread_mutex_lock(&rdb->lock);
+    lamb_clear_signal(rdb, client->account->id);
+    pthread_mutex_unlock(&rdb->lock);
+
     while (true) {
         interval = time(NULL) - last_time;
 
@@ -730,8 +734,8 @@ int lamb_check_signal(lamb_cache_t *cache, int id) {
     reply = redisCommand(cache->handle, "HGET client.%d signal", id);
 
     if (reply != NULL) {
-        if (reply->type == REDIS_REPLY_STRING && reply->len > 0) {
-            signal = atoi(reply->str);
+        if (reply->type == REDIS_REPLY_STRING) {
+            signal = (reply->len > 0) ? atoi(reply->str) : 0;
         }
         freeReplyObject(reply);
     }

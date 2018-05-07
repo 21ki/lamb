@@ -47,6 +47,8 @@ static lamb_caches_t *frequency;
 static lamb_caches_t *unsubscribe;
 static volatile bool sleeping = false;
 static volatile bool arrears = false;
+static int lock;
+static char lockfile[128];
 
 int main(int argc, char *argv[]) {
     bool background = false;
@@ -91,9 +93,6 @@ int main(int argc, char *argv[]) {
     lamb_log_init("lamb-server");
 
     /* Check lock protection */
-    int lock;
-    char lockfile[128];
-
     snprintf(lockfile, sizeof(lockfile), "/tmp/serv-%d.lock", aid);
 
     if (lamb_lock_protection(&lock, lockfile)) {
@@ -113,9 +112,6 @@ int main(int argc, char *argv[]) {
     /* Start main event thread */
     lamb_event_loop();
 
-    /* Release lock protection */
-    lamb_lock_release(&lock);
-
     return 0;
 }
 
@@ -126,7 +122,9 @@ void lamb_event_loop(void) {
 
     err = lamb_component_initialization(config);
     if (err) {
-        lamb_debug("component initialization failed\n");
+        lamb_lock_release(&lock);
+        remove(lockfile);
+        syslog(LOG_ERR, "server component initialization failed\n");
         return;
     }
 
@@ -826,6 +824,10 @@ void *lamb_stat_loop(void *data) {
                      global->account.company);
         }
 
+        pthread_mutex_lock(&global->rdb.lock);
+        lamb_sync_status(&global->rdb, aid, status, global->storage->len, global->billing->len);
+        pthread_mutex_unlock(&global->rdb.lock);
+        
 #ifdef _DEBUG
         /* Debug information */
         printf("store: %u, bill: %u, toal: %lld, sub: %llu, rep: %llu, delv: %llu, "
@@ -1116,6 +1118,21 @@ void lamb_direct_response(int sock, Report *resp, Submit *message, int cause) {
     return;
 }
 
+void lamb_sync_status(lamb_cache_t *cache, int id, lamb_status_t *stat, int store, int bill) {
+    const char *cmd;
+    redisReply *reply = NULL;
+
+    cmd = "HMSET server.%d store %d bill %d blk %lld usb %lld limt %lld rejt %lld tmp %lld key %lld";
+    reply = redisCommand(cache->handle, cmd, id, store, bill, stat->blk, stat->usb, stat->limt,
+                         stat->rejt, stat->tmp, stat->key);
+
+    if (reply) {
+        freeReplyObject(reply);
+    }
+
+    return;
+}
+
 void lamb_exit_cleanup(void) {
     lamb_nn_close(mt);
     lamb_nn_close(mo);
@@ -1123,6 +1140,8 @@ void lamb_exit_cleanup(void) {
     lamb_nn_close(deliverd);
     lamb_db_close(&global->db);
     lamb_cache_close(&global->rdb);
+    lamb_lock_release(&lock);
+    remove(lockfile);
     exit(EXIT_SUCCESS);
 
     return;

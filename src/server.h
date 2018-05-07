@@ -111,6 +111,7 @@ int lamb_component_initialization(lamb_config_t *cfg);
 int lamb_check_signal(lamb_cache_t *cache, int id);
 void lamb_clear_signal(lamb_cache_t *cache, int id);
 void lamb_stat_update(lamb_cache_t *cache, int id, int stat);
+void lamb_sync_status(lamb_cache_t *cache, int id, lamb_status_t *stat, int store, int bill);
 void lamb_exit_cleanup(void);
 int lamb_read_config(lamb_config_t *conf, const char *file);
 
