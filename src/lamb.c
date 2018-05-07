@@ -354,7 +354,7 @@ void lamb_show_gateway(const char *line) {
                printf(" %-6.6s", gateways[i]->username);
                printf(" %-8.8s", gateways[i]->password);
             */
-            printf(" %-6s  ", "\033[32m ok \033[37m");
+            printf("  %-6s ", "\033[32m ok \033[37m");
             printf(" %-21.21s", gateways[i]->spcode);
             if (gateways[i]->encoding == 0) {
                 printf(" %-8.8s", "ascii");
