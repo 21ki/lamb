@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     lamb_log_init("lamb-ismg");
         
     /* Check lock protection */
-    int lock;
+    lamb_lock_t lock;
 
     if (lamb_lock_protection(&lock, "/tmp/ismg.lock")) {
         syslog(LOG_ERR, "Already started, please do not repeat the start!\n");
@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
     lamb_debug(stdout, "lamb server listen %s port %d\n", config.listen, config.port);
 
     /* Save pid to file */
-    lamb_pid_file(lock, getpid());
+    lamb_pid_file(&lock, getpid());
 
     /* Setting process information */
     lamb_set_process("lamb-ismgd");

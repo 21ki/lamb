@@ -94,6 +94,7 @@ void lamb_check_statistical(int status, lamb_statistical_t *stat);
 int lamb_write_statistical(lamb_db_t *db, lamb_statistical_t *stat);
 int lamb_check_signal(lamb_cache_t *cache, int id);
 void lamb_clear_signal(lamb_cache_t *cache, int id);
+int lamb_component_initialization(lamb_config_t *cfg);
 void lamb_exit_cleanup(void);
 
 #endif

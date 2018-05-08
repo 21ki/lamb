@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
     lamb_log_init("lamb-daemon");
 
     /* Check lock protection */
-    int lock;
+    lamb_lock_t lock;
 
     if (lamb_lock_protection(&lock, "/tmp/daemon.lock")) {
         syslog(LOG_ERR, "Already started, please do not repeat the start!\n");
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Save pid to file */
-    lamb_pid_file(lock, getpid());
+    lamb_pid_file(&lock, getpid());
 
     /* Signal event processing */
     lamb_signal_processing();

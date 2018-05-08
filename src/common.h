@@ -96,6 +96,7 @@ typedef struct {
 
 typedef struct {
     int fd;
+    char *file;
 } lamb_lock_t;
 
 int lamb_signal(int sig, void (*handler)(int));
@@ -120,8 +121,8 @@ long lamb_get_cpu(void);
 int lamb_cpu_affinity(pthread_t thread);
 int lamb_hp_parse(char *str, char *host, int *port);
 int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, long millisecond);
-int lamb_lock_protection(int *lock, const char *file);
-void lamb_lock_release(int *lock);
-void lamb_pid_file(int fd, pid_t pid);
+int lamb_lock_protection(lamb_lock_t *lock, char *file);
+void lamb_lock_release(lamb_lock_t *lock);
+void lamb_pid_file(lamb_lock_t *lock, pid_t pid);
 
 #endif

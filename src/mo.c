@@ -32,7 +32,6 @@
 #include "log.h"
 #include "mo.h"
 
-
 static lamb_cache_t *rdb;
 static lamb_list_t *pool;
 static lamb_config_t config;
@@ -75,7 +74,7 @@ int main(int argc, char *argv[]) {
     lamb_log_init("lamb-mo");
 
     /* Check lock protection */
-    int lock;
+    lamb_lock_t lock;
 
     if (lamb_lock_protection(&lock, "/tmp/mo.lock")) {
         syslog(LOG_ERR, "Already started, please do not repeat the start");
@@ -83,7 +82,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Save pid to file */
-    lamb_pid_file(lock, getpid());
+    lamb_pid_file(&lock, getpid());
 
     /* Signal event processing */
     lamb_signal_processing();

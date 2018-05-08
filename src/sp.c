@@ -43,7 +43,7 @@ static lamb_confirmed_t confirmed;
 static unsigned long long total;
 static lamb_status_t status;
 static lamb_statistical_t *statistical;
-static int lock;
+static lamb_lock_t lock;
 static char lockfile[128];
 
 int main(int argc, char *argv[]) {
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Save pid to file */
-    lamb_pid_file(lock, getpid());
+    lamb_pid_file(&lock, getpid());
 
     /* Signal event processing */
     lamb_signal_processing();
@@ -124,112 +124,15 @@ void lamb_event_loop(void) {
     heartbeat.count = 0;
 
     memset(&status, 0, sizeof(status));
-
-    /* Storage Initialization */
-    storage = lamb_list_new();
-    if (!storage) {
-        syslog(LOG_ERR, "storage queue initialization failed");
-        return;
-    }
-
-    statistical = (lamb_statistical_t *)calloc(1, sizeof(lamb_statistical_t));
-    if (!statistical) {
-        syslog(LOG_ERR, "The kernel can't allocate memory");
-        return;
-    }
-
-    statistical->gid = gid;
-    pthread_mutex_init(&statistical->lock, NULL);
-
-    /* Redis initialization */
-    rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
-    if (!rdb) {
-        syslog(LOG_ERR, "redis database initialize failed");
-        return;
-    }
-
-    err = lamb_cache_connect(rdb, config.redis_host, config.redis_port, NULL,
-                             config.redis_db);
-    if (err) {
-        syslog(LOG_ERR, "can't connect to redis %s", config.redis_host);
-        return;
-    }
-
-    /* Database initialization */
-    db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
-    if (!db) {
-        syslog(LOG_ERR, "The kernel can't allocate memory");
-        return;
-    }
-
-    err = lamb_db_init(db);
-    if (err) {
-        syslog(LOG_ERR, "database handle initialize failed");
-        return;
-    }
-
-    /* Connect to database */
-    err = lamb_db_connect(db, config.db_host, config.db_port, config.db_user,
-                          config.db_password, config.db_name);
-    if (err) {
-        syslog(LOG_ERR, "can't connect to database %s", config.db_host);
-        return;
-    }
-
-    lamb_debug("connect to database successfull\n");
-
-    /* fetch gateway information */
-    gateway = (lamb_gateway_t *)calloc(1, sizeof(lamb_gateway_t));
-    if (!gateway) {
-        syslog(LOG_ERR, "The kernel can't allocate memory");
-        return;
-    }
-
-    err = lamb_get_gateway(db, gid, gateway);
-    if (err) {
-        syslog(LOG_ERR, "fetch %d gateway information failure", gid);
-        return;
-    }
-    
-    /* Cache cluster initialization */
-    memset(&cache, 0, sizeof(cache));
-    lamb_nodes_connect(&cache, LAMB_MAX_CACHE, config.nodes, 7, 4);
-    if (cache.len != 7) {
-        syslog(LOG_ERR, "connect to cache cluster failed");
-        return;
-    }
-
-    lamb_debug("connect to cache cluster successfull\n");
-
-    /* Connect to scheduler server */
-    scheduler = lamb_nn_reqrep(config.scheduler, gid, config.timeout);
-    if (scheduler < 0) {
-        syslog(LOG_ERR, "can't connect to scheduler %s", config.scheduler);
-        return;
-    }
-
-    lamb_debug("connect to scheduler server successfull\n");
-
-    /* Connect to delivery server */
-    delivery = lamb_nn_pair(config.delivery, gid, config.timeout);
-    if (delivery < 0) {
-        syslog(LOG_ERR, "can't connect to delivery %s", config.delivery);
-        return;
-    }
-
-    lamb_debug("connect to delivery server successfull\n");
-
-    /* Cmpp client initialization */
-    err = lamb_cmpp_init(&cmpp, &config);
-    if (err) {
-        return;
-    }
-
-    lamb_debug("connect cmpp gateway successfull\n");
-
     pthread_cond_init(&cond, NULL);
     pthread_mutex_init(&mutex, NULL);
     
+    err = lamb_component_initialization(&config);
+    if (err) {
+        lamb_lock_release(&lock);
+        return;
+    }
+
     /* Start Sender Thread */
     lamb_start_thread(lamb_sender_loop, NULL, 1);
 
@@ -1020,11 +923,119 @@ void lamb_exit_cleanup(void) {
     lamb_db_close(db);
     lamb_cache_close(rdb);
     lamb_lock_release(&lock);
-    remove(lockfile);
 
     return;
 }
 
+int lamb_component_initialization(lamb_config_t *cfg) {
+    int err;
+
+    if (!cfg) {
+        return -1;
+    }
+
+/* Storage Initialization */
+    storage = lamb_list_new();
+    if (!storage) {
+        syslog(LOG_ERR, "storage queue initialization failed");
+        return -1;
+    }
+
+    statistical = (lamb_statistical_t *)calloc(1, sizeof(lamb_statistical_t));
+    if (!statistical) {
+        syslog(LOG_ERR, "The kernel can't allocate memory");
+        return -1;
+    }
+
+    statistical->gid = gid;
+    pthread_mutex_init(&statistical->lock, NULL);
+
+    /* Redis initialization */
+    rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
+    if (!rdb) {
+        syslog(LOG_ERR, "redis database initialize failed");
+        return -1;
+    }
+
+    err = lamb_cache_connect(rdb, cfg->redis_host, cfg->redis_port, NULL, cfg->redis_db);
+    if (err) {
+        syslog(LOG_ERR, "can't connect to redis %s", cfg->redis_host);
+        return -1;
+    }
+
+    /* Database initialization */
+    db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
+    if (!db) {
+        syslog(LOG_ERR, "The kernel can't allocate memory");
+        return -1;
+    }
+
+    err = lamb_db_init(db);
+    if (err) {
+        syslog(LOG_ERR, "database handle initialize failed");
+        return -1;
+    }
+
+    /* Connect to database */
+    err = lamb_db_connect(db, cfg->db_host, cfg->db_port, cfg->db_user, cfg->db_password, cfg->db_name);
+    if (err) {
+        syslog(LOG_ERR, "can't connect to database %s", cfg->db_host);
+        return -1;
+    }
+
+    lamb_debug("connect to database successfull\n");
+
+    /* fetch gateway information */
+    gateway = (lamb_gateway_t *)calloc(1, sizeof(lamb_gateway_t));
+    if (!gateway) {
+        syslog(LOG_ERR, "The kernel can't allocate memory");
+        return -1;
+    }
+
+    err = lamb_get_gateway(db, gid, gateway);
+    if (err) {
+        syslog(LOG_ERR, "fetch %d gateway information failure", gid);
+        return -1;
+    }
+    
+    /* Cache cluster initialization */
+    memset(&cache, 0, sizeof(cache));
+    lamb_nodes_connect(&cache, LAMB_MAX_CACHE, cfg->nodes, 7, 4);
+    if (cache.len != 7) {
+        syslog(LOG_ERR, "connect to cache cluster failed");
+        return -1;
+    }
+
+    lamb_debug("connect to cache cluster successfull\n");
+
+    /* Connect to scheduler server */
+    scheduler = lamb_nn_reqrep(cfg->scheduler, gid, cfg->timeout);
+    if (scheduler < 0) {
+        syslog(LOG_ERR, "can't connect to scheduler %s", cfg->scheduler);
+        return -1;
+    }
+
+    lamb_debug("connect to scheduler server successfull\n");
+
+    /* Connect to delivery server */
+    delivery = lamb_nn_pair(cfg->delivery, gid, cfg->timeout);
+    if (delivery < 0) {
+        syslog(LOG_ERR, "can't connect to delivery %s", cfg->delivery);
+        return -1;
+    }
+
+    lamb_debug("connect to delivery server successfull\n");
+
+    /* Cmpp client initialization */
+    err = lamb_cmpp_init(&cmpp, cfg);
+    if (err) {
+        return -1;
+    }
+
+    lamb_debug("connect cmpp gateway successfull\n");
+
+    return 0;
+}
 int lamb_read_config(lamb_config_t *conf, const char *file) {
     if (!conf) {
         return -1;

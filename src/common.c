@@ -360,35 +360,42 @@ int lamb_wait_confirmation(pthread_cond_t *restrict cond, pthread_mutex_t *restr
     return err;
 }
 
-int lamb_lock_protection(int *lock, const char *file) {
+int lamb_lock_protection(lamb_lock_t *lock, char *file) {
     int flags;
 
     umask(0);
-    *lock = open(file, O_RDWR | O_CREAT | O_EXCL | O_TRUNC, 0666);
+    lock->fd = open(file, O_RDWR | O_CREAT | O_EXCL | O_TRUNC, 0666);
 
-    if (*lock != -1) {
-        flags = fcntl(*lock, F_GETFD);
+    if (lock->fd != -1) {
+        lock->file = file;
+        flags = fcntl(lock->fd, F_GETFD);
         flags |= FD_CLOEXEC;
-        fcntl(*lock, F_SETFD, flags);
+        fcntl(lock->fd, F_SETFD, flags);
         return 0;
     }
 
     return -1;
 }
 
-void lamb_lock_release(int *lock) {
-    if (*lock >= 0) {
-        close(*lock);
-        *lock = -1;
+void lamb_lock_release(lamb_lock_t *lock) {
+    if (lock && lock->fd >= 0) {
+        close(lock->fd);
+        lock->fd = -1;
+        if (lock->file) {
+            remove(lock->file);
+        }
     }
 
     return;
 }
 
-void lamb_pid_file(int fd, pid_t pid) {
-    char val[16];
-    snprintf(val, sizeof(val), "%d", pid);
-    write(fd, val, strlen(val));
+void lamb_pid_file(lamb_lock_t *lock, pid_t pid) {
+    if (lock) {
+        char val[16];
+        snprintf(val, sizeof(val), "%d", pid);
+        write(lock->fd, val, strlen(val));
+    }
+
     return;
 }
 

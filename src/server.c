@@ -47,7 +47,7 @@ static lamb_caches_t *frequency;
 static lamb_caches_t *unsubscribe;
 static volatile bool sleeping = false;
 static volatile bool arrears = false;
-static int lock;
+static lamb_lock_t lock;
 static char lockfile[128];
 
 int main(int argc, char *argv[]) {
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Save pid to file */
-    lamb_pid_file(lock, getpid());
+    lamb_pid_file(&lock, getpid());
 
     /* Signal event processing */
     lamb_signal_processing();
@@ -123,7 +123,6 @@ void lamb_event_loop(void) {
     err = lamb_component_initialization(config);
     if (err) {
         lamb_lock_release(&lock);
-        remove(lockfile);
         syslog(LOG_ERR, "server component initialization failed\n");
         return;
     }
@@ -1141,7 +1140,6 @@ void lamb_exit_cleanup(void) {
     lamb_db_close(&global->db);
     lamb_cache_close(&global->rdb);
     lamb_lock_release(&lock);
-    remove(lockfile);
     exit(EXIT_SUCCESS);
 
     return;
