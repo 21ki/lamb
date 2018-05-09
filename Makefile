@@ -98,7 +98,7 @@ src/message.o: src/message.c src/message.h
 install:
 	/usr/bin/mkdir -p /usr/local/lamb/bin
 	/usr/bin/mkdir -p /etc/lamb
-	/usr/bin/install -m 750 lamb /usr/bin
+	/usr/bin/install -m 666 lamb /usr/bin
 	/usr/bin/install -m 750 ismg /usr/local/lamb/bin
 	/usr/bin/install -m 750 mt /usr/local/lamb/bin
 	/usr/bin/install -m 750 mo /usr/local/lamb/bin
@@ -116,6 +116,7 @@ install:
 	/usr/bin/install -m 640 config/deliver.conf /etc/lamb
 	/usr/bin/install -m 640 config/sp.conf /etc/lamb
 	/usr/bin/install -m 640 config/test.conf /etc/lamb
+	/usr/bin/install -m 640 config/daemon.conf /etc/lamb
 
 clean:
 	rm -f src/*.o

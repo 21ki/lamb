@@ -230,8 +230,8 @@ void lamb_reload(int signum) {
     }
     
     sleeping = false;
-    syslog(LOG_NOTICE, "the reload configuration complete");
-    lamb_debug("the reload configuration complete\n");
+    syslog(LOG_NOTICE, "The reload configuration complete");
+    lamb_debug("The reload configuration complete\n");
 
     return;
 }

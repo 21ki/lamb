@@ -794,7 +794,7 @@ int lamb_get_delivery(lamb_db_t *db, lamb_list_t *deliverys) {
     }
 
     if (PQntuples(res) < 1) {
-        return -1;
+        return 0;
     }
 
     rows = PQntuples(res);
