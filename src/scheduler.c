@@ -620,7 +620,10 @@ void *lamb_pull_loop(void *arg) {
 
             if (!node) {
                 len = lamb_pack_assembly(&buf, LAMB_EMPTY, NULL, 0);
-                nn_send(fd, buf, len, NN_DONTWAIT);
+                if (len > 0) {
+                    nn_send(fd, buf, len, NN_DONTWAIT);
+                    free(buf);
+                }
                 continue;
             }
 
