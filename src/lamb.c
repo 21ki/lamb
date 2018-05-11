@@ -20,6 +20,7 @@
 
 static lamb_db_t *db;
 static lamb_cache_t *rdb;
+static lamb_caches_t *blk;
 
 int main(int argc, char **argv) {
     char *command;
@@ -77,6 +78,8 @@ int main(int argc, char **argv) {
                 lamb_kill_server(command);
             } else if (CHECK(command, "kill channel")){
                 lamb_kill_channel(command);
+            } else if (CHECK(command, "check blacklist")){
+                lamb_check_blacklist(command);
             } else if (CHECK(command, "change password")) {
                 lamb_change_password(command);
             } else {
@@ -109,6 +112,7 @@ void lamb_help(const char *line) {
     printf(" kill channel <id>           Kill a gateway disconnected\n");
     printf(" start server <id>           Start a service processing module\n");
     printf(" start channel <id>          Start a gateway channel service\n");
+    printf(" check blacklist <phone>     Check whether the mobile phone number is blacklisted\n");
     printf(" change password <password>  Change user login password\n");
     printf(" show version                Display software version information\n");
     printf(" exit                        Exit system login\n");
@@ -779,7 +783,30 @@ void lamb_kill_channel(const char *line) {
     return;
 }
 
-//    int cmpp_md5(unsigned char *md, unsigned char *src, unsigned int len) ;
+void lamb_check_blacklist(const char *line) {
+    int err;
+    char *phone;
+    lamb_opt_t opt;
+
+    memset(&opt, 0, sizeof(opt));
+    err = lamb_opt_parsing(line, "check blacklist", &opt);
+    if (err || opt.len < 1) {
+        printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
+    }
+
+    phone = opt.val[0];
+
+    if (lamb_is_blacklist(blk, phone)) {
+        printf("The number %s is blacklisted\n", phone);
+    } else {
+        printf("The number %s is not blacklisted\n", phone);
+    }
+
+    lamb_opt_free(&opt);
+    return;
+}
+
 void lamb_change_password(const char *line) {
     int err;
     char md5[33];
@@ -897,6 +924,24 @@ void lamb_component_initialization(lamb_config_t *cfg) {
     err = lamb_cache_connect(rdb, "127.0.0.1", 6379, NULL, 0);
     if (err) {
         printf("\033[31m%s\033[0m\n", "Error: Can't connect to redis database\n");
+        return;
+    }
+
+    /* Blacklist database initialization */
+    char *config[] = {
+        "127.0.0.1:7001",
+        "127.0.0.1:7002",
+        "127.0.0.1:7003",
+        "127.0.0.1:7004",
+        "127.0.0.1:7005",
+        "127.0.0.1:7006",
+        "127.0.0.1:7007"
+    };
+
+    lamb_nodes_connect(blk, LAMB_MAX_CACHE, config, 7, 1);
+
+    if (blk->len != 7) {
+        printf("\033[31m%s\033[0m\n", "Error: can't connect to blacklist database\n");
         return;
     }
 
@@ -1179,4 +1224,33 @@ bool lamb_is_valid(lamb_cache_t *cache, const char *type, int id) {
     }
 
     return exist;
+}
+
+bool lamb_is_blacklist(lamb_caches_t *cache, char *phone) {
+    int i = -1;
+    bool r = false;
+    unsigned long number;
+    redisReply *reply = NULL;
+
+    if (!phone) {
+        return false;
+    }
+
+    number = atol(phone);
+
+    if (number > 0) {
+        i = (number % cache->len);
+        reply = redisCommand(cache->nodes[i]->handle, "EXISTS %lu", number);
+        if (reply != NULL) {
+            if (reply->type == REDIS_REPLY_INTEGER) {
+                if (reply->integer == 1) {
+                    r = true;
+                }
+            }
+            freeReplyObject(reply);
+        }
+    }
+
+    return r;
+    
 }

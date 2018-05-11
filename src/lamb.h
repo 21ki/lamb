@@ -62,6 +62,7 @@ void lamb_start_channel(const char *line);
 void lamb_kill_client(const char *line);
 void lamb_kill_server(const char *line);
 void lamb_kill_channel(const char *line);
+void lamb_check_blacklist(const char *line);
 void lamb_change_password(const char *line);
 void lamb_show_version(const char *line);
 int lamb_opt_parsing(const char *cmd, const char *prefix, lamb_opt_t *opt);
@@ -82,5 +83,6 @@ void lamb_check_server(int id, int *pid, int *status);
 void lamb_set_signal(lamb_cache_t *cache, const char *type, int id, int signal);
 bool lamb_is_valid(lamb_cache_t *cache, const char *type, int id);
 void lamb_server_statistics(lamb_cache_t *cache, int id, lamb_server_statistics_t *stat);
+bool lamb_is_blacklist(lamb_caches_t *caches, char *phone);
 
 #endif
