@@ -681,8 +681,6 @@ void lamb_start_server(const char *line) {
 
     if (err) {
         printf(" \033[31m%s\033[0m\n", "Start server service failed");
-    } else {
-        printf(" \033[32m%s\033[0m\n", "Start server service successfull");
     }
 
     lamb_opt_free(&opt);
@@ -834,8 +832,6 @@ void lamb_change_password(const char *line) {
 
     if (err) {
         printf(" \033[31m%s\033[0m\n", "Error: change password failed\n");
-    } else {
-        printf(" \033[32m%s\033[0m\n", "change password successfull");
     }
 
     lamb_opt_free(&opt);
