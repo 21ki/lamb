@@ -39,8 +39,19 @@ int main(int argc, char **argv) {
             linenoiseHistorySave(history);
 
             if (CHECK(command, "exit")) {
-                if (db) {lamb_db_close(db);}
-                if (rdb) {lamb_cache_close(rdb);}
+                if (db) {
+                    lamb_db_close(db);
+                }
+                if (rdb) {
+                    lamb_cache_close(rdb);
+                }
+                if (blk) {
+                    for (int i = 0; i < blk->len; i++ ) {
+                        if (blk->nodes[i]) {
+                            lamb_cache_close(blk->nodes[i]);
+                        }
+                    }
+                }
                 exit(EXIT_SUCCESS);
             } else if (CHECK(command, "help")) {
                 lamb_help(command);
@@ -894,32 +905,32 @@ void lamb_component_initialization(lamb_config_t *cfg) {
     /* Postgresql Database  */
     db = (lamb_db_t *)malloc(sizeof(lamb_db_t));
     if (!db) {
-        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory\n");
+        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory");
         return;
     }
 
     err = lamb_db_init(db);
     if (err) {
-        printf("\033[31m%s\033[0m\n", "Error: Database initialization failed\n");
+        printf("\033[31m%s\033[0m\n", "Error: Database initialization failed");
         return;
     }
 
     err = lamb_db_connect(db, "127.0.0.1", 5432, "postgres", "postgres", "lamb");
     if (err) {
-        printf("\033[31m%s\033[0m\n", "Error: Can't connect to database\n");
+        printf("\033[31m%s\033[0m\n", "Error: Can't connect to database");
         return;
     }
 
     /* Redis Initialization */
     rdb = (lamb_cache_t *)malloc(sizeof(lamb_cache_t));
     if (!rdb) {
-        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory\n");
+        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory");
         return;
     }
 
     err = lamb_cache_connect(rdb, "127.0.0.1", 6379, NULL, 0);
     if (err) {
-        printf("\033[31m%s\033[0m\n", "Error: Can't connect to redis database\n");
+        printf("\033[31m%s\033[0m\n", "Error: Can't connect to redis database");
         return;
     }
 
@@ -934,10 +945,16 @@ void lamb_component_initialization(lamb_config_t *cfg) {
         "127.0.0.1:7007"
     };
 
+    blk = (lamb_caches_t *)calloc(1, sizeof(lamb_caches_t));
+    if (!blk) {
+        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory");
+        return;
+    }
+
     lamb_nodes_connect(blk, LAMB_MAX_CACHE, config, 7, 1);
 
     if (blk->len != 7) {
-        printf("\033[31m%s\033[0m\n", "Error: can't connect to blacklist database\n");
+        printf("\033[31m%s\033[0m\n", "Error: can't connect to blacklist database");
         return;
     }
 
