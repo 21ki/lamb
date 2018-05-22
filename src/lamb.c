@@ -21,13 +21,15 @@
 static lamb_db_t *db;
 static lamb_cache_t *rdb;
 static lamb_caches_t *blk;
+static lamb_caches_t *usb;
 
 int main(int argc, char **argv) {
     char *command;
     char *prompt = "lamb> ";
     char *history = ".lamb_history";
 
-    //linenoiseSetCompletionCallback(completion);
+    linenoiseSetCompletionCallback(completion);
+    //linenoiseSetHintsCallback(hints);
     linenoiseHistoryLoad(history);
 
     /* Initialization component */
@@ -49,6 +51,13 @@ int main(int argc, char **argv) {
                     for (int i = 0; i < blk->len; i++ ) {
                         if (blk->nodes[i]) {
                             lamb_cache_close(blk->nodes[i]);
+                        }
+                    }
+                }
+                if (usb) {
+                    for (int i = 0; i < usb->len; i++ ) {
+                        if (usb->nodes[i]) {
+                            lamb_cache_close(usb->nodes[i]);
                         }
                     }
                 }
@@ -91,6 +100,8 @@ int main(int argc, char **argv) {
                 lamb_kill_channel(command);
             } else if (CHECK(command, "check blacklist")){
                 lamb_check_blacklist(command);
+            } else if (CHECK(command, "check unsubscribe")){
+                lamb_check_unsubscribe(command);
             } else if (CHECK(command, "change password")) {
                 lamb_change_password(command);
             } else {
@@ -106,27 +117,28 @@ int main(int argc, char **argv) {
 
 void lamb_help(const char *line) {
     printf("\n");
-    printf(" help                        Display help information\n");
-    printf(" show mt                     Display mt queue information\n");
-    printf(" show mo                     Display mo queue information\n");
-    printf(" show core                   Display core module status information\n");
-    printf(" show client                 Display client connection information\n");
-    printf(" show server                 Display service module status information\n");
-    printf(" show account                Display account information\n");
-    printf(" show channel                Display carrier channel status information\n");
-    printf(" show gateway                Display carrier gateway information\n");
-    printf(" show delivery               Display downlink routing information\n");
-    printf(" show routing <id>           Display uplink routing information\n");
-    printf(" show log <type>             Display module log information\n");
-    printf(" kill client <id>            Kill a client disconnected\n");
-    printf(" kill server <id>            Kill a service processing module\n");
-    printf(" kill channel <id>           Kill a gateway disconnected\n");
-    printf(" start server <id>           Start a service processing module\n");
-    printf(" start channel <id>          Start a gateway channel service\n");
-    printf(" check blacklist <phone>     Check whether the mobile phone number is blacklisted\n");
-    printf(" change password <password>  Change user login password\n");
-    printf(" show version                Display software version information\n");
-    printf(" exit                        Exit system login\n");
+    printf(" help                              Display help information\n");
+    printf(" show mt                           Display mt queue information\n");
+    printf(" show mo                           Display mo queue information\n");
+    printf(" show core                         Display core module status information\n");
+    printf(" show client                       Display client connection information\n");
+    printf(" show server                       Display service module status information\n");
+    printf(" show account                      Display account information\n");
+    printf(" show channel                      Display carrier channel status information\n");
+    printf(" show gateway                      Display carrier gateway information\n");
+    printf(" show delivery                     Display downlink routing information\n");
+    printf(" show routing <id>                 Display uplink routing information\n");
+    printf(" show log <type>                   Display module log information\n");
+    printf(" kill client <id>                  Kill a client disconnected\n");
+    printf(" kill server <id>                  Kill a service processing module\n");
+    printf(" kill channel <id>                 Kill a gateway disconnected\n");
+    printf(" start server <id>                 Start a service processing module\n");
+    printf(" start channel <id>                Start a gateway channel service\n");
+    printf(" check blacklist <phone>           Check whether the phone number is blacklisted\n");
+    printf(" check unsubscribe <acc> <phone>   Check whether the phone number is unsubscribe\n");
+    printf(" change password <password>        Change user login password\n");
+    printf(" show version                      Display software version information\n");
+    printf(" exit                              Exit system login\n");
     printf("\n");
 
     return;
@@ -137,6 +149,129 @@ void lamb_show_version(const char *line) {
     printf("lamb gateway version %s\n", LAMB_VERSION);
     printf("Copyright (C) 2018 typefo <typefo@qq.com>");
     printf("\033[0m\n");
+    return;
+}
+
+void completion(const char *buf, linenoiseCompletions *lc) {
+    if (!strcasecmp(buf,"sh") || !strcasecmp(buf,"sho")) {
+        linenoiseAddCompletion(lc,"show");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show ch") || !strcasecmp(buf,"show cha") || !strcasecmp(buf,"show chan")) {
+        linenoiseAddCompletion(lc,"show channel");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show a") || !strcasecmp(buf,"show ac") || !strcasecmp(buf,"show acc")) {
+        linenoiseAddCompletion(lc,"show account");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show g") || !strcasecmp(buf,"show ga") || !strcasecmp(buf,"show gat")) {
+        linenoiseAddCompletion(lc,"show gateway");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show l") || !strcasecmp(buf,"show lo")) {
+        linenoiseAddCompletion(lc,"show log");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show d") || !strcasecmp(buf,"show de") || !strcasecmp(buf,"show del")) {
+        linenoiseAddCompletion(lc,"show delivery");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show r") || !strcasecmp(buf,"show ro") || !strcasecmp(buf,"show rou")) {
+        linenoiseAddCompletion(lc,"show routing");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show co") || !strcasecmp(buf,"show cor")) {
+        linenoiseAddCompletion(lc,"show core");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show cl") || !strcasecmp(buf,"show cli")) {
+        linenoiseAddCompletion(lc,"show client");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show s") || !strcasecmp(buf,"show se") || !strcasecmp(buf,"show ser")) {
+        linenoiseAddCompletion(lc,"show server");
+        return;
+    }
+
+    if (!strcasecmp(buf,"show v") || !strcasecmp(buf,"show ve") || !strcasecmp(buf,"show ver")) {
+        linenoiseAddCompletion(lc,"show version");
+        return;
+    }
+
+    if (!strcasecmp(buf,"k") || !strcasecmp(buf,"ki") ||  !strcasecmp(buf,"kil")) {
+        linenoiseAddCompletion(lc,"kill");
+        return;
+    }
+
+    if (!strcasecmp(buf,"kill cl") || !strcasecmp(buf,"kill cli")) {
+        linenoiseAddCompletion(lc,"kill client");
+        return;
+    }
+
+    if (!strcasecmp(buf,"kill s") || !strcasecmp(buf,"kill se") || !strcasecmp(buf,"kill ser")) {
+        linenoiseAddCompletion(lc,"kill server");
+        return;
+    }
+
+    if (!strcasecmp(buf,"kill ch") || !strcasecmp(buf,"kill cha") || !strcasecmp(buf,"kill chan")) {
+        linenoiseAddCompletion(lc,"kill channel");
+        return;
+    }
+
+    if (!strcasecmp(buf,"st") || !strcasecmp(buf,"sta") || !strcasecmp(buf,"star")) {
+        linenoiseAddCompletion(lc,"start");
+    }
+    
+    if (!strcasecmp(buf,"start s") || !strcasecmp(buf,"start se") || !strcasecmp(buf,"start ser")) {
+        linenoiseAddCompletion(lc,"start server");
+        return;
+    }
+
+    if (!strcasecmp(buf,"start c") || !strcasecmp(buf,"start ch") || !strcasecmp(buf,"start cha")) {
+        linenoiseAddCompletion(lc,"start channel");
+        return;
+    }
+
+    if (!strcasecmp(buf,"che") || !strcasecmp(buf,"chec")) {
+        linenoiseAddCompletion(lc,"check");
+        return;
+    }
+        
+    if (!strcasecmp(buf,"check b") || !strcasecmp(buf,"check bl") || !strcasecmp(buf,"check bla")) {
+        linenoiseAddCompletion(lc,"check blacklist");
+        return;
+    }
+
+    if (!strcasecmp(buf,"check b") || !strcasecmp(buf,"check bl") || !strcasecmp(buf,"check bla")) {
+        linenoiseAddCompletion(lc,"check blacklist");
+        return;
+    }
+
+    if (!strcasecmp(buf,"check u") || !strcasecmp(buf,"check un") || !strcasecmp(buf,"check uns")) {
+        linenoiseAddCompletion(lc,"check unsubscribe");
+        return;
+    }
+
+    if (!strcasecmp(buf,"cha") || !strcasecmp(buf,"chan") || !strcasecmp(buf,"chang")) {
+        linenoiseAddCompletion(lc,"change");
+        return;
+    }
+
+    if (!strcasecmp(buf,"change p") || !strcasecmp(buf,"change pa") || !strcasecmp(buf,"change pas") || !strcasecmp(buf,"change pass")) {
+        linenoiseAddCompletion(lc,"change password");
+        return;
+    }
+
     return;
 }
 
@@ -816,6 +951,32 @@ void lamb_check_blacklist(const char *line) {
     return;
 }
 
+void lamb_check_unsubscribe(const char *line) {
+    int err;
+    int acc;
+    char *phone;
+    lamb_opt_t opt;
+
+    memset(&opt, 0, sizeof(opt));
+    err = lamb_opt_parsing(line, "check unsubscribe", &opt);
+    if (err || opt.len < 2) {
+        printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
+        return;
+    }
+
+    acc = atoi(opt.val[0]);
+    phone = opt.val[1];
+
+    if (lamb_is_unsubscribe(usb, acc, phone)) {
+        printf("The number %s is unsubscribe\n", phone);
+    } else {
+        printf("The number %s is not unsubscribe\n", phone);
+    }
+
+    lamb_opt_free(&opt);
+    return;
+}
+
 void lamb_change_password(const char *line) {
     int err;
     char md5[33];
@@ -892,13 +1053,6 @@ void lamb_opt_free(lamb_opt_t *opt) {
     return;
 }
 
-void completion(const char *buf, linenoiseCompletions *lc) {
-    if (buf[0] == 'h') {
-        linenoiseAddCompletion(lc,"hello");
-        linenoiseAddCompletion(lc,"hello there");
-    }
-}
-
 void lamb_component_initialization(lamb_config_t *cfg) {
     int err;
 
@@ -955,6 +1109,20 @@ void lamb_component_initialization(lamb_config_t *cfg) {
 
     if (blk->len != 7) {
         printf("\033[31m%s\033[0m\n", "Error: can't connect to blacklist database");
+        return;
+    }
+
+    /* Unsubscribe database initialization */
+    usb = (lamb_caches_t *)calloc(1, sizeof(lamb_caches_t));
+    if (!usb) {
+        printf("\033[31m%s\033[0m\n", "Error: The kernel can't allocate memory");
+        return;
+    }
+
+    lamb_nodes_connect(usb, LAMB_MAX_CACHE, config, 7, 2);
+
+    if (usb->len != 7) {
+        printf("\033[31m%s\033[0m\n", "Error: can't connect to unsubscribe database");
         return;
     }
 
@@ -1254,6 +1422,35 @@ bool lamb_is_blacklist(lamb_caches_t *cache, char *phone) {
     if (number > 0) {
         i = (number % cache->len);
         reply = redisCommand(cache->nodes[i]->handle, "EXISTS %lu", number);
+        if (reply != NULL) {
+            if (reply->type == REDIS_REPLY_INTEGER) {
+                if (reply->integer == 1) {
+                    r = true;
+                }
+            }
+            freeReplyObject(reply);
+        }
+    }
+
+    return r;
+    
+}
+
+bool lamb_is_unsubscribe(lamb_caches_t *cache, int acc, char *phone) {
+    int i = -1;
+    bool r = false;
+    unsigned long number;
+    redisReply *reply = NULL;
+
+    if (!phone) {
+        return false;
+    }
+
+    number = atol(phone);
+
+    if (number > 0) {
+        i = (number % cache->len);
+        reply = redisCommand(cache->nodes[i]->handle, "EXISTS %d.%lu", acc, number);
         if (reply != NULL) {
             if (reply->type == REDIS_REPLY_INTEGER) {
                 if (reply->integer == 1) {
