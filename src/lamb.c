@@ -102,8 +102,10 @@ int main(int argc, char **argv) {
                 lamb_check_blacklist(command);
             } else if (CHECK(command, "check unsubscribe")){
                 lamb_check_unsubscribe(command);
-            } else if (CHECK(command, "change password")) {
-                lamb_change_password(command);
+            } else if (CHECK(command, "config web password")) {
+                lamb_config_web_password(command);
+            } else if (CHECK(command, "config terminal password")) {
+                lamb_config_terminal_password(command);
             } else {
                 printf("\033[31m%s\033[0m\n", "Error: Unknown command");
             }
@@ -117,28 +119,29 @@ int main(int argc, char **argv) {
 
 void lamb_help(const char *line) {
     printf("\n");
-    printf(" help                              Display help information\n");
-    printf(" show mt                           Display mt queue information\n");
-    printf(" show mo                           Display mo queue information\n");
-    printf(" show core                         Display core module status information\n");
-    printf(" show client                       Display client connection information\n");
-    printf(" show server                       Display service module status information\n");
-    printf(" show account                      Display account information\n");
-    printf(" show channel                      Display carrier channel status information\n");
-    printf(" show gateway                      Display carrier gateway information\n");
-    printf(" show delivery                     Display downlink routing information\n");
-    printf(" show routing <id>                 Display uplink routing information\n");
-    printf(" show log <type>                   Display module log information\n");
-    printf(" kill client <id>                  Kill a client disconnected\n");
-    printf(" kill server <id>                  Kill a service processing module\n");
-    printf(" kill channel <id>                 Kill a gateway disconnected\n");
-    printf(" start server <id>                 Start a service processing module\n");
-    printf(" start channel <id>                Start a gateway channel service\n");
-    printf(" check blacklist <phone>           Check whether the phone number is blacklisted\n");
-    printf(" check unsubscribe <acc> <phone>   Check whether the phone number is unsubscribe\n");
-    printf(" change password <password>        Change user login password\n");
-    printf(" show version                      Display software version information\n");
-    printf(" exit                              Exit system login\n");
+    printf(" help                             Display help information\n");
+    printf(" show mt                          Display mt queue information\n");
+    printf(" show mo                          Display mo queue information\n");
+    printf(" show core                        Display core module status information\n");
+    printf(" show client                      Display client connection information\n");
+    printf(" show server                      Display service module status information\n");
+    printf(" show account                     Display account information\n");
+    printf(" show channel                     Display carrier channel status information\n");
+    printf(" show gateway                     Display carrier gateway information\n");
+    printf(" show delivery                    Display downlink routing information\n");
+    printf(" show routing <id>                Display uplink routing information\n");
+    printf(" show log <type>                  Display module log information\n");
+    printf(" kill client <id>                 Kill a client disconnected\n");
+    printf(" kill server <id>                 Kill a service processing module\n");
+    printf(" kill channel <id>                Kill a gateway disconnected\n");
+    printf(" start server <id>                Start a service processing module\n");
+    printf(" start channel <id>               Start a gateway channel service\n");
+    printf(" check blacklist <phone>          Check whether the phone number is blacklisted\n");
+    printf(" check unsubscribe <acc> <phone>  Check whether the phone number is unsubscribe\n");
+    printf(" config web password <password>   Change web login password\n");
+    printf(" config terminal password         Change terminal login password\n");
+    printf(" show version                     Display software version information\n");
+    printf(" exit                             Exit system login\n");
     printf("\n");
 
     return;
@@ -262,13 +265,28 @@ void completion(const char *buf, linenoiseCompletions *lc) {
         return;
     }
 
-    if (!strcasecmp(buf,"cha") || !strcasecmp(buf,"chan") || !strcasecmp(buf,"chang")) {
-        linenoiseAddCompletion(lc,"change");
+    if (!strcasecmp(buf,"co") || !strcasecmp(buf,"con") || !strcasecmp(buf,"conf") || !strcasecmp(buf,"confi")) {
+        linenoiseAddCompletion(lc,"config");
         return;
     }
 
-    if (!strcasecmp(buf,"change p") || !strcasecmp(buf,"change pa") || !strcasecmp(buf,"change pas") || !strcasecmp(buf,"change pass")) {
-        linenoiseAddCompletion(lc,"change password");
+    if (!strcasecmp(buf,"config w") || !strcasecmp(buf,"change we")) {
+        linenoiseAddCompletion(lc,"config web");
+        return;
+    }
+
+    if (!strcasecmp(buf,"config web p") || !strcasecmp(buf,"config web pa") || !strcasecmp(buf,"config web pas") || !strcasecmp(buf,"config web pass")) {
+        linenoiseAddCompletion(lc,"config web password");
+        return;
+    }
+
+    if (!strcasecmp(buf,"config t") || !strcasecmp(buf,"config te") || !strcasecmp(buf,"config ter") || !strcasecmp(buf,"config term")) {
+        linenoiseAddCompletion(lc,"config terminal");
+        return;
+    }
+
+    if (!strcasecmp(buf,"config terminal p") || !strcasecmp(buf,"config terminal pa") || !strcasecmp(buf,"config terminal pas") || !strcasecmp(buf,"config terminal pass")) {
+        linenoiseAddCompletion(lc,"config terminal password");
         return;
     }
 
@@ -977,7 +995,7 @@ void lamb_check_unsubscribe(const char *line) {
     return;
 }
 
-void lamb_change_password(const char *line) {
+void lamb_config_web_password(const char *line) {
     int err;
     char md5[33];
     char string[41];
@@ -985,7 +1003,7 @@ void lamb_change_password(const char *line) {
     lamb_opt_t opt;
 
     memset(&opt, 0, sizeof(lamb_opt_t));
-    err = lamb_opt_parsing(line, "change password", &opt);
+    err = lamb_opt_parsing(line, "config web password", &opt);
 
     if (err || opt.len < 1) {
         printf(" \033[31m%s\033[0m\n", "Error: Incorrect command parameters");
@@ -1007,6 +1025,11 @@ void lamb_change_password(const char *line) {
     }
 
     lamb_opt_free(&opt);
+    return;
+}
+
+void lamb_config_terminal_password(const char *line) {
+    system("/usr/bin/passwd");
     return;
 }
 
