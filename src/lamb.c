@@ -270,7 +270,7 @@ void completion(const char *buf, linenoiseCompletions *lc) {
         return;
     }
 
-    if (!strcasecmp(buf,"config w") || !strcasecmp(buf,"change we")) {
+    if (!strcasecmp(buf,"config w") || !strcasecmp(buf,"config we")) {
         linenoiseAddCompletion(lc,"config web");
         return;
     }
